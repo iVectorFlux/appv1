@@ -22,7 +22,7 @@ The app enforces **hard boundaries** between three distinct systems:
 | System | Purpose | Data Storage | Privacy |
 |--------|---------|--------------|---------|
 | **Journal** | Personal emotional expression | Encrypted locally | Never synced, never analyzed |
-| **EQ Check-ins** | Structured EQ assessment | Local SQLite | Syncable structured data only |
+| **EQ Check-ins** | Structured EQ assessment | PostgreSQL | Syncable structured data only |
 | **Insights** | Pattern recognition | Derived data | Based on EQ + emotions only, never journal text |
 
 ## Tech Stack
@@ -34,7 +34,7 @@ The app enforces **hard boundaries** between three distinct systems:
 | TypeScript | 5.3.3 | Type safety (strict mode) |
 | Expo Router | ~4.0.0 | File-based navigation |
 | Zustand | 4.5.5 | State management |
-| SQLite | expo-sqlite ~14.0.0 | Local structured data |
+| PostgreSQL | Latest | Cloud database for structured data |
 | SecureStore | expo-secure-store ~13.0.0 | Secrets/encryption keys |
 | Expo AV | ~14.0.0 | Audio (meditation, sounds) |
 | Reanimated | ~3.16.1 | Animations |
@@ -145,7 +145,7 @@ npm run web      # Web browser
 - [x] Theme support (light/dark mode ready)
 
 #### Technical
-- [x] SQLite database schema with privacy boundaries
+- [x] PostgreSQL database schema with privacy boundaries
 - [x] Encryption service structure
 - [x] Cross-platform support (iOS, Android, Web)
 - [x] Path aliases (@/ for src/)
@@ -227,7 +227,7 @@ Relaxed, Grounded, Peaceful, On edge, Lonely, Empty, Exhausted, Irritated, Angry
 
 1. **Journal Text**: Encrypted before storage, never synced, never analyzed
 2. **Structured Data Only**: Insights derived from emotions, energy, EQ responses only
-3. **Local-First**: All sensitive data stored locally in SQLite
+3. **Local-First**: Journal data stored locally, structured data in PostgreSQL
 4. **No Analytics**: No tracking of journal content
 5. **Clear Boundaries**: Code comments explain privacy rules throughout
 6. **Temporary Release**: "Release & Let Go" text is never saved
