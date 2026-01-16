@@ -1,0 +1,23 @@
+/**
+ * Index Route
+ * 
+ * Redirects to auth or main app based on authentication state.
+ */
+
+import { useEffect } from 'react';
+import { Redirect } from 'expo-router';
+import { useAuthStore } from '@/stores/auth-store';
+
+export default function Index() {
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  if (isLoading) {
+    return null; // Or a loading screen
+  }
+
+  if (isAuthenticated) {
+    return <Redirect href="/(tabs)/home" />;
+  }
+
+  return <Redirect href="/(auth)/login" />;
+}
