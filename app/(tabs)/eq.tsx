@@ -11,7 +11,7 @@
  * - 1 Physiological Proxy
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {
   Animated,
   TextInput,
   Platform,
+  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
@@ -59,9 +60,14 @@ export default function EQCheckInScreen() {
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [likertValue, setLikertValue] = useState(4);
   
-  // Animation
+  // Animation refs
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const checkmarkAnim = useRef(new Animated.Value(0)).current;
+  
+  // Prevent double-submission
+  const isTransitioning = useRef(false);
 
   useEffect(() => {
     // Select questions for this check-in
@@ -73,19 +79,74 @@ export default function EQCheckInScreen() {
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
 
-  const animateTransition = (callback: () => void) => {
+  // Enhanced transition animation
+  const animateTransition = useCallback((callback: () => void) => {
+    if (isTransitioning.current) return;
+    isTransitioning.current = true;
+    
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: -20, duration: 150, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { 
+        toValue: 0, 
+        duration: 200, 
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, { 
+        toValue: -30, 
+        duration: 200, 
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+      Animated.timing(scaleAnim, { 
+        toValue: 0.95, 
+        duration: 200, 
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       callback();
-      slideAnim.setValue(20);
+      slideAnim.setValue(40);
+      scaleAnim.setValue(0.98);
+      
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      ]).start();
+        Animated.timing(fadeAnim, { 
+          toValue: 1, 
+          duration: 300, 
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(slideAnim, { 
+          toValue: 0, 
+          duration: 300, 
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(scaleAnim, { 
+          toValue: 1, 
+          duration: 300, 
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+      ]).start(() => {
+        isTransitioning.current = false;
+      });
     });
-  };
+  }, [fadeAnim, slideAnim, scaleAnim]);
+  
+  // Selection animation with delay
+  const animateSelection = useCallback((onComplete: () => void) => {
+    checkmarkAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(checkmarkAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.back(1.5)),
+      }),
+      Animated.delay(500), // Let user see their selection
+    ]).start(() => {
+      onComplete();
+    });
+  }, [checkmarkAnim]);
 
   const recordResponse = (response: EQResponse) => {
     const newResponses = [...responses, response];
@@ -219,9 +280,11 @@ export default function EQCheckInScreen() {
   // Forced Choice Question
   const renderForcedChoice = (q: ForcedChoiceQuestion) => {
     const handleSelect = (optionId: string) => {
+      if (isTransitioning.current || selectedChoice) return;
+      
       setSelectedChoice(optionId);
       
-      setTimeout(() => {
+      animateSelection(() => {
         const response: ForcedChoiceResponse = {
           questionId: q.id,
           type: 'forced_choice',
@@ -229,33 +292,43 @@ export default function EQCheckInScreen() {
           responseTimeMs: getResponseTime(),
         };
         recordResponse(response);
-      }, 300);
+      });
     };
 
     return (
       <View style={styles.questionContent}>
         <Text style={styles.questionPrompt}>{q.prompt}</Text>
         <View style={styles.optionsContainer}>
-          {q.options.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={[
-                styles.forcedChoiceOption,
-                selectedChoice === option.id && styles.forcedChoiceOptionSelected,
-              ]}
-              onPress={() => handleSelect(option.id)}
-            >
-              <Text style={[
-                styles.forcedChoiceText,
-                selectedChoice === option.id && styles.forcedChoiceTextSelected,
-              ]}>
-                {option.text}
-              </Text>
-              {selectedChoice === option.id && (
-                <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
-              )}
-            </TouchableOpacity>
-          ))}
+          {q.options.map((option) => {
+            const isSelected = selectedChoice === option.id;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.forcedChoiceOption,
+                  isSelected && styles.forcedChoiceOptionSelected,
+                ]}
+                onPress={() => handleSelect(option.id)}
+                activeOpacity={0.7}
+                disabled={!!selectedChoice}
+              >
+                <Text style={[
+                  styles.forcedChoiceText,
+                  isSelected && styles.forcedChoiceTextSelected,
+                ]}>
+                  {option.text}
+                </Text>
+                {isSelected && (
+                  <Animated.View style={{ 
+                    transform: [{ scale: checkmarkAnim }],
+                    opacity: checkmarkAnim,
+                  }}>
+                    <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
+                  </Animated.View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
     );
@@ -318,9 +391,11 @@ export default function EQCheckInScreen() {
   // Emotion Vocabulary Question
   const renderEmotionVocabulary = (q: EmotionVocabularyQuestion) => {
     const handleSelect = (optionId: string) => {
+      if (isTransitioning.current || selectedChoice) return;
+      
       setSelectedChoice(optionId);
       
-      setTimeout(() => {
+      animateSelection(() => {
         const response: EmotionVocabularyResponse = {
           questionId: q.id,
           type: 'emotion_vocabulary',
@@ -328,7 +403,7 @@ export default function EQCheckInScreen() {
           responseTimeMs: getResponseTime(),
         };
         recordResponse(response);
-      }, 300);
+      });
     };
 
     return (
@@ -337,23 +412,37 @@ export default function EQCheckInScreen() {
         <Text style={styles.scenarioText}>"{q.scenario}"</Text>
         
         <View style={styles.emotionOptions}>
-          {q.options.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={[
-                styles.emotionOption,
-                selectedChoice === option.id && styles.emotionOptionSelected,
-              ]}
-              onPress={() => handleSelect(option.id)}
-            >
-              <Text style={[
-                styles.emotionOptionText,
-                selectedChoice === option.id && styles.emotionOptionTextSelected,
-              ]}>
-                {option.emotion}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {q.options.map((option) => {
+            const isSelected = selectedChoice === option.id;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.emotionOption,
+                  isSelected && styles.emotionOptionSelected,
+                ]}
+                onPress={() => handleSelect(option.id)}
+                activeOpacity={0.7}
+                disabled={!!selectedChoice}
+              >
+                <Text style={[
+                  styles.emotionOptionText,
+                  isSelected && styles.emotionOptionTextSelected,
+                ]}>
+                  {option.emotion}
+                </Text>
+                {isSelected && (
+                  <Animated.View style={{ 
+                    marginLeft: Spacing.sm,
+                    transform: [{ scale: checkmarkAnim }],
+                    opacity: checkmarkAnim,
+                  }}>
+                    <Ionicons name="checkmark-circle" size={22} color={colors.primaryForeground} />
+                  </Animated.View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
     );
@@ -362,9 +451,11 @@ export default function EQCheckInScreen() {
   // Physiological Proxy Question
   const renderPhysiologicalProxy = (q: PhysiologicalProxyQuestion) => {
     const handleSelect = (optionId: string) => {
+      if (isTransitioning.current || selectedChoice) return;
+      
       setSelectedChoice(optionId);
       
-      setTimeout(() => {
+      animateSelection(() => {
         const response: PhysiologicalProxyResponse = {
           questionId: q.id,
           type: 'physiological_proxy',
@@ -372,7 +463,7 @@ export default function EQCheckInScreen() {
           responseTimeMs: getResponseTime(),
         };
         recordResponse(response);
-      }, 300);
+      });
     };
 
     return (
@@ -380,26 +471,38 @@ export default function EQCheckInScreen() {
         <Text style={styles.questionPrompt}>{q.prompt}</Text>
         
         <View style={styles.physioOptions}>
-          {q.options.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={[
-                styles.physioOption,
-                selectedChoice === option.id && styles.physioOptionSelected,
-              ]}
-              onPress={() => handleSelect(option.id)}
-            >
-              <Text style={[
-                styles.physioOptionText,
-                selectedChoice === option.id && styles.physioOptionTextSelected,
-              ]}>
-                {option.text}
-              </Text>
-              {selectedChoice === option.id && (
-                <Ionicons name="checkmark-circle" size={20} color={colors.primaryForeground} />
-              )}
-            </TouchableOpacity>
-          ))}
+          {q.options.map((option) => {
+            const isSelected = selectedChoice === option.id;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.physioOption,
+                  isSelected && styles.physioOptionSelected,
+                ]}
+                onPress={() => handleSelect(option.id)}
+                activeOpacity={0.7}
+                disabled={!!selectedChoice}
+              >
+                <View style={styles.physioOptionContent}>
+                  <Text style={[
+                    styles.physioOptionText,
+                    isSelected && styles.physioOptionTextSelected,
+                  ]}>
+                    {option.text}
+                  </Text>
+                  {isSelected && (
+                    <Animated.View style={{ 
+                      transform: [{ scale: checkmarkAnim }],
+                      opacity: checkmarkAnim,
+                    }}>
+                      <Ionicons name="checkmark-circle" size={20} color={colors.primaryForeground} />
+                    </Animated.View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
     );
@@ -426,13 +529,17 @@ export default function EQCheckInScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Animated.View
           style={[
             styles.questionWrapper,
             {
               opacity: fadeAnim,
-              transform: [{ translateX: slideAnim }],
+              transform: [
+                { translateX: slideAnim },
+                { scale: scaleAnim },
+              ],
             },
           ]}
         >
@@ -617,7 +724,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     padding: Spacing.lg,
     borderWidth: 2,
     borderColor: colors.borderLight,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   emotionOptionSelected: {
     backgroundColor: colors.primary,
@@ -649,6 +758,12 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   physioOptionSelected: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+  },
+  physioOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
   },
   physioOptionText: {
     fontSize: Typography.fontSize.sm,

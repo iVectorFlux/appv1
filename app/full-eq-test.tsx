@@ -12,7 +12,7 @@
  * - Consistency indicators
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import {
   Animated,
   Platform,
   Alert,
+  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
@@ -74,24 +75,108 @@ export default function FullEQTestScreen() {
   const [otherRating, setOtherRating] = useState(4);
   const [allocations, setAllocations] = useState<Record<string, number>>({});
   
-  // Animation
+  // Animation refs
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const checkmarkAnim = useRef(new Animated.Value(0)).current;
+  
+  // Flag to prevent double-submission
+  const isTransitioning = useRef(false);
 
   useEffect(() => {
     // Pre-select questions
     const selectedQuestions = selectFullTestQuestions();
     setQuestions(selectedQuestions);
   }, []);
+  
+  // Animate progress bar
+  useEffect(() => {
+    const targetProgress = questions.length > 0 ? (currentIndex / questions.length) * 100 : 0;
+    Animated.timing(progressAnim, {
+      toValue: targetProgress,
+      duration: 300,
+      useNativeDriver: false,
+      easing: Easing.out(Easing.cubic),
+    }).start();
+  }, [currentIndex, questions.length]);
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex) / questions.length) * 100 : 0;
 
-  const animateTransition = (callback: () => void) => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+  // Enhanced transition animation with slide and scale
+  const animateTransition = useCallback((callback: () => void) => {
+    if (isTransitioning.current) return;
+    isTransitioning.current = true;
+    
+    // Animate out: fade + slide left + scale down slightly
+    Animated.parallel([
+      Animated.timing(fadeAnim, { 
+        toValue: 0, 
+        duration: 200, 
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+      Animated.timing(slideAnim, { 
+        toValue: -30, 
+        duration: 200, 
+        useNativeDriver: true,
+        easing: Easing.in(Easing.cubic),
+      }),
+      Animated.timing(scaleAnim, { 
+        toValue: 0.95, 
+        duration: 200, 
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
       callback();
-      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      
+      // Reset slide to come from right
+      slideAnim.setValue(40);
+      scaleAnim.setValue(0.98);
+      
+      // Animate in: fade + slide in from right + scale up
+      Animated.parallel([
+        Animated.timing(fadeAnim, { 
+          toValue: 1, 
+          duration: 300, 
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(slideAnim, { 
+          toValue: 0, 
+          duration: 300, 
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(scaleAnim, { 
+          toValue: 1, 
+          duration: 300, 
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+      ]).start(() => {
+        isTransitioning.current = false;
+      });
     });
-  };
+  }, [fadeAnim, slideAnim, scaleAnim]);
+  
+  // Selection animation - pulse effect
+  const animateSelection = useCallback((onComplete: () => void) => {
+    checkmarkAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(checkmarkAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.back(1.5)),
+      }),
+      Animated.delay(500), // Wait for user to see selection
+    ]).start(() => {
+      onComplete();
+    });
+  }, [checkmarkAnim]);
 
   const resetQuestionState = () => {
     setSelectedChoice(null);
@@ -545,8 +630,12 @@ export default function FullEQTestScreen() {
   // Emotion Vocabulary
   const renderEmotionVocabulary = (q: EmotionVocabularyQuestion) => {
     const handleSelect = (optionId: string) => {
+      if (isTransitioning.current || selectedChoice) return; // Prevent double-tap
+      
       setSelectedChoice(optionId);
-      setTimeout(() => {
+      
+      // Use selection animation, then transition
+      animateSelection(() => {
         const response: EmotionVocabularyResponse = {
           questionId: q.id,
           type: 'emotion_vocabulary',
@@ -554,7 +643,7 @@ export default function FullEQTestScreen() {
           responseTimeMs: getResponseTime(),
         };
         recordResponse(response);
-      }, 300);
+      });
     };
 
     return (
@@ -563,23 +652,39 @@ export default function FullEQTestScreen() {
         <Text style={styles.scenarioText}>"{q.scenario}"</Text>
         
         <View style={styles.emotionOptions}>
-          {q.options.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={[
-                styles.emotionOption,
-                selectedChoice === option.id && styles.emotionOptionSelected,
-              ]}
-              onPress={() => handleSelect(option.id)}
-            >
-              <Text style={[
-                styles.emotionOptionText,
-                selectedChoice === option.id && styles.emotionOptionTextSelected,
-              ]}>
-                {option.emotion}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {q.options.map((option) => {
+            const isSelected = selectedChoice === option.id;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.emotionOption,
+                  isSelected && styles.emotionOptionSelected,
+                ]}
+                onPress={() => handleSelect(option.id)}
+                activeOpacity={0.7}
+                disabled={!!selectedChoice}
+              >
+                <Text style={[
+                  styles.emotionOptionText,
+                  isSelected && styles.emotionOptionTextSelected,
+                ]}>
+                  {option.emotion}
+                </Text>
+                {isSelected && (
+                  <Animated.View style={[
+                    styles.selectionCheckmark,
+                    { 
+                      transform: [{ scale: checkmarkAnim }],
+                      opacity: checkmarkAnim,
+                    }
+                  ]}>
+                    <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
+                  </Animated.View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
     );
@@ -656,8 +761,12 @@ export default function FullEQTestScreen() {
   // Physiological Proxy
   const renderPhysiologicalProxy = (q: PhysiologicalProxyQuestion) => {
     const handleSelect = (optionId: string) => {
+      if (isTransitioning.current || selectedChoice) return; // Prevent double-tap
+      
       setSelectedChoice(optionId);
-      setTimeout(() => {
+      
+      // Use selection animation, then transition
+      animateSelection(() => {
         const response: PhysiologicalProxyResponse = {
           questionId: q.id,
           type: 'physiological_proxy',
@@ -665,30 +774,48 @@ export default function FullEQTestScreen() {
           responseTimeMs: getResponseTime(),
         };
         recordResponse(response);
-      }, 300);
+      });
     };
 
     return (
       <View style={styles.questionContent}>
         <Text style={styles.questionPrompt}>{q.prompt}</Text>
         <View style={styles.physioOptions}>
-          {q.options.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={[
-                styles.physioOption,
-                selectedChoice === option.id && styles.physioOptionSelected,
-              ]}
-              onPress={() => handleSelect(option.id)}
-            >
-              <Text style={[
-                styles.physioOptionText,
-                selectedChoice === option.id && styles.physioOptionTextSelected,
-              ]}>
-                {option.text}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {q.options.map((option) => {
+            const isSelected = selectedChoice === option.id;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.physioOption,
+                  isSelected && styles.physioOptionSelected,
+                ]}
+                onPress={() => handleSelect(option.id)}
+                activeOpacity={0.7}
+                disabled={!!selectedChoice}
+              >
+                <View style={styles.physioOptionContent}>
+                  <Text style={[
+                    styles.physioOptionText,
+                    isSelected && styles.physioOptionTextSelected,
+                  ]}>
+                    {option.text}
+                  </Text>
+                  {isSelected && (
+                    <Animated.View style={[
+                      styles.selectionCheckmark,
+                      { 
+                        transform: [{ scale: checkmarkAnim }],
+                        opacity: checkmarkAnim,
+                      }
+                    ]}>
+                      <Ionicons name="checkmark-circle" size={22} color={colors.primaryForeground} />
+                    </Animated.View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
     );
@@ -814,26 +941,53 @@ export default function FullEQTestScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.testHeader}>
-        <TouchableOpacity onPress={handleExit}>
-          <Ionicons name="close" size={24} color={colors.textSecondary} />
+        <TouchableOpacity 
+          onPress={handleExit}
+          style={styles.closeButton}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="close" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.testHeaderText}>
           {currentIndex + 1} / {questions.length}
         </Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 44 }} />
       </View>
       
-      {/* Progress bar */}
+      {/* Animated Progress bar */}
       <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        <Animated.View 
+          style={[
+            styles.progressFill, 
+            { 
+              width: progressAnim.interpolate({
+                inputRange: [0, 100],
+                outputRange: ['0%', '100%'],
+              }) 
+            }
+          ]} 
+        />
       </View>
 
       {/* Question */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Animated.View style={[styles.questionWrapper, { opacity: fadeAnim }]}>
+        <Animated.View 
+          style={[
+            styles.questionWrapper, 
+            { 
+              opacity: fadeAnim,
+              transform: [
+                { translateX: slideAnim },
+                { scale: scaleAnim },
+              ],
+            }
+          ]}
+        >
           {renderQuestion()}
         </Animated.View>
       </ScrollView>
@@ -947,13 +1101,22 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: Spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? Spacing['2xl'] : Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingTop: Platform.OS === 'ios' ? 50 : Spacing.xl,
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   testHeaderText: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    fontWeight: Typography.fontWeight.medium,
+    fontSize: Typography.fontSize.base,
+    color: colors.textPrimary,
+    fontWeight: Typography.fontWeight.semibold,
   },
   progressBar: {
     height: 4,
@@ -1101,7 +1264,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     padding: Spacing.lg,
     borderWidth: 2,
     borderColor: colors.borderLight,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   emotionOptionSelected: {
     backgroundColor: colors.primary,
@@ -1114,6 +1279,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   emotionOptionTextSelected: {
     color: colors.primaryForeground,
+  },
+  selectionCheckmark: {
+    marginLeft: Spacing.sm,
   },
   // Meta-EQ
   metaEQSection: {
@@ -1145,10 +1313,16 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
+  physioOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   physioOptionText: {
     fontSize: Typography.fontSize.sm,
     color: colors.textPrimary,
     lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
+    flex: 1,
   },
   physioOptionTextSelected: {
     color: colors.primaryForeground,
