@@ -393,18 +393,26 @@ export default function ReflectScreen() {
       <Text style={styles.stepTitle}>What's this related to?</Text>
 
       <View style={styles.reasonGrid}>
-        {REASONS.map((reason) => (
-          <TouchableOpacity
-            key={reason}
-            onPress={() => toggleReason(reason)}
-            style={[
-              styles.reasonChip,
-              selectedReasons.includes(reason) && styles.reasonChipSelected,
-            ]}
-          >
-            <Text style={styles.reasonChipText}>{reason}</Text>
-          </TouchableOpacity>
-        ))}
+        {REASONS.map((reason) => {
+          const isSelected = selectedReasons.includes(reason);
+          return (
+            <TouchableOpacity
+              key={reason}
+              onPress={() => toggleReason(reason)}
+              style={[
+                styles.reasonChip,
+                isSelected && styles.reasonChipSelected,
+              ]}
+            >
+              <Text style={[
+                styles.reasonChipText,
+                isSelected && styles.reasonChipTextSelected,
+              ]}>
+                {reason}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -789,19 +797,22 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.border,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.floating,
   },
   reasonChipSelected: {
-    backgroundColor: colors.floating,
-    borderColor: colors.borderLight,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   reasonChipText: {
     fontSize: Typography.fontSize.sm,
     color: colors.textPrimary,
     fontWeight: Typography.fontWeight.medium,
     fontFamily: Typography.fontFamily.primary,
+  },
+  reasonChipTextSelected: {
+    color: colors.primaryForeground,
   },
   privacySection: {
     marginTop: Spacing['3xl'],

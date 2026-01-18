@@ -28,6 +28,8 @@ interface EQQuestion {
   domain: string;
 }
 
+type ChoiceValue = 'often' | 'sometimes' | 'rarely';
+
 const EQ_QUESTIONS: EQQuestion[] = [
   { id: '1', statement: "I usually notice my emotions before they affect my actions.", type: 'slider', domain: 'self_awareness' },
   { id: '2', statement: "When emotions rise, I pause before reacting.", type: 'binary', domain: 'self_regulation' },
@@ -42,22 +44,28 @@ export default function EQScreen() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, EQResponse>>({});
   const [sliderValue, setSliderValue] = useState(50);
+  const [selectedChoice, setSelectedChoice] = useState<ChoiceValue | null>(null);
 
   const question = EQ_QUESTIONS[currentQuestion];
   const progress = ((currentQuestion + 1) / EQ_QUESTIONS.length) * 100;
   const isComplete = currentQuestion >= EQ_QUESTIONS.length;
 
-  const handleChoice = (choice: boolean) => {
-    const response: EQResponse = { type: 'binary', value: choice };
+  const handleChoice = (choice: ChoiceValue) => {
+    setSelectedChoice(choice);
+    
+    const value = choice === 'often' ? true : false;
+    const response: EQResponse = { type: 'binary', value };
     setAnswers({ ...answers, [question.id]: response });
+    
     setTimeout(() => {
       if (currentQuestion < EQ_QUESTIONS.length - 1) {
         setCurrentQuestion(currentQuestion + 1);
         setSliderValue(50);
+        setSelectedChoice(null);
       } else {
         setCurrentQuestion(EQ_QUESTIONS.length);
       }
-    }, 300);
+    }, 400);
   };
 
   const handleSliderSubmit = () => {
@@ -75,6 +83,7 @@ export default function EQScreen() {
     if (currentQuestion < EQ_QUESTIONS.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
       setSliderValue(50);
+      setSelectedChoice(null);
     } else {
       setCurrentQuestion(EQ_QUESTIONS.length);
     }
@@ -135,39 +144,80 @@ export default function EQScreen() {
         {question.type === 'binary' ? (
           <View style={styles.choiceContainer}>
             <TouchableOpacity
-              onPress={() => handleChoice(true)}
-              style={[styles.choiceButton, Shadows.sm]}
+              onPress={() => handleChoice('often')}
+              style={[
+                styles.choiceButton,
+                Shadows.sm,
+                selectedChoice === 'often' && styles.choiceButtonSelected,
+              ]}
             >
-              <Text style={styles.choiceText}>Often</Text>
+              <Text style={[
+                styles.choiceText,
+                selectedChoice === 'often' && styles.choiceTextSelected,
+              ]}>
+                Often
+              </Text>
+              {selectedChoice === 'often' && (
+                <View style={styles.checkIcon}>
+                  <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => handleChoice(false)}
-              style={[styles.choiceButton, Shadows.sm]}
+              onPress={() => handleChoice('sometimes')}
+              style={[
+                styles.choiceButton,
+                Shadows.sm,
+                selectedChoice === 'sometimes' && styles.choiceButtonSelected,
+              ]}
             >
-              <Text style={styles.choiceText}>Sometimes</Text>
+              <Text style={[
+                styles.choiceText,
+                selectedChoice === 'sometimes' && styles.choiceTextSelected,
+              ]}>
+                Sometimes
+              </Text>
+              {selectedChoice === 'sometimes' && (
+                <View style={styles.checkIcon}>
+                  <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => handleChoice(false)}
-              style={[styles.choiceButton, Shadows.sm]}
+              onPress={() => handleChoice('rarely')}
+              style={[
+                styles.choiceButton,
+                Shadows.sm,
+                selectedChoice === 'rarely' && styles.choiceButtonSelected,
+              ]}
             >
-              <Text style={styles.choiceText}>Rarely</Text>
+              <Text style={[
+                styles.choiceText,
+                selectedChoice === 'rarely' && styles.choiceTextSelected,
+              ]}>
+                Rarely
+              </Text>
+              {selectedChoice === 'rarely' && (
+                <View style={styles.checkIcon}>
+                  <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.sliderContainer}>
             <Slider
-              style={styles.slider}
               minimumValue={0}
               maximumValue={100}
               value={sliderValue}
               onValueChange={setSliderValue}
-              minimumTrackTintColor={colors.primary}
-              maximumTrackTintColor={colors.surface}
-              thumbTintColor={colors.primary}
             />
             <View style={styles.sliderLabels}>
               <Text style={styles.sliderLabel}>Not really</Text>
               <Text style={styles.sliderLabel}>Very much</Text>
+            </View>
+            <View style={styles.sliderValue}>
+              <Text style={styles.sliderValueText}>{sliderValue}</Text>
             </View>
             <Button
               title="Next"
@@ -195,7 +245,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.background,
   },
   progressBar: {
-    height: 2,
+    height: 4,
     backgroundColor: colors.surface,
     width: '100%',
   },
@@ -208,7 +258,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     paddingBottom: Spacing.md,
   },
   headerText: {
-    fontSize: Typography.fontSize.xs,
+    fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
     fontWeight: Typography.fontWeight.medium,
     fontFamily: Typography.fontFamily.primary,
@@ -240,8 +290,15 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.floating,
     borderRadius: Radius.xl,
     padding: Spacing.lg,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.borderLight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceButtonSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   choiceText: {
     fontSize: Typography.fontSize.base,
@@ -250,21 +307,34 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     textAlign: 'center',
     fontFamily: Typography.fontFamily.primary,
   },
-  sliderContainer: {
-    gap: Spacing.lg,
+  choiceTextSelected: {
+    color: colors.primaryForeground,
   },
-  slider: {
-    width: '100%',
-    height: 40,
+  checkIcon: {
+    marginLeft: Spacing.sm,
+  },
+  sliderContainer: {
+    gap: Spacing.md,
   },
   sliderLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: Spacing.xs,
   },
   sliderLabel: {
     fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
     fontFamily: Typography.fontFamily.primary,
+  },
+  sliderValue: {
+    alignItems: 'center',
+    marginVertical: Spacing.md,
+  },
+  sliderValueText: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.primary,
+    fontFamily: Typography.fontFamily.heading,
   },
   skipContainer: {
     padding: Spacing.lg,
