@@ -78,6 +78,28 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* EQ Assessment Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>EQ ASSESSMENT</Text>
+        
+        <TouchableOpacity 
+          style={[styles.eqTestCard, Shadows.md]}
+          onPress={() => router.push('/full-eq-test')}
+        >
+          <View style={styles.eqTestIconContainer}>
+            <Ionicons name="analytics" size={32} color={colors.primary} />
+          </View>
+          <View style={styles.eqTestContent}>
+            <Text style={styles.eqTestTitle}>Take Full EQ Test</Text>
+            <Text style={styles.eqTestDescription}>
+              Comprehensive assessment with 60+ questions across 7 dimensions
+            </Text>
+            <Text style={styles.eqTestTime}>~25 minutes</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
       {/* Settings Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>SETTINGS</Text>
@@ -226,6 +248,48 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: Typography.fontSize.xs,
     color: colors.textSecondary,
     marginTop: 2,
+    fontFamily: Typography.fontFamily.primary,
+  },
+  // EQ Test Card
+  eqTestCard: {
+    backgroundColor: colors.floating,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.lg,
+  },
+  eqTestIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: Radius.lg,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eqTestContent: {
+    flex: 1,
+  },
+  eqTestTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    fontFamily: Typography.fontFamily.heading,
+    marginBottom: Spacing.xs,
+  },
+  eqTestDescription: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.primary,
+    marginBottom: Spacing.xs,
+  },
+  eqTestTime: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.primary,
+    fontWeight: Typography.fontWeight.medium,
     fontFamily: Typography.fontFamily.primary,
   },
   privacySection: {

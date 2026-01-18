@@ -1,0 +1,1330 @@
+/**
+ * Full EQ Assessment Screen
+ * 
+ * Comprehensive EQ test with all 7 question types.
+ * Accessible from Profile section.
+ * ~25 minutes, ~60 questions.
+ * 
+ * Provides detailed scoring with:
+ * - Dimension breakdown
+ * - Strengths and growth areas
+ * - Self-awareness calibration
+ * - Consistency indicators
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  Platform,
+  Alert,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Button } from '@/components/ui/Button';
+import { Slider } from '@/components/ui/Slider';
+import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '@/stores/auth-store';
+import { selectFullTestQuestions } from '@/data/eq-questions';
+import { calculateEQScore, getScoreLevel, getScoreLevelDescription, getDimensionDescription } from '@/services/eq-scoring';
+import type {
+  EQQuestion,
+  EQResponse,
+  EQDimension,
+  EQAssessmentResult,
+  ForcedChoiceQuestion,
+  LikertQuestion,
+  EmotionVocabularyQuestion,
+  MetaEQQuestion,
+  PhysiologicalProxyQuestion,
+  ConsistencyProbeQuestion,
+  RankingAllocationQuestion,
+  ForcedChoiceResponse,
+  LikertResponse,
+  EmotionVocabularyResponse,
+  MetaEQResponse,
+  PhysiologicalProxyResponse,
+  ConsistencyProbeResponse,
+  RankingAllocationResponse,
+} from '@/types/eq-assessment';
+
+type ScreenState = 'intro' | 'test' | 'results';
+
+export default function FullEQTestScreen() {
+  const router = useRouter();
+  const colors = useColors();
+  const { user } = useAuthStore();
+  
+  const [screenState, setScreenState] = useState<ScreenState>('intro');
+  const [questions, setQuestions] = useState<EQQuestion[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [responses, setResponses] = useState<EQResponse[]>([]);
+  const [result, setResult] = useState<EQAssessmentResult | null>(null);
+  
+  // Per-question state
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
+  const [selectedLeast, setSelectedLeast] = useState<string | null>(null);
+  const [likertValue, setLikertValue] = useState(4);
+  const [selfRating, setSelfRating] = useState(4);
+  const [otherRating, setOtherRating] = useState(4);
+  const [allocations, setAllocations] = useState<Record<string, number>>({});
+  
+  // Animation
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Pre-select questions
+    const selectedQuestions = selectFullTestQuestions();
+    setQuestions(selectedQuestions);
+  }, []);
+
+  const currentQuestion = questions[currentIndex];
+  const progress = questions.length > 0 ? ((currentIndex) / questions.length) * 100 : 0;
+
+  const animateTransition = (callback: () => void) => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+      callback();
+      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    });
+  };
+
+  const resetQuestionState = () => {
+    setSelectedChoice(null);
+    setSelectedLeast(null);
+    setLikertValue(4);
+    setSelfRating(4);
+    setOtherRating(4);
+    setAllocations({});
+    setQuestionStartTime(Date.now());
+  };
+
+  const recordResponse = (response: EQResponse) => {
+    const newResponses = [...responses, response];
+    setResponses(newResponses);
+    
+    if (currentIndex < questions.length - 1) {
+      animateTransition(() => {
+        setCurrentIndex(currentIndex + 1);
+        resetQuestionState();
+      });
+    } else {
+      // Calculate results
+      const assessmentResult = calculateEQScore(
+        questions,
+        newResponses,
+        user?.id || 'demo',
+        'full_test'
+      );
+      setResult(assessmentResult);
+      setScreenState('results');
+    }
+  };
+
+  const handleSkip = () => {
+    if (currentIndex < questions.length - 1) {
+      animateTransition(() => {
+        setCurrentIndex(currentIndex + 1);
+        resetQuestionState();
+      });
+    } else {
+      const assessmentResult = calculateEQScore(
+        questions,
+        responses,
+        user?.id || 'demo',
+        'full_test'
+      );
+      setResult(assessmentResult);
+      setScreenState('results');
+    }
+  };
+
+  const handleExit = () => {
+    Alert.alert(
+      'Exit Assessment?',
+      'Your progress will be lost. Are you sure you want to exit?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Exit', style: 'destructive', onPress: () => router.back() },
+      ]
+    );
+  };
+
+  const getResponseTime = () => Date.now() - questionStartTime;
+
+  const styles = createStyles(colors);
+
+  // Intro Screen
+  if (screenState === 'intro') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.introContainer}>
+          <View style={[styles.introIconCircle, { backgroundColor: colors.primary + '20' }]}>
+            <Ionicons name="analytics" size={48} color={colors.primary} />
+          </View>
+          
+          <Text style={styles.introTitle}>Full EQ Assessment</Text>
+          <Text style={styles.introDescription}>
+            This comprehensive assessment measures your emotional intelligence across 5 dimensions using 7 different question types.
+          </Text>
+          
+          <View style={styles.infoCards}>
+            <View style={styles.infoCard}>
+              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.infoText}>~25 minutes</Text>
+            </View>
+            <View style={styles.infoCard}>
+              <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.infoText}>{questions.length} questions</Text>
+            </View>
+          </View>
+          
+          <View style={styles.dimensionsList}>
+            <Text style={styles.dimensionsTitle}>What we measure:</Text>
+            {(['self_awareness', 'self_regulation', 'empathy', 'social_skills', 'motivation'] as EQDimension[]).map((dim) => (
+              <View key={dim} style={styles.dimensionItem}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                <Text style={styles.dimensionText}>
+                  {dim.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </Text>
+              </View>
+            ))}
+          </View>
+          
+          <Button
+            title="Begin Assessment"
+            onPress={() => {
+              setScreenState('test');
+              setQuestionStartTime(Date.now());
+            }}
+            size="lg"
+            fullWidth
+          />
+          
+          <TouchableOpacity style={styles.backLink} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={16} color={colors.textSecondary} />
+            <Text style={styles.backLinkText}>Back to Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Results Screen
+  if (screenState === 'results' && result) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.resultsContainer}>
+        <View style={styles.resultsHeader}>
+          <Text style={styles.resultsTitle}>Your EQ Profile</Text>
+          <Text style={styles.resultsSubtitle}>
+            Based on {result.responses.length} responses
+          </Text>
+        </View>
+        
+        {/* Overall Score */}
+        <View style={styles.overallScoreCard}>
+          <Text style={styles.overallScoreLabel}>Overall EQ Score</Text>
+          <Text style={styles.overallScoreValue}>{result.overallScore}</Text>
+          <Text style={styles.overallScoreLevel}>
+            {getScoreLevel(result.overallScore).replace('_', ' ').toUpperCase()}
+          </Text>
+        </View>
+        
+        {/* Dimension Breakdown */}
+        <View style={styles.dimensionsCard}>
+          <Text style={styles.cardTitle}>Dimension Breakdown</Text>
+          
+          {(Object.entries(result.dimensionScores) as [EQDimension, number][]).map(([dim, score]) => (
+            <View key={dim} style={styles.dimensionRow}>
+              <View style={styles.dimensionInfo}>
+                <Text style={styles.dimensionName}>
+                  {dim.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </Text>
+                <Text style={styles.dimensionScore}>{score}</Text>
+              </View>
+              <View style={styles.dimensionBar}>
+                <View style={[styles.dimensionBarFill, { width: `${score}%` }]} />
+              </View>
+            </View>
+          ))}
+        </View>
+        
+        {/* Strengths & Growth */}
+        <View style={styles.insightsCard}>
+          <View style={styles.insightSection}>
+            <View style={styles.insightHeader}>
+              <Ionicons name="star" size={20} color={colors.success} />
+              <Text style={styles.insightTitle}>Top Strengths</Text>
+            </View>
+            {result.strengths.map((s, i) => (
+              <Text key={i} style={styles.insightItem}>
+                • {s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </Text>
+            ))}
+          </View>
+          
+          <View style={[styles.insightSection, styles.insightSectionLast]}>
+            <View style={styles.insightHeader}>
+              <Ionicons name="trending-up" size={20} color={colors.secondary} />
+              <Text style={styles.insightTitle}>Growth Opportunities</Text>
+            </View>
+            {result.growthAreas.map((g, i) => (
+              <Text key={i} style={styles.insightItem}>
+                • {g.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </Text>
+            ))}
+          </View>
+        </View>
+        
+        {/* Insights */}
+        {result.insights.length > 0 && (
+          <View style={styles.insightsTextCard}>
+            <Text style={styles.cardTitle}>Personalized Insights</Text>
+            {result.insights.map((insight, i) => (
+              <Text key={i} style={styles.insightText}>
+                {insight}
+              </Text>
+            ))}
+          </View>
+        )}
+        
+        {/* Quality Indicators */}
+        <View style={styles.qualityCard}>
+          <Text style={styles.qualityTitle}>Assessment Quality</Text>
+          <View style={styles.qualityRow}>
+            <Text style={styles.qualityLabel}>Consistency</Text>
+            <Text style={styles.qualityValue}>
+              {Math.round(result.qualityIndicators.consistencyIndex * 100)}%
+            </Text>
+          </View>
+          <View style={styles.qualityRow}>
+            <Text style={styles.qualityLabel}>Completion</Text>
+            <Text style={styles.qualityValue}>
+              {Math.round(result.qualityIndicators.completionRate * 100)}%
+            </Text>
+          </View>
+          <View style={styles.qualityRow}>
+            <Text style={styles.qualityLabel}>Self-Awareness Calibration</Text>
+            <Text style={styles.qualityValue}>
+              {Math.round(result.qualityIndicators.selfAwarenessCalibration * 100)}%
+            </Text>
+          </View>
+        </View>
+        
+        <Button
+          title="Done"
+          onPress={() => router.replace('/(tabs)/profile')}
+          size="lg"
+          fullWidth
+        />
+        
+        <Text style={styles.disclaimerText}>
+          This assessment is for self-reflection purposes and is not a clinical diagnosis.
+        </Text>
+      </ScrollView>
+    );
+  }
+
+  // Test Screen - Loading
+  if (!currentQuestion) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Preparing assessment...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Render question based on type
+  const renderQuestion = () => {
+    switch (currentQuestion.type) {
+      case 'forced_choice':
+        return renderForcedChoice(currentQuestion as ForcedChoiceQuestion);
+      case 'likert':
+        return renderLikert(currentQuestion as LikertQuestion);
+      case 'emotion_vocabulary':
+        return renderEmotionVocabulary(currentQuestion as EmotionVocabularyQuestion);
+      case 'meta_eq':
+        return renderMetaEQ(currentQuestion as MetaEQQuestion);
+      case 'physiological_proxy':
+        return renderPhysiologicalProxy(currentQuestion as PhysiologicalProxyQuestion);
+      case 'consistency_probe':
+        return renderConsistencyProbe(currentQuestion as ConsistencyProbeQuestion);
+      case 'ranking_allocation':
+        return renderRankingAllocation(currentQuestion as RankingAllocationQuestion);
+      default:
+        return null;
+    }
+  };
+
+  // Forced Choice
+  const renderForcedChoice = (q: ForcedChoiceQuestion) => {
+    const canSubmit = selectedChoice !== null && (!q.selectLeast || selectedLeast !== null);
+    
+    const handleSubmit = () => {
+      if (!canSubmit) return;
+      const response: ForcedChoiceResponse = {
+        questionId: q.id,
+        type: 'forced_choice',
+        mostLikeMe: selectedChoice!,
+        leastLikeMe: selectedLeast || undefined,
+        responseTimeMs: getResponseTime(),
+      };
+      recordResponse(response);
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <Text style={styles.questionPrompt}>{q.prompt}</Text>
+        
+        {q.selectLeast && (
+          <Text style={styles.questionHint}>
+            Select your MOST and LEAST like you
+          </Text>
+        )}
+        
+        <View style={styles.optionsContainer}>
+          {q.options.map((option) => {
+            const isMost = selectedChoice === option.id;
+            const isLeast = selectedLeast === option.id;
+            
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.forcedChoiceOption,
+                  isMost && styles.forcedChoiceOptionMost,
+                  isLeast && styles.forcedChoiceOptionLeast,
+                ]}
+                onPress={() => {
+                  if (q.selectLeast) {
+                    // Toggle logic for most/least
+                    if (isMost) {
+                      setSelectedChoice(null);
+                    } else if (isLeast) {
+                      setSelectedLeast(null);
+                    } else if (!selectedChoice) {
+                      setSelectedChoice(option.id);
+                    } else if (!selectedLeast) {
+                      setSelectedLeast(option.id);
+                    }
+                  } else {
+                    setSelectedChoice(option.id);
+                  }
+                }}
+              >
+                <Text style={[
+                  styles.forcedChoiceText,
+                  (isMost || isLeast) && styles.forcedChoiceTextSelected,
+                ]}>
+                  {option.text}
+                </Text>
+                {isMost && (
+                  <View style={styles.choiceBadge}>
+                    <Text style={styles.choiceBadgeText}>MOST</Text>
+                  </View>
+                )}
+                {isLeast && (
+                  <View style={[styles.choiceBadge, styles.choiceBadgeLeast]}>
+                    <Text style={styles.choiceBadgeText}>LEAST</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        
+        <Button
+          title="Next"
+          onPress={handleSubmit}
+          fullWidth
+          size="lg"
+          disabled={!canSubmit}
+        />
+      </View>
+    );
+  };
+
+  // Likert
+  const renderLikert = (q: LikertQuestion) => {
+    const handleSubmit = () => {
+      const response: LikertResponse = {
+        questionId: q.id,
+        type: 'likert',
+        value: likertValue,
+        responseTimeMs: getResponseTime(),
+      };
+      recordResponse(response);
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <Text style={styles.questionStatement}>{q.statement}</Text>
+        
+        <View style={styles.likertContainer}>
+          <View style={styles.likertScale}>
+            {Array.from({ length: q.scale }, (_, i) => i + 1).map((num) => (
+              <TouchableOpacity
+                key={num}
+                style={[
+                  styles.likertButton,
+                  likertValue === num && styles.likertButtonSelected,
+                ]}
+                onPress={() => setLikertValue(num)}
+              >
+                <Text style={[
+                  styles.likertButtonText,
+                  likertValue === num && styles.likertButtonTextSelected,
+                ]}>
+                  {num}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.likertLabels}>
+            <Text style={styles.likertLabel}>{q.anchorLabels.low}</Text>
+            <Text style={styles.likertLabel}>{q.anchorLabels.high}</Text>
+          </View>
+        </View>
+        
+        <Button title="Next" onPress={handleSubmit} fullWidth size="lg" />
+      </View>
+    );
+  };
+
+  // Emotion Vocabulary
+  const renderEmotionVocabulary = (q: EmotionVocabularyQuestion) => {
+    const handleSelect = (optionId: string) => {
+      setSelectedChoice(optionId);
+      setTimeout(() => {
+        const response: EmotionVocabularyResponse = {
+          questionId: q.id,
+          type: 'emotion_vocabulary',
+          selectedOptionId: optionId,
+          responseTimeMs: getResponseTime(),
+        };
+        recordResponse(response);
+      }, 300);
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <Text style={styles.questionLabel}>Which emotion best fits:</Text>
+        <Text style={styles.scenarioText}>"{q.scenario}"</Text>
+        
+        <View style={styles.emotionOptions}>
+          {q.options.map((option) => (
+            <TouchableOpacity
+              key={option.id}
+              style={[
+                styles.emotionOption,
+                selectedChoice === option.id && styles.emotionOptionSelected,
+              ]}
+              onPress={() => handleSelect(option.id)}
+            >
+              <Text style={[
+                styles.emotionOptionText,
+                selectedChoice === option.id && styles.emotionOptionTextSelected,
+              ]}>
+                {option.emotion}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // Meta-EQ
+  const renderMetaEQ = (q: MetaEQQuestion) => {
+    const handleSubmit = () => {
+      const response: MetaEQResponse = {
+        questionId: q.id,
+        type: 'meta_eq',
+        selfRating,
+        otherRating,
+        responseTimeMs: getResponseTime(),
+      };
+      recordResponse(response);
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <View style={styles.metaEQSection}>
+          <Text style={styles.metaEQLabel}>Rate yourself:</Text>
+          <Text style={styles.metaEQStatement}>"{q.selfStatement}"</Text>
+          <View style={styles.likertScale}>
+            {Array.from({ length: q.scale }, (_, i) => i + 1).map((num) => (
+              <TouchableOpacity
+                key={num}
+                style={[
+                  styles.likertButton,
+                  selfRating === num && styles.likertButtonSelected,
+                ]}
+                onPress={() => setSelfRating(num)}
+              >
+                <Text style={[
+                  styles.likertButtonText,
+                  selfRating === num && styles.likertButtonTextSelected,
+                ]}>
+                  {num}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        
+        <View style={styles.metaEQSection}>
+          <Text style={styles.metaEQLabel}>How would others rate you:</Text>
+          <Text style={styles.metaEQStatement}>"{q.otherStatement}"</Text>
+          <View style={styles.likertScale}>
+            {Array.from({ length: q.scale }, (_, i) => i + 1).map((num) => (
+              <TouchableOpacity
+                key={num}
+                style={[
+                  styles.likertButton,
+                  otherRating === num && styles.likertButtonSelected,
+                ]}
+                onPress={() => setOtherRating(num)}
+              >
+                <Text style={[
+                  styles.likertButtonText,
+                  otherRating === num && styles.likertButtonTextSelected,
+                ]}>
+                  {num}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        
+        <Button title="Next" onPress={handleSubmit} fullWidth size="lg" />
+      </View>
+    );
+  };
+
+  // Physiological Proxy
+  const renderPhysiologicalProxy = (q: PhysiologicalProxyQuestion) => {
+    const handleSelect = (optionId: string) => {
+      setSelectedChoice(optionId);
+      setTimeout(() => {
+        const response: PhysiologicalProxyResponse = {
+          questionId: q.id,
+          type: 'physiological_proxy',
+          selectedOptionId: optionId,
+          responseTimeMs: getResponseTime(),
+        };
+        recordResponse(response);
+      }, 300);
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <Text style={styles.questionPrompt}>{q.prompt}</Text>
+        <View style={styles.physioOptions}>
+          {q.options.map((option) => (
+            <TouchableOpacity
+              key={option.id}
+              style={[
+                styles.physioOption,
+                selectedChoice === option.id && styles.physioOptionSelected,
+              ]}
+              onPress={() => handleSelect(option.id)}
+            >
+              <Text style={[
+                styles.physioOptionText,
+                selectedChoice === option.id && styles.physioOptionTextSelected,
+              ]}>
+                {option.text}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // Consistency Probe (same as Likert)
+  const renderConsistencyProbe = (q: ConsistencyProbeQuestion) => {
+    const handleSubmit = () => {
+      const response: ConsistencyProbeResponse = {
+        questionId: q.id,
+        type: 'consistency_probe',
+        value: likertValue,
+        responseTimeMs: getResponseTime(),
+      };
+      recordResponse(response);
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <Text style={styles.questionStatement}>{q.statement}</Text>
+        
+        <View style={styles.likertContainer}>
+          <View style={styles.likertScale}>
+            {Array.from({ length: q.scale }, (_, i) => i + 1).map((num) => (
+              <TouchableOpacity
+                key={num}
+                style={[
+                  styles.likertButton,
+                  likertValue === num && styles.likertButtonSelected,
+                ]}
+                onPress={() => setLikertValue(num)}
+              >
+                <Text style={[
+                  styles.likertButtonText,
+                  likertValue === num && styles.likertButtonTextSelected,
+                ]}>
+                  {num}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.likertLabels}>
+            <Text style={styles.likertLabel}>Strongly Disagree</Text>
+            <Text style={styles.likertLabel}>Strongly Agree</Text>
+          </View>
+        </View>
+        
+        <Button title="Next" onPress={handleSubmit} fullWidth size="lg" />
+      </View>
+    );
+  };
+
+  // Ranking Allocation
+  const renderRankingAllocation = (q: RankingAllocationQuestion) => {
+    const totalAllocated = Object.values(allocations).reduce((sum, v) => sum + v, 0);
+    const remaining = q.totalPoints - totalAllocated;
+    const canSubmit = remaining === 0;
+
+    const handleAllocate = (optionId: string, delta: number) => {
+      const current = allocations[optionId] || 0;
+      const newValue = Math.max(q.minPerOption, Math.min(q.maxPerOption, current + delta));
+      const newTotal = totalAllocated - current + newValue;
+      
+      if (newTotal <= q.totalPoints) {
+        setAllocations({ ...allocations, [optionId]: newValue });
+      }
+    };
+
+    const handleSubmit = () => {
+      const response: RankingAllocationResponse = {
+        questionId: q.id,
+        type: 'ranking_allocation',
+        allocations,
+        responseTimeMs: getResponseTime(),
+      };
+      recordResponse(response);
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <Text style={styles.questionPrompt}>{q.prompt}</Text>
+        <Text style={styles.allocationRemaining}>
+          {remaining} points remaining
+        </Text>
+        
+        <View style={styles.allocationOptions}>
+          {q.options.map((option) => (
+            <View key={option.id} style={styles.allocationRow}>
+              <Text style={styles.allocationText}>{option.text}</Text>
+              <View style={styles.allocationControls}>
+                <TouchableOpacity
+                  style={styles.allocationButton}
+                  onPress={() => handleAllocate(option.id, -10)}
+                >
+                  <Ionicons name="remove" size={20} color={colors.textPrimary} />
+                </TouchableOpacity>
+                <Text style={styles.allocationValue}>
+                  {allocations[option.id] || 0}
+                </Text>
+                <TouchableOpacity
+                  style={styles.allocationButton}
+                  onPress={() => handleAllocate(option.id, 10)}
+                >
+                  <Ionicons name="add" size={20} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+        
+        <Button
+          title="Next"
+          onPress={handleSubmit}
+          fullWidth
+          size="lg"
+          disabled={!canSubmit}
+        />
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.testHeader}>
+        <TouchableOpacity onPress={handleExit}>
+          <Ionicons name="close" size={24} color={colors.textSecondary} />
+        </TouchableOpacity>
+        <Text style={styles.testHeaderText}>
+          {currentIndex + 1} / {questions.length}
+        </Text>
+        <View style={{ width: 24 }} />
+      </View>
+      
+      {/* Progress bar */}
+      <View style={styles.progressBar}>
+        <View style={[styles.progressFill, { width: `${progress}%` }]} />
+      </View>
+
+      {/* Question */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={[styles.questionWrapper, { opacity: fadeAnim }]}>
+          {renderQuestion()}
+        </Animated.View>
+      </ScrollView>
+
+      {/* Skip button */}
+      <View style={styles.skipContainer}>
+        <TouchableOpacity onPress={handleSkip}>
+          <Text style={styles.skipText}>Skip this question</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: Typography.fontSize.base,
+    color: colors.textSecondary,
+  },
+  // Intro
+  introContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+  },
+  introIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xl,
+  },
+  introTitle: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.textPrimary,
+    fontFamily: Typography.fontFamily.heading,
+    marginBottom: Spacing.md,
+  },
+  introDescription: {
+    fontSize: Typography.fontSize.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
+    marginBottom: Spacing.xl,
+    maxWidth: 320,
+  },
+  infoCards: {
+    flexDirection: 'row',
+    gap: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: colors.surface,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.lg,
+  },
+  infoText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textPrimary,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  dimensionsList: {
+    width: '100%',
+    marginBottom: Spacing['2xl'],
+  },
+  dimensionsTitle: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: Spacing.md,
+  },
+  dimensionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  dimensionText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textPrimary,
+  },
+  backLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.xl,
+    padding: Spacing.md,
+  },
+  backLinkText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  // Test Header
+  testHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? Spacing['2xl'] : Spacing.lg,
+  },
+  testHeaderText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: colors.surface,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: Spacing.lg,
+    justifyContent: 'center',
+  },
+  questionWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  questionContent: {
+    gap: Spacing.xl,
+  },
+  questionPrompt: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    fontFamily: Typography.fontFamily.heading,
+    lineHeight: Typography.lineHeight.tight * Typography.fontSize.xl,
+  },
+  questionStatement: {
+    fontSize: Typography.fontSize.lg,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    lineHeight: Typography.lineHeight.normal * Typography.fontSize.lg,
+  },
+  questionLabel: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  questionHint: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  scenarioText: {
+    fontSize: Typography.fontSize.lg,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingHorizontal: Spacing.md,
+  },
+  optionsContainer: {
+    gap: Spacing.md,
+  },
+  // Forced Choice
+  forcedChoiceOption: {
+    backgroundColor: colors.floating,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  forcedChoiceOptionMost: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  forcedChoiceOptionLeast: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  forcedChoiceText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textPrimary,
+    flex: 1,
+    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
+  },
+  forcedChoiceTextSelected: {
+    color: colors.primaryForeground,
+  },
+  choiceBadge: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.sm,
+  },
+  choiceBadgeLeast: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  choiceBadgeText: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.primaryForeground,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  // Likert
+  likertContainer: {
+    gap: Spacing.md,
+  },
+  likertScale: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.xs,
+  },
+  likertButton: {
+    flex: 1,
+    aspectRatio: 1,
+    maxWidth: 44,
+    borderRadius: Radius.md,
+    backgroundColor: colors.floating,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  likertButtonSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  likertButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  likertButtonTextSelected: {
+    color: colors.primaryForeground,
+  },
+  likertLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  likertLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textSecondary,
+    maxWidth: '40%',
+  },
+  // Emotion Vocabulary
+  emotionOptions: {
+    gap: Spacing.sm,
+  },
+  emotionOption: {
+    backgroundColor: colors.floating,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+  },
+  emotionOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  emotionOptionText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.medium,
+    color: colors.textPrimary,
+  },
+  emotionOptionTextSelected: {
+    color: colors.primaryForeground,
+  },
+  // Meta-EQ
+  metaEQSection: {
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  metaEQLabel: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  metaEQStatement: {
+    fontSize: Typography.fontSize.base,
+    color: colors.textPrimary,
+    fontStyle: 'italic',
+  },
+  // Physiological
+  physioOptions: {
+    gap: Spacing.md,
+  },
+  physioOption: {
+    backgroundColor: colors.floating,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
+  },
+  physioOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  physioOptionText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textPrimary,
+    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
+  },
+  physioOptionTextSelected: {
+    color: colors.primaryForeground,
+  },
+  // Allocation
+  allocationRemaining: {
+    fontSize: Typography.fontSize.lg,
+    color: colors.primary,
+    textAlign: 'center',
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  allocationOptions: {
+    gap: Spacing.md,
+  },
+  allocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.floating,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+  },
+  allocationText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  allocationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  allocationButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  allocationValue: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.primary,
+    minWidth: 40,
+    textAlign: 'center',
+  },
+  // Skip
+  skipContainer: {
+    padding: Spacing.lg,
+    paddingTop: Spacing.sm,
+  },
+  skipText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  // Results
+  resultsContainer: {
+    padding: Spacing.xl,
+    paddingTop: Platform.OS === 'ios' ? Spacing['3xl'] : Spacing.xl,
+    paddingBottom: Spacing['5xl'],
+  },
+  resultsHeader: {
+    marginBottom: Spacing['2xl'],
+  },
+  resultsTitle: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.textPrimary,
+    fontFamily: Typography.fontFamily.heading,
+    marginBottom: Spacing.xs,
+  },
+  resultsSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+  },
+  overallScoreCard: {
+    backgroundColor: colors.primary,
+    borderRadius: Radius.xl,
+    padding: Spacing['2xl'],
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  overallScoreLabel: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.primaryForeground,
+    opacity: 0.8,
+    marginBottom: Spacing.sm,
+  },
+  overallScoreValue: {
+    fontSize: 64,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.primaryForeground,
+    fontFamily: Typography.fontFamily.heading,
+  },
+  overallScoreLevel: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.primaryForeground,
+    fontWeight: Typography.fontWeight.medium,
+    marginTop: Spacing.sm,
+  },
+  dimensionsCard: {
+    backgroundColor: colors.floating,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  cardTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    fontFamily: Typography.fontFamily.heading,
+    marginBottom: Spacing.lg,
+  },
+  dimensionRow: {
+    marginBottom: Spacing.lg,
+  },
+  dimensionInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+  },
+  dimensionName: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textPrimary,
+    fontWeight: Typography.fontWeight.medium,
+    textTransform: 'capitalize',
+  },
+  dimensionScore: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  dimensionBar: {
+    height: 8,
+    backgroundColor: colors.surface,
+    borderRadius: Radius.full,
+    overflow: 'hidden',
+  },
+  dimensionBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: Radius.full,
+  },
+  insightsCard: {
+    backgroundColor: colors.floating,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  insightSection: {
+    marginBottom: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  insightSectionLast: {
+    marginBottom: 0,
+    paddingBottom: 0,
+    borderBottomWidth: 0,
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  insightTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  insightItem: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginLeft: Spacing.lg,
+    marginBottom: Spacing.xs,
+    textTransform: 'capitalize',
+  },
+  insightsTextCard: {
+    backgroundColor: colors.surface,
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  insightText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textPrimary,
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
+    marginBottom: Spacing.md,
+  },
+  qualityCard: {
+    backgroundColor: colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing['2xl'],
+  },
+  qualityTitle: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: Spacing.md,
+  },
+  qualityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+  },
+  qualityLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
+  },
+  qualityValue: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textPrimary,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  disclaimerText: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: Spacing.xl,
+  },
+});

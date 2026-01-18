@@ -5,6 +5,9 @@
  * Clear domain boundaries between Journal, EQ, and Insights systems.
  */
 
+// Re-export comprehensive EQ assessment types
+export * from './eq-assessment';
+
 // ============================================================================
 // AUTHENTICATION TYPES
 // ============================================================================
