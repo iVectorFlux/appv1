@@ -292,25 +292,70 @@ export default function FullEQTestScreen() {
           </View>
         )}
         
+        {/* Unreliable Warning */}
+        {result.qualityIndicators.isUnreliable && (
+          <View style={styles.unreliableWarning}>
+            <Ionicons name="warning" size={24} color={colors.warning} />
+            <View style={styles.unreliableContent}>
+              <Text style={styles.unreliableTitle}>Results May Be Unreliable</Text>
+              <Text style={styles.unreliableText}>
+                Your consistency score was {Math.round(result.qualityIndicators.consistencyIndex * 100)}% (below 40% threshold). 
+                Consider retaking when you have more time to focus on each question.
+              </Text>
+            </View>
+          </View>
+        )}
+        
         {/* Quality Indicators */}
         <View style={styles.qualityCard}>
           <Text style={styles.qualityTitle}>Assessment Quality</Text>
+          
+          {/* Consistency with penalty info */}
           <View style={styles.qualityRow}>
             <Text style={styles.qualityLabel}>Consistency</Text>
-            <Text style={styles.qualityValue}>
-              {Math.round(result.qualityIndicators.consistencyIndex * 100)}%
-            </Text>
+            <View style={styles.qualityValueContainer}>
+              <Text style={[
+                styles.qualityValue,
+                result.qualityIndicators.consistencyIndex < 0.4 && styles.qualityValueWarning,
+                result.qualityIndicators.consistencyIndex >= 0.7 && styles.qualityValueGood,
+              ]}>
+                {Math.round(result.qualityIndicators.consistencyIndex * 100)}%
+              </Text>
+              {result.qualityIndicators.consistencyPenalty > 0 && (
+                <Text style={styles.penaltyBadge}>
+                  -{Math.round(result.qualityIndicators.consistencyPenalty)} pts
+                </Text>
+              )}
+            </View>
           </View>
+          
           <View style={styles.qualityRow}>
             <Text style={styles.qualityLabel}>Completion</Text>
-            <Text style={styles.qualityValue}>
+            <Text style={[
+              styles.qualityValue,
+              result.qualityIndicators.completionRate >= 0.9 && styles.qualityValueGood,
+            ]}>
               {Math.round(result.qualityIndicators.completionRate * 100)}%
             </Text>
           </View>
+          
           <View style={styles.qualityRow}>
             <Text style={styles.qualityLabel}>Self-Awareness Calibration</Text>
-            <Text style={styles.qualityValue}>
+            <Text style={[
+              styles.qualityValue,
+              result.qualityIndicators.selfAwarenessCalibration >= 0.7 && styles.qualityValueGood,
+            ]}>
               {Math.round(result.qualityIndicators.selfAwarenessCalibration * 100)}%
+            </Text>
+          </View>
+          
+          {/* Consistency level explanation */}
+          <View style={styles.consistencyExplanation}>
+            <Text style={styles.consistencyExplanationText}>
+              {result.qualityIndicators.consistencyPenaltyLevel === 'none' && '✓ Excellent response consistency'}
+              {result.qualityIndicators.consistencyPenaltyLevel === 'mild' && '○ Minor response variability detected'}
+              {result.qualityIndicators.consistencyPenaltyLevel === 'moderate' && '△ Moderate response variability detected'}
+              {result.qualityIndicators.consistencyPenaltyLevel === 'severe' && '⚠ Significant response inconsistency'}
             </Text>
           </View>
         </View>
@@ -1296,6 +1341,33 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
     marginBottom: Spacing.md,
   },
+  // Unreliable warning
+  unreliableWarning: {
+    backgroundColor: colors.warning + '15',
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.xl,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+    borderWidth: 1,
+    borderColor: colors.warning + '30',
+  },
+  unreliableContent: {
+    flex: 1,
+  },
+  unreliableTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.warning,
+    marginBottom: Spacing.xs,
+  },
+  unreliableText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
+  },
+  // Quality card
   qualityCard: {
     backgroundColor: colors.surface,
     borderRadius: Radius.lg,
@@ -1310,16 +1382,48 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   qualityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: Spacing.sm,
   },
   qualityLabel: {
     fontSize: Typography.fontSize.xs,
     color: colors.textMuted,
   },
+  qualityValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   qualityValue: {
     fontSize: Typography.fontSize.xs,
     color: colors.textPrimary,
     fontWeight: Typography.fontWeight.medium,
+  },
+  qualityValueGood: {
+    color: colors.success,
+  },
+  qualityValueWarning: {
+    color: colors.warning,
+  },
+  penaltyBadge: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.warning,
+    fontWeight: Typography.fontWeight.medium,
+    backgroundColor: colors.warning + '20',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  consistencyExplanation: {
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  consistencyExplanationText: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   disclaimerText: {
     fontSize: Typography.fontSize.xs,

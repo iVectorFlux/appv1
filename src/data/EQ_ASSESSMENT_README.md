@@ -319,10 +319,50 @@ consistencyScore = 1 - (|actualSum - expectedSum| / maxScale)
 - They should rate "I often react before thinking" as ~2
 - Rating both as 5 → Inconsistency flag
 
-**Penalty applied:**
+#### Consistency Penalty System
+
+The penalty is **graduated** based on consistency level:
+
+| Consistency Index | Penalty Level | Points Deducted | Interpretation |
+|-------------------|---------------|-----------------|----------------|
+| 70%+ | None | 0 pts | ✓ Reliable responses |
+| 60-70% | Mild | 2-4 pts | Minor variability |
+| 40-60% | Moderate | 4-10 pts | Notable inconsistency |
+| <40% | Severe | 10-15 pts | ⚠️ Results flagged as unreliable |
+
+**Configuration:**
+```javascript
+const CONSISTENCY_CONFIG = {
+  maxPenalty: 15,              // Maximum penalty (points)
+  unreliableThreshold: 0.40,   // Below this = flagged unreliable
+  noPenaltyThreshold: 0.70,    // Above this = no penalty
+  penaltyMultiplier: 20,       // Penalty scaling factor
+};
 ```
-overallScore = rawScore - (inconsistencyPenalty × 10)
+
+**Penalty Formula:**
+```javascript
+if (consistencyIndex >= 0.70) {
+  penalty = 0;
+} else {
+  consistencyDeficit = 0.70 - consistencyIndex;
+  rawPenalty = (consistencyDeficit / 0.70) * 20;
+  penalty = min(15, rawPenalty);
+}
+
+overallScore = rawScore - penalty;
 ```
+
+**What Low Consistency Means:**
+
+When a user gets <40% consistency (marked "unreliable"), it typically indicates:
+1. **Rushed responding** - Not reading questions carefully
+2. **Distraction** - Taking test while multitasking
+3. **Low self-insight** - Genuinely uncertain about patterns (valuable info!)
+4. **Test fatigue** - Loss of focus over time
+5. **Mood fluctuation** - Feelings changed during test
+
+The system shows a warning and recommends retaking when less busy.
 
 ---
 
@@ -407,15 +447,88 @@ const DIMENSION_WEIGHTS = {
 
 ### Quality Indicators
 
-Every assessment result includes quality metrics:
+Every assessment result includes quality metrics that help interpret score validity:
 
-| Indicator | Range | Interpretation |
-|-----------|-------|----------------|
-| Consistency Index | 0-1 | >0.7 = reliable, <0.5 = suspect |
-| Social Desirability Bias | 0-1 | >0.3 = inflation likely |
-| Response Time Flags | Count | >5 fast responses = careless |
-| Completion Rate | 0-1 | <0.8 = incomplete assessment |
-| Self-Awareness Calibration | 0-1 | From Meta-EQ deltas |
+#### 1. Consistency Index (0-100%)
+
+**What it measures:** How well answers to paired opposite questions match.
+
+| Range | Label | Meaning |
+|-------|-------|---------|
+| 70%+ | Excellent | Reliable, thoughtful responses |
+| 60-70% | Good | Minor variability, still valid |
+| 40-60% | Moderate | Notable inconsistency, interpret with caution |
+| <40% | Poor | **Results flagged as unreliable** |
+
+**Impact:** Directly affects overall score through graduated penalty system (0-15 points).
+
+#### 2. Consistency Penalty (0-15 points)
+
+Shows exactly how many points were deducted due to inconsistency.
+
+**Penalty Levels:**
+- `none` - 70%+ consistency, no deduction
+- `mild` - 60-70%, small deduction (2-4 pts)
+- `moderate` - 40-60%, medium deduction (4-10 pts)
+- `severe` - <40%, large deduction (10-15 pts)
+
+#### 3. Completion Rate (0-100%)
+
+**What it measures:** Percentage of questions answered (not skipped).
+
+| Range | Interpretation |
+|-------|----------------|
+| 90%+ | Excellent - full picture |
+| 70-90% | Good - sufficient data |
+| <70% | Partial - scores may be less accurate |
+
+#### 4. Self-Awareness Calibration (0-100%)
+
+**What it measures:** From Meta-EQ questions - how well self-perception matches predicted perception by others.
+
+| Range | Interpretation |
+|-------|----------------|
+| 80%+ | Excellent self-awareness calibration |
+| 60-80% | Good calibration |
+| 40-60% | Some blind spots or hidden strengths |
+| <40% | Significant gap between self and other perception |
+
+**Derived insights:**
+- **Blind spots**: Self-rating significantly higher than other-rating
+- **Hidden strengths**: Self-rating significantly lower than other-rating
+
+#### 5. Is Unreliable Flag (Boolean)
+
+**When true:** Consistency < 40%
+
+**User sees:**
+- Warning banner on results page
+- Recommendation to retake when less distracted
+- Note explaining the consistency issue
+
+#### 6. Social Desirability Bias (0-100%)
+
+**What it measures:** Percentage of high-risk Likert items rated extremely positive.
+
+| Range | Interpretation |
+|-------|----------------|
+| <20% | Low bias - authentic responses |
+| 20-40% | Some inflation possible |
+| >40% | Notable bias - may be answering as "ideal self" |
+
+**Note:** This doesn't penalize the score, but is flagged for interpretation.
+
+#### 7. Response Time Flags (Count)
+
+**What it measures:** Number of questions answered in <500ms.
+
+| Count | Interpretation |
+|-------|----------------|
+| 0-2 | Normal |
+| 3-5 | Some rushing |
+| >5 | Careless responding likely |
+
+**Note:** Currently informational only, doesn't affect score.
 
 ---
 

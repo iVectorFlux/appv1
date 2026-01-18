@@ -74,6 +74,76 @@ const MIN_RESPONSE_TIME = 500;
 const MAX_RESPONSE_TIME = 120000; // 2 minutes
 
 // =============================================================================
+// CONSISTENCY PENALTY CONFIGURATION
+// =============================================================================
+
+/**
+ * Consistency penalty settings
+ * 
+ * The consistency index measures how well paired questions match.
+ * Low consistency can indicate:
+ * - Rushed/careless responding
+ * - Low self-insight
+ * - Distraction during test
+ * - Genuine confusion about self
+ */
+const CONSISTENCY_CONFIG = {
+  // Maximum penalty that can be applied (in points, 0-100 scale)
+  maxPenalty: 15,
+  
+  // Minimum consistency index below which results are flagged as unreliable
+  unreliableThreshold: 0.40,
+  
+  // Consistency index above which no penalty is applied
+  noPenaltyThreshold: 0.70,
+  
+  // Penalty calculation: penalty = (1 - consistencyIndex) * multiplier
+  // This is a graduated penalty - worse consistency = bigger penalty
+  penaltyMultiplier: 20,
+};
+
+/**
+ * Calculate consistency penalty
+ * 
+ * Graduated penalty system:
+ * - 70%+ consistency: No penalty
+ * - 40-70%: Partial penalty
+ * - <40%: Maximum penalty + unreliable flag
+ */
+function calculateConsistencyPenalty(consistencyIndex: number): {
+  penalty: number;
+  isUnreliable: boolean;
+  penaltyLevel: 'none' | 'mild' | 'moderate' | 'severe';
+} {
+  const { maxPenalty, unreliableThreshold, noPenaltyThreshold, penaltyMultiplier } = CONSISTENCY_CONFIG;
+  
+  // No penalty for high consistency
+  if (consistencyIndex >= noPenaltyThreshold) {
+    return { penalty: 0, isUnreliable: false, penaltyLevel: 'none' };
+  }
+  
+  // Calculate graduated penalty
+  const penaltyRange = noPenaltyThreshold - 0; // 0 to threshold
+  const consistencyDeficit = noPenaltyThreshold - consistencyIndex;
+  const rawPenalty = (consistencyDeficit / penaltyRange) * penaltyMultiplier;
+  const penalty = Math.min(maxPenalty, rawPenalty);
+  
+  // Determine penalty level
+  let penaltyLevel: 'none' | 'mild' | 'moderate' | 'severe';
+  if (consistencyIndex >= 0.60) {
+    penaltyLevel = 'mild';
+  } else if (consistencyIndex >= unreliableThreshold) {
+    penaltyLevel = 'moderate';
+  } else {
+    penaltyLevel = 'severe';
+  }
+  
+  const isUnreliable = consistencyIndex < unreliableThreshold;
+  
+  return { penalty, isUnreliable, penaltyLevel };
+}
+
+// =============================================================================
 // SCORING UTILITIES
 // =============================================================================
 
@@ -514,13 +584,16 @@ export function calculateEQScore(
     return total + dimensionScores[dim] * DIMENSION_WEIGHTS[dim];
   }, 0);
 
-  // Apply consistency penalty (up to -10 points)
-  const consistencyPenalty = (1 - consistency.consistencyIndex) * 10;
-  overallScore = Math.max(0, overallScore - consistencyPenalty);
+  // Apply consistency penalty with graduated system
+  const consistencyResult = calculateConsistencyPenalty(consistency.consistencyIndex);
+  overallScore = Math.max(0, overallScore - consistencyResult.penalty);
 
   // Quality indicators
   const qualityIndicators: ScoreQualityIndicators = {
     consistencyIndex: consistency.consistencyIndex,
+    consistencyPenalty: consistencyResult.penalty,
+    consistencyPenaltyLevel: consistencyResult.penaltyLevel,
+    isUnreliable: consistencyResult.isUnreliable,
     socialDesirabilityBias: likertRs.length > 0 
       ? Math.min(1, socialDesirabilityFlags / likertRs.length)
       : 0,
@@ -614,12 +687,21 @@ function generateInsights(
   }
 
   // Quality-based insights
-  if (qualityIndicators.consistencyIndex < 0.6) {
+  if (qualityIndicators.isUnreliable) {
+    insights.push('⚠️ Your consistency score was very low (below 40%). These results may not accurately reflect your EQ. Consider retaking when you have more time to focus.');
+  } else if (qualityIndicators.consistencyPenaltyLevel === 'moderate') {
+    insights.push('Your responses showed moderate variability. Taking the assessment in a quieter setting may provide more accurate results.');
+  } else if (qualityIndicators.consistencyPenaltyLevel === 'mild') {
     insights.push('Your responses showed some variability - taking the assessment when you\'re less busy may help.');
   }
 
   if (qualityIndicators.socialDesirabilityBias > 0.3) {
     insights.push('For the most accurate results, respond with how you typically act rather than how you\'d like to act.');
+  }
+  
+  // Add penalty explanation if significant
+  if (qualityIndicators.consistencyPenalty > 5) {
+    insights.push(`Note: Your overall score was reduced by ${Math.round(qualityIndicators.consistencyPenalty)} points due to response inconsistency.`);
   }
 
   return insights;
