@@ -11,7 +11,7 @@
  * - 1 Physiological Proxy
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,6 @@ import {
   Animated,
   TextInput,
   Platform,
-  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
@@ -31,6 +30,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { selectCheckInQuestions } from '@/data/eq-questions';
 import { calculateEQScore } from '@/services/eq-scoring';
+import {
+  AnimationDuration,
+  createQuestionTransition,
+  createSelectionWithDelay,
+  getQuestionAnimatedStyle,
+  getSelectionCheckmarkStyle,
+} from '@/styles/animations';
 import type {
   EQQuestion,
   EQResponse,
@@ -79,74 +85,30 @@ export default function EQCheckInScreen() {
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
 
-  // Enhanced transition animation
+  // Use centralized transition animation
+  const questionTransition = useMemo(
+    () => createQuestionTransition(fadeAnim, slideAnim, scaleAnim),
+    [fadeAnim, slideAnim, scaleAnim]
+  );
+  
   const animateTransition = useCallback((callback: () => void) => {
     if (isTransitioning.current) return;
     isTransitioning.current = true;
     
-    Animated.parallel([
-      Animated.timing(fadeAnim, { 
-        toValue: 0, 
-        duration: 200, 
-        useNativeDriver: true,
-        easing: Easing.in(Easing.cubic),
-      }),
-      Animated.timing(slideAnim, { 
-        toValue: -30, 
-        duration: 200, 
-        useNativeDriver: true,
-        easing: Easing.in(Easing.cubic),
-      }),
-      Animated.timing(scaleAnim, { 
-        toValue: 0.95, 
-        duration: 200, 
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      callback();
-      slideAnim.setValue(40);
-      scaleAnim.setValue(0.98);
-      
-      Animated.parallel([
-        Animated.timing(fadeAnim, { 
-          toValue: 1, 
-          duration: 300, 
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-        Animated.timing(slideAnim, { 
-          toValue: 0, 
-          duration: 300, 
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-        Animated.timing(scaleAnim, { 
-          toValue: 1, 
-          duration: 300, 
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-      ]).start(() => {
-        isTransitioning.current = false;
-      });
+    questionTransition(callback, () => {
+      isTransitioning.current = false;
     });
-  }, [fadeAnim, slideAnim, scaleAnim]);
+  }, [questionTransition]);
   
-  // Selection animation with delay
+  // Use centralized selection animation
+  const selectionWithDelay = useMemo(
+    () => createSelectionWithDelay(checkmarkAnim, AnimationDuration.selection),
+    [checkmarkAnim]
+  );
+  
   const animateSelection = useCallback((onComplete: () => void) => {
-    checkmarkAnim.setValue(0);
-    Animated.sequence([
-      Animated.timing(checkmarkAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.back(1.5)),
-      }),
-      Animated.delay(500), // Let user see their selection
-    ]).start(() => {
-      onComplete();
-    });
-  }, [checkmarkAnim]);
+    selectionWithDelay(onComplete);
+  }, [selectionWithDelay]);
 
   const recordResponse = (response: EQResponse) => {
     const newResponses = [...responses, response];
@@ -319,10 +281,7 @@ export default function EQCheckInScreen() {
                   {option.text}
                 </Text>
                 {isSelected && (
-                  <Animated.View style={{ 
-                    transform: [{ scale: checkmarkAnim }],
-                    opacity: checkmarkAnim,
-                  }}>
+                  <Animated.View style={getSelectionCheckmarkStyle(checkmarkAnim)}>
                     <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
                   </Animated.View>
                 )}
@@ -432,11 +391,10 @@ export default function EQCheckInScreen() {
                   {option.emotion}
                 </Text>
                 {isSelected && (
-                  <Animated.View style={{ 
-                    marginLeft: Spacing.sm,
-                    transform: [{ scale: checkmarkAnim }],
-                    opacity: checkmarkAnim,
-                  }}>
+                  <Animated.View style={[
+                    { marginLeft: Spacing.sm },
+                    getSelectionCheckmarkStyle(checkmarkAnim),
+                  ]}>
                     <Ionicons name="checkmark-circle" size={22} color={colors.primaryForeground} />
                   </Animated.View>
                 )}
@@ -492,10 +450,7 @@ export default function EQCheckInScreen() {
                     {option.text}
                   </Text>
                   {isSelected && (
-                    <Animated.View style={{ 
-                      transform: [{ scale: checkmarkAnim }],
-                      opacity: checkmarkAnim,
-                    }}>
+                    <Animated.View style={getSelectionCheckmarkStyle(checkmarkAnim)}>
                       <Ionicons name="checkmark-circle" size={20} color={colors.primaryForeground} />
                     </Animated.View>
                   )}
@@ -534,13 +489,7 @@ export default function EQCheckInScreen() {
         <Animated.View
           style={[
             styles.questionWrapper,
-            {
-              opacity: fadeAnim,
-              transform: [
-                { translateX: slideAnim },
-                { scale: scaleAnim },
-              ],
-            },
+            getQuestionAnimatedStyle(fadeAnim, slideAnim, scaleAnim),
           ]}
         >
           {renderQuestion()}

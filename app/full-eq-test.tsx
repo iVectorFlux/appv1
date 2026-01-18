@@ -12,7 +12,7 @@
  * - Consistency indicators
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,7 +22,6 @@ import {
   Animated,
   Platform,
   Alert,
-  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
@@ -32,6 +31,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { selectFullTestQuestions } from '@/data/eq-questions';
 import { calculateEQScore, getScoreLevel, getScoreLevelDescription, getDimensionDescription } from '@/services/eq-scoring';
+import {
+  AnimationDuration,
+  AnimationConfigs,
+  TransitionValues,
+  createQuestionTransition,
+  createSelectionWithDelay,
+  getQuestionAnimatedStyle,
+  getSelectionCheckmarkStyle,
+  getProgressBarWidth,
+} from '@/styles/animations';
+import { createSharedStyles } from '@/styles/shared';
 import type {
   EQQuestion,
   EQResponse,
@@ -84,6 +94,9 @@ export default function FullEQTestScreen() {
   
   // Flag to prevent double-submission
   const isTransitioning = useRef(false);
+  
+  // Memoized shared styles
+  const sharedStyles = useMemo(() => createSharedStyles(colors), [colors]);
 
   useEffect(() => {
     // Pre-select questions
@@ -96,87 +109,37 @@ export default function FullEQTestScreen() {
     const targetProgress = questions.length > 0 ? (currentIndex / questions.length) * 100 : 0;
     Animated.timing(progressAnim, {
       toValue: targetProgress,
-      duration: 300,
-      useNativeDriver: false,
-      easing: Easing.out(Easing.cubic),
+      ...AnimationConfigs.progressBar,
     }).start();
-  }, [currentIndex, questions.length]);
+  }, [currentIndex, questions.length, progressAnim]);
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex) / questions.length) * 100 : 0;
 
-  // Enhanced transition animation with slide and scale
+  // Use centralized transition animation
+  const questionTransition = useMemo(
+    () => createQuestionTransition(fadeAnim, slideAnim, scaleAnim),
+    [fadeAnim, slideAnim, scaleAnim]
+  );
+  
   const animateTransition = useCallback((callback: () => void) => {
     if (isTransitioning.current) return;
     isTransitioning.current = true;
     
-    // Animate out: fade + slide left + scale down slightly
-    Animated.parallel([
-      Animated.timing(fadeAnim, { 
-        toValue: 0, 
-        duration: 200, 
-        useNativeDriver: true,
-        easing: Easing.in(Easing.cubic),
-      }),
-      Animated.timing(slideAnim, { 
-        toValue: -30, 
-        duration: 200, 
-        useNativeDriver: true,
-        easing: Easing.in(Easing.cubic),
-      }),
-      Animated.timing(scaleAnim, { 
-        toValue: 0.95, 
-        duration: 200, 
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      callback();
-      
-      // Reset slide to come from right
-      slideAnim.setValue(40);
-      scaleAnim.setValue(0.98);
-      
-      // Animate in: fade + slide in from right + scale up
-      Animated.parallel([
-        Animated.timing(fadeAnim, { 
-          toValue: 1, 
-          duration: 300, 
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-        Animated.timing(slideAnim, { 
-          toValue: 0, 
-          duration: 300, 
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-        Animated.timing(scaleAnim, { 
-          toValue: 1, 
-          duration: 300, 
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-      ]).start(() => {
-        isTransitioning.current = false;
-      });
+    questionTransition(callback, () => {
+      isTransitioning.current = false;
     });
-  }, [fadeAnim, slideAnim, scaleAnim]);
+  }, [questionTransition]);
   
-  // Selection animation - pulse effect
+  // Use centralized selection animation
+  const selectionWithDelay = useMemo(
+    () => createSelectionWithDelay(checkmarkAnim, AnimationDuration.selection),
+    [checkmarkAnim]
+  );
+  
   const animateSelection = useCallback((onComplete: () => void) => {
-    checkmarkAnim.setValue(0);
-    Animated.sequence([
-      Animated.timing(checkmarkAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.back(1.5)),
-      }),
-      Animated.delay(500), // Wait for user to see selection
-    ]).start(() => {
-      onComplete();
-    });
-  }, [checkmarkAnim]);
+    selectionWithDelay(onComplete);
+  }, [selectionWithDelay]);
 
   const resetQuestionState = () => {
     setSelectedChoice(null);
@@ -234,7 +197,18 @@ export default function FullEQTestScreen() {
       'Your progress will be lost. Are you sure you want to exit?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', style: 'destructive', onPress: () => router.back() },
+        { 
+          text: 'Exit', 
+          style: 'destructive', 
+          onPress: () => {
+            // Use dismiss for modals, or navigate back to profile
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/profile');
+            }
+          } 
+        },
       ]
     );
   };
@@ -674,10 +648,7 @@ export default function FullEQTestScreen() {
                 {isSelected && (
                   <Animated.View style={[
                     styles.selectionCheckmark,
-                    { 
-                      transform: [{ scale: checkmarkAnim }],
-                      opacity: checkmarkAnim,
-                    }
+                    getSelectionCheckmarkStyle(checkmarkAnim),
                   ]}>
                     <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
                   </Animated.View>
@@ -804,10 +775,7 @@ export default function FullEQTestScreen() {
                   {isSelected && (
                     <Animated.View style={[
                       styles.selectionCheckmark,
-                      { 
-                        transform: [{ scale: checkmarkAnim }],
-                        opacity: checkmarkAnim,
-                      }
+                      getSelectionCheckmarkStyle(checkmarkAnim),
                     ]}>
                       <Ionicons name="checkmark-circle" size={22} color={colors.primaryForeground} />
                     </Animated.View>
@@ -960,12 +928,7 @@ export default function FullEQTestScreen() {
         <Animated.View 
           style={[
             styles.progressFill, 
-            { 
-              width: progressAnim.interpolate({
-                inputRange: [0, 100],
-                outputRange: ['0%', '100%'],
-              }) 
-            }
+            { width: getProgressBarWidth(progressAnim) }
           ]} 
         />
       </View>
@@ -979,13 +942,7 @@ export default function FullEQTestScreen() {
         <Animated.View 
           style={[
             styles.questionWrapper, 
-            { 
-              opacity: fadeAnim,
-              transform: [
-                { translateX: slideAnim },
-                { scale: scaleAnim },
-              ],
-            }
+            getQuestionAnimatedStyle(fadeAnim, slideAnim, scaleAnim),
           ]}
         >
           {renderQuestion()}

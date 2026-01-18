@@ -51,6 +51,13 @@ export default function RootLayout() {
           >
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen 
+              name="full-eq-test" 
+              options={{ 
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+              }} 
+            />
           </Stack>
         </View>
       </View>
@@ -67,6 +74,13 @@ export default function RootLayout() {
     >
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen 
+        name="full-eq-test" 
+        options={{ 
+          presentation: 'fullScreenModal',
+          animation: 'slide_from_bottom',
+        }} 
+      />
     </Stack>
   );
 }
