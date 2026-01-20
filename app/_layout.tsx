@@ -54,8 +54,9 @@ export default function RootLayout() {
             <Stack.Screen 
               name="full-eq-test" 
               options={{ 
-                presentation: 'fullScreenModal',
-                animation: 'slide_from_bottom',
+                // On web, use card presentation to stay within mobile frame
+                presentation: 'card',
+                animation: 'slide_from_right',
               }} 
             />
           </Stack>
@@ -85,23 +86,20 @@ export default function RootLayout() {
   );
 }
 
+// iPhone 16 Pro dimensions
+const IPHONE_WIDTH = 393;
+const IPHONE_HEIGHT = 852;
+
 const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
-    width: '100%',
-    height: '100%',
     backgroundColor: '#000',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
-    minHeight: '100vh',
   },
   mobileFrame: {
-    width: 393,
-    height: 852,
-    maxWidth: 'calc(100vw - 40px)',
-    maxHeight: 'calc(100vh - 40px)',
-    aspectRatio: 393 / 852,
+    width: IPHONE_WIDTH,
+    height: IPHONE_HEIGHT,
     borderRadius: 40,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -112,6 +110,5 @@ const styles = StyleSheet.create({
     // iPhone 16 Pro frame styling
     borderWidth: 8,
     borderColor: '#1C1C1E',
-    position: 'relative',
   },
 });
