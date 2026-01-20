@@ -192,25 +192,34 @@ export default function FullEQTestScreen() {
   };
 
   const handleExit = () => {
-    Alert.alert(
-      'Exit Assessment?',
-      'Your progress will be lost. Are you sure you want to exit?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Exit', 
-          style: 'destructive', 
-          onPress: () => {
-            // Use dismiss for modals, or navigate back to profile
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/profile');
-            }
-          } 
-        },
-      ]
-    );
+    const doExit = () => {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/profile');
+      }
+    };
+    
+    // Alert.alert doesn't work on web, use confirm instead
+    if (Platform.OS === 'web') {
+      if (responses.length === 0 || window.confirm('Exit Assessment?\n\nYour progress will be lost. Are you sure you want to exit?')) {
+        doExit();
+      }
+    } else {
+      if (responses.length === 0) {
+        // No responses yet, just exit
+        doExit();
+      } else {
+        Alert.alert(
+          'Exit Assessment?',
+          'Your progress will be lost. Are you sure you want to exit?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Exit', style: 'destructive', onPress: doExit },
+          ]
+        );
+      }
+    }
   };
 
   const getResponseTime = () => Date.now() - questionStartTime;
