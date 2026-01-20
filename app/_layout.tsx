@@ -86,20 +86,23 @@ export default function RootLayout() {
   );
 }
 
-// iPhone 16 Pro dimensions
-const IPHONE_WIDTH = 393;
-const IPHONE_HEIGHT = 852;
-
 const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: '#000',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
+    minHeight: '100vh' as any,
   },
   mobileFrame: {
-    width: IPHONE_WIDTH,
-    height: IPHONE_HEIGHT,
+    width: 393,
+    height: 852,
+    maxWidth: 'calc(100vw - 40px)' as any,
+    maxHeight: 'calc(100vh - 40px)' as any,
+    aspectRatio: 393 / 852,
     borderRadius: 40,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -110,5 +113,6 @@ const styles = StyleSheet.create({
     // iPhone 16 Pro frame styling
     borderWidth: 8,
     borderColor: '#1C1C1E',
+    position: 'relative' as any,
   },
 });
