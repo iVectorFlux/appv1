@@ -17,26 +17,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
-
-const FEATURED_LESSONS = [
-  {
-    id: '1',
-    title: 'Understanding Emotional Triggers',
-    time: '3 min',
-    icon: 'bulb-outline',
-  },
-  {
-    id: '2',
-    title: 'The Pause Practice',
-    time: '2 min',
-    icon: 'timer-outline',
-  },
-];
+import { LEARNING_MODULES, DIMENSION_INFO } from '@/data/learning-content';
 
 export default function InsightsScreen() {
   const router = useRouter();
@@ -203,24 +190,49 @@ export default function InsightsScreen() {
         </>
       ) : (
         <>
-          {/* Learn Tab Content */}
+          {/* Learn Tab Content - Show first 3 modules */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>FEATURED</Text>
+            <Text style={styles.sectionTitle}>RECOMMENDED FOR YOU</Text>
             <View style={styles.featuredLessons}>
-              {FEATURED_LESSONS.map((lesson) => (
+              {LEARNING_MODULES.slice(0, 3).map((module) => (
                 <TouchableOpacity 
-                  key={lesson.id}
+                  key={module.id}
                   style={[styles.featuredLesson, Shadows.sm]}
-                  onPress={() => router.push('/(tabs)/learn')}
+                  onPress={() => router.push(`/learning-detail?id=${module.id}`)}
                 >
-                  <View style={[styles.lessonIconContainer, { backgroundColor: colors.accentEnergy + '20' }]}>
-                    <Ionicons name={lesson.icon as any} size={24} color={colors.accentEnergy} />
+                  <View style={[styles.lessonIconContainer, { backgroundColor: module.color + '20' }]}>
+                    <Ionicons name={module.icon as any} size={24} color={module.color} />
                   </View>
                   <View style={styles.lessonContent}>
-                    <Text style={styles.lessonTitle}>{lesson.title}</Text>
-                    <Text style={styles.lessonTime}>{lesson.time}</Text>
+                    <Text style={styles.lessonTitle}>{module.title}</Text>
+                    <Text style={styles.lessonMeta}>
+                      {DIMENSION_INFO[module.dimension].name} • {module.videoDuration}
+                    </Text>
                   </View>
-                  <Ionicons name="play-circle" size={28} color={colors.primary} />
+                  <Ionicons name="play-circle" size={28} color={module.color} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Quick Access to Podcasts */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>DEEP DIVE PODCASTS</Text>
+            <View style={styles.podcastList}>
+              {LEARNING_MODULES.slice(0, 2).map((module) => (
+                <TouchableOpacity 
+                  key={`podcast-${module.id}`}
+                  style={styles.podcastItem}
+                  onPress={() => router.push(`/learning-detail?id=${module.id}`)}
+                >
+                  <View style={styles.podcastIcon}>
+                    <Ionicons name="headset" size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.podcastContent}>
+                    <Text style={styles.podcastTitle}>{module.title}</Text>
+                    <Text style={styles.podcastDuration}>{module.audioDuration}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -230,7 +242,7 @@ export default function InsightsScreen() {
             style={styles.viewAllButton}
             onPress={() => router.push('/(tabs)/learn')}
           >
-            <Text style={styles.viewAllText}>View All Lessons</Text>
+            <Text style={styles.viewAllText}>View All Learning Content</Text>
             <Ionicons name="arrow-forward" size={18} color={colors.primary} />
           </TouchableOpacity>
         </>
@@ -254,6 +266,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   content: {
     padding: Spacing.xl,
+    paddingTop: Platform.OS === 'ios' ? 60 : Spacing.xl,
     paddingBottom: Spacing['5xl'],
   },
   header: {
@@ -452,8 +465,42 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontFamily: Typography.fontFamily.primary,
     marginBottom: Spacing.xs,
   },
-  lessonTime: {
+  lessonMeta: {
     fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontFamily: Typography.fontFamily.primary,
+  },
+  // Podcast styles
+  podcastList: {
+    gap: Spacing.sm,
+  },
+  podcastItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+  },
+  podcastIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  podcastContent: {
+    flex: 1,
+  },
+  podcastTitle: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textPrimary,
+    fontWeight: Typography.fontWeight.medium,
+    fontFamily: Typography.fontFamily.primary,
+  },
+  podcastDuration: {
+    fontSize: Typography.fontSize.xs,
     color: colors.textSecondary,
     fontFamily: Typography.fontFamily.primary,
   },
