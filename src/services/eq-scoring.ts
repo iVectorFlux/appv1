@@ -598,7 +598,7 @@ export function calculateEQScore(
       ? Math.min(1, socialDesirabilityFlags / likertRs.length)
       : 0,
     responseTimeFlags: responseTimeAnalysis.suspiciouslyFast,
-    completionRate: responses.length / questions.length,
+    completionRate: Math.min(1, responses.length / questions.length),
     selfAwarenessCalibration: metaEQ.calibrationScore / 100,
   };
 
