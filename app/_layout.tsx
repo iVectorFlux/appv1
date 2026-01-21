@@ -59,6 +59,13 @@ export default function RootLayout() {
                 animation: 'slide_from_right',
               }} 
             />
+            <Stack.Screen 
+              name="learning-detail" 
+              options={{ 
+                presentation: 'card',
+                animation: 'slide_from_right',
+              }} 
+            />
           </Stack>
         </View>
       </View>
@@ -80,6 +87,13 @@ export default function RootLayout() {
         options={{ 
           presentation: 'fullScreenModal',
           animation: 'slide_from_bottom',
+        }} 
+      />
+      <Stack.Screen 
+        name="learning-detail" 
+        options={{ 
+          presentation: 'card',
+          animation: 'slide_from_right',
         }} 
       />
     </Stack>
