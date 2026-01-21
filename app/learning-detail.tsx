@@ -3,6 +3,8 @@
  * 
  * Play audio podcasts or video lessons for EQ skills.
  * Deep dive content for each dimension.
+ * 
+ * Uses native HTML5 audio/video on web for better compatibility.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -17,7 +19,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Video, ResizeMode, Audio, AVPlaybackStatus } from 'expo-av';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { getModuleById, DIMENSION_INFO } from '@/data/learning-content';
@@ -39,7 +41,8 @@ export default function LearningDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   
   const videoRef = useRef<Video>(null);
-  const audioRef = useRef<Audio.Sound | null>(null);
+  // Web audio element ref
+  const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (params.id) {
@@ -49,10 +52,11 @@ export default function LearningDetailScreen() {
       }
     }
     
-    // Cleanup audio on unmount
+    // Cleanup on unmount
     return () => {
-      if (audioRef.current) {
-        audioRef.current.unloadAsync();
+      if (Platform.OS === 'web' && webAudioRef.current) {
+        webAudioRef.current.pause();
+        webAudioRef.current = null;
       }
     };
   }, [params.id]);
@@ -62,8 +66,8 @@ export default function LearningDetailScreen() {
     if (videoRef.current) {
       videoRef.current.pauseAsync();
     }
-    if (audioRef.current) {
-      audioRef.current.pauseAsync();
+    if (Platform.OS === 'web' && webAudioRef.current) {
+      webAudioRef.current.pause();
     }
     
     if (router.canGoBack()) {
@@ -90,6 +94,40 @@ export default function LearningDetailScreen() {
     }
   };
 
+  // Web audio handlers
+  const setupWebAudio = (audioUrl: string) => {
+    if (Platform.OS !== 'web') return;
+    
+    // Clean up existing audio
+    if (webAudioRef.current) {
+      webAudioRef.current.pause();
+    }
+    
+    const audio = new Audio(audioUrl);
+    webAudioRef.current = audio;
+    
+    audio.onloadedmetadata = () => {
+      setDuration(audio.duration * 1000);
+      setIsLoading(false);
+    };
+    
+    audio.ontimeupdate = () => {
+      setProgress(audio.currentTime * 1000);
+    };
+    
+    audio.onplay = () => setIsPlaying(true);
+    audio.onpause = () => setIsPlaying(false);
+    audio.onended = () => {
+      setIsPlaying(false);
+      setProgress(0);
+    };
+    
+    audio.onerror = () => {
+      setError('Unable to load audio. Please try again.');
+      setIsLoading(false);
+    };
+  };
+
   const togglePlayPause = async () => {
     if (mediaMode === 'video' && videoRef.current) {
       if (isPlaying) {
@@ -97,11 +135,13 @@ export default function LearningDetailScreen() {
       } else {
         await videoRef.current.playAsync();
       }
-    } else if (mediaMode === 'audio' && audioRef.current) {
-      if (isPlaying) {
-        await audioRef.current.pauseAsync();
-      } else {
-        await audioRef.current.playAsync();
+    } else if (mediaMode === 'audio') {
+      if (Platform.OS === 'web' && webAudioRef.current) {
+        if (isPlaying) {
+          webAudioRef.current.pause();
+        } else {
+          webAudioRef.current.play();
+        }
       }
     }
   };
@@ -116,6 +156,8 @@ export default function LearningDetailScreen() {
     
     setMediaMode('audio');
     setIsLoading(true);
+    setIsPlaying(false);
+    setProgress(0);
     setError(null);
     
     try {
@@ -140,11 +182,13 @@ export default function LearningDetailScreen() {
   const switchToVideo = async () => {
     setMediaMode('video');
     setIsLoading(true);
+    setIsPlaying(false);
+    setProgress(0);
     setError(null);
     
-    // Pause audio
-    if (audioRef.current) {
-      await audioRef.current.pauseAsync();
+    // Pause web audio
+    if (Platform.OS === 'web' && webAudioRef.current) {
+      webAudioRef.current.pause();
     }
   };
 
@@ -348,8 +392,9 @@ export default function LearningDetailScreen() {
   );
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const VIDEO_HEIGHT = (SCREEN_WIDTH - 40) * (9 / 16); // 16:9 aspect ratio
+// Fixed video dimensions for mobile frame (16:9 aspect ratio)
+const VIDEO_WIDTH = 353; // Mobile frame width - padding
+const VIDEO_HEIGHT = Math.round(VIDEO_WIDTH * (9 / 16)); // ~198px
 
 const createStyles = (colors: ReturnType<typeof useColors>, accentColor: string) => StyleSheet.create({
   container: {
@@ -433,10 +478,12 @@ const createStyles = (colors: ReturnType<typeof useColors>, accentColor: string)
     borderRadius: Radius.xl,
     overflow: 'hidden',
     backgroundColor: '#000',
+    aspectRatio: 16 / 9,
+    width: '100%',
   },
   video: {
     width: '100%',
-    height: VIDEO_HEIGHT,
+    height: '100%',
   },
   mediaOverlay: {
     ...StyleSheet.absoluteFillObject,
