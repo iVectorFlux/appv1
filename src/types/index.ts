@@ -97,52 +97,11 @@ export type EmotionTag =
 export type EnergyLevel = 1 | 2 | 3 | 4 | 5;
 
 // ============================================================================
-// EQ SYSTEM TYPES (MEASUREMENT, CAN SYNC)
+// EQ SYSTEM TYPES
 // ============================================================================
-
-/**
- * EQ Check-In Response
- * 
- * This is the EQ measurement layer.
- * Contains structured responses only - no free text.
- * Can be synced for analytics (with user consent).
- */
-export interface EQCheckIn {
-  id: string;
-  userId: string;
-  createdAt: number;
-  
-  questionId: string;
-  questionType: EQQuestionType;
-  response: EQResponse;
-  
-  // Internal scoring (never shown to user)
-  domain: EQDomain;
-  score?: number; // 0-100, internal only
-}
-
-export type EQQuestionType = 'trait' | 'slider' | 'binary';
-
-export type EQResponse = 
-  | { type: 'trait'; value: string }
-  | { type: 'slider'; value: number } // 0-100
-  | { type: 'binary'; value: boolean };
-
-export type EQDomain = 
-  | 'self_awareness'
-  | 'self_regulation'
-  | 'emotional_understanding'
-  | 'empathy'
-  | 'expression'
-  | 'resilience';
-
-export interface EQQuestion {
-  id: string;
-  domain: EQDomain;
-  type: EQQuestionType;
-  text: string;
-  options?: string[]; // For trait questions
-}
+// Note: Comprehensive EQ assessment types are exported from './eq-assessment'
+// This includes: EQDimension, QuestionType, all question/response interfaces,
+// scoring types, and assessment result types.
 
 // ============================================================================
 // INSIGHTS SYSTEM TYPES (DERIVED FROM STRUCTURED DATA ONLY)
@@ -237,12 +196,5 @@ export interface MeditationSession {
 // ============================================================================
 // LEARN TYPES
 // ============================================================================
-
-export interface LearnLesson {
-  id: string;
-  title: string;
-  description: string;
-  content: string;
-  duration: number; // minutes
-  category: EQDomain;
-}
+// Note: Learning module types are defined in '@/data/learning-content'
+// This includes: LearningModule with audio/video content for each EQ dimension.
