@@ -16,6 +16,8 @@ export interface User {
   id: string;
   email?: string;
   username: string;
+  /** Display name from profiles (onboarding); prefer this for greeting. */
+  displayName?: string;
   createdAt: number;
 }
 

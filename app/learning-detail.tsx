@@ -51,6 +51,9 @@ export default function LearningDetailScreen() {
   const audioRef = useRef<Audio.Sound | null>(null);
   // Web audio element ref
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Web video container ref (DOM node for appending HTML5 video)
+  const webVideoContainerRef = useRef<View>(null);
+  const webVideoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     if (params.id) {
@@ -62,9 +65,16 @@ export default function LearningDetailScreen() {
     
     // Cleanup on unmount
     return () => {
-      if (Platform.OS === 'web' && webAudioRef.current) {
-        webAudioRef.current.pause();
-        webAudioRef.current = null;
+      if (Platform.OS === 'web') {
+        if (webAudioRef.current) {
+          webAudioRef.current.pause();
+          webAudioRef.current = null;
+        }
+        if (webVideoRef.current && webVideoRef.current.parentNode) {
+          webVideoRef.current.pause();
+          webVideoRef.current.parentNode.removeChild(webVideoRef.current);
+          webVideoRef.current = null;
+        }
       }
       if (Platform.OS !== 'web' && audioRef.current) {
         audioRef.current.unloadAsync().catch(() => {});
@@ -73,16 +83,51 @@ export default function LearningDetailScreen() {
     };
   }, [params.id]);
 
+  // Web: mount HTML5 video when module and mediaMode are set
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !module || mediaMode !== 'video') return;
+    const container = (webVideoContainerRef.current as unknown as HTMLElement) ?? null;
+    if (!container || !container.appendChild) return;
+
+    const video = document.createElement('video');
+    video.controls = true;
+    video.playsInline = true;
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.display = 'block';
+    video.src = module.videoUrl;
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => setIsLoading(false);
+    video.onerror = () => setError('Unable to load video');
+    video.oncanplay = () => setIsLoading(false);
+    container.appendChild(video);
+    webVideoRef.current = video;
+
+    return () => {
+      try {
+        video.pause();
+        if (video.parentNode) video.parentNode.removeChild(video);
+      } catch (_) {}
+      webVideoRef.current = null;
+    };
+  }, [module?.id, module?.videoUrl, mediaMode]);
+
   const handleBack = async () => {
     // Stop media before navigating back
-    if (videoRef.current) {
-      await videoRef.current.pauseAsync();
-    }
-    if (Platform.OS === 'web' && webAudioRef.current) {
-      webAudioRef.current.pause();
-    }
-    if (Platform.OS !== 'web' && audioRef.current) {
-      await audioRef.current.pauseAsync();
+    if (Platform.OS === 'web') {
+      if (webAudioRef.current) {
+        webAudioRef.current.pause();
+      }
+      if (webVideoRef.current) {
+        webVideoRef.current.pause();
+      }
+    } else {
+      if (videoRef.current) {
+        await videoRef.current.pauseAsync();
+      }
+      if (audioRef.current) {
+        await audioRef.current.pauseAsync();
+      }
     }
     
     if (router.canGoBack()) {
@@ -118,40 +163,46 @@ export default function LearningDetailScreen() {
       webAudioRef.current.pause();
     }
     
-    // Use HTMLAudioElement for web (Audio constructor accepts optional url; TS DOM lib types 0 args)
-    if (typeof window === 'undefined') return;
-    const audio = new (window as any).Audio(audioUrl) as HTMLAudioElement;
-    if (!audio) return;
-    webAudioRef.current = audio;
-    
+    const audio = document.createElement('audio');
+    audio.src = audioUrl;
+    audio.preload = 'metadata';
     audio.onloadedmetadata = () => {
       setDuration(audio.duration * 1000);
       setIsLoading(false);
     };
-    
-    audio.ontimeupdate = () => {
-      setProgress(audio.currentTime * 1000);
-    };
-    
+    audio.ontimeupdate = () => setProgress(audio.currentTime * 1000);
     audio.onplay = () => setIsPlaying(true);
     audio.onpause = () => setIsPlaying(false);
     audio.onended = () => {
       setIsPlaying(false);
       setProgress(0);
     };
-    
     audio.onerror = () => {
       setError('Unable to load audio. Please try again.');
       setIsLoading(false);
     };
+    audio.oncanplay = () => setIsLoading(false);
+    audio.load();
+    webAudioRef.current = audio;
   };
 
   const togglePlayPause = async () => {
-    if (mediaMode === 'video' && videoRef.current) {
-      if (isPlaying) {
-        await videoRef.current.pauseAsync();
-      } else {
-        await videoRef.current.playAsync();
+    if (mediaMode === 'video') {
+      if (Platform.OS === 'web' && webVideoRef.current) {
+        if (isPlaying) {
+          webVideoRef.current.pause();
+        } else {
+          webVideoRef.current.play().catch((err) => {
+            setError('Unable to play video.');
+            console.error('Video play error:', err);
+          });
+        }
+      } else if (videoRef.current) {
+        if (isPlaying) {
+          await videoRef.current.pauseAsync();
+        } else {
+          await videoRef.current.playAsync();
+        }
       }
     } else if (mediaMode === 'audio') {
       if (Platform.OS === 'web' && webAudioRef.current) {
@@ -180,7 +231,9 @@ export default function LearningDetailScreen() {
     if (!module) return;
     
     // Pause video
-    if (videoRef.current) {
+    if (Platform.OS === 'web' && webVideoRef.current) {
+      webVideoRef.current.pause();
+    } else if (videoRef.current) {
       await videoRef.current.pauseAsync();
     }
     
@@ -242,7 +295,7 @@ export default function LearningDetailScreen() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const styles = createStyles(colors, module?.color || colors.primary, videoWidth, videoHeight);
+  const styles = createStyles(colors, module?.color ?? colors.primary, videoWidth, videoHeight);
 
   if (!module) {
     return (
@@ -316,21 +369,31 @@ export default function LearningDetailScreen() {
         {/* Media Player */}
         <View style={styles.mediaContainer}>
           {mediaMode === 'video' ? (
-            <View style={styles.videoContainer}>
-              <Video
-                ref={videoRef}
-                source={{ uri: module.videoUrl }}
-                style={styles.video}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-                onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-                onLoadStart={() => setIsLoading(true)}
-                onError={() => setError('Unable to load video')}
-              />
-              {isLoading && (
-                <View style={styles.mediaOverlay}>
-                  <ActivityIndicator size="large" color="#fff" />
-                </View>
+            <View style={styles.videoContainer} ref={webVideoContainerRef} collapsable={false}>
+              {Platform.OS === 'web' ? (
+                isLoading ? (
+                  <View style={styles.mediaOverlay}>
+                    <ActivityIndicator size="large" color="#fff" />
+                  </View>
+                ) : null
+              ) : (
+                <>
+                  <Video
+                    ref={videoRef}
+                    source={{ uri: module.videoUrl }}
+                    style={styles.video}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+                    onLoadStart={() => setIsLoading(true)}
+                    onError={() => setError('Unable to load video')}
+                  />
+                  {isLoading && (
+                    <View style={styles.mediaOverlay}>
+                      <ActivityIndicator size="large" color="#fff" />
+                    </View>
+                  )}
+                </>
               )}
             </View>
           ) : (

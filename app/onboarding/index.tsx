@@ -1,12 +1,11 @@
 /**
- * Onboarding — 6 screens
+ * Onboarding — 5 screens
  *
  * 1. Welcome + What you'll do + Privacy (one screen, Get started)
  * 2. Name (optional)
  * 3. What brings you here? (why — 2 columns)
- * 4. How often feels right? (frequency)
- * 5. Using this mostly for? (context — 2 columns)
- * 6. How are you feeling? → confirmation → Home
+ * 4. How often do you want to use it? (frequency — single select)
+ * 5. How are you feeling? → confirmation → Home
  */
 
 import React, { useState } from 'react';
@@ -30,7 +29,7 @@ import { emotionColors } from '@/constants/themes';
 import type { EmotionTag } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 5;
 
 // Screen 5: emotions (subset of Reflect)
 const ONBOARDING_EMOTIONS: EmotionTag[] = [
@@ -66,31 +65,15 @@ const FREQUENCY_OPTIONS = [
   { id: 'decide_later', label: "I'll decide later" },
 ] as const;
 
-// Screen 4 — Using this mostly for… (multi-select)
-const CONTEXT_OPTIONS = [
-  { id: 'personal_growth', label: 'Personal growth', icon: 'person-outline' as const },
-  { id: 'work', label: 'Work', icon: 'briefcase-outline' as const },
-  { id: 'studies', label: 'Studies or school', icon: 'school-outline' as const },
-  { id: 'relationships', label: 'Relationships', icon: 'people-outline' as const },
-  { id: 'parenting', label: 'Parenting', icon: 'heart-outline' as const },
-  { id: 'teaching', label: 'Teaching or coaching', icon: 'book-outline' as const },
-  { id: 'health', label: 'Health or recovery', icon: 'medkit-outline' as const },
-  { id: 'creativity', label: 'Creativity or performance', icon: 'color-palette-outline' as const },
-  { id: 'leadership', label: 'Leadership', icon: 'star-outline' as const },
-  { id: 'other', label: 'Other', icon: 'ellipsis-horizontal-outline' as const },
-  { id: 'prefer_not_say', label: 'Prefer not to say', icon: 'eye-off-outline' as const },
-] as const;
-
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { setOnboardingComplete } = useAuthStore();
+  const { setOnboardingComplete, refreshDisplayName } = useAuthStore();
   const colors = useColors();
 
   const [step, setStep] = useState(1);
   const [displayName, setDisplayName] = useState('');
   const [whyIds, setWhyIds] = useState<string[]>([]);
   const [frequencyId, setFrequencyId] = useState<string | null>(null);
-  const [contextIds, setContextIds] = useState<string[]>([]);
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionTag | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -107,20 +90,8 @@ export default function OnboardingScreen() {
     });
   };
 
-  const toggleContext = (id: string) => {
-    if (id === 'prefer_not_say') {
-      setContextIds(['prefer_not_say']);
-      return;
-    }
-    setContextIds((prev) => {
-      const withoutPns = prev.filter((x) => x !== 'prefer_not_say');
-      if (withoutPns.includes(id)) return withoutPns.filter((x) => x !== id);
-      return [...withoutPns, id];
-    });
-  };
-
   const canContinue = () => {
-    if (step === 6) return selectedEmotion !== null;
+    if (step === 5) return selectedEmotion !== null;
     return true;
   };
 
@@ -138,7 +109,7 @@ export default function OnboardingScreen() {
       if (session?.user) {
         const userId = session.user.id;
 
-        // Save optional personalization (screen 4) — multiple goals, single frequency, multiple contexts
+        // Save optional personalization — multiple goals (why), single frequency
         const goalsToSave = whyIds.filter((id) => id !== 'prefer_not_say');
         if (goalsToSave.length > 0) {
           const { error: goalsErr } = await supabase.from('user_goals').insert(
@@ -174,16 +145,6 @@ export default function OnboardingScreen() {
             console.error('[Onboarding] user_preferences upsert failed:', prefsErr.message, prefsErr.code);
           }
         }
-        const contextsToSave = contextIds.filter((id) => id !== 'prefer_not_say');
-        if (contextsToSave.length > 0) {
-          const { error: bgErr } = await supabase.from('user_background').upsert(
-            { user_id: userId, context: contextsToSave.join(',') },
-            { onConflict: 'user_id' }
-          );
-          if (bgErr) {
-            console.error('[Onboarding] user_background upsert failed:', bgErr.message, bgErr.code);
-          }
-        }
         // Save display name to profiles
         const nameToSave = displayName.trim();
         if (nameToSave) {
@@ -192,6 +153,7 @@ export default function OnboardingScreen() {
             console.error('[Onboarding] profiles display_name update failed:', profileErr.message, profileErr.code);
           }
         }
+        await refreshDisplayName();
         // Save first emotion as data point
         const { error: emotionErr } = await supabase.from('onboarding_emotional_check').insert({
           user_id: userId,
@@ -204,9 +166,9 @@ export default function OnboardingScreen() {
           console.error('[Onboarding] onboarding_emotional_check insert failed:', emotionErr.message, emotionErr.code);
         }
 
-        await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'context', 'first_action']);
+        await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'first_action']);
       } else {
-        await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'context', 'first_action']);
+        await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'first_action']);
       }
       setShowConfirmation(true);
       setTimeout(() => {
@@ -214,7 +176,7 @@ export default function OnboardingScreen() {
       }, 1800);
     } catch (err) {
       console.error('[Onboarding] save error:', err);
-      await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'context', 'first_action']);
+      await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'first_action']);
       router.replace('/(tabs)/home');
     } finally {
       setLoading(false);
@@ -246,7 +208,7 @@ export default function OnboardingScreen() {
   }
 
   const renderFixedButton = () => {
-    if (step === 6) {
+    if (step === 5) {
       return (
         <Button
           title="Continue"
@@ -383,11 +345,11 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {/* Screen 4 — How often feels right? */}
+        {/* Screen 4 — How often do you want to use it? */}
         {step === 4 && (
           <View style={styles.screen}>
-            <Text style={styles.screenTitle}>How often feels right?</Text>
-            <Text style={styles.screenSubtitle}>Choose one — you can change this later</Text>
+            <Text style={styles.screenTitle}>How often do you want to use it?</Text>
+            <Text style={styles.screenSubtitle}>Choose one — you can change this later in settings</Text>
             <View style={styles.options}>
               {FREQUENCY_OPTIONS.map((o) => (
                 <Pressable
@@ -403,32 +365,8 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {/* Screen 5 — Using this mostly for… (context — 2 columns) */}
+        {/* Screen 5 — How are you feeling? */}
         {step === 5 && (
-          <View style={styles.screen}>
-            <Text style={styles.screenTitle}>Using this mostly for…</Text>
-            <Text style={styles.screenSubtitle}>Optional — select all that apply</Text>
-            <View style={styles.optionsGridTwoCol}>
-              {CONTEXT_OPTIONS.map((o) => {
-                const isSelected = contextIds.includes(o.id);
-                return (
-                  <Pressable
-                    key={o.id}
-                    onPress={() => toggleContext(o.id)}
-                    style={[styles.optionCardTwoCol, isSelected && styles.optionCardSelected]}
-                  >
-                    <Ionicons name={o.icon} size={16} color={isSelected ? colors.primary : colors.textSecondary} style={styles.optionIcon} />
-                    <Text style={[styles.optionLabelTwoCol, isSelected && styles.optionLabelSelected]} numberOfLines={2}>{o.label}</Text>
-                    {isSelected && <Ionicons name="checkmark-circle" size={16} color={colors.primary} style={styles.optionCheck} />}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* Screen 6 — How are you feeling? */}
-        {step === 6 && (
           <View style={styles.screen}>
             <Text style={styles.screenTitle}>How are you feeling right now?</Text>
             <Text style={styles.screenSubtitle}>Pick one — there's no wrong answer</Text>

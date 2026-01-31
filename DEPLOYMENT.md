@@ -26,9 +26,12 @@ Configure these in the Vercel project (**Settings → Environment Variables**). 
 |----------|-------------|---------|
 | `EXPO_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://xxxxx.supabase.co` |
 | `EXPO_PUBLIC_SUPABASE_KEY` | Supabase **anon** (public) key | `eyJhbGciOiJIUzI1NiIsInR5cCI6...` |
+| `EXPO_PUBLIC_APP_URL` | Your app’s public URL (for auth redirects) | `https://your-project.vercel.app` |
 
 - Add them for **Production** (and optionally Preview/Development).
 - **Do not** commit real values to the repo; use Vercel’s env UI or CLI.
+
+**Supabase auth redirects:** In Supabase Dashboard → **Authentication → URL Configuration**, set **Site URL** and add your production URL to **Redirect URLs** so email confirmation links go to your app instead of localhost. See `TROUBLESHOOTING.md` for details.
 
 ## Deploy steps
 

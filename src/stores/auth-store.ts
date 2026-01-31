@@ -8,8 +8,15 @@
  */
 
 import { create } from 'zustand';
+import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 import type { User, AuthState } from '@/types';
+
+/** URL to redirect to after email confirmation. On web uses current origin; otherwise env EXPO_PUBLIC_APP_URL. */
+function getAuthRedirectUrl(): string | undefined {
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
+  return Constants.expoConfig?.extra?.appUrl ?? (process.env as Record<string, string | undefined>).EXPO_PUBLIC_APP_URL;
+}
 
 interface AuthStore extends AuthState {
   /** True after user has completed onboarding (from Supabase user_onboarding). */
@@ -24,13 +31,19 @@ interface AuthStore extends AuthState {
   setOnboardingComplete: (stepsCompleted?: string[]) => Promise<void>;
   /** Re-fetch onboarding status from Supabase (e.g. after completing onboarding). */
   refreshOnboardingStatus: () => Promise<void>;
+  /** Re-fetch display name from profiles and update user (e.g. after onboarding or profile edit). */
+  refreshDisplayName: () => Promise<void>;
 }
 
-function mapSupabaseUserToAppUser(supabaseUser: { id: string; email?: string; created_at: string }): User {
+function mapSupabaseUserToAppUser(
+  supabaseUser: { id: string; email?: string; created_at: string },
+  displayName?: string | null
+): User {
   return {
     id: supabaseUser.id,
     email: supabaseUser.email ?? undefined,
     username: supabaseUser.email?.split('@')[0] ?? supabaseUser.id.slice(0, 8),
+    displayName: displayName?.trim() || undefined,
     createdAt: new Date(supabaseUser.created_at).getTime(),
   };
 }
@@ -43,6 +56,16 @@ async function recordSessionStart(userId: string): Promise<void> {
     await supabase.from('user_sessions').insert({ user_id: userId, started_at: now });
   } catch {
     // Non-fatal: profile/session tables may not exist yet
+  }
+}
+
+/** Fetch display_name from profiles and return full User. */
+async function getUserWithProfile(supabaseUser: { id: string; email?: string; created_at: string }): Promise<User> {
+  try {
+    const { data } = await supabase.from('profiles').select('display_name').eq('id', supabaseUser.id).maybeSingle();
+    return mapSupabaseUserToAppUser(supabaseUser, data?.display_name);
+  } catch {
+    return mapSupabaseUserToAppUser(supabaseUser, null);
   }
 }
 
@@ -78,7 +101,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
-        const user = mapSupabaseUserToAppUser(session.user);
+        const user = await getUserWithProfile(session.user);
         const needsEmailConfirmation =
           typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
           !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
@@ -106,13 +129,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }
 
       // Keep session in sync (e.g. token refresh, sign out in another tab)
-      supabase.auth.onAuthStateChange((_event, session) => {
+      supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
+          const user = await getUserWithProfile(session.user);
           const needsEmailConfirmation =
             typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
             !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
           set({
-            user: mapSupabaseUserToAppUser(session.user),
+            user,
             isAuthenticated: true,
             needsEmailConfirmation: !!needsEmailConfirmation,
           });
@@ -137,7 +161,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }
 
       if (data.user) {
-        const user = mapSupabaseUserToAppUser(data.user);
+        const user = await getUserWithProfile(data.user);
         const needsEmailConfirmation =
           typeof (data.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
           !(data.user as { email_confirmed_at?: string | null }).email_confirmed_at;
@@ -172,14 +196,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   signUp: async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+      const redirectTo = getAuthRedirectUrl();
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        ...(redirectTo && { options: { emailRedirectTo: redirectTo } }),
+      });
 
       if (error) {
         return { success: false, error: error.message };
       }
 
       if (data.user) {
-        const user = mapSupabaseUserToAppUser(data.user);
+        const user = await getUserWithProfile(data.user);
         const needsEmailConfirmation =
           typeof (data.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
           !(data.user as { email_confirmed_at?: string | null }).email_confirmed_at;
@@ -253,6 +282,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch (error) {
       console.error('[Auth] Failed to save onboarding completion:', error);
       set({ hasCompletedOnboarding: true });
+    }
+  },
+
+  refreshDisplayName: async () => {
+    const { user } = get();
+    if (!user?.id) return;
+    try {
+      const { data } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
+      const displayName = data?.display_name?.trim() || undefined;
+      set((state) => ({
+        user: state.user ? { ...state.user, displayName } : null,
+      }));
+    } catch (_) {
+      // Non-fatal
     }
   },
 }));

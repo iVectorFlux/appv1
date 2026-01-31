@@ -64,8 +64,9 @@ export default function HomeScreen() {
   const getGreeting = () => {
     const hour = new Date().getHours();
     let base = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    if (user?.username) {
-      const name = user.username.charAt(0).toUpperCase() + user.username.slice(1);
+    const nameToShow = user?.displayName?.trim() || user?.username;
+    if (nameToShow) {
+      const name = nameToShow.charAt(0).toUpperCase() + nameToShow.slice(1);
       base += `, ${name}`;
     }
     return base;

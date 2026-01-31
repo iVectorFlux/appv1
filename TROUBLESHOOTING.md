@@ -43,6 +43,25 @@ If imports fail, verify:
 2. Babel config has the module-resolver plugin
 3. `react-native-reanimated/plugin` is LAST in the plugins array
 
+## Supabase auth link redirects to localhost
+
+If the **email confirmation link** (or magic link) from Supabase sends users to `http://localhost:...` instead of your real app URL:
+
+1. **Set your app URL in Supabase Dashboard**  
+   Go to **Authentication → URL Configuration**:
+   - **Site URL**: Set to your production app URL (e.g. `https://your-app.vercel.app`). This is the default redirect target.
+   - **Redirect URLs**: Add the same URL (and any other allowed origins, e.g. `http://localhost:8081` for local dev). Supabase only redirects to URLs in this list.
+
+2. **Set `EXPO_PUBLIC_APP_URL` for production**  
+   In your `.env` (and in Vercel **Environment Variables** if you deploy there), set:
+   ```bash
+   EXPO_PUBLIC_APP_URL=https://your-app.vercel.app
+   ```
+   The app uses this (and on web, the current origin) when sending the redirect URL to Supabase for sign-up confirmation emails.
+
+3. **Redeploy**  
+   After changing env vars, rebuild/redeploy so the app sends the correct redirect URL in sign-up requests.
+
 ## Common Issues
 
 ### Issue: "Cannot find module '@/...'"
