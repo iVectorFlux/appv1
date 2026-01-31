@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Animated, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 const STAGGER_DELAY = 70;
 const FADE_DURATION = 400;
+
+const EQ_ILLUSTRATION_URI = 'https://ungxepwjsmhckjgxphpa.supabase.co/storage/v1/object/public/Images/eq4.svg';
 
 const DAILY_TIPS = [
   "Taking a moment to name your emotions can help you understand them better.",
@@ -31,6 +33,7 @@ export default function HomeScreen() {
   const colors = useColors();
 
   const opacityHeader = useRef(new Animated.Value(0)).current;
+  const opacityIllustration = useRef(new Animated.Value(0)).current;
   const opacityPrimary = useRef(new Animated.Value(0)).current;
   const opacityJournal = useRef(new Animated.Value(0)).current;
   const opacityQuick = useRef(new Animated.Value(0)).current;
@@ -40,11 +43,12 @@ export default function HomeScreen() {
   useEffect(() => {
     const anims = [
       { val: opacityHeader, delay: 0 },
-      { val: opacityPrimary, delay: STAGGER_DELAY },
-      { val: opacityJournal, delay: STAGGER_DELAY * 2 },
-      { val: opacityQuick, delay: STAGGER_DELAY * 3 },
-      { val: opacityTip, delay: STAGGER_DELAY * 4 },
-      { val: opacityPrivacy, delay: STAGGER_DELAY * 5 },
+      { val: opacityIllustration, delay: STAGGER_DELAY },
+      { val: opacityPrimary, delay: STAGGER_DELAY * 2 },
+      { val: opacityJournal, delay: STAGGER_DELAY * 3 },
+      { val: opacityQuick, delay: STAGGER_DELAY * 4 },
+      { val: opacityTip, delay: STAGGER_DELAY * 5 },
+      { val: opacityPrivacy, delay: STAGGER_DELAY * 6 },
     ];
     const subs = anims.map(({ val, delay }) =>
       Animated.timing(val, {
@@ -84,6 +88,16 @@ export default function HomeScreen() {
       <Animated.View style={[styles.header, { opacity: opacityHeader }]}>
         <Text style={styles.greeting}>{getGreeting()}</Text>
         <Text style={styles.title}>How are you really?</Text>
+      </Animated.View>
+
+      {/* EQ illustration – emotional intelligence visual */}
+      <Animated.View style={[styles.illustrationWrap, { opacity: opacityIllustration }]}>
+        <Image
+          source={{ uri: EQ_ILLUSTRATION_URI }}
+          style={styles.illustration}
+          resizeMode="contain"
+          accessibilityLabel="Emotional intelligence illustration"
+        />
       </Animated.View>
 
       {/* Hero CTA – Reflect: one clear primary action, calm and inviting */}
@@ -244,6 +258,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textPrimary,
     fontFamily: Typography.fontFamily.heading,
     lineHeight: Typography.lineHeight.tight * Typography.fontSize['3xl'],
+  },
+  illustrationWrap: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  illustration: {
+    width: 200,
+    height: 200,
   },
   // —— Hero card: one clear primary action ——
   primaryCard: {

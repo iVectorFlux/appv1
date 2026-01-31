@@ -13,6 +13,7 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
@@ -68,6 +69,12 @@ export default function SignInScreen() {
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
+            <Image
+              source={{ uri: 'https://ungxepwjsmhckjgxphpa.supabase.co/storage/v1/object/public/Images/icon.png' }}
+              style={styles.logo}
+              resizeMode="contain"
+              accessibilityLabel="App logo"
+            />
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>
               Sign in to continue your emotional intelligence journey
@@ -144,6 +151,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   header: {
     marginBottom: Spacing['4xl'],
     alignItems: 'center',
+  },
+  logo: {
+    width: 72,
+    height: 72,
+    marginBottom: Spacing.lg,
   },
   title: {
     fontSize: Typography.fontSize['3xl'],
