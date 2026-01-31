@@ -16,14 +16,15 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Redirect, useRouter, useLocalSearchParams } from 'expo-router';
 import { Video, Audio, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { getModuleById, DIMENSION_INFO } from '@/data/learning-content';
 import type { LearningModule } from '@/data/learning-content';
+import { useAuthStore } from '@/stores/auth-store';
 
 type MediaMode = 'video' | 'audio';
 
@@ -31,7 +32,12 @@ export default function LearningDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
-  
+  const { width: windowWidth } = useWindowDimensions();
+  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+
+  const videoWidth = Math.max(200, windowWidth - 2 * Spacing.lg);
+  const videoHeight = Math.round(videoWidth * (9 / 16));
+
   const [module, setModule] = useState<LearningModule | null>(null);
   const [mediaMode, setMediaMode] = useState<MediaMode>('video');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -236,7 +242,7 @@ export default function LearningDetailScreen() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const styles = createStyles(colors, module?.color || colors.primary);
+  const styles = createStyles(colors, module?.color || colors.primary, videoWidth, videoHeight);
 
   if (!module) {
     return (
@@ -247,6 +253,10 @@ export default function LearningDetailScreen() {
         </View>
       </View>
     );
+  }
+
+  if (!authLoading && !isAuthenticated) {
+    return <Redirect href="/(auth)/signin" />;
   }
 
   const dimensionInfo = DIMENSION_INFO[module.dimension];
@@ -429,11 +439,12 @@ export default function LearningDetailScreen() {
   );
 }
 
-// Fixed video dimensions for mobile frame (16:9 aspect ratio)
-const VIDEO_WIDTH = 353; // Mobile frame width - padding
-const VIDEO_HEIGHT = Math.round(VIDEO_WIDTH * (9 / 16)); // ~198px
-
-const createStyles = (colors: ReturnType<typeof useColors>, accentColor: string) => StyleSheet.create({
+const createStyles = (
+  colors: ReturnType<typeof useColors>,
+  accentColor: string,
+  videoWidth: number,
+  videoHeight: number
+) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -512,15 +523,16 @@ const createStyles = (colors: ReturnType<typeof useColors>, accentColor: string)
     marginBottom: Spacing.xl,
   },
   videoContainer: {
+    width: videoWidth,
+    height: videoHeight,
     borderRadius: Radius.xl,
     overflow: 'hidden',
     backgroundColor: '#000',
-    aspectRatio: 16 / 9,
-    width: '100%',
+    alignSelf: 'center',
   },
   video: {
-    width: '100%',
-    height: '100%',
+    width: videoWidth,
+    height: videoHeight,
   },
   mediaOverlay: {
     ...StyleSheet.absoluteFillObject,

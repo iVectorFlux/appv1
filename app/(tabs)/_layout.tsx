@@ -1,17 +1,38 @@
 /**
  * Tabs Layout
- * 
+ *
  * Bottom tab navigation for main app screens.
- * Reduced to 5 core tabs for better UX.
+ * Protects all tab routes: direct /home, /profile, etc. require sign-in.
  */
 
+import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useColors } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function TabsLayout() {
   const colors = useColors();
-  
+  const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } = useAuthStore();
+
+  if (isLoading) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/signin" />;
+  }
+  if (needsEmailConfirmation) {
+    return <Redirect href="/(auth)/confirmemail" />;
+  }
+  if (hasCompletedOnboarding === false) {
+    return <Redirect href="/onboarding" />;
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -96,3 +117,11 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

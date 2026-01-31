@@ -14,9 +14,9 @@ export default function AuthLayout() {
         contentStyle: { backgroundColor: '#F7F9F8' },
       }}
     >
-      <Stack.Screen name="login" />
-      <Stack.Screen name="sign-up" />
-      <Stack.Screen name="confirm-email" />
+      <Stack.Screen name="signin" />
+      <Stack.Screen name="signup" />
+      <Stack.Screen name="confirmemail" />
     </Stack>
   );
 }

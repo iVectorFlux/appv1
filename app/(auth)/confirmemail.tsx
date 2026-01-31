@@ -1,7 +1,7 @@
 /**
  * Confirm Email Screen
  *
- * Shown after sign-up when Supabase sends a verification email.
+ * Shown after signup when Supabase sends a verification email.
  * User stays on this page until they click the link in the email.
  * Once verified, they sign in and are taken to onboarding.
  */
@@ -21,7 +21,7 @@ export default function ConfirmEmailScreen() {
 
   const handleSignOut = async () => {
     await logout();
-    router.replace('/(auth)/login');
+    router.replace('/(auth)/signin');
   };
 
   const styles = createStyles(colors);
@@ -38,20 +38,20 @@ export default function ConfirmEmailScreen() {
         </View>
         <Text style={styles.title}>Check your email</Text>
         <Text style={styles.body}>
-          We’ve sent a verification link to {user?.email ?? 'your email'}.
+          We've sent a verification link to {user?.email ?? 'your email'}.
         </Text>
         <Text style={styles.body}>
-          Open your inbox and click the link to verify. Once you’ve verified, you’ll be able to sign in and we’ll take you through a quick setup.
+          Open your inbox and click the link to verify. Once you've verified, you'll be able to sign in and we'll take you through a quick setup.
         </Text>
         <Text style={styles.hint}>
-          Can’t find the email? Check your spam or junk folder—sometimes it ends up there.
+          Can't find the email? Check your spam or junk folder—sometimes it ends up there.
         </Text>
         <Text style={styles.hint}>
-          After you click the link, come back here and sign in. You’ll then complete a short onboarding and see your profile.
+          After you click the link, come back here and sign in. You'll then complete a short onboarding and see your profile.
         </Text>
         <Button
           title="I've verified — Sign in"
-          onPress={() => router.replace('/(auth)/login')}
+          onPress={() => router.replace('/(auth)/signin')}
           fullWidth
           size="lg"
         />

@@ -69,7 +69,7 @@ So: **identity** is in **Supabase Auth**; **app profile** is in **`public.profil
 
 ## 4. What questions does onboarding ask?
 
-Defined in **`app/(onboarding)/index.tsx`** (WHY_OPTIONS, FREQUENCY_OPTIONS, CONTEXT_OPTIONS, emotional check). Five screens:
+Defined in **`app/onboarding/index.tsx`** (WHY_OPTIONS, FREQUENCY_OPTIONS, CONTEXT_OPTIONS, emotional check). Five screens:
 
 ### Step 1 — Goal (one or more)
 

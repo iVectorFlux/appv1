@@ -1,16 +1,35 @@
 /**
- * Journal Standalone Product Layout
- * 
- * This is a standalone journaling product that can work independently
- * from the main EQ app. It has its own navigation structure and can be
- * accessed as a separate product.
+ * Journal Layout
+ *
+ * Protects journal routes: direct /journal, /journal/history, etc. require sign-in.
  */
 
+import { Redirect } from 'expo-router';
 import { Stack } from 'expo-router';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useColors } from '@/constants/design-tokens';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function JournalLayout() {
   const colors = useColors();
+  const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } = useAuthStore();
+
+  if (isLoading) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/signin" />;
+  }
+  if (needsEmailConfirmation) {
+    return <Redirect href="/(auth)/confirmemail" />;
+  }
+  if (hasCompletedOnboarding === false) {
+    return <Redirect href="/onboarding" />;
+  }
 
   return (
     <Stack
@@ -49,3 +68,11 @@ export default function JournalLayout() {
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

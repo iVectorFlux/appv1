@@ -46,7 +46,7 @@ export default function SignUpScreen() {
       const result = await signUp(email.trim(), password);
 
       if (result.success) {
-        router.replace('/(auth)/confirm-email');
+        router.replace('/(auth)/confirmemail');
       } else {
         setError(result.error ?? 'Sign up failed');
       }
@@ -115,7 +115,7 @@ export default function SignUpScreen() {
 
             <TouchableOpacity
               style={styles.signInLink}
-              onPress={() => router.replace('/(auth)/login')}
+              onPress={() => router.replace('/(auth)/signin')}
               activeOpacity={0.7}
             >
               <Text style={styles.signInLinkText}>Already have an account? Sign in</Text>

@@ -102,89 +102,31 @@ export default function InsightsScreen() {
             </View>
           )}
 
-          {/* EQ Insights Section */}
+          {/* EQ Insights — empty state until real data from check-ins */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>EQ skills</Text>
-            <View style={styles.insightsList}>
-              <View style={[styles.insightCard, Shadows.sm]}>
-                <View style={styles.insightHeader}>
-                  <View style={[styles.insightIcon, { backgroundColor: colors.success + '20' }]}>
-                    <Ionicons name="checkmark" size={16} color={colors.success} />
-                  </View>
-                  <View style={styles.insightText}>
-                    <Text style={styles.insightTitle}>
-                      You tend to notice emotions early
-                    </Text>
-                    <Text style={styles.insightDescription}>
-                      Based on your recent EQ check-ins, you're developing stronger awareness of emotional shifts.
-                    </Text>
-                  </View>
-                </View>
+            <View style={styles.emptyInsightsCard}>
+              <View style={[styles.emptyInsightsIcon, { backgroundColor: colors.primary + '20' }]}>
+                <Ionicons name="analytics-outline" size={32} color={colors.primary} />
               </View>
-
-              <View style={[styles.insightCard, Shadows.sm]}>
-                <View style={styles.insightHeader}>
-                  <View style={[styles.insightIcon, { backgroundColor: colors.accentEnergy + '20' }]}>
-                    <Ionicons name="star" size={16} color={colors.accentEnergy} />
-                  </View>
-                  <View style={styles.insightText}>
-                    <Text style={styles.insightTitle}>
-                      Regulation feels steadier lately
-                    </Text>
-                    <Text style={styles.insightDescription}>
-                      Your responses suggest you're creating more space between emotion and reaction.
-                    </Text>
-                  </View>
-                </View>
-              </View>
+              <Text style={styles.emptyInsightsTitle}>Your insights will appear here</Text>
+              <Text style={styles.emptyInsightsDescription}>
+                Complete EQ check-ins and use Reflect to build your data. Patterns and strengths will show up as you use the app.
+              </Text>
             </View>
           </View>
 
-          {/* Wellbeing Pattern Insights */}
+          {/* Wellbeing patterns — empty state until real data */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Wellbeing patterns</Text>
-            <View style={styles.insightsList}>
-              <View style={[styles.patternCard]}>
-                <View style={styles.patternIcon}>
-                  <Ionicons name="trending-down" size={20} color={colors.accentSoft} />
-                </View>
-                <View style={styles.patternContent}>
-                  <Text style={styles.patternTitle}>
-                    Energy dips during busy weeks
-                  </Text>
-                  <Text style={styles.patternDescription}>
-                    When you mark "Work / School" as a reason, your energy levels tend to be lower.
-                  </Text>
-                </View>
+            <View style={styles.emptyInsightsCard}>
+              <View style={[styles.emptyInsightsIcon, { backgroundColor: colors.accentCalm + '20' }]}>
+                <Ionicons name="pulse-outline" size={32} color={colors.accentCalm} />
               </View>
-
-              <View style={[styles.patternCard]}>
-                <View style={styles.patternIcon}>
-                  <Ionicons name="moon-outline" size={20} color={colors.accentCalm} />
-                </View>
-                <View style={styles.patternContent}>
-                  <Text style={styles.patternTitle}>
-                    You reflect most in the evening
-                  </Text>
-                  <Text style={styles.patternDescription}>
-                    Most of your journal entries happen between 7-10 PM.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={[styles.patternCard]}>
-                <View style={styles.patternIcon}>
-                  <Ionicons name="leaf" size={20} color={colors.success} />
-                </View>
-                <View style={styles.patternContent}>
-                  <Text style={styles.patternTitle}>
-                    Recovery practices help
-                  </Text>
-                  <Text style={styles.patternDescription}>
-                    You often select calmer emotions after breathing or grounding exercises.
-                  </Text>
-                </View>
-              </View>
+              <Text style={styles.emptyInsightsTitle}>Patterns as you go</Text>
+              <Text style={styles.emptyInsightsDescription}>
+                Energy, timing, and recovery patterns will show here once you have enough check-ins and reflections.
+              </Text>
             </View>
           </View>
         </>
@@ -361,76 +303,35 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: Spacing.lg,
     fontFamily: Typography.fontFamily.primary,
   },
-  insightsList: {
-    gap: Spacing.md,
-  },
-  insightCard: {
-    backgroundColor: colors.floating,
+  emptyInsightsCard: {
+    backgroundColor: colors.surface,
     borderRadius: Radius.lg,
-    padding: Spacing.lg,
+    padding: Spacing['2xl'],
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  insightHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.md,
-  },
-  insightIcon: {
-    width: 32,
-    height: 32,
+  emptyInsightsIcon: {
+    width: 56,
+    height: 56,
     borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.lg,
   },
-  insightText: {
-    flex: 1,
-  },
-  insightTitle: {
+  emptyInsightsTitle: {
     fontSize: Typography.fontSize.base,
     color: colors.textPrimary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.medium,
-    marginBottom: Spacing.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
     fontFamily: Typography.fontFamily.primary,
   },
-  insightDescription: {
+  emptyInsightsDescription: {
     fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  patternCard: {
-    backgroundColor: colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    flexDirection: 'row',
-    gap: Spacing.md,
-    alignItems: 'flex-start',
-  },
-  patternIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.md,
-    backgroundColor: colors.floating,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  patternContent: {
-    flex: 1,
-  },
-  patternTitle: {
-    fontSize: Typography.fontSize.base,
-    color: colors.textPrimary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.medium,
-    marginBottom: Spacing.xs,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  patternDescription: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
+    textAlign: 'center',
     fontFamily: Typography.fontFamily.primary,
   },
   featuredLessons: {

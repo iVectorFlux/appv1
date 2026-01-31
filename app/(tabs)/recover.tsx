@@ -57,19 +57,9 @@ export default function RecoverScreen() {
 
   const playReleaseSound = async () => {
     try {
-      // Sound is optional - in production, add a gentle release sound file
-      // For now, we'll use a simple approach
-      // You can add expo-haptics package for vibration feedback:
-      // import * as Haptics from 'expo-haptics';
-      // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      
-      // Placeholder for sound - in production, load a gentle release sound file
-      // const { sound } = await Audio.Sound.createAsync(
-      //   require('@/assets/sounds/release.mp3'),
-      //   { shouldPlay: true, volume: 0.3, isLooping: false }
-      // );
-    } catch (error) {
-      // Sound is optional, fail silently
+      // Optional: add a release sound file or expo-haptics for feedback
+    } catch {
+      // Fail silently
     }
   };
 

@@ -1,5 +1,5 @@
 /**
- * Login Screen
+ * Sign In Screen
  *
  * Supabase Auth sign-in. Real users only.
  */
@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 
-export default function LoginScreen() {
+export default function SignInScreen() {
   const router = useRouter();
   const { login } = useAuthStore();
   const colors = useColors();
@@ -29,7 +29,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async () => {
+  const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password');
       return;
@@ -47,8 +47,8 @@ export default function LoginScreen() {
         setError('Invalid email or password');
       }
     } catch (err) {
-      setError('Login failed. Please try again.');
-      console.error('Login error:', err);
+      setError('Sign in failed. Please try again.');
+      console.error('Sign in error:', err);
     } finally {
       setLoading(false);
     }
@@ -106,7 +106,7 @@ export default function LoginScreen() {
 
             <Button
               title="Sign In"
-              onPress={handleLogin}
+              onPress={handleSignIn}
               loading={loading}
               fullWidth
               size="lg"
@@ -114,7 +114,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               style={styles.signUpLink}
-              onPress={() => router.push('/(auth)/sign-up')}
+              onPress={() => router.push('/(auth)/signup')}
             >
               <Text style={styles.signUpLinkText}>Don't have an account? Sign up</Text>
             </TouchableOpacity>

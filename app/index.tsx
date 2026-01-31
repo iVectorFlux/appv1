@@ -15,15 +15,15 @@ export default function Index() {
   }
 
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href="/(auth)/signin" />;
   }
 
   if (needsEmailConfirmation) {
-    return <Redirect href="/(auth)/confirm-email" />;
+    return <Redirect href="/(auth)/confirmemail" />;
   }
 
   if (hasCompletedOnboarding === false) {
-    return <Redirect href="/(onboarding)" />;
+    return <Redirect href="/onboarding" />;
   }
 
   return <Redirect href="/(tabs)/home" />;

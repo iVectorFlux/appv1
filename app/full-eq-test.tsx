@@ -23,7 +23,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { Slider } from '@/components/ui/Slider';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
@@ -68,14 +68,14 @@ type ScreenState = 'intro' | 'test' | 'results';
 export default function FullEQTestScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { user } = useAuthStore();
-  
+  const { user, isAuthenticated, isLoading } = useAuthStore();
+
   const [screenState, setScreenState] = useState<ScreenState>('intro');
   const [questions, setQuestions] = useState<EQQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<EQResponse[]>([]);
   const [result, setResult] = useState<EQAssessmentResult | null>(null);
-  
+
   // Per-question state
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
@@ -913,6 +913,10 @@ export default function FullEQTestScreen() {
       </View>
     );
   };
+
+  if (!isLoading && !isAuthenticated) {
+    return <Redirect href="/(auth)/signin" />;
+  }
 
   return (
     <View style={styles.container}>

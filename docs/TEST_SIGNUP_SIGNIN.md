@@ -17,9 +17,9 @@ With the app running (`npm start` then press **w** for web, or open in browser):
 
 | Flow | URL |
 |------|-----|
-| **Root** (redirects to login or home) | http://localhost:8081 |
-| **Sign in (login)** | http://localhost:8081/login |
-| **Sign up** | http://localhost:8081/sign-up |
+| **Root** (redirects to signin or home) | http://localhost:8081 |
+| **Sign in** | http://localhost:8081/signin |
+| **Sign up** | http://localhost:8081/signup |
 
 **How to run the app:**
 ```bash
@@ -61,12 +61,12 @@ After that, new sign-ups will get a row in `public.profiles` automatically.
 
 ## 3. Quick test flow
 
-1. Open **http://localhost:8081/sign-up**.
+1. Open **http://localhost:8081/signup**.
 2. Enter an **email** and **password** (min 6 chars).
 3. Click **Sign Up**.
 4. If successful, you’re redirected to onboarding, then Home.
 5. Sign out (Profile → Sign out if you have it, or clear session).
-6. Open **http://localhost:8081/login**, sign in with the same email/password.
+6. Open **http://localhost:8081/signin**, sign in with the same email/password.
 
 Only real Supabase-authenticated users can sign in; there is no demo account.
 
