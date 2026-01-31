@@ -285,50 +285,62 @@ export default function OnboardingScreen() {
         {/* Screen 1 — Welcome + What you'll do + Privacy (one screen) */}
         {step === 1 && (
           <View style={styles.screen}>
-            <View style={styles.heroIconWrap}>
-              <Ionicons name="sparkles" size={36} color={colors.primary} />
+            <View style={styles.welcomeHero}>
+              <View style={styles.heroIconWrap}>
+                <Ionicons name="heart" size={40} color={colors.primary} />
+              </View>
+              <Text style={styles.headline}>Your EQ journey starts here</Text>
+              <Text style={styles.subtext}>
+                A few minutes a day to understand emotions, build skills, and feel more in control.
+              </Text>
             </View>
-            <Text style={styles.headline}>Build Emotional Intelligence</Text>
-            <Text style={styles.subtext}>
-              Understand emotions. Strengthen emotional skills. Recover better.
-            </Text>
-            {/* Pills: compact inline strip */}
-            <View style={styles.pillStrip}>
-              <Text style={styles.pillStripText}>2–5 min/day</Text>
-              <Text style={styles.pillStripDot}>·</Text>
-              <Text style={styles.pillStripText}>No scores</Text>
-              <Text style={styles.pillStripDot}>·</Text>
-              <Text style={styles.pillStripText}>No judgment</Text>
+
+            <View style={styles.badgeRow}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>2–5 min/day</Text>
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>No scores</Text>
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>Private</Text>
+              </View>
             </View>
-            {/* What you'll do — compact rows */}
-            <Text style={styles.miniSectionTitle}>What you'll do here</Text>
-            <View style={styles.wayRows}>
-              <View style={[styles.wayRow, styles.wayRowReflect]}>
-                <Ionicons name="journal-outline" size={18} color={colors.primary} style={styles.wayRowIcon} />
-                <View style={styles.wayRowText}>
+
+            <Text style={styles.miniSectionTitle}>What you'll do</Text>
+            <View style={styles.wayCards}>
+              <View style={[styles.wayCard, { borderLeftColor: colors.primary }]}>
+                <View style={[styles.wayCardIconWrap, { backgroundColor: colors.primary + '20' }]}>
+                  <Ionicons name="journal-outline" size={22} color={colors.primary} />
+                </View>
+                <View style={styles.wayCardText}>
                   <Text style={styles.wayRowLabel}>Reflect</Text>
-                  <Text style={styles.wayRowDesc}>Name emotions and write privately</Text>
+                  <Text style={styles.wayRowDesc}>Name emotions and write privately—only you see it.</Text>
                 </View>
               </View>
-              <View style={[styles.wayRow, styles.wayRowCheckIn]}>
-                <Ionicons name="checkmark-circle-outline" size={18} color={colors.accentEnergy} style={styles.wayRowIcon} />
-                <View style={styles.wayRowText}>
+              <View style={[styles.wayCard, { borderLeftColor: colors.accentEnergy }]}>
+                <View style={[styles.wayCardIconWrap, { backgroundColor: colors.accentEnergy + '20' }]}>
+                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.accentEnergy} />
+                </View>
+                <View style={styles.wayCardText}>
                   <Text style={styles.wayRowLabel}>Check-in</Text>
-                  <Text style={styles.wayRowDesc}>Short EQ self-checks to build awareness</Text>
+                  <Text style={styles.wayRowDesc}>Short self-checks to build emotional awareness.</Text>
                 </View>
               </View>
-              <View style={[styles.wayRow, styles.wayRowRecover]}>
-                <Ionicons name="leaf-outline" size={18} color={colors.accentCalm} style={styles.wayRowIcon} />
-                <View style={styles.wayRowText}>
+              <View style={[styles.wayCard, { borderLeftColor: colors.accentCalm }]}>
+                <View style={[styles.wayCardIconWrap, { backgroundColor: colors.accentCalm + '20' }]}>
+                  <Ionicons name="leaf-outline" size={22} color={colors.accentCalm} />
+                </View>
+                <View style={styles.wayCardText}>
                   <Text style={styles.wayRowLabel}>Recover</Text>
-                  <Text style={styles.wayRowDesc}>Calm your system when things feel heavy</Text>
+                  <Text style={styles.wayRowDesc}>Breathing and grounding when things feel heavy.</Text>
                 </View>
               </View>
             </View>
-            {/* Privacy — one line */}
-            <View style={styles.privacyOneLine}>
-              <Ionicons name="shield-checkmark-outline" size={14} color={colors.textSecondary} style={styles.privacyOneLineIcon} />
-              <Text style={styles.privacyOneLineText}>Your thoughts stay yours. We don't read your journal.</Text>
+
+            <View style={styles.privacyCard}>
+              <Ionicons name="shield-checkmark" size={20} color={colors.primary} style={styles.privacyCardIcon} />
+              <Text style={styles.privacyCardText}>Your journal is encrypted and never read by us.</Text>
             </View>
           </View>
         )}
@@ -509,99 +521,119 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     screen: {
       marginBottom: Spacing['2xl'],
     },
+    welcomeHero: {
+      alignItems: 'center',
+      marginBottom: Spacing.xl,
+    },
     heroIconWrap: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
       backgroundColor: colors.primary + '18',
       alignItems: 'center',
       justifyContent: 'center',
-      alignSelf: 'center',
       marginBottom: Spacing.lg,
     },
     headline: {
-      fontSize: Typography.fontSize['2xl'],
+      fontSize: Typography.fontSize['3xl'],
       fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
       marginBottom: Spacing.md,
       fontFamily: Typography.fontFamily.heading,
       textAlign: 'center',
-      lineHeight: Typography.fontSize['2xl'] * 1.2,
+      lineHeight: Typography.fontSize['3xl'] * 1.2,
+      paddingHorizontal: Spacing.md,
     },
     subtext: {
       fontSize: Typography.fontSize.base,
       color: colors.textSecondary,
       lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
-      marginBottom: Spacing.lg,
       fontFamily: Typography.fontFamily.primary,
       textAlign: 'center',
+      paddingHorizontal: Spacing.sm,
     },
-    pillStrip: {
+    badgeRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
       flexWrap: 'wrap',
-      marginBottom: Spacing.lg,
-      gap: 4,
+      justifyContent: 'center',
+      gap: Spacing.sm,
+      marginBottom: Spacing['2xl'],
     },
-    pillStripText: {
-      fontSize: Typography.fontSize.xs,
+    badge: {
+      backgroundColor: colors.surface,
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    badgeText: {
+      fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
+      fontWeight: Typography.fontWeight.medium,
       fontFamily: Typography.fontFamily.primary,
-    },
-    pillStripDot: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-      opacity: 0.7,
-      marginHorizontal: 2,
     },
     miniSectionTitle: {
       fontSize: Typography.fontSize.sm,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
-      marginBottom: Spacing.sm,
+      marginBottom: Spacing.lg,
       fontFamily: Typography.fontFamily.heading,
     },
-    wayRows: {
-      marginBottom: Spacing.lg,
+    wayCards: {
+      gap: Spacing.md,
+      marginBottom: Spacing.xl,
     },
-    wayRow: {
+    wayCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: Spacing.sm,
-      paddingHorizontal: 0,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.lg,
+      borderLeftWidth: 4,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      ...(Platform.OS === 'web' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.06)' } : Shadows.sm),
     },
-    wayRowReflect: { borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: Spacing.sm },
-    wayRowCheckIn: { borderLeftWidth: 3, borderLeftColor: colors.accentEnergy, paddingLeft: Spacing.sm },
-    wayRowRecover: { borderLeftWidth: 3, borderLeftColor: colors.accentCalm, paddingLeft: Spacing.sm },
-    wayRowIcon: {
-      marginRight: Spacing.sm,
+    wayCardIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: Spacing.lg,
     },
-    wayRowText: { flex: 1 },
+    wayCardText: { flex: 1 },
     wayRowLabel: {
-      fontSize: Typography.fontSize.sm,
+      fontSize: Typography.fontSize.base,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
+      marginBottom: 2,
       fontFamily: Typography.fontFamily.heading,
     },
     wayRowDesc: {
-      fontSize: Typography.fontSize.xs,
+      fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
-      marginTop: 2,
+      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
       fontFamily: Typography.fontFamily.primary,
     },
-    privacyOneLine: {
+    privacyCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: Spacing.sm,
+      backgroundColor: colors.primary + '0C',
+      borderRadius: Radius.lg,
+      padding: Spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.primary + '20',
     },
-    privacyOneLineIcon: { marginRight: Spacing.xs },
-    privacyOneLineText: {
+    privacyCardIcon: {
+      marginRight: Spacing.md,
+    },
+    privacyCardText: {
       flex: 1,
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
+      fontSize: Typography.fontSize.sm,
+      color: colors.textPrimary,
+      fontWeight: Typography.fontWeight.500,
       fontFamily: Typography.fontFamily.primary,
     },
     screenTitle: {

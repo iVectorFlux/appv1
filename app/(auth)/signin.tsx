@@ -98,12 +98,6 @@ export default function SignInScreen() {
               error={error}
             />
 
-            {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
             <Button
               title="Sign In"
               onPress={handleSignIn}
@@ -167,15 +161,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   form: {
     marginBottom: Spacing.xl,
-  },
-  errorContainer: {
-    marginTop: -Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  errorText: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.destructive,
-    fontFamily: Typography.fontFamily.primary,
   },
   signUpLink: {
     marginTop: Spacing.lg,
