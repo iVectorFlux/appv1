@@ -1,0 +1,846 @@
+/**
+ * Onboarding — 6 screens
+ *
+ * 1. Welcome + What you'll do + Privacy (one screen, Get started)
+ * 2. Name (optional)
+ * 3. What brings you here? (why — 2 columns)
+ * 4. How often feels right? (frequency)
+ * 5. Using this mostly for? (context — 2 columns)
+ * 6. How are you feeling? → confirmation → Home
+ */
+
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Platform,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '@/stores/auth-store';
+import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
+import { emotionColors } from '@/constants/themes';
+import type { EmotionTag } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+
+const TOTAL_STEPS = 6;
+
+// Screen 5: emotions (subset of Reflect)
+const ONBOARDING_EMOTIONS: EmotionTag[] = [
+  'Happy', 'Calm', 'Anxious', 'Stressed', 'Sad', 'Tired',
+  'Relaxed', 'Overwhelmed', 'Content', 'Grateful', 'Frustrated', 'Hopeful',
+];
+
+// Screen 4 — What brings you here? (multi-select)
+const WHY_OPTIONS = [
+  { id: 'understand_emotions', label: 'Understand my emotions', icon: 'heart-outline' as const },
+  { id: 'handle_stress', label: 'Handle stress better', icon: 'leaf-outline' as const },
+  { id: 'build_skills', label: 'Build emotional skills', icon: 'trending-up-outline' as const },
+  { id: 'relationships', label: 'Improve relationships', icon: 'people-outline' as const },
+  { id: 'anxiety_worry', label: 'Manage anxiety or worry', icon: 'shield-checkmark-outline' as const },
+  { id: 'self_confidence', label: 'Build self-confidence', icon: 'ribbon-outline' as const },
+  { id: 'work_life', label: 'Better work–life balance', icon: 'briefcase-outline' as const },
+  { id: 'sleep_mood', label: 'Sleep or mood', icon: 'moon-outline' as const },
+  { id: 'life_transitions', label: 'Life transitions or change', icon: 'swap-horizontal-outline' as const },
+  { id: 'curiosity', label: 'Curiosity about EQ', icon: 'bulb-outline' as const },
+  { id: 'recommended', label: 'Recommended by someone', icon: 'chatbubble-outline' as const },
+  { id: 'general_wellbeing', label: 'General wellbeing', icon: 'fitness-outline' as const },
+  { id: 'exploring', label: 'Just exploring', icon: 'compass-outline' as const },
+  { id: 'prefer_not_say', label: 'Prefer not to say', icon: 'ellipsis-horizontal-outline' as const },
+] as const;
+
+const FREQUENCY_OPTIONS = [
+  { id: 'daily', label: 'Daily' },
+  { id: 'few_times_week', label: 'A few times a week' },
+  { id: 'weekly', label: 'About once a week' },
+  { id: 'few_times_month', label: 'A few times a month' },
+  { id: 'occasionally', label: 'Occasionally' },
+  { id: 'when_overwhelmed', label: 'When I feel overwhelmed' },
+  { id: 'decide_later', label: "I'll decide later" },
+] as const;
+
+// Screen 4 — Using this mostly for… (multi-select)
+const CONTEXT_OPTIONS = [
+  { id: 'personal_growth', label: 'Personal growth', icon: 'person-outline' as const },
+  { id: 'work', label: 'Work', icon: 'briefcase-outline' as const },
+  { id: 'studies', label: 'Studies or school', icon: 'school-outline' as const },
+  { id: 'relationships', label: 'Relationships', icon: 'people-outline' as const },
+  { id: 'parenting', label: 'Parenting', icon: 'heart-outline' as const },
+  { id: 'teaching', label: 'Teaching or coaching', icon: 'book-outline' as const },
+  { id: 'health', label: 'Health or recovery', icon: 'medkit-outline' as const },
+  { id: 'creativity', label: 'Creativity or performance', icon: 'color-palette-outline' as const },
+  { id: 'leadership', label: 'Leadership', icon: 'star-outline' as const },
+  { id: 'other', label: 'Other', icon: 'ellipsis-horizontal-outline' as const },
+  { id: 'prefer_not_say', label: 'Prefer not to say', icon: 'eye-off-outline' as const },
+] as const;
+
+export default function OnboardingScreen() {
+  const router = useRouter();
+  const { setOnboardingComplete } = useAuthStore();
+  const colors = useColors();
+
+  const [step, setStep] = useState(1);
+  const [displayName, setDisplayName] = useState('');
+  const [whyIds, setWhyIds] = useState<string[]>([]);
+  const [frequencyId, setFrequencyId] = useState<string | null>(null);
+  const [contextIds, setContextIds] = useState<string[]>([]);
+  const [selectedEmotion, setSelectedEmotion] = useState<EmotionTag | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const toggleWhy = (id: string) => {
+    if (id === 'prefer_not_say') {
+      setWhyIds(['prefer_not_say']);
+      return;
+    }
+    setWhyIds((prev) => {
+      const withoutPns = prev.filter((x) => x !== 'prefer_not_say');
+      if (withoutPns.includes(id)) return withoutPns.filter((x) => x !== id);
+      return [...withoutPns, id];
+    });
+  };
+
+  const toggleContext = (id: string) => {
+    if (id === 'prefer_not_say') {
+      setContextIds(['prefer_not_say']);
+      return;
+    }
+    setContextIds((prev) => {
+      const withoutPns = prev.filter((x) => x !== 'prefer_not_say');
+      if (withoutPns.includes(id)) return withoutPns.filter((x) => x !== id);
+      return [...withoutPns, id];
+    });
+  };
+
+  const canContinue = () => {
+    if (step === 6) return selectedEmotion !== null;
+    return true;
+  };
+
+  const handleContinue = () => {
+    if (step < TOTAL_STEPS) {
+      setStep(step + 1);
+    }
+  };
+
+  const handleFirstActionContinue = async () => {
+    if (!selectedEmotion) return;
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const userId = session.user.id;
+
+        // Save optional personalization (screen 4) — multiple goals, single frequency, multiple contexts
+        const goalsToSave = whyIds.filter((id) => id !== 'prefer_not_say');
+        if (goalsToSave.length > 0) {
+          const { error: goalsErr } = await supabase.from('user_goals').insert(
+            goalsToSave.map((goal_id, i) => ({
+              user_id: userId,
+              goal_id,
+              selected_at: new Date().toISOString(),
+              is_primary: i === 0,
+            }))
+          );
+          if (goalsErr) {
+            console.error('[Onboarding] user_goals insert failed:', goalsErr.message, goalsErr.code);
+          }
+        }
+        const frequencyMap: Record<string, string> = {
+          daily: 'daily',
+          few_times_week: 'few_times_week',
+          weekly: 'weekly',
+          few_times_month: 'weekly',
+          occasionally: 'weekly',
+          when_overwhelmed: 'when_reminded',
+          decide_later: 'no_reminders',
+        };
+        if (frequencyId) {
+          const { error: prefsErr } = await supabase.from('user_preferences').upsert(
+            {
+              user_id: userId,
+              check_in_frequency: frequencyMap[frequencyId] ?? 'few_times_week',
+            },
+            { onConflict: 'user_id' }
+          );
+          if (prefsErr) {
+            console.error('[Onboarding] user_preferences upsert failed:', prefsErr.message, prefsErr.code);
+          }
+        }
+        const contextsToSave = contextIds.filter((id) => id !== 'prefer_not_say');
+        if (contextsToSave.length > 0) {
+          const { error: bgErr } = await supabase.from('user_background').upsert(
+            { user_id: userId, context: contextsToSave.join(',') },
+            { onConflict: 'user_id' }
+          );
+          if (bgErr) {
+            console.error('[Onboarding] user_background upsert failed:', bgErr.message, bgErr.code);
+          }
+        }
+        // Save display name to profiles
+        const nameToSave = displayName.trim();
+        if (nameToSave) {
+          const { error: profileErr } = await supabase.from('profiles').update({ display_name: nameToSave }).eq('id', userId);
+          if (profileErr) {
+            console.error('[Onboarding] profiles display_name update failed:', profileErr.message, profileErr.code);
+          }
+        }
+        // Save first emotion as data point
+        const { error: emotionErr } = await supabase.from('onboarding_emotional_check').insert({
+          user_id: userId,
+          question_id: 'onboarding_first_emotion',
+          value_type: 'emotion',
+          value_emotion: selectedEmotion,
+          order_index: 0,
+        });
+        if (emotionErr) {
+          console.error('[Onboarding] onboarding_emotional_check insert failed:', emotionErr.message, emotionErr.code);
+        }
+
+        await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'context', 'first_action']);
+      } else {
+        await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'context', 'first_action']);
+      }
+      setShowConfirmation(true);
+      setTimeout(() => {
+        router.replace('/(tabs)/home');
+      }, 1800);
+    } catch (err) {
+      console.error('[Onboarding] save error:', err);
+      await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'context', 'first_action']);
+      router.replace('/(tabs)/home');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getEmotionColor = (emotion: EmotionTag): string => {
+    const colorKey = emotionColors[emotion] || 'primary';
+    return colors[colorKey as keyof typeof colors] as string;
+  };
+
+  const styles = createStyles(colors);
+
+  // Screen 5 confirmation
+  if (showConfirmation) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.confirmationWrap}>
+          <View style={styles.confirmationIconWrap}>
+            <Ionicons name="checkmark-circle" size={56} color={colors.primary} />
+          </View>
+          <Text style={styles.confirmationText}>
+            Noticing how you feel is the first EQ skill.
+          </Text>
+          <Text style={styles.confirmationSubtext}>Taking you to your home…</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const renderFixedButton = () => {
+    if (step === 6) {
+      return (
+        <Button
+          title="Continue"
+          onPress={handleFirstActionContinue}
+          disabled={!selectedEmotion}
+          loading={loading}
+          fullWidth
+          size="lg"
+        />
+      );
+    }
+    const label = step === 1 ? 'Get started' : 'Continue';
+    return <Button title={label} onPress={handleContinue} fullWidth size="lg" />;
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+    >
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Step indicator */}
+        <View style={styles.stepRow}>
+          <View style={styles.stepBarBg}>
+            <View style={[styles.stepBarFill, { width: `${(step / TOTAL_STEPS) * 100}%` }]} />
+          </View>
+          <Text style={styles.stepCount}>{step} of {TOTAL_STEPS}</Text>
+        </View>
+
+        {/* Screen 1 — Welcome + What you'll do + Privacy (one screen) */}
+        {step === 1 && (
+          <View style={styles.screen}>
+            <View style={styles.heroIconWrap}>
+              <Ionicons name="sparkles" size={36} color={colors.primary} />
+            </View>
+            <Text style={styles.headline}>Build Emotional Intelligence</Text>
+            <Text style={styles.subtext}>
+              Understand emotions. Strengthen emotional skills. Recover better.
+            </Text>
+            {/* Pills: compact inline strip */}
+            <View style={styles.pillStrip}>
+              <Text style={styles.pillStripText}>2–5 min/day</Text>
+              <Text style={styles.pillStripDot}>·</Text>
+              <Text style={styles.pillStripText}>No scores</Text>
+              <Text style={styles.pillStripDot}>·</Text>
+              <Text style={styles.pillStripText}>No judgment</Text>
+            </View>
+            {/* What you'll do — compact rows */}
+            <Text style={styles.miniSectionTitle}>What you'll do here</Text>
+            <View style={styles.wayRows}>
+              <View style={[styles.wayRow, styles.wayRowReflect]}>
+                <Ionicons name="journal-outline" size={18} color={colors.primary} style={styles.wayRowIcon} />
+                <View style={styles.wayRowText}>
+                  <Text style={styles.wayRowLabel}>Reflect</Text>
+                  <Text style={styles.wayRowDesc}>Name emotions and write privately</Text>
+                </View>
+              </View>
+              <View style={[styles.wayRow, styles.wayRowCheckIn]}>
+                <Ionicons name="checkmark-circle-outline" size={18} color={colors.accentEnergy} style={styles.wayRowIcon} />
+                <View style={styles.wayRowText}>
+                  <Text style={styles.wayRowLabel}>Check-in</Text>
+                  <Text style={styles.wayRowDesc}>Short EQ self-checks to build awareness</Text>
+                </View>
+              </View>
+              <View style={[styles.wayRow, styles.wayRowRecover]}>
+                <Ionicons name="leaf-outline" size={18} color={colors.accentCalm} style={styles.wayRowIcon} />
+                <View style={styles.wayRowText}>
+                  <Text style={styles.wayRowLabel}>Recover</Text>
+                  <Text style={styles.wayRowDesc}>Calm your system when things feel heavy</Text>
+                </View>
+              </View>
+            </View>
+            {/* Privacy — one line */}
+            <View style={styles.privacyOneLine}>
+              <Ionicons name="shield-checkmark-outline" size={14} color={colors.textSecondary} style={styles.privacyOneLineIcon} />
+              <Text style={styles.privacyOneLineText}>Your thoughts stay yours. We don't read your journal.</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Screen 2 — Name (optional) */}
+        {step === 2 && (
+          <View style={styles.screen}>
+            <Text style={styles.screenTitle}>What should we call you?</Text>
+            <Text style={styles.screenSubtitle}>Optional — we'll use this in the app</Text>
+            <Input
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Your name or nickname"
+              autoCapitalize="words"
+            />
+          </View>
+        )}
+
+        {/* Screen 3 — What brings you here? (why — 2 columns) */}
+        {step === 3 && (
+          <View style={styles.screen}>
+            <Text style={styles.screenTitle}>What brings you here right now?</Text>
+            <Text style={styles.screenSubtitle}>Optional — select all that apply</Text>
+            <View style={styles.optionsGridTwoCol}>
+              {WHY_OPTIONS.map((o) => {
+                const isSelected = whyIds.includes(o.id);
+                return (
+                  <Pressable
+                    key={o.id}
+                    onPress={() => toggleWhy(o.id)}
+                    style={[styles.optionCardTwoCol, isSelected && styles.optionCardSelected]}
+                  >
+                    <Ionicons name={o.icon} size={16} color={isSelected ? colors.primary : colors.textSecondary} style={styles.optionIcon} />
+                    <Text style={[styles.optionLabelTwoCol, isSelected && styles.optionLabelSelected]} numberOfLines={2}>{o.label}</Text>
+                    {isSelected && <Ionicons name="checkmark-circle" size={16} color={colors.primary} style={styles.optionCheck} />}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Screen 4 — How often feels right? */}
+        {step === 4 && (
+          <View style={styles.screen}>
+            <Text style={styles.screenTitle}>How often feels right?</Text>
+            <Text style={styles.screenSubtitle}>Choose one — you can change this later</Text>
+            <View style={styles.options}>
+              {FREQUENCY_OPTIONS.map((o) => (
+                <Pressable
+                  key={o.id}
+                  onPress={() => setFrequencyId(o.id)}
+                  style={[styles.optionCard, styles.optionCardFull, frequencyId === o.id && styles.optionCardSelected]}
+                >
+                  <Text style={[styles.optionLabel, frequencyId === o.id && styles.optionLabelSelected]}>{o.label}</Text>
+                  {frequencyId === o.id && <Ionicons name="checkmark-circle" size={18} color={colors.primary} style={styles.optionCheck} />}
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Screen 5 — Using this mostly for… (context — 2 columns) */}
+        {step === 5 && (
+          <View style={styles.screen}>
+            <Text style={styles.screenTitle}>Using this mostly for…</Text>
+            <Text style={styles.screenSubtitle}>Optional — select all that apply</Text>
+            <View style={styles.optionsGridTwoCol}>
+              {CONTEXT_OPTIONS.map((o) => {
+                const isSelected = contextIds.includes(o.id);
+                return (
+                  <Pressable
+                    key={o.id}
+                    onPress={() => toggleContext(o.id)}
+                    style={[styles.optionCardTwoCol, isSelected && styles.optionCardSelected]}
+                  >
+                    <Ionicons name={o.icon} size={16} color={isSelected ? colors.primary : colors.textSecondary} style={styles.optionIcon} />
+                    <Text style={[styles.optionLabelTwoCol, isSelected && styles.optionLabelSelected]} numberOfLines={2}>{o.label}</Text>
+                    {isSelected && <Ionicons name="checkmark-circle" size={16} color={colors.primary} style={styles.optionCheck} />}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Screen 6 — How are you feeling? */}
+        {step === 6 && (
+          <View style={styles.screen}>
+            <Text style={styles.screenTitle}>How are you feeling right now?</Text>
+            <Text style={styles.screenSubtitle}>Pick one — there's no wrong answer</Text>
+            <View style={styles.emotionGrid}>
+              {ONBOARDING_EMOTIONS.map((emotion) => {
+                const isSelected = selectedEmotion === emotion;
+                const emotionColor = getEmotionColor(emotion);
+                return (
+                  <TouchableOpacity
+                    key={emotion}
+                    onPress={() => setSelectedEmotion(emotion)}
+                    style={[
+                      styles.emotionChip,
+                      isSelected && { backgroundColor: emotionColor, borderColor: emotionColor },
+                      !isSelected && { borderLeftWidth: 4, borderLeftColor: emotionColor },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.emotionChipText, isSelected && { color: '#FFFFFF' }]}>
+                      {emotion}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Spacer so content isn't hidden behind fixed button */}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+
+      {/* Fixed bottom CTA — always on screen */}
+      <View style={styles.fixedCta}>
+        {renderFixedButton()}
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const createStyles = (colors: ReturnType<typeof useColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      padding: Spacing.xl,
+      paddingBottom: Spacing.md,
+    },
+    bottomSpacer: {
+      height: 24,
+    },
+    fixedCta: {
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.lg,
+      paddingBottom: Spacing.xl + (Platform.OS === 'ios' ? 20 : 0),
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
+      backgroundColor: colors.background,
+    },
+    stepRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      marginBottom: Spacing['2xl'],
+    },
+    stepBarBg: {
+      flex: 1,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.borderLight,
+      overflow: 'hidden',
+    },
+    stepBarFill: {
+      height: '100%',
+      borderRadius: 3,
+      backgroundColor: colors.primary,
+    },
+    stepCount: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.medium,
+      color: colors.textSecondary,
+      minWidth: 44,
+      textAlign: 'right',
+    },
+    screen: {
+      marginBottom: Spacing['2xl'],
+    },
+    heroIconWrap: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary + '18',
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+      marginBottom: Spacing.lg,
+    },
+    headline: {
+      fontSize: Typography.fontSize['2xl'],
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.md,
+      fontFamily: Typography.fontFamily.heading,
+      textAlign: 'center',
+      lineHeight: Typography.fontSize['2xl'] * 1.2,
+    },
+    subtext: {
+      fontSize: Typography.fontSize.base,
+      color: colors.textSecondary,
+      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
+      marginBottom: Spacing.lg,
+      fontFamily: Typography.fontFamily.primary,
+      textAlign: 'center',
+    },
+    pillStrip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+      marginBottom: Spacing.lg,
+      gap: 4,
+    },
+    pillStripText: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    pillStripDot: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      opacity: 0.7,
+      marginHorizontal: 2,
+    },
+    miniSectionTitle: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.sm,
+      fontFamily: Typography.fontFamily.heading,
+    },
+    wayRows: {
+      marginBottom: Spacing.lg,
+    },
+    wayRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: 0,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    wayRowReflect: { borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: Spacing.sm },
+    wayRowCheckIn: { borderLeftWidth: 3, borderLeftColor: colors.accentEnergy, paddingLeft: Spacing.sm },
+    wayRowRecover: { borderLeftWidth: 3, borderLeftColor: colors.accentCalm, paddingLeft: Spacing.sm },
+    wayRowIcon: {
+      marginRight: Spacing.sm,
+    },
+    wayRowText: { flex: 1 },
+    wayRowLabel: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.heading,
+    },
+    wayRowDesc: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    privacyOneLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: Spacing.sm,
+    },
+    privacyOneLineIcon: { marginRight: Spacing.xs },
+    privacyOneLineText: {
+      flex: 1,
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    screenTitle: {
+      fontSize: Typography.fontSize.xl,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.xs,
+      fontFamily: Typography.fontFamily.heading,
+    },
+    screenSubtitle: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textSecondary,
+      marginBottom: Spacing.lg,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    cards: {
+      gap: Spacing.md,
+      marginBottom: Spacing.lg,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      ...(Platform.OS === 'web' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.06)' } : Shadows.sm),
+    },
+    cardReflect: {
+      borderLeftWidth: 4,
+      borderLeftColor: colors.primary,
+    },
+    cardCheckIn: {
+      borderLeftWidth: 4,
+      borderLeftColor: colors.accentEnergy,
+    },
+    cardRecover: {
+      borderLeftWidth: 4,
+      borderLeftColor: colors.accentCalm,
+    },
+    cardIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: Radius.md,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.sm,
+    },
+    cardLabel: {
+      fontSize: Typography.fontSize.base,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginBottom: 2,
+      fontFamily: Typography.fontFamily.heading,
+    },
+    cardDesc: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textSecondary,
+      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    privacyScreen: {
+      backgroundColor: colors.surface,
+      marginHorizontal: -Spacing.xl,
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing['2xl'],
+      borderRadius: Radius.xl,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    privacyIconWrap: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.primary + '14',
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+      marginBottom: Spacing.lg,
+    },
+    privacyHeadline: {
+      fontSize: Typography.fontSize['2xl'],
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.xl,
+      fontFamily: Typography.fontFamily.heading,
+      textAlign: 'center',
+    },
+    bulletList: {
+      marginBottom: Spacing.xl,
+    },
+    bulletRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: Spacing.md,
+    },
+    bulletIcon: {
+      marginRight: Spacing.sm,
+      marginTop: 2,
+    },
+    bullet: {
+      flex: 1,
+      fontSize: Typography.fontSize.base,
+      color: colors.textSecondary,
+      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base + 2,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    privacyFooter: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textSecondary,
+      marginBottom: Spacing['2xl'],
+      fontFamily: Typography.fontFamily.primary,
+      textAlign: 'center',
+      fontStyle: 'italic',
+    },
+    questionLabel: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.xs,
+      marginTop: Spacing.lg,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    questionHint: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      marginBottom: Spacing.sm,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    options: {
+      gap: Spacing.sm,
+      marginBottom: Spacing.sm,
+    },
+    optionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+      marginBottom: Spacing.md,
+    },
+    optionsGridTwoCol: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+      marginBottom: Spacing.md,
+      justifyContent: 'space-between',
+    },
+    optionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      borderRadius: Radius.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      minWidth: '47%',
+      maxWidth: '100%',
+    },
+    optionCardTwoCol: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.sm,
+      borderRadius: Radius.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      width: '48%',
+    },
+    optionCardSelected: {
+      backgroundColor: colors.primary + '12',
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+    optionCardFull: {
+      minWidth: '100%',
+    },
+    optionIcon: {
+      marginRight: Spacing.sm,
+    },
+    optionLabel: {
+      flex: 1,
+      fontSize: Typography.fontSize.xs,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    optionLabelTwoCol: {
+      flex: 1,
+      fontSize: Typography.fontSize.xs,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    optionLabelSelected: {
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.primary,
+    },
+    optionCheck: {
+      marginLeft: Spacing.xs,
+    },
+    emotionGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+      marginBottom: Spacing.lg,
+    },
+    emotionChip: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.full,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    emotionChipText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textPrimary,
+      fontWeight: Typography.fontWeight.medium,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    confirmationWrap: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: Spacing['2xl'],
+    },
+    confirmationIconWrap: {
+      marginBottom: Spacing.xl,
+    },
+    confirmationText: {
+      fontSize: Typography.fontSize.xl,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.primary,
+      textAlign: 'center',
+      fontFamily: Typography.fontFamily.heading,
+      marginBottom: Spacing.sm,
+    },
+    confirmationSubtext: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textSecondary,
+      fontFamily: Typography.fontFamily.primary,
+    },
+  });

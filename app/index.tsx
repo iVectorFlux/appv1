@@ -1,23 +1,30 @@
 /**
  * Index Route
- * 
- * Redirects to auth or main app based on authentication state.
+ *
+ * Redirects by state: auth → confirm email (if required) → onboarding → home.
  */
 
-import { useEffect } from 'react';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function Index() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } = useAuthStore();
 
   if (isLoading) {
-    return null; // Or a loading screen
+    return null;
   }
 
-  if (isAuthenticated) {
-    return <Redirect href="/(tabs)/home" />;
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
   }
 
-  return <Redirect href="/(auth)/login" />;
+  if (needsEmailConfirmation) {
+    return <Redirect href="/(auth)/confirm-email" />;
+  }
+
+  if (hasCompletedOnboarding === false) {
+    return <Redirect href="/(onboarding)" />;
+  }
+
+  return <Redirect href="/(tabs)/home" />;
 }

@@ -73,12 +73,12 @@ The app enforces **hard boundaries** between three distinct systems:
 - `login(username, password)`: Authenticate user
 - `logout()`: Clear session and redirect to login
 - `initialize()`: Check for existing session on app start
-- `isDemoMode`: Flag for demo account
+- User identity from Supabase Auth only
 
 #### UX Flow
 1. User opens app → Check for existing session
 2. If no session → Redirect to login screen
-3. Login screen → Enter credentials (demo/demo123 for testing)
+3. Login screen → Enter email and password (Supabase Auth)
 4. On success → Initialize database → Navigate to home
 5. On failure → Show error message
 
@@ -411,7 +411,7 @@ The app enforces **hard boundaries** between three distinct systems:
 ### 8. Profile Screen
 
 #### Features
-- **User Information**: Avatar, username, demo mode badge
+- **User Information**: Avatar, username
 - **Settings Options**: Notifications, Privacy & Security, Help & Support, About
 - **Privacy Notice**: Clear explanation of privacy protections
 - **Logout**: Sign out functionality
@@ -614,7 +614,7 @@ src/
 ### Journey 1: First-Time User
 
 1. **Open App** → Login screen
-2. **Login** (demo/demo123) → Home screen
+2. **Login** (email/password) → Onboarding (if new) → Home screen
 3. **View Home** → See Reflect, EQ Check-in, Recover cards
 4. **Tap Reflect** → Journal screen
 5. **Select Emotion** → "Stressed"
@@ -625,7 +625,7 @@ src/
 10. **Return Home** → See completion
 
 **Time**: ~3-5 minutes
-**Friction Points**: None (demo mode allows immediate access)
+**Friction Points**: Sign up / sign in required (real users only)
 
 ### Journey 2: Daily EQ Check-In
 

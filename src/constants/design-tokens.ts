@@ -6,8 +6,11 @@
  * 
  * Colors are now dynamic based on theme selection.
  * Use `useColors()` hook to get current theme colors.
+ * 
+ * Shadows use boxShadow on web (avoids "shadow*" deprecation) and shadow* on native.
  */
 
+import { Platform } from 'react-native';
 import { useThemeStore } from '@/stores/theme-store';
 import { themes } from './themes';
 
@@ -74,7 +77,7 @@ export const Typography = {
   },
 } as const;
 
-export const Shadows = {
+const shadowsNative = {
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -96,4 +99,29 @@ export const Shadows = {
     shadowRadius: 8,
     elevation: 4,
   },
+  card: {
+    shadowColor: '#1a1a1a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  hero: {
+    shadowColor: '#1a1a1a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
 } as const;
+
+const shadowsWeb = {
+  sm: { boxShadow: '0 1px 2px rgba(0,0,0,0.05)', elevation: 1 },
+  md: { boxShadow: '0 2px 4px rgba(0,0,0,0.1)', elevation: 2 },
+  lg: { boxShadow: '0 4px 8px rgba(0,0,0,0.15)', elevation: 4 },
+  card: { boxShadow: '0 2px 8px rgba(26,26,26,0.06)', elevation: 2 },
+  hero: { boxShadow: '0 4px 12px rgba(26,26,26,0.12)', elevation: 4 },
+} as const;
+
+/** Platform-aware: boxShadow on web (avoids deprecation), shadow* on native. */
+export const Shadows = Platform.OS === 'web' ? shadowsWeb : shadowsNative;

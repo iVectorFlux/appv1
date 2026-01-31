@@ -67,18 +67,31 @@ npm run android  # Android Emulator
 npm run web      # Web browser
 ```
 
-### Demo Credentials
+### Supabase: create tables (required to see schema/tables)
 
-- **Username**: `demo`
-- **Password**: `demo123`
+The app uses Supabase for auth and onboarding data. **The database schema is not created automatically** — you must run the SQL once in your Supabase project. The SQL lives in **your project folder**, not inside Supabase:
+
+1. **In your computer:** In Cursor, in the left file tree, open **`supabase/migrations/00001_initial_schema.sql`** (it’s in the `supabase` folder of this repo). Select all (Cmd+A / Ctrl+A) and copy (Cmd+C / Ctrl+C).
+2. **In the browser:** Go to [supabase.com](https://supabase.com) → your project → **SQL Editor** → **New query**.
+3. Paste the copied SQL into the editor and click **Run**.
+
+After it runs, open **Table Editor** in the left sidebar; you should see all tables (profiles, onboarding, journal, EQ, insights, recovery, learning, metrics).  
+
+**To add the complete DB design (all tables):** Copy **`supabase/migrations/00001_initial_schema.sql`** into the SQL Editor and Run. You’ll get journal, EQ, insights, recovery, learning, and metrics tables. Step-by-step: **`supabase/TABLES_OVERVIEW.md`** → “How to add the complete DB schema to Supabase”.
+
+### Authentication
+
+- **Supabase Auth only** — real users only; no demo or local-only accounts.
+- Session is managed by Supabase client (secure storage).
+- Zustand-based auth state management.
 
 ## Features
 
 ### Implemented Features
 
 #### Authentication
-- [x] Demo mode login with secure session management
-- [x] Expo SecureStore for native, AsyncStorage fallback for web
+- [x] Supabase Auth (email + password) — real users only
+- [x] Session managed by Supabase client
 - [x] Zustand-based auth state management
 
 #### Home Screen

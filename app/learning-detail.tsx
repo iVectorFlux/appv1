@@ -19,7 +19,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { Video, Audio, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { getModuleById, DIMENSION_INFO } from '@/data/learning-content';
@@ -41,6 +41,8 @@ export default function LearningDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   
   const videoRef = useRef<Video>(null);
+  // Native audio ref
+  const audioRef = useRef<Audio.Sound | null>(null);
   // Web audio element ref
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -58,16 +60,23 @@ export default function LearningDetailScreen() {
         webAudioRef.current.pause();
         webAudioRef.current = null;
       }
+      if (Platform.OS !== 'web' && audioRef.current) {
+        audioRef.current.unloadAsync().catch(() => {});
+        audioRef.current = null;
+      }
     };
   }, [params.id]);
 
-  const handleBack = () => {
+  const handleBack = async () => {
     // Stop media before navigating back
     if (videoRef.current) {
-      videoRef.current.pauseAsync();
+      await videoRef.current.pauseAsync();
     }
     if (Platform.OS === 'web' && webAudioRef.current) {
       webAudioRef.current.pause();
+    }
+    if (Platform.OS !== 'web' && audioRef.current) {
+      await audioRef.current.pauseAsync();
     }
     
     if (router.canGoBack()) {
@@ -103,7 +112,10 @@ export default function LearningDetailScreen() {
       webAudioRef.current.pause();
     }
     
-    const audio = new Audio(audioUrl);
+    // Use HTMLAudioElement for web (Audio constructor accepts optional url; TS DOM lib types 0 args)
+    if (typeof window === 'undefined') return;
+    const audio = new (window as any).Audio(audioUrl) as HTMLAudioElement;
+    if (!audio) return;
     webAudioRef.current = audio;
     
     audio.onloadedmetadata = () => {
@@ -140,7 +152,19 @@ export default function LearningDetailScreen() {
         if (isPlaying) {
           webAudioRef.current.pause();
         } else {
-          webAudioRef.current.play();
+          webAudioRef.current.play().catch((err) => {
+            setError('Unable to play audio. Please try again.');
+            console.error('Audio play error:', err);
+          });
+        }
+      } else if (Platform.OS !== 'web' && audioRef.current) {
+        const status = await audioRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          if (status.isPlaying) {
+            await audioRef.current.pauseAsync();
+          } else {
+            await audioRef.current.playAsync();
+          }
         }
       }
     }
@@ -161,21 +185,32 @@ export default function LearningDetailScreen() {
     setError(null);
     
     try {
-      // Unload previous audio if exists
-      if (audioRef.current) {
-        await audioRef.current.unloadAsync();
+      if (Platform.OS === 'web') {
+        // Use HTML5 audio for web
+        setupWebAudio(module.audioUrl);
+        // Try to load metadata
+        if (webAudioRef.current) {
+          webAudioRef.current.load();
+        }
+      } else {
+        // Use expo-av Audio for native platforms
+        // Unload previous audio if exists
+        if (audioRef.current) {
+          await audioRef.current.unloadAsync();
+        }
+        
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: module.audioUrl },
+          { shouldPlay: false },
+          handlePlaybackStatusUpdate
+        );
+        audioRef.current = sound;
+        setIsLoading(false);
       }
-      
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: module.audioUrl },
-        { shouldPlay: false },
-        handlePlaybackStatusUpdate
-      );
-      audioRef.current = sound;
-      setIsLoading(false);
     } catch (err) {
       setError('Unable to load audio. Please try again.');
       setIsLoading(false);
+      console.error('Audio loading error:', err);
     }
   };
 
@@ -186,9 +221,11 @@ export default function LearningDetailScreen() {
     setProgress(0);
     setError(null);
     
-    // Pause web audio
+    // Pause audio
     if (Platform.OS === 'web' && webAudioRef.current) {
       webAudioRef.current.pause();
+    } else if (Platform.OS !== 'web' && audioRef.current) {
+      await audioRef.current.pauseAsync();
     }
   };
 

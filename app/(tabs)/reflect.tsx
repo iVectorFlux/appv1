@@ -89,9 +89,9 @@ export default function ReflectScreen() {
   };
 
   const getPlaceholder = () => {
-    if (selectedEmotions.length === 0) return "How are you feeling right now?";
-    if (selectedEmotions.length === 1) return `You selected ${selectedEmotions[0]}. Want to write about it?`;
-    return `You selected ${selectedEmotions.join(' and ')}. Want to write about it?`;
+    if (selectedEmotions.length === 0) return "What's on your mind?";
+    if (selectedEmotions.length === 1) return `You're feeling ${selectedEmotions[0]}. Want to write about it?`;
+    return `You're feeling ${selectedEmotions.join(' and ')}. Want to write about it?`;
   };
 
   const handleNext = () => {
@@ -205,9 +205,9 @@ export default function ReflectScreen() {
             <View style={[styles.successIconCircle, { backgroundColor: colors.success }]}>
               <Ionicons name="checkmark" size={48} color={colors.successForeground} />
             </View>
-            <Text style={styles.successTitle}>Entry Saved</Text>
+            <Text style={styles.successTitle}>You showed up for yourself today.</Text>
             <Text style={styles.successSubtitle}>
-              You've taken a meaningful step in understanding your emotions
+              You took a moment to notice how you feel. That matters.
             </Text>
             {selectedEmotions.length > 0 && (
               <View style={styles.successEmotions}>

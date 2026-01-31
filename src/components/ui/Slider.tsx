@@ -151,10 +151,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     top: -8,
     borderWidth: 3,
     borderColor: colors.floating,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    ...(Platform.OS === 'web'
+      ? { boxShadow: '0 2px 4px rgba(0,0,0,0.2)', elevation: 4 }
+      : {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          elevation: 4,
+        }),
   },
 });

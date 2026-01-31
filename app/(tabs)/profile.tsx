@@ -1,11 +1,10 @@
 /**
  * Profile Screen
- * 
- * User profile and settings.
- * Includes dark mode toggle.
+ *
+ * User profile and settings: display name, email. Dark mode toggle.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -21,38 +20,51 @@ import { Button } from '@/components/ui/Button';
 import { Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { useColors } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const { colorMode, toggleColorMode } = useThemeStore();
   const colors = useColors();
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
+        if (!cancelled && data?.display_name) setDisplayName(data.display_name);
+      } catch {
+        if (!cancelled) setDisplayName(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const handleLogout = async () => {
     await logout();
     router.replace('/(auth)/login');
   };
 
+  const nameToShow = (displayName?.trim() || user?.username || 'User').replace(/^\w/, (c) => c.toUpperCase());
   const styles = createStyles(colors);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
+      {/* Profile header */}
       <View style={styles.header}>
         <View style={styles.avatar}>
           <Ionicons name="person" size={40} color={colors.primary} />
         </View>
-        <Text style={styles.username}>{user?.username || 'User'}</Text>
-        {user?.isDemoMode && (
-          <View style={styles.demoBadge}>
-            <Text style={styles.demoBadgeText}>Demo Mode</Text>
-          </View>
-        )}
+        <Text style={styles.username}>{nameToShow}</Text>
+        {user?.email ? <Text style={styles.email}>{user.email}</Text> : null}
       </View>
 
-      {/* Appearance Section */}
+      {/* Appearance */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>APPEARANCE</Text>
+        <Text style={styles.sectionTitle}>Appearance</Text>
         
         {/* Dark Mode Toggle */}
         <View style={[styles.settingItem, Shadows.sm]}>
@@ -100,9 +112,9 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Settings Section */}
+      {/* Settings */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>SETTINGS</Text>
+        <Text style={styles.sectionTitle}>Settings</Text>
         
         <TouchableOpacity style={[styles.settingItem, Shadows.sm]}>
           <View style={styles.settingContent}>
@@ -190,20 +202,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: Typography.fontSize.xl,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
     fontFamily: Typography.fontFamily.heading,
     textTransform: 'capitalize',
   },
-  demoBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    backgroundColor: colors.surface,
-  },
-  demoBadgeText: {
-    fontSize: Typography.fontSize.xs,
+  email: {
+    fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
-    fontWeight: Typography.fontWeight.medium,
     fontFamily: Typography.fontFamily.primary,
   },
   section: {
@@ -214,8 +219,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textSecondary,
     fontWeight: Typography.fontWeight.semibold,
     marginBottom: Spacing.md,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
     fontFamily: Typography.fontFamily.primary,
   },
   settingItem: {

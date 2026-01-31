@@ -126,7 +126,7 @@ export default function EQCheckInScreen() {
       const assessmentResult = calculateEQScore(
         questions,
         newResponses,
-        user?.id || 'demo',
+        user?.id ?? '',
         'check_in'
       );
       setResult(assessmentResult);
@@ -147,7 +147,7 @@ export default function EQCheckInScreen() {
       const assessmentResult = calculateEQScore(
         questions,
         responses,
-        user?.id || 'demo',
+        user?.id ?? '',
         'check_in'
       );
       setResult(assessmentResult);

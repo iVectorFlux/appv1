@@ -15,6 +15,8 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="login" />
+      <Stack.Screen name="sign-up" />
+      <Stack.Screen name="confirm-email" />
     </Stack>
   );
 }

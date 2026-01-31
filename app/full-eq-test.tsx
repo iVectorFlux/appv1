@@ -165,7 +165,7 @@ export default function FullEQTestScreen() {
       const assessmentResult = calculateEQScore(
         questions,
         newResponses,
-        user?.id || 'demo',
+        user?.id ?? '',
         'full_test'
       );
       setResult(assessmentResult);
@@ -183,7 +183,7 @@ export default function FullEQTestScreen() {
       const assessmentResult = calculateEQScore(
         questions,
         responses,
-        user?.id || 'demo',
+        user?.id ?? '',
         'full_test'
       );
       setResult(assessmentResult);

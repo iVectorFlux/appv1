@@ -380,7 +380,7 @@ export default function RecoverScreen() {
 
       {/* Quick Calm Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>QUICK CALM</Text>
+        <Text style={styles.sectionTitle}>Quick calm</Text>
         <View style={styles.card}>
           <TouchableOpacity
             onPress={() => setView('breathing')}
@@ -425,7 +425,7 @@ export default function RecoverScreen() {
 
       {/* Release & Let Go Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>RELEASE & LET GO</Text>
+        <Text style={styles.sectionTitle}>Release & let go</Text>
         <TouchableOpacity
           onPress={() => setView('release')}
           style={[styles.releaseCard, Shadows.sm]}
@@ -477,8 +477,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textSecondary,
     fontWeight: Typography.fontWeight.semibold,
     marginBottom: Spacing.md,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
     fontFamily: Typography.fontFamily.primary,
   },
   card: {
@@ -512,6 +510,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textPrimary,
     marginBottom: Spacing.xs,
     fontFamily: Typography.fontFamily.heading,
+  },
+  cardDescription: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontFamily: Typography.fontFamily.primary,
   },
   cardIcon: {
     marginLeft: Spacing.md,

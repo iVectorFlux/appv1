@@ -104,7 +104,7 @@ export default function InsightsScreen() {
 
           {/* EQ Insights Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>EQ SKILLS</Text>
+            <Text style={styles.sectionTitle}>EQ skills</Text>
             <View style={styles.insightsList}>
               <View style={[styles.insightCard, Shadows.sm]}>
                 <View style={styles.insightHeader}>
@@ -142,7 +142,7 @@ export default function InsightsScreen() {
 
           {/* Wellbeing Pattern Insights */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>WELLBEING PATTERNS</Text>
+            <Text style={styles.sectionTitle}>Wellbeing patterns</Text>
             <View style={styles.insightsList}>
               <View style={[styles.patternCard]}>
                 <View style={styles.patternIcon}>
@@ -192,7 +192,7 @@ export default function InsightsScreen() {
         <>
           {/* Learn Tab Content - Show first 3 modules */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>RECOMMENDED FOR YOU</Text>
+            <Text style={styles.sectionTitle}>Recommended for you</Text>
             <View style={styles.featuredLessons}>
               {LEARNING_MODULES.slice(0, 3).map((module) => (
                 <TouchableOpacity 
@@ -217,7 +217,7 @@ export default function InsightsScreen() {
 
           {/* Quick Access to Podcasts */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>DEEP DIVE PODCASTS</Text>
+            <Text style={styles.sectionTitle}>Deep dive podcasts</Text>
             <View style={styles.podcastList}>
               {LEARNING_MODULES.slice(0, 2).map((module) => (
                 <TouchableOpacity 
@@ -359,8 +359,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textSecondary,
     fontWeight: Typography.fontWeight.semibold,
     marginBottom: Spacing.lg,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
     fontFamily: Typography.fontFamily.primary,
   },
   insightsList: {

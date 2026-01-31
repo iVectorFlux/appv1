@@ -7,7 +7,7 @@
 
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { Platform, View, StyleSheet } from 'react-native';
+import { Platform, View, StyleSheet, type ViewStyle } from 'react-native';
 import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { initializeDatabase } from '@/services/database';
@@ -50,6 +50,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(onboarding)" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen 
               name="full-eq-test" 
@@ -61,6 +62,13 @@ export default function RootLayout() {
             />
             <Stack.Screen 
               name="learning-detail" 
+              options={{ 
+                presentation: 'card',
+                animation: 'slide_from_right',
+              }} 
+            />
+            <Stack.Screen 
+              name="journal" 
               options={{ 
                 presentation: 'card',
                 animation: 'slide_from_right',
@@ -81,6 +89,7 @@ export default function RootLayout() {
       }}
     >
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen 
         name="full-eq-test" 
@@ -91,6 +100,13 @@ export default function RootLayout() {
       />
       <Stack.Screen 
         name="learning-detail" 
+        options={{ 
+          presentation: 'card',
+          animation: 'slide_from_right',
+        }} 
+      />
+      <Stack.Screen 
+        name="journal" 
         options={{ 
           presentation: 'card',
           animation: 'slide_from_right',
@@ -119,12 +135,15 @@ const styles = StyleSheet.create({
     aspectRatio: 393 / 852,
     borderRadius: 40,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 40,
-    elevation: 20,
-    // iPhone 16 Pro frame styling
+    ...(Platform.OS === 'web'
+      ? ({ boxShadow: '0 20px 40px rgba(0,0,0,0.3)' } as ViewStyle)
+      : {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 20 },
+          shadowOpacity: 0.3,
+          shadowRadius: 40,
+          elevation: 20,
+        }),
     borderWidth: 8,
     borderColor: '#1C1C1E',
     position: 'relative' as any,

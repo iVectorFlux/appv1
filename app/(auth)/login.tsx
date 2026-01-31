@@ -1,9 +1,7 @@
 /**
  * Login Screen
- * 
- * Authentication screen with dummy credentials.
- * Username: demo
- * Password: demo123
+ *
+ * Supabase Auth sign-in. Real users only.
  */
 
 import React, { useState } from 'react';
@@ -14,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
@@ -26,14 +24,14 @@ export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuthStore();
   const colors = useColors();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password');
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password');
       return;
     }
 
@@ -41,12 +39,12 @@ export default function LoginScreen() {
     setError('');
 
     try {
-      const success = await login(username.trim(), password);
-      
+      const success = await login(email.trim(), password);
+
       if (success) {
-        router.replace('/(tabs)/home');
+        router.replace('/');
       } else {
-        setError('Invalid username or password');
+        setError('Invalid email or password');
       }
     } catch (err) {
       setError('Login failed. Please try again.');
@@ -79,10 +77,11 @@ export default function LoginScreen() {
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Username"
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Enter your username"
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
               error={error ? '' : undefined}
@@ -113,12 +112,12 @@ export default function LoginScreen() {
               size="lg"
             />
 
-            {/* Demo Credentials Hint */}
-            <View style={styles.demoHint}>
-              <Text style={styles.demoHintText}>
-                Demo: username: demo, password: demo123
-              </Text>
-            </View>
+            <TouchableOpacity
+              style={styles.signUpLink}
+              onPress={() => router.push('/(auth)/sign-up')}
+            >
+              <Text style={styles.signUpLinkText}>Don't have an account? Sign up</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Privacy Note */}
@@ -178,16 +177,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.destructive,
     fontFamily: Typography.fontFamily.primary,
   },
-  demoHint: {
+  signUpLink: {
     marginTop: Spacing.lg,
-    padding: Spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: Radius.md,
+    alignItems: 'center',
   },
-  demoHintText: {
+  signUpLinkText: {
     fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    color: colors.primary,
+    fontWeight: Typography.fontWeight.medium,
     fontFamily: Typography.fontFamily.primary,
   },
   privacyNote: {

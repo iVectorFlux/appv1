@@ -14,7 +14,20 @@
 
 import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
-import type { JournalEntry, EQCheckIn, Insight, RecoverySession, MeditationSession } from '@/types';
+import type { JournalEntry, Insight, RecoverySession, MeditationSession } from '@/types';
+import type { EQResponse } from '@/types';
+
+/** Local type for eq_check_ins table rows */
+interface EQCheckInRow {
+  id: string;
+  userId: string;
+  createdAt: number;
+  questionId: string;
+  questionType: 'trait' | 'slider' | 'binary';
+  response: EQResponse;
+  domain: string;
+  score?: number;
+}
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -186,11 +199,11 @@ export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'creat
       entry.userId,
       now,
       now,
-      JSON.stringify(entry.emotions),
-      entry.energyLevel,
+      JSON.stringify(entry.emotions ?? []),
+      entry.energyLevel ?? 1,
       entry.reason || null,
       entry.journalTextEncrypted,
-      entry.encryptionKeyId,
+      entry.encryptionKeyId ?? '',
     ]
   );
 
@@ -222,7 +235,8 @@ export async function getJournalEntries(userId: string, limit: number = 50): Pro
     userId: row.user_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    emotions: JSON.parse(row.emotions) as JournalEntry['emotions'],
+    entrySource: 'journal_only' as const,
+    emotions: JSON.parse(row.emotions || '[]') as JournalEntry['emotions'],
     energyLevel: row.energy_level as JournalEntry['energyLevel'],
     reason: row.reason || undefined,
     journalTextEncrypted: row.journal_text_encrypted,
@@ -230,11 +244,55 @@ export async function getJournalEntries(userId: string, limit: number = 50): Pro
   }));
 }
 
+export async function getJournalEntry(id: string): Promise<JournalEntry | null> {
+  const database = getDatabase();
+  const result = await database.getFirstAsync<{
+    id: string;
+    user_id: string;
+    created_at: number;
+    updated_at: number;
+    emotions: string;
+    energy_level: number;
+    reason: string | null;
+    journal_text_encrypted: string;
+    encryption_key_id: string;
+  }>(`SELECT * FROM journal_entries WHERE id = ?`, [id]);
+  if (!result) return null;
+  return {
+    id: result.id,
+    userId: result.user_id,
+    createdAt: result.created_at,
+    updatedAt: result.updated_at,
+    entrySource: 'journal_only',
+    emotions: JSON.parse(result.emotions || '[]') as JournalEntry['emotions'],
+    energyLevel: result.energy_level as JournalEntry['energyLevel'],
+    reason: result.reason || undefined,
+    journalTextEncrypted: result.journal_text_encrypted,
+    encryptionKeyId: result.encryption_key_id,
+  };
+}
+
+export async function updateJournalEntry(
+  id: string,
+  updates: { journalTextEncrypted: string; updatedAt: number }
+): Promise<void> {
+  const database = getDatabase();
+  await database.runAsync(
+    `UPDATE journal_entries SET journal_text_encrypted = ?, updated_at = ? WHERE id = ?`,
+    [updates.journalTextEncrypted, updates.updatedAt, id]
+  );
+}
+
+export async function deleteJournalEntry(id: string): Promise<void> {
+  const database = getDatabase();
+  await database.runAsync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
+}
+
 // ============================================================================
 // EQ SYSTEM FUNCTIONS (MEASUREMENT, CAN SYNC)
 // ============================================================================
 
-export async function createEQCheckIn(checkIn: Omit<EQCheckIn, 'id' | 'createdAt'>): Promise<string> {
+export async function createEQCheckIn(checkIn: Omit<EQCheckInRow, 'id' | 'createdAt'>): Promise<string> {
   const database = getDatabase();
   const id = `eq_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
@@ -257,7 +315,7 @@ export async function createEQCheckIn(checkIn: Omit<EQCheckIn, 'id' | 'createdAt
   return id;
 }
 
-export async function getEQCheckIns(userId: string, limit: number = 100): Promise<EQCheckIn[]> {
+export async function getEQCheckIns(userId: string, limit: number = 100): Promise<EQCheckInRow[]> {
   const database = getDatabase();
   const result = await database.getAllAsync<{
     id: string;
@@ -281,9 +339,9 @@ export async function getEQCheckIns(userId: string, limit: number = 100): Promis
     userId: row.user_id,
     createdAt: row.created_at,
     questionId: row.question_id,
-    questionType: row.question_type as EQCheckIn['questionType'],
-    response: JSON.parse(row.response) as EQCheckIn['response'],
-    domain: row.domain as EQCheckIn['domain'],
+    questionType: row.question_type as EQCheckInRow['questionType'],
+    response: JSON.parse(row.response) as EQCheckInRow['response'],
+    domain: row.domain as EQCheckInRow['domain'],
     score: row.score || undefined,
   }));
 }

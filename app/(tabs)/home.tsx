@@ -1,17 +1,20 @@
 /**
  * Home Screen
- * 
+ *
  * Personal dashboard with greeting, quick actions, and daily tip.
  * No numeric scores, no streak pressure.
+ * Design: calm, spacious, EQ-focused – cards have clear hierarchy and gentle depth.
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button } from '@/components/ui/Button';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
+
+const STAGGER_DELAY = 70;
+const FADE_DURATION = 400;
 
 const DAILY_TIPS = [
   "Taking a moment to name your emotions can help you understand them better.",
@@ -27,11 +30,41 @@ export default function HomeScreen() {
   const { user } = useAuthStore();
   const colors = useColors();
 
+  const opacityHeader = useRef(new Animated.Value(0)).current;
+  const opacityPrimary = useRef(new Animated.Value(0)).current;
+  const opacityJournal = useRef(new Animated.Value(0)).current;
+  const opacityQuick = useRef(new Animated.Value(0)).current;
+  const opacityTip = useRef(new Animated.Value(0)).current;
+  const opacityPrivacy = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anims = [
+      { val: opacityHeader, delay: 0 },
+      { val: opacityPrimary, delay: STAGGER_DELAY },
+      { val: opacityJournal, delay: STAGGER_DELAY * 2 },
+      { val: opacityQuick, delay: STAGGER_DELAY * 3 },
+      { val: opacityTip, delay: STAGGER_DELAY * 4 },
+      { val: opacityPrivacy, delay: STAGGER_DELAY * 5 },
+    ];
+    const subs = anims.map(({ val, delay }) =>
+      Animated.timing(val, {
+        toValue: 1,
+        duration: FADE_DURATION,
+        delay,
+        useNativeDriver: true,
+      })
+    );
+    Animated.parallel(subs).start();
+  }, []);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    let base = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    if (user?.username) {
+      const name = user.username.charAt(0).toUpperCase() + user.username.slice(1);
+      base += `, ${name}`;
+    }
+    return base;
   };
 
   const getTodaysTip = () => {
@@ -42,91 +75,146 @@ export default function HomeScreen() {
   const styles = createStyles(colors);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header with greeting */}
-      <View style={styles.header}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header – breathing room, warm greeting */}
+      <Animated.View style={[styles.header, { opacity: opacityHeader }]}>
         <Text style={styles.greeting}>{getGreeting()}</Text>
-        <Text style={styles.title}>How are you today?</Text>
-      </View>
+        <Text style={styles.title}>How are you really?</Text>
+      </Animated.View>
 
-      {/* Primary CTA - Reflect */}
-      <TouchableOpacity 
-        style={[styles.primaryCard, Shadows.md]}
-        onPress={() => router.push('/(tabs)/reflect')}
-        activeOpacity={0.8}
-      >
-        <View style={styles.primaryCardContent}>
+      {/* Hero CTA – Reflect: one clear primary action, calm and inviting */}
+      <Animated.View style={{ opacity: opacityPrimary }}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.primaryCard,
+            Shadows.hero,
+            pressed && styles.primaryCardPressed,
+          ]}
+          onPress={() => router.push('/(tabs)/reflect')}
+        >
+        <View style={styles.primaryCardInner}>
           <View style={styles.primaryCardIcon}>
-            <Ionicons name="journal-outline" size={28} color={colors.primaryForeground} />
+            <Ionicons name="journal-outline" size={32} color={colors.primaryForeground} />
           </View>
           <View style={styles.primaryCardText}>
-            <Text style={styles.primaryCardTitle}>Start Reflecting</Text>
-            <Text style={styles.primaryCardSubtitle}>Check in with your emotions</Text>
+            <Text style={styles.primaryCardTitle}>Check in</Text>
+            <Text style={styles.primaryCardSubtitle}>Take a moment to notice how you feel</Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color={colors.primaryForeground} />
         </View>
-      </TouchableOpacity>
+        </Pressable>
+      </Animated.View>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActionsSection}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+      {/* Journal – secondary action with clear “writing” identity (left accent) */}
+      <Animated.View style={{ opacity: opacityJournal }}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.journalCard,
+          Shadows.card,
+          pressed && styles.cardPressed,
+        ]}
+        onPress={() => router.push('/journal')}
+      >
+        <View style={styles.journalCardContent}>
+          <View style={styles.journalCardIcon}>
+            <Ionicons name="book-outline" size={24} color={colors.primary} />
+          </View>
+          <View style={styles.journalCardText}>
+            <Text style={styles.journalCardTitle}>Journal</Text>
+            <Text style={styles.journalCardSubtitle}>Private, encrypted writing</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </View>
+        </Pressable>
+      </Animated.View>
+
+      {/* Quick Actions – 2-column grid, equal cards, calm accents */}
+      <Animated.View style={[styles.quickActionsSection, { opacity: opacityQuick }]}>
+        <Text style={styles.sectionTitle}>Quick actions</Text>
         <View style={styles.quickActionsGrid}>
-          <TouchableOpacity 
-            style={[styles.quickActionCard, Shadows.sm]}
+          <Pressable
+            style={({ pressed }) => [
+              styles.quickActionCard,
+              Shadows.card,
+              pressed && styles.cardPressed,
+            ]}
             onPress={() => router.push('/(tabs)/eq')}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: colors.accentEnergy + '20' }]}>
-              <Ionicons name="checkmark-circle-outline" size={24} color={colors.accentEnergy} />
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.accentEnergy + '18' }]}>
+              <Ionicons name="checkmark-circle-outline" size={26} color={colors.accentEnergy} />
             </View>
             <Text style={styles.quickActionTitle}>EQ Check-In</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity 
-            style={[styles.quickActionCard, Shadows.sm]}
+          <Pressable
+            style={({ pressed }) => [
+              styles.quickActionCard,
+              Shadows.card,
+              pressed && styles.cardPressed,
+            ]}
             onPress={() => router.push('/(tabs)/recover')}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: colors.accentCalm + '20' }]}>
-              <Ionicons name="leaf-outline" size={24} color={colors.accentCalm} />
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.accentCalm + '18' }]}>
+              <Ionicons name="leaf-outline" size={26} color={colors.accentCalm} />
             </View>
             <Text style={styles.quickActionTitle}>Recover</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity 
-            style={[styles.quickActionCard, Shadows.sm]}
+          <Pressable
+            style={({ pressed }) => [
+              styles.quickActionCard,
+              Shadows.card,
+              pressed && styles.cardPressed,
+            ]}
             onPress={() => router.push('/(tabs)/learn')}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: colors.accentSoft + '20' }]}>
-              <Ionicons name="book-outline" size={24} color={colors.accentSoft} />
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.accentSoft + '18' }]}>
+              <Ionicons name="book-outline" size={26} color={colors.accentSoft} />
             </View>
             <Text style={styles.quickActionTitle}>Learn</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity 
-            style={[styles.quickActionCard, Shadows.sm]}
+          <Pressable
+            style={({ pressed }) => [
+              styles.quickActionCard,
+              Shadows.card,
+              pressed && styles.cardPressed,
+            ]}
             onPress={() => router.push('/(tabs)/insights')}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: colors.accentWarm + '20' }]}>
-              <Ionicons name="analytics-outline" size={24} color={colors.accentWarm} />
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.accentWarm + '18' }]}>
+              <Ionicons name="analytics-outline" size={26} color={colors.accentWarm} />
             </View>
             <Text style={styles.quickActionTitle}>Insights</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
-      </View>
+      </Animated.View>
 
-      {/* Daily Tip */}
-      <View style={[styles.tipCard, Shadows.sm]}>
-        <View style={styles.tipHeader}>
-          <Ionicons name="bulb-outline" size={20} color={colors.accentEnergy} />
-          <Text style={styles.tipLabel}>Daily Insight</Text>
+      {/* Daily Insight – quote-style card with soft tint and left accent */}
+      <Animated.View style={{ opacity: opacityTip }}>
+        <View style={[styles.tipCard, Shadows.card]}>
+          <View style={styles.tipAccent} />
+          <View style={styles.tipContent}>
+            <View style={styles.tipHeader}>
+              <Ionicons name="bulb-outline" size={20} color={colors.accentEnergy} />
+              <Text style={styles.tipLabel}>Daily Insight</Text>
+            </View>
+            <Text style={styles.tipText}>{getTodaysTip()}</Text>
+          </View>
         </View>
-        <Text style={styles.tipText}>{getTodaysTip()}</Text>
-      </View>
+      </Animated.View>
 
-      {/* Privacy Reminder */}
-      <View style={styles.privacyNote}>
-        <Ionicons name="shield-checkmark-outline" size={16} color={colors.textMuted} />
-        <Text style={styles.privacyText}>Your journal entries are encrypted and private</Text>
-      </View>
+      {/* Privacy – subtle, reassuring */}
+      <Animated.View style={{ opacity: opacityPrivacy }}>
+        <View style={styles.privacyNote}>
+          <Ionicons name="shield-checkmark-outline" size={16} color={colors.textMuted} />
+          <Text style={styles.privacyText}>Your journal entries are encrypted and private</Text>
+        </View>
+      </Animated.View>
     </ScrollView>
   );
 }
@@ -137,7 +225,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.background,
   },
   content: {
-    padding: Spacing.xl,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Platform.OS === 'ios' ? Spacing['3xl'] : Spacing['2xl'],
     paddingBottom: Spacing['5xl'],
   },
   header: {
@@ -156,21 +245,26 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontFamily: Typography.fontFamily.heading,
     lineHeight: Typography.lineHeight.tight * Typography.fontSize['3xl'],
   },
+  // —— Hero card: one clear primary action ——
   primaryCard: {
     backgroundColor: colors.primary,
-    borderRadius: Radius.xl,
-    padding: Spacing.xl,
-    marginBottom: Spacing['2xl'],
+    borderRadius: Radius['2xl'],
+    padding: Spacing['2xl'],
+    marginBottom: Spacing.xl,
+    overflow: 'hidden',
   },
-  primaryCardContent: {
+  primaryCardPressed: {
+    opacity: 0.96,
+  },
+  primaryCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   primaryCardIcon: {
-    width: 56,
-    height: 56,
+    width: 60,
+    height: 60,
     borderRadius: Radius.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.lg,
@@ -187,9 +281,52 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   primaryCardSubtitle: {
     fontSize: Typography.fontSize.sm,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontFamily: Typography.fontFamily.primary,
   },
+  cardPressed: {
+    opacity: 0.92,
+  },
+  // —— Journal: secondary CTA with “writing” identity ——
+  journalCard: {
+    backgroundColor: colors.floating,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing['2xl'],
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  journalCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  journalCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: Radius.md,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  journalCardText: {
+    flex: 1,
+  },
+  journalCardTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    fontFamily: Typography.fontFamily.heading,
+    marginBottom: Spacing.xs,
+  },
+  journalCardSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontFamily: Typography.fontFamily.primary,
+  },
+  // —— Quick Actions: 2-column grid, equal placement ——
   quickActionsSection: {
     marginBottom: Spacing['2xl'],
   },
@@ -197,30 +334,29 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     marginBottom: Spacing.md,
     fontFamily: Typography.fontFamily.primary,
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.md,
+    justifyContent: 'space-between',
   },
   quickActionCard: {
-    flex: 1,
-    minWidth: '45%',
+    width: '48%',
     backgroundColor: colors.floating,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     padding: Spacing.lg,
+    marginBottom: Spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     alignItems: 'center',
   },
   quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
+    width: 52,
+    height: 52,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.sm,
@@ -232,13 +368,27 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontFamily: Typography.fontFamily.primary,
     textAlign: 'center',
   },
+  // —— Daily Insight: quote-style, soft tint + left accent ——
   tipCard: {
-    backgroundColor: colors.floating,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
+    backgroundColor: colors.accentEnergy + '0C',
+    borderRadius: Radius.xl,
+    marginBottom: Spacing['2xl'],
     borderWidth: 1,
     borderColor: colors.borderLight,
-    marginBottom: Spacing['2xl'],
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  tipAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: colors.accentEnergy,
+  },
+  tipContent: {
+    padding: Spacing.lg,
+    paddingLeft: Spacing.lg + 4,
   },
   tipHeader: {
     flexDirection: 'row',

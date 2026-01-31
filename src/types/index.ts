@@ -17,7 +17,6 @@ export interface User {
   email?: string;
   username: string;
   createdAt: number;
-  isDemoMode: boolean;
 }
 
 export interface AuthState {
@@ -42,20 +41,26 @@ export interface AuthState {
  * Only structured metadata (emotions, energy, reason) can be used
  * for pattern detection and insights.
  */
+/** Source of the entry: Reflect flow (check-in + optional journal) or standalone Journal write. */
+export type JournalEntrySource = 'reflect' | 'journal_only';
+
 export interface JournalEntry {
   id: string;
   userId: string;
   createdAt: number;
   updatedAt: number;
-  
-  // Structured metadata (can be used for insights)
-  emotions: EmotionTag[]; // 1-3 emotions max
-  energyLevel: EnergyLevel; // 1-5 scale
-  reason?: string; // Optional context (structured, not free text)
-  
-  // Private journal text (encrypted, local only)
-  journalTextEncrypted: string; // Base64 encoded encrypted text
-  encryptionKeyId: string; // Reference to encryption key
+  entrySource: JournalEntrySource;
+
+  // Structured metadata (can be used for insights). For journal_only these can be empty/undefined.
+  emotions?: EmotionTag[]; // 1-3 emotions max (reflect); empty/undefined for journal_only
+  energyLevel?: EnergyLevel; // 1-5 scale (reflect)
+  pleasantness?: number; // 0-100 (reflect)
+  reasons?: string[]; // Optional reason tags (reflect)
+  reason?: string; // Optional context (structured) — deprecated in favor of reasons
+
+  // Private journal text (encrypted, local only). Empty string for reflect-only when user skips writing.
+  journalTextEncrypted: string;
+  encryptionKeyId?: string; // Optional when no journal text
 }
 
 export type EmotionTag = 
@@ -191,6 +196,79 @@ export interface MeditationSession {
   startedAt: number;
   completedAt?: number;
   duration?: number; // seconds
+}
+
+// ============================================================================
+// ONBOARDING & USER PREFERENCES TYPES
+// ============================================================================
+
+/** User's primary goal for using the app (onboarding). */
+export type UserGoalId =
+  | 'manage_stress'
+  | 'improve_relationships'
+  | 'build_self_awareness'
+  | 'improve_focus'
+  | 'emotional_regulation'
+  | 'other';
+
+export interface UserGoal {
+  id: string;
+  userId: string;
+  goalId: UserGoalId;
+  customText?: string;
+  selectedAt: number;
+  isPrimary: boolean;
+}
+
+export interface UserOnboarding {
+  userId: string;
+  startedAt: number;
+  completedAt?: number;
+  onboardingVersion: number;
+  stepsCompleted: string[]; // e.g. ['goal', 'background', 'frequency', 'emotional_check']
+}
+
+export interface UserBackground {
+  userId: string;
+  ageRange?: '18-24' | '25-34' | '35-44' | '45-54' | '55+' | 'prefer_not_to_say';
+  context?: string;
+  occupationCategory?: 'student' | 'employed' | 'self_employed' | 'caregiver' | 'other';
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** How often the user wants to check in (onboarding + settings). */
+export type CheckInFrequency =
+  | 'daily'
+  | 'few_times_week'
+  | 'weekly'
+  | 'when_reminded'
+  | 'no_reminders';
+
+export interface UserPreferences {
+  userId: string;
+  checkInFrequency: CheckInFrequency;
+  reminderEnabled: boolean;
+  reminderTimes: string[]; // "HH:mm"
+  reminderDays: number[]; // 0=Sun..6=Sat
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Onboarding emotional baseline question value type. */
+export type OnboardingEmotionalValueType = 'scale' | 'emotion' | 'multi_emotion';
+
+export interface OnboardingEmotionalCheck {
+  id: string;
+  userId: string;
+  questionId: string;
+  questionText?: string;
+  valueType: OnboardingEmotionalValueType;
+  valueScale?: number; // 1–5 or 1–7
+  valueEmotion?: EmotionTag;
+  valueEmotions?: EmotionTag[];
+  orderIndex: number;
+  createdAt: number;
 }
 
 // ============================================================================
