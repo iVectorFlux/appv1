@@ -16,7 +16,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { useColors } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,7 +45,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/(auth)/signin');
+    router.replace('/(auth)/sign-in');
   };
 
   const nameToShow = (displayName?.trim() || user?.username || 'User').replace(/^\w/, (c) => c.toUpperCase());

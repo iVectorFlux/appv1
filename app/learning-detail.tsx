@@ -25,18 +25,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { getModuleById, DIMENSION_INFO } from '@/data/learning-content';
 import type { LearningModule } from '@/data/learning-content';
 import { useAuthStore } from '@/stores/auth-store';
+import {
+  recordLastAccessed,
+  recordVideoCompleted,
+  recordAudioCompleted,
+} from '@/services/learning-progress';
 
 type MediaMode = 'video' | 'audio';
+
+const VIDEO_MAX_WIDTH = 320;
+const VIDEO_ASPECT = 9 / 16;
 
 export default function LearningDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const { width: windowWidth } = useWindowDimensions();
-  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
 
-  const videoWidth = Math.max(200, windowWidth - 2 * Spacing.lg);
-  const videoHeight = Math.round(videoWidth * (9 / 16));
+  const videoWidth = Math.min(VIDEO_MAX_WIDTH, Math.max(200, windowWidth - 2 * Spacing.lg));
+  const videoHeight = Math.round(videoWidth * VIDEO_ASPECT);
 
   const [module, setModule] = useState<LearningModule | null>(null);
   const [mediaMode, setMediaMode] = useState<MediaMode>('video');
@@ -62,12 +70,13 @@ export default function LearningDetailScreen() {
         setModule(foundModule);
       }
     }
-    
-    // Cleanup on unmount
     return () => {
       if (Platform.OS === 'web') {
         if (webAudioRef.current) {
           webAudioRef.current.pause();
+          if (webAudioRef.current.parentNode) {
+            webAudioRef.current.parentNode.removeChild(webAudioRef.current);
+          }
           webAudioRef.current = null;
         }
         if (webVideoRef.current && webVideoRef.current.parentNode) {
@@ -83,6 +92,12 @@ export default function LearningDetailScreen() {
     };
   }, [params.id]);
 
+  // Track last accessed when module is loaded (authenticated user)
+  useEffect(() => {
+    if (!module || !user?.id) return;
+    recordLastAccessed(user.id, module.id).catch(() => {});
+  }, [module?.id, user?.id]);
+
   // Web: mount HTML5 video when module and mediaMode are set
   useEffect(() => {
     if (Platform.OS !== 'web' || !module || mediaMode !== 'video') return;
@@ -95,11 +110,17 @@ export default function LearningDetailScreen() {
     video.style.width = '100%';
     video.style.height = '100%';
     video.style.display = 'block';
+    video.style.objectFit = 'contain';
     video.src = module.videoUrl;
     video.preload = 'metadata';
     video.onloadedmetadata = () => setIsLoading(false);
     video.onerror = () => setError('Unable to load video');
     video.oncanplay = () => setIsLoading(false);
+    video.onended = () => {
+      setIsPlaying(false);
+      setProgress(0);
+      if (user?.id) recordVideoCompleted(user.id, module.id).catch(() => {});
+    };
     container.appendChild(video);
     webVideoRef.current = video;
 
@@ -110,7 +131,7 @@ export default function LearningDetailScreen() {
       } catch (_) {}
       webVideoRef.current = null;
     };
-  }, [module?.id, module?.videoUrl, mediaMode]);
+  }, [module?.id, module?.videoUrl, mediaMode, user?.id]);
 
   const handleBack = async () => {
     // Stop media before navigating back
@@ -143,10 +164,13 @@ export default function LearningDetailScreen() {
       setIsPlaying(status.isPlaying);
       setProgress(status.positionMillis);
       setDuration(status.durationMillis || 0);
-      
       if (status.didJustFinish) {
         setIsPlaying(false);
         setProgress(0);
+        if (module?.id && user?.id) {
+          if (mediaMode === 'video') recordVideoCompleted(user.id, module.id).catch(() => {});
+          else recordAudioCompleted(user.id, module.id).catch(() => {});
+        }
       }
     } else if (status.error) {
       setError('Unable to load media. Please check your connection.');
@@ -154,18 +178,23 @@ export default function LearningDetailScreen() {
     }
   };
 
-  // Web audio handlers
+  // Web audio: create and append to DOM so play() works (browsers often require media in DOM)
   const setupWebAudio = (audioUrl: string) => {
     if (Platform.OS !== 'web') return;
-    
-    // Clean up existing audio
     if (webAudioRef.current) {
       webAudioRef.current.pause();
+      if (webAudioRef.current.parentNode) {
+        webAudioRef.current.parentNode.removeChild(webAudioRef.current);
+      }
+      webAudioRef.current = null;
     }
-    
     const audio = document.createElement('audio');
     audio.src = audioUrl;
-    audio.preload = 'metadata';
+    audio.preload = 'auto';
+    audio.style.position = 'fixed';
+    audio.style.left = '-9999px';
+    audio.style.opacity = '0';
+    audio.style.pointerEvents = 'none';
     audio.onloadedmetadata = () => {
       setDuration(audio.duration * 1000);
       setIsLoading(false);
@@ -176,12 +205,14 @@ export default function LearningDetailScreen() {
     audio.onended = () => {
       setIsPlaying(false);
       setProgress(0);
+      if (module?.id && user?.id) recordAudioCompleted(user.id, module.id).catch(() => {});
     };
     audio.onerror = () => {
       setError('Unable to load audio. Please try again.');
       setIsLoading(false);
     };
     audio.oncanplay = () => setIsLoading(false);
+    document.body.appendChild(audio);
     audio.load();
     webAudioRef.current = audio;
   };
@@ -245,12 +276,7 @@ export default function LearningDetailScreen() {
     
     try {
       if (Platform.OS === 'web') {
-        // Use HTML5 audio for web
         setupWebAudio(module.audioUrl);
-        // Try to load metadata
-        if (webAudioRef.current) {
-          webAudioRef.current.load();
-        }
       } else {
         // Use expo-av Audio for native platforms
         // Unload previous audio if exists
@@ -309,7 +335,7 @@ export default function LearningDetailScreen() {
   }
 
   if (!authLoading && !isAuthenticated) {
-    return <Redirect href="/(auth)/signin" />;
+    return <Redirect href="/(auth)/sign-in" />;
   }
 
   const dimensionInfo = DIMENSION_INFO[module.dimension];

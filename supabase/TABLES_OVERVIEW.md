@@ -16,15 +16,20 @@ The script is re-runnable (uses `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EX
 
 ---
 
-## Tables created
+## Tables created (after 00001 → 00004)
 
-| Layer | Tables |
-|-------|--------|
-| **Identity / audit** | `profiles` (includes `last_login_at`), `user_sessions` (time-on-app) |
-| **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` |
-| **Journal** | `journal_entries`, `encryption_keys`, `journal_tags`, `journal_entry_tags` |
-| **EQ** | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` |
-| **Insights** | `insights`, `insight_actions` |
-| **Wellness** | `recovery_sessions`, `meditation_sessions` |
-| **Learning** | `learning_modules`, `learning_progress` |
-| **Metrics** | `user_metrics` |
+**Note:** Migration 00003 drops `user_goals` and `user_background`; goals and context live in `user_preferences.goals` and `user_preferences.context`.
+
+| Layer | Tables | Used in app? |
+|-------|--------|----------------|
+| **Identity / audit** | `profiles` (includes `last_login_at`), `user_sessions` (time-on-app) | Yes |
+| **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` | Yes |
+| **Journal** | `journal_entries` | Yes (web + native via journal-storage / database) |
+| **Journal (reserved)** | `encryption_keys`, `journal_tags`, `journal_entry_tags` | No — reserved for future |
+| **EQ** | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` | No — reserved for future |
+| **Insights** | `insights`, `insight_actions` | No — reserved for future |
+| **Wellness** | `recovery_sessions`, `meditation_sessions` | No — reserved for future |
+| **Learning** | `learning_modules` (FK target), `learning_progress` | learning_progress: Yes; learning_modules: FK only |
+| **Metrics** | `user_metrics` | No — reserved for future |
+
+See **docs/SCHEMA_REVIEW.md** for a full used-vs-unused review.

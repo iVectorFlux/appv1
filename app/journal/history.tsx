@@ -20,7 +20,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
-import { getJournalEntries } from '@/services/database';
+import { getJournalEntries } from '@/services/journal-storage';
 import { decryptJournalText } from '@/services/encryption';
 import type { JournalEntry } from '@/types';
 
@@ -56,11 +56,6 @@ export default function JournalHistoryScreen() {
 
   const loadFromDb = useCallback(async () => {
     if (!user?.id) {
-      setEntries([]);
-      setLoading(false);
-      return;
-    }
-    if (Platform.OS === 'web') {
       setEntries([]);
       setLoading(false);
       return;

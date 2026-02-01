@@ -23,10 +23,10 @@ export default function OnboardingLayout() {
     );
   }
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/signin" />;
+    return <Redirect href="/(auth)/sign-in" />;
   }
   if (needsEmailConfirmation) {
-    return <Redirect href="/(auth)/confirmemail" />;
+    return <Redirect href="/(auth)/confirm-email" />;
   }
   if (hasCompletedOnboarding === true) {
     return <Redirect href="/(tabs)/home" />;

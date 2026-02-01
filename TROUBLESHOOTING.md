@@ -87,6 +87,20 @@ If the **email confirmation link** (or magic link) from Supabase sends users to 
 - The 500 response contains JSON with error details
 - Look for syntax errors or import issues
 
+### Issue: App logs out when session is over
+
+**Cause**: Supabase Auth uses a short-lived access token (often ~1 hour) and a refresh token. If the app is closed or in the background for a long time, or storage is cleared, the session can be lost. On Pro plans, **Authentication → Settings** can also enforce time-boxed sessions or inactivity timeout.
+
+**What the app does**:
+- `persistSession: true` and `autoRefreshToken: true` in the Supabase client keep the session in AsyncStorage and refresh the access token when it expires.
+- On app load, if `getSession()` returns no session, the app now clears user state so you see the sign-in screen instead of stale “logged in” state.
+- `onAuthStateChange` clears user state whenever the session becomes null (e.g. token refresh failed, or signed out elsewhere).
+
+**If users are logged out too often**:
+1. **Supabase Dashboard** → **Authentication** → **Settings**: Check JWT expiry and any “Session timeout” or “Inactivity” settings (Pro).
+2. **Storage**: On web, clearing site data removes the session. On native, reinstalling or clearing app data does the same.
+3. **Network**: If refresh fails (e.g. offline), the next successful refresh will restore the session; if the app was closed while offline, the user may need to sign in again.
+
 ## Verification Steps
 
 1. Check Babel config:

@@ -22,8 +22,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { emotionColors } from '@/constants/themes';
 import type { EmotionTag } from '@/types';

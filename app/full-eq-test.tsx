@@ -24,8 +24,8 @@ import {
   Alert,
 } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { Button } from '@/components/ui/Button';
-import { Slider } from '@/components/ui/Slider';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
@@ -149,6 +149,76 @@ export default function FullEQTestScreen() {
     setOtherRating(4);
     setAllocations({});
     setQuestionStartTime(Date.now());
+  };
+
+  /** Restore per-question state from a previously recorded response (for Back / edit). */
+  const restoreStateFromResponse = (question: EQQuestion, response: EQResponse) => {
+    setQuestionStartTime(Date.now());
+    if (response.type === 'forced_choice') {
+      setSelectedChoice(response.mostLikeMe);
+      setSelectedLeast(response.leastLikeMe ?? null);
+      setLikertValue(4);
+      setSelfRating(4);
+      setOtherRating(4);
+      setAllocations({});
+      return;
+    }
+    if (response.type === 'likert') {
+      setSelectedChoice(null);
+      setSelectedLeast(null);
+      setLikertValue(response.value);
+      setSelfRating(4);
+      setOtherRating(4);
+      setAllocations({});
+      return;
+    }
+    if (response.type === 'emotion_vocabulary' || response.type === 'physiological_proxy') {
+      setSelectedChoice(response.selectedOptionId);
+      setSelectedLeast(null);
+      setLikertValue(4);
+      setSelfRating(4);
+      setOtherRating(4);
+      setAllocations({});
+      return;
+    }
+    if (response.type === 'meta_eq') {
+      setSelectedChoice(null);
+      setSelectedLeast(null);
+      setLikertValue(4);
+      setSelfRating(response.selfRating);
+      setOtherRating(response.otherRating);
+      setAllocations({});
+      return;
+    }
+    if (response.type === 'consistency_probe') {
+      setSelectedChoice(null);
+      setSelectedLeast(null);
+      setLikertValue(response.value);
+      setSelfRating(4);
+      setOtherRating(4);
+      setAllocations({});
+      return;
+    }
+    if (response.type === 'ranking_allocation') {
+      setSelectedChoice(null);
+      setSelectedLeast(null);
+      setLikertValue(4);
+      setSelfRating(4);
+      setOtherRating(4);
+      setAllocations(response.allocations ?? {});
+      return;
+    }
+    resetQuestionState();
+  };
+
+  const handleBack = () => {
+    if (currentIndex <= 0 || responses.length === 0) return;
+    const prevIndex = currentIndex - 1;
+    const prevQuestion = questions[prevIndex];
+    const prevResponse = responses[responses.length - 1];
+    setResponses(responses.slice(0, -1));
+    setCurrentIndex(prevIndex);
+    restoreStateFromResponse(prevQuestion, prevResponse);
   };
 
   const recordResponse = (response: EQResponse) => {
@@ -915,14 +985,30 @@ export default function FullEQTestScreen() {
   };
 
   if (!isLoading && !isAuthenticated) {
-    return <Redirect href="/(auth)/signin" />;
+    return <Redirect href="/(auth)/sign-in" />;
   }
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.testHeader}>
-        <TouchableOpacity 
+        {currentIndex > 0 ? (
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backButton}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.closeButton} />
+        )}
+        <Text style={styles.testHeaderText}>
+          {currentIndex + 1} / {questions.length}
+        </Text>
+        <TouchableOpacity
           onPress={handleExit}
           style={styles.closeButton}
           hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
@@ -930,10 +1016,6 @@ export default function FullEQTestScreen() {
         >
           <Ionicons name="close" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.testHeaderText}>
-          {currentIndex + 1} / {questions.length}
-        </Text>
-        <View style={{ width: 44 }} />
       </View>
       
       {/* Animated Progress bar */}
@@ -1082,6 +1164,19 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    minWidth: 44,
+  },
+  backButtonText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: Typography.fontWeight.medium,
   },
   testHeaderText: {
     fontSize: Typography.fontSize.base,

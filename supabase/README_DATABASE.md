@@ -33,16 +33,19 @@ PostgreSQL schema for Supabase: **secure**, **scalable**, **fast**.
 
 ## 2. Entity overview
 
+**Used in app today:** profiles, user_onboarding, user_preferences, onboarding_emotional_check, journal_entries, user_sessions, learning_progress.  
+**Reserved (schema only, no app read/write yet):** encryption_keys, journal_tags, journal_entry_tags, eq_*, insights, insight_actions, recovery_sessions, meditation_sessions, user_metrics. See **docs/SCHEMA_REVIEW.md**.
+
 | Layer        | Tables |
 |-------------|--------|
 | **Identity** | `profiles` (extends `auth.users`) |
-| **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` |
-| **Journal** | `journal_entries`, `encryption_keys`, `journal_tags`, `journal_entry_tags` |
-| **EQ**      | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` |
-| **Insights** | `insights`, `insight_actions` |
-| **Wellness** | `recovery_sessions`, `meditation_sessions` |
-| **Learning** | `learning_modules` (global), `learning_progress` (per user) |
-| **Metrics** | `user_metrics` (optional aggregates) |
+| **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` — *00003 drops user_goals / user_background* |
+| **Journal** | `journal_entries` (used); `encryption_keys`, `journal_tags`, `journal_entry_tags` (reserved) |
+| **EQ**      | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` (reserved) |
+| **Insights** | `insights`, `insight_actions` (reserved) |
+| **Wellness** | `recovery_sessions`, `meditation_sessions` (reserved) |
+| **Learning** | `learning_modules` (global, FK target), `learning_progress` (per user, used) |
+| **Metrics** | `user_metrics` (reserved) |
 
 ---
 
@@ -82,6 +85,7 @@ Use the **connection string** (with password) only from a secure environment (e.
 1. **00001_initial_schema.sql** — `profiles`, onboarding tables (`user_onboarding`, `user_goals`, `user_background`, `user_preferences`, `onboarding_emotional_check`), journal, EQ, insights, wellness, learning, metrics, RLS, triggers.
 2. **00002_profiles_last_login_and_user_sessions.sql** — Add `last_login_at` to profiles, add `user_sessions`.
 3. **00003_consolidate_onboarding_into_user_preferences.sql** — Add `goals` and `context` (JSONB) to `user_preferences`, migrate data from `user_goals` and `user_background`, drop those tables, add GIN index on `goals`.
+4. **00004_journal_encrypted_text_and_key_nullable.sql** — Store `journal_text_encrypted` as base64 TEXT (was BYTEA) for web client compatibility.
 
 Run migrations in order in the Supabase SQL Editor (or `supabase db push`).
 

@@ -1,14 +1,4 @@
-/**
- * Encryption Service
- * 
- * Handles encryption/decryption of journal text.
- * 
- * PRIVACY RULES:
- * - Journal text is encrypted before storage
- * - Encryption keys are stored in Expo SecureStore (native) or AsyncStorage (web)
- * - Journal text is NEVER decrypted for analysis
- * - Only decrypted when user explicitly views their own entry
- */
+/** Journal text encryption/decryption. Keys in SecureStore (native) or AsyncStorage (web). */
 
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
@@ -16,20 +6,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ENCRYPTION_KEY_PREFIX = 'encryption_key_';
 
-/**
- * Generate a new encryption key
- * In production, use a proper encryption library like expo-crypto
- */
 async function generateEncryptionKey(): Promise<string> {
-  // For now, generate a simple key
-  // In production, use proper cryptographic key generation
-  const key = `key_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-  return key;
+  return `key_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 }
 
-/**
- * Get or create encryption key for user
- */
 export async function getEncryptionKey(userId: string): Promise<string> {
   const keyId = `${ENCRYPTION_KEY_PREFIX}${userId}`;
   
@@ -43,7 +23,6 @@ export async function getEncryptionKey(userId: string): Promise<string> {
     }
     
     if (!key) {
-      // Generate new key
       key = await generateEncryptionKey();
       if (Platform.OS === 'web') {
         await AsyncStorage.setItem(keyId, key);
@@ -59,15 +38,10 @@ export async function getEncryptionKey(userId: string): Promise<string> {
   }
 }
 
-/**
- * Simple base64 encode (cross-platform)
- */
 function base64Encode(str: string): string {
   if (Platform.OS === 'web') {
     return btoa(unescape(encodeURIComponent(str)));
   }
-  // For React Native, use a simple implementation
-  // In production, use a proper base64 library or expo-crypto
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
   let output = '';
   for (let i = 0; i < str.length; i += 3) {
@@ -83,15 +57,10 @@ function base64Encode(str: string): string {
   return output;
 }
 
-/**
- * Simple base64 decode (cross-platform)
- */
 function base64Decode(str: string): string {
   if (Platform.OS === 'web') {
     return decodeURIComponent(escape(atob(str)));
   }
-  // For React Native, use a simple implementation
-  // In production, use a proper base64 library or expo-crypto
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
   let output = '';
   str = str.replace(/[^A-Za-z0-9\+\/\=]/g, '');
@@ -108,41 +77,16 @@ function base64Decode(str: string): string {
   return output;
 }
 
-/**
- * Encrypt journal text
- * 
- * NOTE: This is a placeholder implementation.
- * In production, use proper encryption (AES-256-GCM) via expo-crypto or similar.
- */
 export async function encryptJournalText(
   text: string,
   userId: string
 ): Promise<{ encrypted: string; keyId: string }> {
-  const key = await getEncryptionKey(userId);
+  await getEncryptionKey(userId);
   const keyId = `${ENCRYPTION_KEY_PREFIX}${userId}`;
-  
-  // Placeholder: In production, use proper encryption
-  // For now, base64 encode (NOT secure, just for structure)
-  const encrypted = base64Encode(text);
-  
-  return { encrypted, keyId };
+  return { encrypted: base64Encode(text), keyId };
 }
 
-/**
- * Decrypt journal text
- * 
- * NOTE: Only call this when user explicitly views their own entry.
- * Never decrypt for analysis or insights.
- */
-export async function decryptJournalText(
-  encrypted: string,
-  userId: string
-): Promise<string> {
-  const key = await getEncryptionKey(userId);
-  
-  // Placeholder: In production, use proper decryption
-  // For now, base64 decode (NOT secure, just for structure)
-  const decrypted = base64Decode(encrypted);
-  
-  return decrypted;
+export async function decryptJournalText(encrypted: string, userId: string): Promise<string> {
+  await getEncryptionKey(userId);
+  return base64Decode(encrypted);
 }

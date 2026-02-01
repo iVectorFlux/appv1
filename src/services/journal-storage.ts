@@ -1,16 +1,35 @@
-/**
- * Unified journal storage: SQLite on native, Supabase on web.
- * Same API so journal and reflect work on both platforms.
- */
+/** Journal storage: SQLite on native, Supabase on web. Same API for both. */
 
 import { Platform } from 'react-native';
 import type { JournalEntry } from '@/types';
 import * as db from '@/services/database';
 import { supabase } from '@/lib/supabase';
 
-/** On web, journal_text_encrypted is stored as base64 TEXT (no BYTEA). encryption_key_id is null; key is derived from user_id. */
 function encryptedToStorage(encrypted: string): string {
   return encrypted || '';
+}
+
+function encryptedFromRow(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (value instanceof ArrayBuffer) return btoa(String.fromCharCode(...new Uint8Array(value)));
+  return btoa(String.fromCharCode(...new Uint8Array(value as ArrayBuffer)));
+}
+
+function mapSupabaseRowToEntry(row: Record<string, unknown>): JournalEntry {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    createdAt: new Date(row.created_at as string).getTime(),
+    updatedAt: new Date(row.updated_at as string).getTime(),
+    entrySource: (row.entry_source === 'reflect' ? 'reflect' : 'journal_only') as JournalEntry['entrySource'],
+    pleasantness: row.pleasantness as number | undefined,
+    emotions: (row.emotions as JournalEntry['emotions']) ?? [],
+    energyLevel: (row.energy_level as JournalEntry['energyLevel']) ?? 1,
+    reasons: row.reasons as string[] | undefined,
+    journalTextEncrypted: encryptedFromRow(row.journal_text_encrypted),
+    encryptionKeyId: row.encryption_key_id as string | undefined,
+  };
 }
 
 export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
@@ -25,7 +44,7 @@ export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'creat
         emotions: entry.emotions ?? [],
         reasons: entry.reasons ?? null,
         journal_text_encrypted: encryptedToStorage(entry.journalTextEncrypted ?? ''),
-        encryption_key_id: null, // Supabase column is UUID; key is derived from user_id for decrypt
+        encryption_key_id: null,
       })
       .select('id')
       .single();
@@ -46,23 +65,7 @@ export async function getJournalEntries(userId: string, limit: number = 50): Pro
       .limit(limit);
     if (error) throw new Error(error.message);
     if (!data) return [];
-    return data.map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      userId: row.user_id as string,
-      createdAt: new Date(row.created_at as string).getTime(),
-      updatedAt: new Date(row.updated_at as string).getTime(),
-      entrySource: (row.entry_source === 'reflect' ? 'reflect' : 'journal_only') as JournalEntry['entrySource'],
-      pleasantness: row.pleasantness as number | undefined,
-      emotions: (row.emotions as JournalEntry['emotions']) ?? [],
-      energyLevel: (row.energy_level as JournalEntry['energyLevel']) ?? 1,
-      reasons: row.reasons as string[] | undefined,
-      journalTextEncrypted: row.journal_text_encrypted != null
-        ? (typeof row.journal_text_encrypted === 'string'
-            ? row.journal_text_encrypted
-            : btoa(String.fromCharCode(...new Uint8Array(row.journal_text_encrypted as ArrayBuffer))))
-        : '',
-      encryptionKeyId: row.encryption_key_id as string | undefined,
-    }));
+    return (data as Record<string, unknown>[]).map(mapSupabaseRowToEntry);
   }
   return db.getJournalEntries(userId, limit);
 }
@@ -77,24 +80,7 @@ export async function getJournalEntry(id: string): Promise<JournalEntry | null> 
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!data) return null;
-    const row = data as Record<string, unknown>;
-    return {
-      id: row.id as string,
-      userId: row.user_id as string,
-      createdAt: new Date(row.created_at as string).getTime(),
-      updatedAt: new Date(row.updated_at as string).getTime(),
-      entrySource: (row.entry_source === 'reflect' ? 'reflect' : 'journal_only') as JournalEntry['entrySource'],
-      pleasantness: row.pleasantness as number | undefined,
-      emotions: (row.emotions as JournalEntry['emotions']) ?? [],
-      energyLevel: (row.energy_level as JournalEntry['energyLevel']) ?? 1,
-      reasons: row.reasons as string[] | undefined,
-      journalTextEncrypted: row.journal_text_encrypted != null
-        ? (typeof row.journal_text_encrypted === 'string'
-            ? row.journal_text_encrypted
-            : btoa(String.fromCharCode(...new Uint8Array(row.journal_text_encrypted as ArrayBuffer))))
-        : '',
-      encryptionKeyId: row.encryption_key_id as string | undefined,
-    };
+    return mapSupabaseRowToEntry(data as Record<string, unknown>);
   }
   return db.getJournalEntry(id);
 }

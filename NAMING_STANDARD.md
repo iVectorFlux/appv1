@@ -5,10 +5,11 @@ This project follows consistent naming conventions for all files.
 ## Standards
 
 ### Route Files (app/)
-- **Format**: kebab-case
+- **Format**: kebab-case (multi-word); single-word names allowed (e.g. `home.tsx`)
 - **Examples**: 
   - `full-eq-test.tsx`
   - `learning-detail.tsx`
+  - `sign-in.tsx`, `sign-up.tsx`, `confirm-email.tsx`
   - `home.tsx`, `profile.tsx`, `insights.tsx`
 
 ### Layout Files (app/)
@@ -19,11 +20,14 @@ This project follows consistent naming conventions for all files.
   - `app/(auth)/_layout.tsx`
 
 ### Component Files (src/components/)
-- **Format**: PascalCase
+- **Format**: kebab-case (same as app and rest of src)
 - **Examples**:
-  - `Button.tsx`
-  - `Input.tsx`
-  - `Slider.tsx`
+  - `button.tsx`
+  - `input.tsx`
+  - `slider.tsx`
+  - `feature-card.tsx`
+  - `hero-card.tsx`
+  - `audio-row-card.tsx`
 
 ### Utility/Data/Service Files (src/)
 - **Format**: kebab-case
@@ -48,10 +52,8 @@ This project follows consistent naming conventions for all files.
 
 ## Rules
 
-1. ✅ Use kebab-case for all route files
-2. ✅ Use kebab-case for all utility/data/service files
-3. ✅ Use PascalCase for React component files
-4. ✅ Use `_layout.tsx` for Expo Router layout files
-5. ❌ Never use underscores (except in `_layout.tsx`)
-6. ❌ Never use UPPER_CASE
-7. ❌ Never use camelCase for file names
+1. ✅ Use kebab-case for all files (app routes, src components, src services/utils)
+2. ✅ Use `_layout.tsx` for Expo Router layout files
+3. ❌ Never use underscores (except in `_layout.tsx`)
+4. ❌ Never use UPPER_CASE
+5. ❌ Never use camelCase or PascalCase for file names

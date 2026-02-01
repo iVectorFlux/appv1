@@ -21,7 +21,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
-import { getJournalEntry, updateJournalEntry, deleteJournalEntry } from '@/services/database';
+import { getJournalEntry, updateJournalEntry, deleteJournalEntry } from '@/services/journal-storage';
 import { decryptJournalText, encryptJournalText } from '@/services/encryption';
 
 export default function EditJournalEntryScreen() {
@@ -37,11 +37,6 @@ export default function EditJournalEntryScreen() {
 
   const loadEntry = useCallback(async () => {
     if (!params.id || !user?.id) {
-      setLoading(false);
-      return;
-    }
-    if (Platform.OS === 'web') {
-      setError('Journal is available in the app on your device.');
       setLoading(false);
       return;
     }
@@ -70,7 +65,6 @@ export default function EditJournalEntryScreen() {
 
   const handleSave = async () => {
     if (!params.id || !user?.id || !text.trim() || !hasChanges || saving) return;
-    if (Platform.OS === 'web') return;
     setSaving(true);
     try {
       const { encrypted } = await encryptJournalText(text.trim(), user.id);
@@ -97,7 +91,7 @@ export default function EditJournalEntryScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            if (!params.id || Platform.OS === 'web') return;
+            if (!params.id) return;
             try {
               await deleteJournalEntry(params.id);
               router.back();

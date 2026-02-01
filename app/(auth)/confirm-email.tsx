@@ -10,7 +10,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { useColors, Spacing, Typography } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -21,7 +21,7 @@ export default function ConfirmEmailScreen() {
 
   const handleSignOut = async () => {
     await logout();
-    router.replace('/(auth)/signin');
+    router.replace('/(auth)/sign-in');
   };
 
   const styles = createStyles(colors);
@@ -51,7 +51,7 @@ export default function ConfirmEmailScreen() {
         </Text>
         <Button
           title="I've verified — Sign in"
-          onPress={() => router.replace('/(auth)/signin')}
+          onPress={() => router.replace('/(auth)/sign-in')}
           fullWidth
           size="lg"
         />

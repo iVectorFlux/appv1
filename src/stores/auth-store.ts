@@ -125,10 +125,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         });
         recordSessionStart(session.user.id);
       } else {
-        set({ isLoading: false, hasCompletedOnboarding: null });
+        set({ user: null, isAuthenticated: false, isLoading: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
       }
 
-      // Keep session in sync (e.g. token refresh, sign out in another tab)
       supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
           const user = await getUserWithProfile(session.user);
@@ -141,7 +140,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             needsEmailConfirmation: !!needsEmailConfirmation,
           });
           get().refreshOnboardingStatus();
-        } else if (_event === 'SIGNED_OUT') {
+        } else {
           set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
         }
       });

@@ -213,6 +213,9 @@ export type UserGoalId =
   | 'emotional_regulation'
   | 'other';
 
+/**
+ * @deprecated Supabase table user_goals was dropped in 00003; goals live in user_preferences.goals (JSONB).
+ */
 export interface UserGoal {
   id: string;
   userId: string;
@@ -230,6 +233,9 @@ export interface UserOnboarding {
   stepsCompleted: string[]; // e.g. ['goal', 'background', 'frequency', 'emotional_check']
 }
 
+/**
+ * @deprecated Supabase table user_background was dropped in 00003; context lives in user_preferences.context (JSONB).
+ */
 export interface UserBackground {
   userId: string;
   ageRange?: '18-24' | '25-34' | '35-44' | '45-54' | '55+' | 'prefer_not_to_say';

@@ -17,8 +17,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useColors, Spacing, Typography } from '@/constants/design-tokens';
 
 export default function SignUpScreen() {
@@ -47,7 +47,7 @@ export default function SignUpScreen() {
       const result = await signUp(email.trim(), password);
 
       if (result.success) {
-        router.replace('/(auth)/confirmemail');
+        router.replace('/(auth)/confirm-email');
       } else {
         setError(result.error ?? 'Sign up failed');
       }
@@ -122,7 +122,7 @@ export default function SignUpScreen() {
 
             <TouchableOpacity
               style={styles.signInLink}
-              onPress={() => router.replace('/(auth)/signin')}
+              onPress={() => router.replace('/(auth)/sign-in')}
               activeOpacity={0.7}
             >
               <Text style={styles.signInLinkText}>Already have an account? Sign in</Text>

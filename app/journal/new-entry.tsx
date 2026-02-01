@@ -20,7 +20,7 @@ import { useRouter } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
-import { createJournalEntry } from '@/services/database';
+import { createJournalEntry } from '@/services/journal-storage';
 import { encryptJournalText } from '@/services/encryption';
 
 export default function NewJournalEntryScreen() {
@@ -34,10 +34,6 @@ export default function NewJournalEntryScreen() {
   const handleSave = async () => {
     const trimmed = text.trim();
     if (!trimmed || !user?.id || saving) return;
-    if (Platform.OS === 'web') {
-      setError('Journal is saved on your device. Use the app on your phone.');
-      return;
-    }
     setSaving(true);
     setError(null);
     try {

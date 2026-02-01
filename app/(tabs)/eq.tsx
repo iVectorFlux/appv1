@@ -23,8 +23,8 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button } from '@/components/ui/Button';
-import { Slider } from '@/components/ui/Slider';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';

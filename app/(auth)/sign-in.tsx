@@ -17,8 +17,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 
 export default function SignInScreen() {
@@ -115,7 +115,7 @@ export default function SignInScreen() {
 
             <TouchableOpacity
               style={styles.signUpLink}
-              onPress={() => router.push('/(auth)/signup')}
+              onPress={() => router.push('/(auth)/sign-up')}
             >
               <Text style={styles.signUpLinkText}>Don't have an account? Sign up</Text>
             </TouchableOpacity>

@@ -20,7 +20,9 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
+import { SectionHeaderCard } from '@/components/ui/section-header-card';
+import { AudioRowCard } from '@/components/ui/audio-row-card';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { LEARNING_MODULES, DIMENSION_INFO } from '@/data/learning-content';
@@ -132,52 +134,43 @@ export default function InsightsScreen() {
         </>
       ) : (
         <>
-          {/* Learn Tab Content - Show first 3 modules */}
+          {/* Learn Tab – Deep Dive Podcasts style (section header + audio rows) */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recommended for you</Text>
-            <View style={styles.featuredLessons}>
-              {LEARNING_MODULES.slice(0, 3).map((module) => (
-                <TouchableOpacity 
-                  key={module.id}
-                  style={[styles.featuredLesson, Shadows.sm]}
-                  onPress={() => router.push(`/learning-detail?id=${module.id}`)}
-                >
-                  <View style={[styles.lessonIconContainer, { backgroundColor: module.color + '20' }]}>
-                    <Ionicons name={module.icon as any} size={24} color={module.color} />
-                  </View>
-                  <View style={styles.lessonContent}>
-                    <Text style={styles.lessonTitle}>{module.title}</Text>
-                    <Text style={styles.lessonMeta}>
-                      {DIMENSION_INFO[module.dimension].name} • {module.videoDuration}
-                    </Text>
-                  </View>
-                  <Ionicons name="play-circle" size={28} color={module.color} />
-                </TouchableOpacity>
-              ))}
-            </View>
+            <SectionHeaderCard
+              title="Recommended for you"
+              subtitle="Video lessons and podcasts for your EQ journey"
+              icon="book-outline"
+            />
+            {LEARNING_MODULES.slice(0, 3).map((module) => (
+              <AudioRowCard
+                key={module.id}
+                onPress={() => router.push(`/learning-detail?id=${module.id}`)}
+                title={module.title}
+                subtitle={`${DIMENSION_INFO[module.dimension].name} • ${module.videoDuration}`}
+                icon={module.icon as any}
+                iconBackgroundColor={module.color + '20'}
+                iconColor={module.color}
+              />
+            ))}
           </View>
 
-          {/* Quick Access to Podcasts */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Deep dive podcasts</Text>
-            <View style={styles.podcastList}>
-              {LEARNING_MODULES.slice(0, 2).map((module) => (
-                <TouchableOpacity 
-                  key={`podcast-${module.id}`}
-                  style={styles.podcastItem}
-                  onPress={() => router.push(`/learning-detail?id=${module.id}`)}
-                >
-                  <View style={styles.podcastIcon}>
-                    <Ionicons name="headset" size={20} color={colors.primary} />
-                  </View>
-                  <View style={styles.podcastContent}>
-                    <Text style={styles.podcastTitle}>{module.title}</Text>
-                    <Text style={styles.podcastDuration}>{module.audioDuration}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-                </TouchableOpacity>
-              ))}
-            </View>
+            <SectionHeaderCard
+              title="Deep dive podcasts"
+              subtitle="Extended audio sessions for deeper learning"
+              icon="headset"
+            />
+            {LEARNING_MODULES.slice(0, 2).map((module) => (
+              <AudioRowCard
+                key={`podcast-${module.id}`}
+                onPress={() => router.push(`/learning-detail?id=${module.id}`)}
+                title={module.title}
+                subtitle={`${DIMENSION_INFO[module.dimension].name} • ${module.audioDuration}`}
+                icon={module.icon as any}
+                iconBackgroundColor={module.color + '20'}
+                iconColor={module.color}
+              />
+            ))}
           </View>
 
           <TouchableOpacity 
@@ -332,75 +325,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textSecondary,
     lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
     textAlign: 'center',
-    fontFamily: Typography.fontFamily.primary,
-  },
-  featuredLessons: {
-    gap: Spacing.md,
-  },
-  featuredLesson: {
-    backgroundColor: colors.floating,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  lessonIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lessonContent: {
-    flex: 1,
-  },
-  lessonTitle: {
-    fontSize: Typography.fontSize.base,
-    color: colors.textPrimary,
-    fontWeight: Typography.fontWeight.medium,
-    fontFamily: Typography.fontFamily.primary,
-    marginBottom: Spacing.xs,
-  },
-  lessonMeta: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  // Podcast styles
-  podcastList: {
-    gap: Spacing.sm,
-  },
-  podcastItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-  },
-  podcastIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.md,
-    backgroundColor: colors.primary + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  podcastContent: {
-    flex: 1,
-  },
-  podcastTitle: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textPrimary,
-    fontWeight: Typography.fontWeight.medium,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  podcastDuration: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.textSecondary,
     fontFamily: Typography.fontFamily.primary,
   },
   viewAllButton: {

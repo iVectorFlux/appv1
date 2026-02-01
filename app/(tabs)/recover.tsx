@@ -20,7 +20,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
+import { ListCard } from '@/components/ui/list-card';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -368,67 +369,45 @@ export default function RecoverScreen() {
         <Text style={styles.title}>Recover</Text>
       </View>
 
-      {/* Quick Calm Section */}
+      {/* Quick Calm Section – Learn-style list cards */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick calm</Text>
-        <View style={styles.card}>
-          <TouchableOpacity
+        <View style={styles.cardList}>
+          <ListCard
             onPress={() => setView('breathing')}
-            style={[styles.cardButton, Shadows.sm]}
-          >
-            <View style={styles.cardContent}>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>Slow Breathing</Text>
-              </View>
-              <View style={styles.cardIcon}>
-                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.cardButton, Shadows.sm]}>
-            <View style={styles.cardContent}>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>Body Reset</Text>
-                <Text style={styles.cardDescription}>
-                  5 minutes · Release physical tension
-                </Text>
-              </View>
-              <View style={styles.cardIcon}>
-                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.cardButton, Shadows.sm]}>
-            <View style={styles.cardContent}>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>Grounding</Text>
-              </View>
-              <View style={styles.cardIcon}>
-                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-              </View>
-            </View>
-          </TouchableOpacity>
+            title="Slow Breathing"
+            icon="water-outline"
+            iconBackgroundColor={colors.accentCalm + '20'}
+            iconColor={colors.accentCalm}
+          />
+          <ListCard
+            onPress={() => {}}
+            title="Body Reset"
+            subtitle="5 minutes · Release physical tension"
+            icon="body-outline"
+            iconBackgroundColor={colors.accentSoft + '20'}
+            iconColor={colors.accentSoft}
+          />
+          <ListCard
+            onPress={() => {}}
+            title="Grounding"
+            icon="leaf-outline"
+            iconBackgroundColor={colors.accentCalm + '20'}
+            iconColor={colors.accentCalm}
+          />
         </View>
       </View>
 
       {/* Release & Let Go Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Release & let go</Text>
-        <TouchableOpacity
+        <ListCard
           onPress={() => setView('release')}
-          style={[styles.releaseCard, Shadows.sm]}
-        >
-          <View style={styles.cardContent}>
-            <View style={styles.cardText}>
-                      <Text style={styles.cardTitle}>Let Go of Heavy Thoughts</Text>
-            </View>
-            <View style={styles.cardIcon}>
-              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-            </View>
-          </View>
-        </TouchableOpacity>
+          title="Let Go of Heavy Thoughts"
+          icon="heart-outline"
+          iconBackgroundColor={colors.primary + '20'}
+          leftBorderColor={colors.primary}
+        />
       </View>
     </ScrollView>
   );
@@ -469,45 +448,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: Spacing.md,
     fontFamily: Typography.fontFamily.primary,
   },
-  card: {
+  cardList: {
     gap: Spacing.md,
-  },
-  cardButton: {
-    backgroundColor: colors.floating,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  releaseCard: {
-    backgroundColor: colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  cardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cardText: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: Spacing.xs,
-    fontFamily: Typography.fontFamily.heading,
-  },
-  cardDescription: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  cardIcon: {
-    marginLeft: Spacing.md,
   },
   backButton: {
     flexDirection: 'row',
