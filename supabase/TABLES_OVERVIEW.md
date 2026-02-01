@@ -2,7 +2,7 @@
 
 - **User account** (email, sign-in) → **Supabase Auth** (`auth.users`). See **Authentication → Users** in the dashboard.
 - **Profile** (timezone, locale, display name, last login) → **`public.profiles`** (one row per user, created on signup). **`user_sessions`** stores session start/end for time-in-app audit.
-- **Onboarding** → **`user_onboarding`**, **`user_goals`**, **`user_preferences`**, **`user_background`**, **`onboarding_emotional_check`**.
+- **Onboarding** → **`user_onboarding`**, **`user_preferences`** (includes **goals** JSONB and **context** JSONB), **`onboarding_emotional_check`**.
 
 ---
 
@@ -12,7 +12,7 @@
 2. **In browser:** [supabase.com](https://supabase.com) → your project → **SQL Editor** → **New query** → paste → **Run**.
 3. Check **Table Editor** in the left sidebar — you should see all tables.
 
-The script is re-runnable (uses `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS`, `DROP TRIGGER IF EXISTS`). If you already ran **00001** before `last_login_at` and `user_sessions` were added, run **`supabase/migrations/00002_profiles_last_login_and_user_sessions.sql`** in the SQL Editor as well.
+The script is re-runnable (uses `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS`, `DROP TRIGGER IF EXISTS`). If you already ran **00001** before `last_login_at` and `user_sessions` were added, run **`00002_profiles_last_login_and_user_sessions.sql`**; then run **`00003_consolidate_onboarding_into_user_preferences.sql`** to move goals/context into `user_preferences` (JSONB) and drop `user_goals` / `user_background`.
 
 ---
 
@@ -21,7 +21,7 @@ The script is re-runnable (uses `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EX
 | Layer | Tables |
 |-------|--------|
 | **Identity / audit** | `profiles` (includes `last_login_at`), `user_sessions` (time-on-app) |
-| **Onboarding** | `user_onboarding`, `user_goals`, `user_background`, `user_preferences`, `onboarding_emotional_check` |
+| **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` |
 | **Journal** | `journal_entries`, `encryption_keys`, `journal_tags`, `journal_entry_tags` |
 | **EQ** | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` |
 | **Insights** | `insights`, `insight_actions` |

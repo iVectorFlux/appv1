@@ -12,9 +12,7 @@ These tables are defined in **`supabase/migrations/00001_initial_schema.sql`**. 
 |-------|--------|
 | **profiles** | Extends `auth.users`. App-specific user data (timezone, locale, is_demo_mode). Auto-created on signup via trigger. |
 | **user_onboarding** | Onboarding progress: started_at, completed_at, steps_completed (JSONB), onboarding_version. |
-| **user_goals** | Goal(s) selected in onboarding (e.g. manage_stress, improve_relationships). |
-| **user_background** | Optional: age_range, context, occupation_category. |
-| **user_preferences** | check_in_frequency, reminder_enabled, reminder_times, reminder_days (JSONB). |
+| **user_preferences** | One row per user: check_in_frequency, reminder_enabled, reminder_times, reminder_days (JSONB), **goals** (JSONB array of goal ids), **context** (JSONB, optional). Replaces the old user_goals / user_background tables. |
 | **onboarding_emotional_check** | One row per onboarding emotional question answered (question_id, value_scale / value_emotion / value_emotions). |
 | **journal_entries** | Reflect check-ins + standalone journal. Metadata (pleasantness, energy_level, emotions, reasons) + encrypted body (journal_text_encrypted BYTEA). |
 | **encryption_keys** | Metadata for journal encryption keys (key_hash, is_active, etc.). Actual keys stay on device. |
@@ -47,22 +45,20 @@ So: **identity** is in **Supabase Auth**; **app profile** is in **`public.profil
 
 ## 3. Onboarding options — are they saved on the platform?
 
-**Schema:** Yes. The platform has tables for every onboarding choice:
+**Schema:** Yes. The platform stores onboarding in a **consolidated** way (one row per user for preferences and goals):
 
 - **user_onboarding** — Whether onboarding was started/completed and which steps were done (`steps_completed` JSONB).
-- **user_goals** — Selected goal(s) from the “goal” step (e.g. `manage_stress`, `improve_relationships`).
-- **user_background** — Optional age_range, context, occupation_category from the “background” step.
-- **user_preferences** — check_in_frequency and reminder settings from the “frequency” step.
+- **user_preferences** — One row per user: **goals** (JSONB array of goal ids from the “goal” step), **context** (JSONB, optional), **check_in_frequency**, reminder_enabled, reminder_times, reminder_days. No separate `user_goals` or `user_background` tables.
 - **onboarding_emotional_check** — One row per emotional baseline question answered.
 
-**App today:** The app **does** have a 5-screen onboarding flow that writes to Supabase. After sign-up/sign-in, users are directed to onboarding; on completion the app calls:
+**App today:** The app has a 5-screen onboarding flow that writes to Supabase. On completion the app calls:
 
 - `supabase.from('user_onboarding').upsert(...)` (completed_at, steps_completed)
-- `supabase.from('user_goals').insert(...)` for each selected goal
-- `supabase.from('user_background').upsert(...)` (age_range, context, etc.)
-- `supabase.from('user_preferences').upsert(...)` (check_in_frequency, etc.)
+- `supabase.from('user_preferences').upsert(...)` with **goals** as a JSONB array (e.g. `["manage_stress","improve_relationships"]`) and check_in_frequency — **one upsert** instead of multiple inserts.
 - `supabase.from('onboarding_emotional_check').insert(...)` for emotional baseline answers
 - `profiles.display_name` is updated when provided in onboarding.
+
+**Scalability:** Storing multi-select (goals) in a single `user_preferences` row as JSONB is more scalable: one query to load all preferences and goals, one upsert to save, and a GIN index on `goals` still allows queries like “users who selected goal X” (e.g. analytics).
 
 
 ---
@@ -73,23 +69,16 @@ Defined in **`app/onboarding/index.tsx`** (WHY_OPTIONS, FREQUENCY_OPTIONS, CONTE
 
 ### Step 1 — Goal (one or more)
 
-- **user_goals** options:  
-  `manage_stress` · `improve_relationships` · `build_self_awareness` · `improve_focus` · `emotional_regulation` · `other` (with optional custom_text).
+- **user_preferences.goals** (JSONB array):  
+  `manage_stress` · `improve_relationships` · `build_self_awareness` · `improve_focus` · `emotional_regulation` · `other` (with optional custom_text). Stored as one array per user, e.g. `["manage_stress","improve_relationships"]`.
 
-### Step 2 — Background (optional)
-
-- **user_background**:  
-  - Age range: 18–24, 25–34, 35–44, 45–54, 55+, Prefer not to say.  
-  - Occupation: student, employed, self_employed, caregiver, other.  
-  - Optional free-text context.
-
-### Step 3 — Frequency
+### Step 2 — Frequency (check-in)
 
 - **user_preferences.check_in_frequency**:  
   Daily · A few times a week · About once a week · When I get a reminder · No reminders.  
 - Plus reminder_enabled, reminder_times (e.g. 09:00, 21:00), reminder_days (0–6).
 
-### Step 4 — Emotional check (baseline)
+### Step 3 — Emotional check (baseline)
 
 - **onboarding_emotional_check** — 5 questions, one row per answer:
 
@@ -101,7 +90,7 @@ Defined in **`app/onboarding/index.tsx`** (WHY_OPTIONS, FREQUENCY_OPTIONS, CONTE
 | 4 | emotional_clarity | When emotions come up, how clear are you about what you're feeling? | scale 1–5 | value_scale |
 | 5 | primary_emotion_lately | Which word best describes how you've been feeling lately? | single emotion | value_emotion (e.g. Calm, Anxious, Happy, Stressed, Tired, Content, Overwhelmed, Peaceful, Neutral, Sad, Grateful, Frustrated) |
 
-So: **goals** → `user_goals`, **background** → `user_background`, **frequency** → `user_preferences`, **emotional baseline** → `onboarding_emotional_check`. All of these are “the options that will be selected during onboarding” and **are** the ones to be saved in the platform once the app writes to Supabase.
+So: **goals** → `user_preferences.goals` (JSONB array), **frequency** → `user_preferences.check_in_frequency`, **emotional baseline** → `onboarding_emotional_check`. All are saved in the platform when the app writes to Supabase.
 
 ---
 
@@ -138,7 +127,7 @@ So: **journal history is intended to live in `journal_entries`** on the platform
 | Data | Tables (platform) | App writes to platform? |
 |------|--------------------|--------------------------|
 | Identity / auth | `auth.users`, `public.profiles` | Yes (Supabase Auth + trigger for profiles). |
-| Onboarding choices | user_onboarding, user_goals, user_background, user_preferences, onboarding_emotional_check | Yes (onboarding flow writes to Supabase). |
+| Onboarding choices | user_onboarding, user_preferences (goals + context JSONB), onboarding_emotional_check | Yes (onboarding flow writes to Supabase). |
 | Journal history | journal_entries, encryption_keys, journal_tags, journal_entry_tags | No (native uses SQLite; web has no persistence yet). |
 | EQ scores | eq_assessment_sessions, eq_check_ins, eq_scores | No (native uses SQLite for EQ). |
 | Insights | insights, insight_actions | No. |

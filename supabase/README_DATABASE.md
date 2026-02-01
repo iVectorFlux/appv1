@@ -18,7 +18,8 @@ PostgreSQL schema for Supabase: **secure**, **scalable**, **fast**.
 - **IDs:** `UUID` primary keys (`gen_random_uuid()`) — no guessability, safe for distributed clients, no single-node sequence bottleneck.
 - **Timestamps:** `TIMESTAMPTZ` everywhere — correct for multiple timezones and Supabase defaults.
 - **JSON:** `JSONB` for all JSON — indexed, queryable, efficient storage.
-- **Indexes:** B-tree on `(user_id, created_at DESC)` for “my recent X” lists; partial indexes where useful (e.g. `WHERE is_deleted = FALSE`). GIN on `emotions` for pattern queries.
+- **Onboarding multi-select:** Goals and context live in **one row per user** in `user_preferences` (columns `goals` and `context` as JSONB arrays). One query loads all preferences and goals; one upsert saves them. A GIN index on `goals` still allows queries like "users who selected goal X" (e.g. analytics). No separate `user_goals` / `user_background` tables.
+- **Indexes:** B-tree on `(user_id, created_at DESC)` for “my recent X” lists; partial indexes where useful (e.g. `WHERE is_deleted = FALSE`). GIN on `emotions` and on `user_preferences.goals` for containment queries.
 - **Partitioning (future):** For very large scale, `journal_entries` and `eq_check_ins` can be range-partitioned by `created_at` (e.g. monthly). Not required for initial launch.
 
 ### Performance
@@ -35,7 +36,7 @@ PostgreSQL schema for Supabase: **secure**, **scalable**, **fast**.
 | Layer        | Tables |
 |-------------|--------|
 | **Identity** | `profiles` (extends `auth.users`) |
-| **Onboarding** | `user_onboarding`, `user_goals`, `user_background`, `user_preferences`, `onboarding_emotional_check` |
+| **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` |
 | **Journal** | `journal_entries`, `encryption_keys`, `journal_tags`, `journal_entry_tags` |
 | **EQ**      | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` |
 | **Insights** | `insights`, `insight_actions` |
@@ -78,17 +79,11 @@ Use the **connection string** (with password) only from a secure environment (e.
 
 ## 5. Migration order (dependency order)
 
-1. `profiles` (references `auth.users`)
-2. Onboarding tables (`user_onboarding`, `user_goals`, `user_background`, `user_preferences`, `onboarding_emotional_check`)
-3. Journal (`journal_entries`, `encryption_keys`, `journal_tags`, `journal_entry_tags`)
-4. EQ (`eq_assessment_sessions`, `eq_check_ins`, `eq_scores`)
-5. Insights (`insights`, `insight_actions`)
-6. Wellness (`recovery_sessions`, `meditation_sessions`)
-7. Learning (`learning_modules`, then `learning_progress`)
-8. Metrics (`user_metrics`)
-9. RLS policies and triggers
+1. **00001_initial_schema.sql** — `profiles`, onboarding tables (`user_onboarding`, `user_goals`, `user_background`, `user_preferences`, `onboarding_emotional_check`), journal, EQ, insights, wellness, learning, metrics, RLS, triggers.
+2. **00002_profiles_last_login_and_user_sessions.sql** — Add `last_login_at` to profiles, add `user_sessions`.
+3. **00003_consolidate_onboarding_into_user_preferences.sql** — Add `goals` and `context` (JSONB) to `user_preferences`, migrate data from `user_goals` and `user_background`, drop those tables, add GIN index on `goals`.
 
-The single migration file already follows this order.
+Run migrations in order in the Supabase SQL Editor (or `supabase db push`).
 
 ---
 

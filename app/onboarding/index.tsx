@@ -109,21 +109,8 @@ export default function OnboardingScreen() {
       if (session?.user) {
         const userId = session.user.id;
 
-        // Save optional personalization — multiple goals (why), single frequency
+        // Save optional personalization — goals (JSONB array) + frequency in one row
         const goalsToSave = whyIds.filter((id) => id !== 'prefer_not_say');
-        if (goalsToSave.length > 0) {
-          const { error: goalsErr } = await supabase.from('user_goals').insert(
-            goalsToSave.map((goal_id, i) => ({
-              user_id: userId,
-              goal_id,
-              selected_at: new Date().toISOString(),
-              is_primary: i === 0,
-            }))
-          );
-          if (goalsErr) {
-            console.error('[Onboarding] user_goals insert failed:', goalsErr.message, goalsErr.code);
-          }
-        }
         const frequencyMap: Record<string, string> = {
           daily: 'daily',
           few_times_week: 'few_times_week',
@@ -133,17 +120,16 @@ export default function OnboardingScreen() {
           when_overwhelmed: 'when_reminded',
           decide_later: 'no_reminders',
         };
-        if (frequencyId) {
-          const { error: prefsErr } = await supabase.from('user_preferences').upsert(
-            {
-              user_id: userId,
-              check_in_frequency: frequencyMap[frequencyId] ?? 'few_times_week',
-            },
-            { onConflict: 'user_id' }
-          );
-          if (prefsErr) {
-            console.error('[Onboarding] user_preferences upsert failed:', prefsErr.message, prefsErr.code);
-          }
+        const { error: prefsErr } = await supabase.from('user_preferences').upsert(
+          {
+            user_id: userId,
+            check_in_frequency: frequencyMap[frequencyId ?? ''] ?? 'few_times_week',
+            goals: goalsToSave,
+          },
+          { onConflict: 'user_id' }
+        );
+        if (prefsErr) {
+          console.error('[Onboarding] user_preferences upsert failed:', prefsErr.message, prefsErr.code);
         }
         // Save display name to profiles
         const nameToSave = displayName.trim();
@@ -571,7 +557,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flex: 1,
       fontSize: Typography.fontSize.sm,
       color: colors.textPrimary,
-      fontWeight: Typography.fontWeight.500,
+      fontWeight: Typography.fontWeight.medium,
       fontFamily: Typography.fontFamily.primary,
     },
     screenTitle: {
