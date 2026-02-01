@@ -115,12 +115,6 @@ export default function JournalHistoryScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.mutedText}>Loading entries…</Text>
         </View>
-      ) : Platform.OS === 'web' ? (
-        <View style={styles.centered}>
-          <Ionicons name="journal-outline" size={48} color={colors.textMuted} style={styles.emptyIcon} />
-          <Text style={styles.emptyTitle}>Journal on the app</Text>
-          <Text style={styles.mutedText}>Journal entries are saved on your device. Open the app on your phone to write and view entries.</Text>
-        </View>
       ) : entries.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name="journal-outline" size={48} color={colors.textMuted} style={styles.emptyIcon} />

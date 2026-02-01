@@ -34,7 +34,7 @@ export default function JournalIndexScreen() {
       >
         <View style={[styles.heroCard, Shadows.sm]}>
           <View style={styles.heroIconWrap}>
-            <Ionicons name="journal-outline" size={32} color={colors.primary} />
+            <Ionicons name="book-outline" size={40} color={colors.accentSoft} />
           </View>
           <Text style={styles.heroTitle}>Journal</Text>
           <View style={styles.privacyPillWrap}>
@@ -44,12 +44,6 @@ export default function JournalIndexScreen() {
           <Text style={styles.heroSub}>
             Your writing stays on your device. We never read it.
           </Text>
-          <View style={styles.connectionNote}>
-            <Ionicons name="link-outline" size={14} color={colors.textMuted} />
-            <Text style={styles.connectionNoteText}>
-              Same space as Reflect: entries from Check in (Reflect) appear in History here too.
-            </Text>
-          </View>
         </View>
 
         <View style={styles.actions}>
@@ -101,22 +95,23 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     heroCard: {
       backgroundColor: colors.floating,
       borderRadius: Radius.xl,
-      padding: Spacing.xl,
+      padding: Spacing['2xl'],
       marginBottom: Spacing['2xl'],
       borderWidth: 1,
       borderColor: colors.borderLight,
+      alignItems: 'center',
     },
     heroIconWrap: {
-      width: 56,
-      height: 56,
-      borderRadius: Radius.lg,
-      backgroundColor: colors.primary + '18',
+      width: 72,
+      height: 72,
+      borderRadius: Radius.xl,
+      backgroundColor: colors.accentSoft + '22',
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: Spacing.lg,
     },
     heroTitle: {
-      fontSize: Typography.fontSize.xl,
+      fontSize: Typography.fontSize['2xl'],
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
       fontFamily: Typography.fontFamily.heading,
@@ -125,12 +120,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     privacyPillWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      alignSelf: 'flex-start',
       gap: Spacing.xs,
       paddingVertical: Spacing.xs,
       paddingHorizontal: Spacing.sm,
       borderRadius: Radius.full,
-      backgroundColor: colors.primary + '18',
+      backgroundColor: colors.primary + '14',
       marginBottom: Spacing.md,
     },
     privacyPillText: {
@@ -144,17 +138,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       color: colors.textSecondary,
       fontFamily: Typography.fontFamily.primary,
       lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
-      marginBottom: Spacing.md,
-    },
-    connectionNote: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.xs,
-    },
-    connectionNoteText: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
-      fontFamily: Typography.fontFamily.primary,
+      textAlign: 'center',
     },
     actions: { gap: Spacing.md },
     primaryBtn: {

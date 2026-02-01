@@ -303,7 +303,8 @@ export default function ReflectScreen() {
 
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Select emotions</Text>
+      <Text style={styles.stepTitle}>What emotions are you feeling right now?</Text>
+      <Text style={styles.stepSubtitle}>Pick up to 3</Text>
 
       {selectedEmotions.length > 0 && (
         <View style={styles.selectedEmotionsContainer}>
@@ -595,8 +596,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: Typography.fontSize.xl,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
     fontFamily: Typography.fontFamily.heading,
+  },
+  stepSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontFamily: Typography.fontFamily.primary,
+    marginBottom: Spacing.lg,
   },
   card: {
     backgroundColor: colors.floating,
