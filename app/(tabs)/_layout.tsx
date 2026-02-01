@@ -24,10 +24,10 @@ export default function TabsLayout() {
     );
   }
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/signin" />;
+    return <Redirect href="/(auth)/sign-in" />;
   }
   if (needsEmailConfirmation) {
-    return <Redirect href="/(auth)/confirmemail" />;
+    return <Redirect href="/(auth)/confirm-email" />;
   }
   if (hasCompletedOnboarding === false) {
     return <Redirect href="/onboarding" />;
@@ -50,6 +50,7 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
+          textTransform: 'none',
         },
         tabBarIconStyle: {
           marginTop: 4,

@@ -23,12 +23,14 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button } from '@/components/ui/Button';
-import { Slider } from '@/components/ui/Slider';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { emotionColors } from '@/constants/themes';
 import type { EmotionTag, EnergyLevel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import { createJournalEntry } from '@/services/journal-storage';
+import { encryptJournalText } from '@/services/encryption';
 
 const ALL_EMOTIONS: EmotionTag[] = [
   'Relaxed', 'Grounded', 'Peaceful', 'Anxious', 'Overwhelmed', 'On edge',
@@ -49,7 +51,8 @@ const MORE_EMOTIONS: EmotionTag[] = ALL_EMOTIONS.filter(emotion => !TOP_EMOTIONS
 
 const REASONS = [
   'Work / School', 'Family', 'Relationships', 'Health & Body', 'Self',
-  'Money', 'Environment', 'Life changes', 'World', 'Other'
+  'Money', 'Environment', 'Life changes', 'World', 'Other',
+  'Sleep & Rest', 'Identity & Purpose', 'Conflict & Boundaries', 'Loss & Grief', 'Creativity & Hobbies', 'News & Society'
 ];
 
 
@@ -67,7 +70,8 @@ export default function ReflectScreen() {
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [journalText, setJournalText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  
+  const [error, setError] = useState<string | null>(null);
+
   // Animation for success state
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
@@ -107,24 +111,35 @@ export default function ReflectScreen() {
   };
 
   const handleSave = async () => {
+    if (!user?.id) return;
     setIsSaving(true);
-    
-    // TODO: Implement journal entry saving with encryption
-    console.log('Saving journal entry...', {
-      pleasantness,
-      energyLevel,
-      selectedEmotions,
-      selectedReasons,
-      journalText,
-    });
-    
-    // Simulate save delay for better UX
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setIsSaving(false);
-    setCurrentStep('success');
-    
-    // Animate success state
+    setError(null);
+    let saved = false;
+    try {
+      const textToSave = journalText.trim();
+      const { encrypted, keyId } = textToSave
+        ? await encryptJournalText(textToSave, user.id)
+        : { encrypted: '', keyId: `encryption_key_${user.id}` };
+      await createJournalEntry({
+        userId: user.id,
+        entrySource: 'reflect',
+        pleasantness,
+        energyLevel,
+        emotions: selectedEmotions,
+        reasons: selectedReasons.length > 0 ? selectedReasons : undefined,
+        journalTextEncrypted: encrypted,
+        encryptionKeyId: keyId,
+      });
+      saved = true;
+      setCurrentStep('success');
+    } catch (e) {
+      console.error('[Reflect] Journal save failed:', e);
+      setError('Could not save. Try again.');
+    } finally {
+      setIsSaving(false);
+    }
+    if (!saved) return;
+
     Animated.parallel([
       Animated.spring(successScale, {
         toValue: 1,
@@ -138,8 +153,7 @@ export default function ReflectScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-    
-    // Navigate to home after showing success
+
     setTimeout(() => {
       resetForm();
       router.replace('/(tabs)/home');
@@ -434,10 +448,10 @@ export default function ReflectScreen() {
       <View style={styles.privacySection}>
         <View style={styles.privacyPill}>
           <Ionicons name="lock-closed" size={14} color={colors.primary} />
-          <Text style={styles.privacyText}>END-TO-END ENCRYPTED</Text>
+          <Text style={styles.privacyText}>Private & encrypted</Text>
         </View>
         <Text style={styles.privacyNote}>
-          Your writing is private and encrypted. We do not analyze what you write.
+          Your writing stays on your device. We never read it. Entries from Check in appear in Journal History too.
         </Text>
       </View>
     </View>
@@ -453,7 +467,7 @@ export default function ReflectScreen() {
           </TouchableOpacity>
         )}
         {currentStep === 1 && <View style={{ width: 24 }} />}
-        <Text style={styles.headerTitle}>REFLECT</Text>
+        <Text style={styles.headerTitle}>Reflect</Text>
         <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
           <Ionicons name="person-outline" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -504,13 +518,18 @@ export default function ReflectScreen() {
               disabled={!canProceed()}
             />
           ) : (
-            <Button
-              title={isSaving ? "Saving..." : "Save Entry"}
-              onPress={handleSave}
-              size="lg"
-              fullWidth
-              loading={isSaving}
-            />
+            <>
+              {error ? (
+                <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+              ) : null}
+              <Button
+                title={isSaving ? "Saving..." : "Save Entry"}
+                onPress={handleSave}
+                size="lg"
+                fullWidth
+                loading={isSaving}
+              />
+            </>
           )}
         </View>
       </ScrollView>
@@ -537,7 +556,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
-    letterSpacing: 1,
     fontFamily: Typography.fontFamily.heading,
   },
   scrollView: {
@@ -546,6 +564,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   content: {
     padding: Spacing.xl,
     paddingBottom: Spacing['5xl'],
+  },
+  errorText: {
+    fontSize: Typography.fontSize.sm,
+    marginBottom: Spacing.sm,
+    fontFamily: Typography.fontFamily.primary,
   },
   progressContainer: {
     flexDirection: 'row',

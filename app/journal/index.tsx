@@ -1,20 +1,19 @@
 /**
  * Journal — main screen
  *
- * Clean hub: write new entry or open history. No dummy content.
+ * Hub for private writing. New entry, History. Same storage as Reflect (Check in) journal step.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function JournalIndexScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { user } = useAuthStore();
 
   const styles = createStyles(colors);
 
@@ -33,14 +32,24 @@ export default function JournalIndexScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="journal-outline" size={40} color={colors.primary} />
+        <View style={[styles.heroCard, Shadows.sm]}>
+          <View style={styles.heroIconWrap}>
+            <Ionicons name="journal-outline" size={32} color={colors.primary} />
           </View>
-          <Text style={styles.heroTitle}>Private journal</Text>
+          <Text style={styles.heroTitle}>Journal</Text>
+          <View style={styles.privacyPillWrap}>
+            <Ionicons name="lock-closed" size={14} color={colors.primary} />
+            <Text style={styles.privacyPillText}>Private & encrypted</Text>
+          </View>
           <Text style={styles.heroSub}>
-            Write here. Everything is encrypted and stays on your device. We never read it.
+            Your writing stays on your device. We never read it.
           </Text>
+          <View style={styles.connectionNote}>
+            <Ionicons name="link-outline" size={14} color={colors.textMuted} />
+            <Text style={styles.connectionNoteText}>
+              Same space as Reflect: entries from Check in (Reflect) appear in History here too.
+            </Text>
+          </View>
         </View>
 
         <View style={styles.actions}>
@@ -89,14 +98,18 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     },
     scroll: { flex: 1 },
     content: { padding: Spacing.xl, paddingBottom: Spacing['3xl'] },
-    hero: {
-      alignItems: 'center',
-      marginBottom: Spacing['2xl'],
-    },
-    heroIcon: {
-      width: 72,
-      height: 72,
+    heroCard: {
+      backgroundColor: colors.floating,
       borderRadius: Radius.xl,
+      padding: Spacing.xl,
+      marginBottom: Spacing['2xl'],
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    heroIconWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: Radius.lg,
       backgroundColor: colors.primary + '18',
       alignItems: 'center',
       justifyContent: 'center',
@@ -108,15 +121,40 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       color: colors.textPrimary,
       fontFamily: Typography.fontFamily.heading,
       marginBottom: Spacing.sm,
-      textAlign: 'center',
+    },
+    privacyPillWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: Spacing.xs,
+      paddingVertical: Spacing.xs,
+      paddingHorizontal: Spacing.sm,
+      borderRadius: Radius.full,
+      backgroundColor: colors.primary + '18',
+      marginBottom: Spacing.md,
+    },
+    privacyPillText: {
+      fontSize: Typography.fontSize.xs,
+      fontWeight: Typography.fontWeight.medium,
+      color: colors.primary,
+      fontFamily: Typography.fontFamily.primary,
     },
     heroSub: {
       fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
       fontFamily: Typography.fontFamily.primary,
       lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
-      textAlign: 'center',
-      paddingHorizontal: Spacing.lg,
+      marginBottom: Spacing.md,
+    },
+    connectionNote: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+    },
+    connectionNoteText: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textMuted,
+      fontFamily: Typography.fontFamily.primary,
     },
     actions: { gap: Spacing.md },
     primaryBtn: {
