@@ -73,6 +73,28 @@ const MIN_RESPONSE_TIME = 500;
 // Maximum reasonable response time in ms
 const MAX_RESPONSE_TIME = 120000; // 2 minutes
 
+// Likert: desirability bias attenuation (score *= 1 - bias*α)
+const DESIRABILITY_ATTENUATION_ALPHA = 0.4;
+
+// Meta-EQ: reward slight self-underrating (deltaScore = 1 - |δ| + β*max(0,-δ))
+const META_EQ_UNDERRATING_BETA = 0.1;
+
+// Emotion vocabulary split: 70% self-awareness, 15% self-regulation, 15% empathy
+const EMOTION_VOCAB_SPLIT = { self_awareness: 0.7, self_regulation: 0.15, empathy: 0.15 } as const;
+
+// Ranking: use reduced weight when merging into dimensions (profile shape, not raw magnitude)
+const RANKING_DIMENSION_WEIGHT = 0.5;
+
+// FC variance equalization: fcAdjusted = 50 + (fc - 50) * 0.85 (prevents FC over-asserting)
+const FC_VARIANCE_EQUALIZATION = 0.85;
+
+// Likert entropy: variance thresholds for random/straight-line detection (1-7 scale)
+const LIKERT_VARIANCE_STRAIGHT_LINE = 0.5;   // too uniform
+const LIKERT_VARIANCE_CHAOTIC = 3.5;          // too chaotic (max ~4 for 1-7)
+
+// Self-awareness cap: cap SA score at 1.15 × mean(other dimensions)
+const SELF_AWARENESS_CAP_MULTIPLIER = 1.15;
+
 // =============================================================================
 // CONSISTENCY PENALTY CONFIGURATION
 // =============================================================================
@@ -97,18 +119,15 @@ const CONSISTENCY_CONFIG = {
   // Consistency index above which no penalty is applied
   noPenaltyThreshold: 0.70,
   
-  // Penalty calculation: penalty = (1 - consistencyIndex) * multiplier
-  // This is a graduated penalty - worse consistency = bigger penalty
+  // Penalty calculation: penalty ∝ (1 - consistencyIndex)² (nonlinear: mild tolerance, punish collapse)
   penaltyMultiplier: 20,
 };
 
 /**
  * Calculate consistency penalty
- * 
- * Graduated penalty system:
- * - 70%+ consistency: No penalty
- * - 40-70%: Partial penalty
- * - <40%: Maximum penalty + unreliable flag
+ *
+ * Squared deficit: penalty ∝ (1 - consistencyIndex)²
+ * Small inconsistency ≈ noise; large inconsistency ≈ invalid data.
  */
 function calculateConsistencyPenalty(consistencyIndex: number): {
   penalty: number;
@@ -116,16 +135,16 @@ function calculateConsistencyPenalty(consistencyIndex: number): {
   penaltyLevel: 'none' | 'mild' | 'moderate' | 'severe';
 } {
   const { maxPenalty, unreliableThreshold, noPenaltyThreshold, penaltyMultiplier } = CONSISTENCY_CONFIG;
-  
+
   // No penalty for high consistency
   if (consistencyIndex >= noPenaltyThreshold) {
     return { penalty: 0, isUnreliable: false, penaltyLevel: 'none' };
   }
-  
-  // Calculate graduated penalty
-  const penaltyRange = noPenaltyThreshold - 0; // 0 to threshold
+
+  // Squared deficit: penalty ∝ (deficit)²
   const consistencyDeficit = noPenaltyThreshold - consistencyIndex;
-  const rawPenalty = (consistencyDeficit / penaltyRange) * penaltyMultiplier;
+  const squaredDeficit = consistencyDeficit * consistencyDeficit;
+  const rawPenalty = squaredDeficit * penaltyMultiplier;
   const penalty = Math.min(maxPenalty, rawPenalty);
   
   // Determine penalty level
@@ -184,15 +203,60 @@ function generateId(): string {
 // =============================================================================
 
 /**
- * Score Forced-Choice responses
- * 
- * Uses ipsative scoring where choosing an option adds to that dimension
- * and implicitly reduces others. Converted to normative via z-scores.
+ * Compute min/max possible raw FC score per dimension from the form.
+ * Max: sum over questions of (100 * weight) when dimension is chosen as "most".
+ * Min: sum over questions of (-50 * weight) when dimension is chosen as "least".
+ */
+function forcedChoiceFormRange(questions: ForcedChoiceQuestion[]): Record<EQDimension, { min: number; max: number }> {
+  const range: Record<EQDimension, { min: number; max: number }> = {
+    self_awareness: { min: 0, max: 0 },
+    self_regulation: { min: 0, max: 0 },
+    empathy: { min: 0, max: 0 },
+    social_skills: { min: 0, max: 0 },
+    motivation: { min: 0, max: 0 },
+  };
+  questions.forEach(q => {
+    q.options.forEach(opt => {
+      range[opt.dimension].max += opt.weight * 100;
+      range[opt.dimension].min -= opt.weight * 50;
+    });
+  });
+  return range;
+}
+
+/**
+ * Score Forced-Choice responses.
+ *
+ * Ipsative tradeoffs (most/least) are aggregated per dimension, then converted
+ * to normative via form-range normalization: raw total → percentile within form
+ * → rescale to 0–100. Returns one normalized score per dimension (not arrays).
  */
 export function scoreForcedChoice(
   questions: ForcedChoiceQuestion[],
   responses: ForcedChoiceResponse[]
 ): Record<EQDimension, number[]> {
+  const rawTotals: Record<EQDimension, number> = {
+    self_awareness: 0,
+    self_regulation: 0,
+    empathy: 0,
+    social_skills: 0,
+    motivation: 0,
+  };
+
+  responses.forEach(response => {
+    const question = questions.find(q => q.id === response.questionId);
+    if (!question) return;
+
+    const mostOption = question.options.find(o => o.id === response.mostLikeMe);
+    const leastOption = response.leastLikeMe
+      ? question.options.find(o => o.id === response.leastLikeMe)
+      : null;
+
+    if (mostOption) rawTotals[mostOption.dimension] += mostOption.weight * 100;
+    if (leastOption) rawTotals[leastOption.dimension] -= leastOption.weight * 50;
+  });
+
+  const formRange = forcedChoiceFormRange(questions);
   const dimensionPoints: Record<EQDimension, number[]> = {
     self_awareness: [],
     self_regulation: [],
@@ -201,41 +265,22 @@ export function scoreForcedChoice(
     motivation: [],
   };
 
-  responses.forEach(response => {
-    const question = questions.find(q => q.id === response.questionId);
-    if (!question) return;
-
-    // Find selected option(s)
-    const mostOption = question.options.find(o => o.id === response.mostLikeMe);
-    const leastOption = response.leastLikeMe 
-      ? question.options.find(o => o.id === response.leastLikeMe)
-      : null;
-
-    // Add points for "most like me"
-    if (mostOption) {
-      dimensionPoints[mostOption.dimension].push(mostOption.weight * 100);
-    }
-
-    // Subtract points for "least like me"
-    if (leastOption) {
-      dimensionPoints[leastOption.dimension].push(-leastOption.weight * 50);
-    }
-
-    // Add neutral points for unselected options (ipsative normalization)
-    question.options.forEach(opt => {
-      if (opt.id !== response.mostLikeMe && opt.id !== response.leastLikeMe) {
-        dimensionPoints[opt.dimension].push(0);
-      }
-    });
+  DIMENSIONS.forEach(dim => {
+    const { min, max } = formRange[dim];
+    const raw = rawTotals[dim];
+    const span = max - min;
+    const normative = span > 0 ? normalize(raw, min, max) : 50;
+    dimensionPoints[dim].push(normative);
   });
 
   return dimensionPoints;
 }
 
 /**
- * Score Likert responses
- * 
- * Handles reverse-keyed items and normalizes to 0-100.
+ * Score Likert responses.
+ *
+ * Handles reverse-keyed items, normalizes to 0-100, and applies desirability
+ * attenuation: adjustedScore = rawScore × (1 − desirabilityBias × α).
  */
 export function scoreLikert(
   questions: LikertQuestion[],
@@ -249,6 +294,13 @@ export function scoreLikert(
     motivation: [],
   };
 
+  const flagsPerDimension: Record<EQDimension, number> = {
+    self_awareness: 0,
+    self_regulation: 0,
+    empathy: 0,
+    social_skills: 0,
+    motivation: 0,
+  };
   let socialDesirabilityFlags = 0;
 
   responses.forEach(response => {
@@ -258,19 +310,24 @@ export function scoreLikert(
     let value = response.value;
     const maxValue = question.scale;
 
-    // Handle reverse keying
     if (question.reverseKeyed) {
       value = maxValue + 1 - value;
     }
 
-    // Normalize to 0-100
     const normalizedScore = normalize(value, 1, maxValue);
-    dimensionScores[question.dimension].push(normalizedScore);
-
-    // Flag potential social desirability bias
     if (question.socialDesirabilityRisk === 'high' && normalizedScore > 85) {
       socialDesirabilityFlags++;
+      flagsPerDimension[question.dimension]++;
     }
+    dimensionScores[question.dimension].push(normalizedScore);
+  });
+
+  // Apply desirability attenuation per dimension: score *= (1 - bias_dim * α)
+  DIMENSIONS.forEach(dim => {
+    const nDim = dimensionScores[dim].length;
+    const biasDim = nDim > 0 ? Math.min(1, flagsPerDimension[dim] / nDim) : 0;
+    const factor = 1 - biasDim * DESIRABILITY_ATTENUATION_ALPHA;
+    dimensionScores[dim] = dimensionScores[dim].map(s => s * factor);
   });
 
   return { scores: dimensionScores, socialDesirabilityFlags };
@@ -308,16 +365,16 @@ export function scoreEmotionVocabulary(
 }
 
 /**
- * Score Meta-EQ responses
- * 
- * Calculates self-awareness calibration based on self vs other deltas.
- * Smaller deltas indicate better self-awareness.
+ * Score Meta-EQ responses.
+ *
+ * Calibration: deltaScore = 1 - |δ| + β×max(0, -δ). Slight self-underrating
+ * is rewarded (β ≈ 0.1); idealDelta ≠ 0.
  */
 export function scoreMetaEQ(
   questions: MetaEQQuestion[],
   responses: MetaEQResponse[]
 ): { calibrationScore: number; blindSpots: string[]; hiddenStrengths: string[] } {
-  const deltas: number[] = [];
+  const calibrationScores: number[] = [];
   const blindSpots: string[] = [];
   const hiddenStrengths: string[] = [];
 
@@ -328,23 +385,14 @@ export function scoreMetaEQ(
     const delta = response.selfRating - response.otherRating;
     const normalizedDelta = delta / question.scale; // -1 to 1
 
-    deltas.push(Math.abs(normalizedDelta));
+    const deltaScore = Math.min(1, 1 - Math.abs(normalizedDelta) + META_EQ_UNDERRATING_BETA * Math.max(0, -normalizedDelta));
+    calibrationScores.push(deltaScore);
 
-    // Identify blind spots (self > other by significant margin)
-    if (normalizedDelta > 0.3) {
-      blindSpots.push(question.dimension);
-    }
-    // Identify hidden strengths (self < other)
-    if (normalizedDelta < -0.3) {
-      hiddenStrengths.push(question.dimension);
-    }
+    if (normalizedDelta > 0.3) blindSpots.push(question.dimension);
+    if (normalizedDelta < -0.3) hiddenStrengths.push(question.dimension);
   });
 
-  // Lower average delta = better calibration
-  const avgDelta = mean(deltas);
-  // Convert to score where 100 = perfect calibration
-  const calibrationScore = normalize(1 - avgDelta, 0, 1);
-
+  const calibrationScore = calibrationScores.length > 0 ? mean(calibrationScores) * 100 : 50;
   return { calibrationScore, blindSpots, hiddenStrengths };
 }
 
@@ -359,8 +407,8 @@ export function scorePhysiologicalProxy(
 ): number {
   const awarenessLevels = {
     high: 100,
-    medium: 60,
-    low: 20,
+    medium: 70,
+    low: 30,
   };
 
   let totalScore = 0;
@@ -522,19 +570,47 @@ export function calculateEQScore(
   const rankingQs = questions.filter(q => q.type === 'ranking_allocation') as RankingAllocationQuestion[];
   const rankingRs = responses.filter(r => r.type === 'ranking_allocation') as RankingAllocationResponse[];
 
+  // Exclude gate-only item (pp_gate) from physio score; use it only to gate contribution
+  const physioQsScored = physioQs.filter(q => q.id !== 'pp_gate');
+  const physioRsScored = physioRs.filter(r => r.questionId !== 'pp_gate');
+
   // Score each type
   const fcScores = scoreForcedChoice(forcedChoiceQs, forcedChoiceRs);
   const { scores: likertScores, socialDesirabilityFlags } = scoreLikert(likertQs, likertRs);
   const emotionVocab = scoreEmotionVocabulary(emotionVocabQs, emotionVocabRs);
   const metaEQ = scoreMetaEQ(metaEQQs, metaEQRs);
-  const physioScore = scorePhysiologicalProxy(physioQs, physioRs);
+  const physioScore = scorePhysiologicalProxy(physioQsScored, physioRsScored);
   const consistency = scoreConsistencyProbes(consistencyQs, consistencyRs);
   const rankingScores = scoreRankingAllocation(rankingQs, rankingRs);
 
   // Response time analysis
   const responseTimeAnalysis = analyzeResponseTimes(responses);
 
-  // Aggregate dimension scores
+  // Physio gated by emotion vocabulary (interpretive competence) and by regulation gate (pp_gate)
+  const physioGateFromVocab = emotionVocabRs.length > 0 ? emotionVocab.score / 100 : 1;
+  const ppGateResponse = physioRs.find(r => r.questionId === 'pp_gate');
+  const physioGateFromRegulation = ppGateResponse
+    ? (() => {
+        const q = physioQs.find(qq => qq.id === 'pp_gate');
+        const opt = q?.options.find(o => o.id === ppGateResponse.selectedOptionId);
+        if (!opt) return 1;
+        if (opt.awarenessLevel === 'high') return 1;
+        if (opt.awarenessLevel === 'medium') return 0.7;
+        return 0.3;
+      })()
+    : 1;
+  const physioGate = physioGateFromVocab * physioGateFromRegulation;
+  const gatedPhysioScore = physioScore * physioGate;
+
+  // Emotion vocabulary split: 70% self_awareness, 15% self_regulation, 15% empathy
+  const emotionVocabByDim: Partial<Record<EQDimension, number>> = {};
+  if (emotionVocabRs.length > 0) {
+    emotionVocabByDim.self_awareness = emotionVocab.score * EMOTION_VOCAB_SPLIT.self_awareness;
+    emotionVocabByDim.self_regulation = emotionVocab.score * EMOTION_VOCAB_SPLIT.self_regulation;
+    emotionVocabByDim.empathy = emotionVocab.score * EMOTION_VOCAB_SPLIT.empathy;
+  }
+
+  // Aggregate dimension scores with QUESTION_TYPE_WEIGHTS (type-weighted inputs)
   const dimensionScores: DimensionScores = {
     self_awareness: 0,
     self_regulation: 0,
@@ -544,31 +620,56 @@ export function calculateEQScore(
   };
 
   DIMENSIONS.forEach(dim => {
-    const allScores: number[] = [
-      ...fcScores[dim],
-      ...likertScores[dim],
-      ...rankingScores[dim],
-    ];
+    const weightedSum: number[] = [];
+    let weightSum = 0;
 
-    // Add physiological proxy to self_awareness
+    if (fcScores[dim].length > 0) {
+      fcScores[dim].forEach(s => {
+        const fcAdjusted = 50 + (s - 50) * FC_VARIANCE_EQUALIZATION;
+        weightedSum.push(fcAdjusted * QUESTION_TYPE_WEIGHTS.forced_choice);
+        weightSum += QUESTION_TYPE_WEIGHTS.forced_choice;
+      });
+    }
+    if (likertScores[dim].length > 0) {
+      likertScores[dim].forEach(s => {
+        weightedSum.push(s * QUESTION_TYPE_WEIGHTS.likert);
+        weightSum += QUESTION_TYPE_WEIGHTS.likert;
+      });
+    }
+    if (rankingScores[dim].length > 0) {
+      rankingScores[dim].forEach(s => {
+        weightedSum.push(s * QUESTION_TYPE_WEIGHTS.ranking_allocation * RANKING_DIMENSION_WEIGHT);
+        weightSum += QUESTION_TYPE_WEIGHTS.ranking_allocation * RANKING_DIMENSION_WEIGHT;
+      });
+    }
+
     if (dim === 'self_awareness') {
-      allScores.push(physioScore);
+      if (physioRs.length > 0) {
+        weightedSum.push(gatedPhysioScore * QUESTION_TYPE_WEIGHTS.physiological_proxy);
+        weightSum += QUESTION_TYPE_WEIGHTS.physiological_proxy;
+      }
+      if (metaEQRs.length > 0) {
+        weightedSum.push(metaEQ.calibrationScore * QUESTION_TYPE_WEIGHTS.meta_eq);
+        weightSum += QUESTION_TYPE_WEIGHTS.meta_eq;
+      }
+    }
+    if (emotionVocabByDim[dim] !== undefined) {
+      weightedSum.push(emotionVocabByDim[dim]! * QUESTION_TYPE_WEIGHTS.emotion_vocabulary);
+      weightSum += QUESTION_TYPE_WEIGHTS.emotion_vocabulary;
     }
 
-    // Add meta-EQ calibration to self_awareness
-    if (dim === 'self_awareness' && metaEQRs.length > 0) {
-      allScores.push(metaEQ.calibrationScore);
-    }
-
-    // Add emotion vocabulary to self_awareness
-    if (dim === 'self_awareness' && emotionVocabRs.length > 0) {
-      allScores.push(emotionVocab.score);
-    }
-
-    dimensionScores[dim] = allScores.length > 0 ? mean(allScores) : 50;
+    dimensionScores[dim] = weightSum > 0
+      ? weightedSum.reduce((a, b) => a + b, 0) / weightSum
+      : 50;
   });
 
-  // Calculate type-specific scores for transparency
+  // Cap self-awareness so it does not dominate (1.15 × mean of other dimensions)
+  const otherDims: EQDimension[] = ['self_regulation', 'empathy', 'social_skills', 'motivation'];
+  const otherMean = otherDims.reduce((s, d) => s + dimensionScores[d], 0) / 4;
+  const saCap = otherMean * SELF_AWARENESS_CAP_MULTIPLIER;
+  dimensionScores.self_awareness = Math.min(dimensionScores.self_awareness, saCap);
+
+  // Type-specific scores for transparency (unchanged semantics)
   const typeScores = {
     forced_choice: mean(Object.values(fcScores).flat()) || 50,
     likert: mean(Object.values(likertScores).flat()) || 50,
@@ -588,18 +689,28 @@ export function calculateEQScore(
   const consistencyResult = calculateConsistencyPenalty(consistency.consistencyIndex);
   overallScore = Math.max(0, overallScore - consistencyResult.penalty);
 
+  // Likert entropy: detect straight-lining (too uniform) or random (too chaotic)
+  let likertVarianceFlag: 'uniform' | 'chaotic' | null = null;
+  if (likertRs.length >= 3) {
+    const likertValues = likertRs.map(r => r.value);
+    const likertVar = standardDeviation(likertValues) ** 2;
+    if (likertVar < LIKERT_VARIANCE_STRAIGHT_LINE) likertVarianceFlag = 'uniform';
+    else if (likertVar > LIKERT_VARIANCE_CHAOTIC) likertVarianceFlag = 'chaotic';
+  }
+
   // Quality indicators
   const qualityIndicators: ScoreQualityIndicators = {
     consistencyIndex: consistency.consistencyIndex,
     consistencyPenalty: consistencyResult.penalty,
     consistencyPenaltyLevel: consistencyResult.penaltyLevel,
     isUnreliable: consistencyResult.isUnreliable,
-    socialDesirabilityBias: likertRs.length > 0 
+    socialDesirabilityBias: likertRs.length > 0
       ? Math.min(1, socialDesirabilityFlags / likertRs.length)
       : 0,
     responseTimeFlags: responseTimeAnalysis.suspiciouslyFast,
     completionRate: Math.min(1, responses.length / questions.length),
     selfAwarenessCalibration: metaEQ.calibrationScore / 100,
+    likertVarianceFlag,
   };
 
   // Determine strengths and growth areas
@@ -698,7 +809,13 @@ function generateInsights(
   if (qualityIndicators.socialDesirabilityBias > 0.3) {
     insights.push('For the most accurate results, respond with how you typically act rather than how you\'d like to act.');
   }
-  
+
+  if (qualityIndicators.likertVarianceFlag === 'uniform') {
+    insights.push('Your scale responses were very similar across items. Consider retaking and varying your answers to reflect real differences between situations.');
+  } else if (qualityIndicators.likertVarianceFlag === 'chaotic') {
+    insights.push('Your scale responses varied a lot. If you were unsure, consider retaking when you can focus and answer consistently.');
+  }
+
   // Add penalty explanation if significant
   if (qualityIndicators.consistencyPenalty > 5) {
     insights.push(`Note: Your overall score was reduced by ${Math.round(qualityIndicators.consistencyPenalty)} points due to response inconsistency.`);

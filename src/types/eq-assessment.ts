@@ -264,13 +264,15 @@ export interface DimensionScores {
  */
 export interface ScoreQualityIndicators {
   consistencyIndex: number;           // 0-1, higher = more consistent
-  consistencyPenalty: number;         // Points deducted due to inconsistency
+  consistencyPenalty: number;        // Points deducted due to inconsistency
   consistencyPenaltyLevel: 'none' | 'mild' | 'moderate' | 'severe';
-  isUnreliable: boolean;              // True if consistency < 40%
-  socialDesirabilityBias: number;     // 0-1, higher = more inflation
-  responseTimeFlags: number;          // Count of suspiciously fast responses
-  completionRate: number;             // 0-1, questions answered / total
-  selfAwarenessCalibration: number;   // 0-1, from meta-EQ deltas
+  isUnreliable: boolean;             // True if consistency < 40%
+  socialDesirabilityBias: number;    // 0-1, higher = more inflation
+  responseTimeFlags: number;         // Count of suspiciously fast responses
+  completionRate: number;            // 0-1, questions answered / total
+  selfAwarenessCalibration: number;  // 0-1, from meta-EQ deltas
+  /** 'uniform' = possible straight-lining; 'chaotic' = possible random responding */
+  likertVarianceFlag?: 'uniform' | 'chaotic' | null;
 }
 
 /**

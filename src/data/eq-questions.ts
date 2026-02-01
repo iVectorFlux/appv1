@@ -37,7 +37,7 @@ export const FORCED_CHOICE_QUESTIONS: ForcedChoiceQuestion[] = [
     selectMost: true,
     options: [
       { id: 'a', text: 'I notice subtle emotional shifts in others before they say anything', dimension: 'empathy', weight: 1 },
-      { id: 'b', text: 'I stay calm and composed when situations become tense', dimension: 'self_regulation', weight: 1 },
+      { id: 'b', text: 'I notice when tension is rising and slow my response', dimension: 'self_regulation', weight: 1 },
     ],
   },
   {
@@ -77,8 +77,8 @@ export const FORCED_CHOICE_QUESTIONS: ForcedChoiceQuestion[] = [
     selectLeast: true,
     options: [
       { id: 'a', text: 'I pick up on tension between people even when it\'s unspoken', dimension: 'empathy', weight: 1 },
-      { id: 'b', text: 'I can express difficult emotions without creating conflict', dimension: 'social_skills', weight: 1 },
-      { id: 'c', text: 'I keep my cool even when others are frustrated', dimension: 'self_regulation', weight: 1 },
+      { id: 'b', text: 'I name my emotions and check in with the other person before reacting', dimension: 'social_skills', weight: 1 },
+      { id: 'c', text: 'I notice others\' frustration and adjust my tone and pace', dimension: 'self_regulation', weight: 1 },
       { id: 'd', text: 'I recognize when my mood is affecting my judgment', dimension: 'self_awareness', weight: 1 },
     ],
   },
@@ -107,7 +107,7 @@ export const FORCED_CHOICE_QUESTIONS: ForcedChoiceQuestion[] = [
     options: [
       { id: 'a', text: 'I can describe my emotional state with nuance and precision', dimension: 'self_awareness', weight: 1 },
       { id: 'b', text: 'I maintain optimism even during difficult periods', dimension: 'motivation', weight: 1 },
-      { id: 'c', text: 'I effectively resolve conflicts between others', dimension: 'social_skills', weight: 1 },
+      { id: 'c', text: 'I help others find common ground by clarifying what each person needs', dimension: 'social_skills', weight: 1 },
       { id: 'd', text: 'I pause and reflect before reacting emotionally', dimension: 'self_regulation', weight: 1 },
     ],
   },
@@ -134,7 +134,7 @@ export const FORCED_CHOICE_QUESTIONS: ForcedChoiceQuestion[] = [
     selectMost: true,
     options: [
       { id: 'a', text: 'I quickly identify what\'s causing my stress', dimension: 'self_awareness', weight: 1 },
-      { id: 'b', text: 'I can calm myself down using specific techniques', dimension: 'self_regulation', weight: 1 },
+      { id: 'b', text: 'I use specific techniques to slow my reaction when stressed', dimension: 'self_regulation', weight: 1 },
     ],
   },
   {
@@ -148,9 +148,9 @@ export const FORCED_CHOICE_QUESTIONS: ForcedChoiceQuestion[] = [
     selectLeast: true,
     options: [
       { id: 'a', text: 'I notice micro-expressions that reveal how someone really feels', dimension: 'empathy', weight: 1 },
-      { id: 'b', text: 'I communicate my needs clearly without being aggressive', dimension: 'social_skills', weight: 1 },
+      { id: 'b', text: 'I state my needs and ask for what I need without blaming', dimension: 'social_skills', weight: 1 },
       { id: 'c', text: 'I recognize when I\'m projecting my feelings onto a situation', dimension: 'self_awareness', weight: 1 },
-      { id: 'd', text: 'I stay patient even when conversations become frustrating', dimension: 'self_regulation', weight: 1 },
+      { id: 'd', text: 'I notice when I\'m getting impatient and pause before responding', dimension: 'self_regulation', weight: 1 },
     ],
   },
   {
@@ -176,7 +176,7 @@ export const FORCED_CHOICE_QUESTIONS: ForcedChoiceQuestion[] = [
     selectMost: true,
     options: [
       { id: 'a', text: 'I know my emotional triggers and can prepare for them', dimension: 'self_awareness', weight: 1 },
-      { id: 'b', text: 'I inspire and motivate others effectively', dimension: 'social_skills', weight: 1 },
+      { id: 'b', text: 'I adjust how I communicate based on what motivates different people', dimension: 'social_skills', weight: 1 },
     ],
   },
   {
@@ -191,7 +191,7 @@ export const FORCED_CHOICE_QUESTIONS: ForcedChoiceQuestion[] = [
     options: [
       { id: 'a', text: 'I adapt my emotional expression to different contexts', dimension: 'self_regulation', weight: 1 },
       { id: 'b', text: 'I understand the underlying reasons for my emotions', dimension: 'self_awareness', weight: 1 },
-      { id: 'c', text: 'I build rapport easily with different types of people', dimension: 'social_skills', weight: 1 },
+      { id: 'c', text: 'I adjust how I connect based on what the other person seems to need', dimension: 'social_skills', weight: 1 },
       { id: 'd', text: 'I genuinely feel what others are going through', dimension: 'empathy', weight: 1 },
     ],
   },
@@ -232,7 +232,7 @@ export const FORCED_CHOICE_QUESTIONS: ForcedChoiceQuestion[] = [
     selectLeast: true,
     options: [
       { id: 'a', text: 'I persist toward goals despite obstacles and setbacks', dimension: 'motivation', weight: 1 },
-      { id: 'b', text: 'I can calm others down when they\'re upset', dimension: 'social_skills', weight: 1 },
+      { id: 'b', text: 'I help others de-escalate by listening and reflecting back what they say', dimension: 'social_skills', weight: 1 },
       { id: 'c', text: 'I notice when my emotions are shifting before they peak', dimension: 'self_awareness', weight: 1 },
       { id: 'd', text: 'I can delay gratification for longer-term rewards', dimension: 'self_regulation', weight: 1 },
     ],
@@ -305,7 +305,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'impulse_control',
     difficulty: 'easy',
     version: 1,
-    statement: 'When emotions rise, I pause before reacting.',
+    statement: 'In heated moments, I usually pause before reacting.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -411,7 +411,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'communication_clarity',
     difficulty: 'easy',
     version: 1,
-    statement: 'I express my emotions clearly without creating unnecessary conflict.',
+    statement: 'In tense discussions, I usually express my emotions clearly without escalating conflict.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -437,7 +437,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'influence',
     difficulty: 'medium',
     version: 1,
-    statement: 'I can positively influence the mood of a group.',
+    statement: 'In tense discussions, I often help shift the mood in a constructive direction.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -450,7 +450,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'conflict_navigation',
     difficulty: 'hard',
     version: 1,
-    statement: 'I can navigate tense situations and help others find common ground.',
+    statement: 'In tense discussions, I usually help others find common ground.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -703,10 +703,10 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'hard',
     version: 1,
-    scenario: 'Feeling overwhelmed by too many options or decisions',
+    scenario: 'Feeling overwhelmed by too many options or demands',
     options: [
       { id: 'a', emotion: 'Anxiety', isCorrect: false, partialCredit: 0.6 },
-      { id: 'b', emotion: 'Decision fatigue', isCorrect: true, partialCredit: 1 },
+      { id: 'b', emotion: 'Overwhelm', isCorrect: true, partialCredit: 1 },
       { id: 'c', emotion: 'Stress', isCorrect: false, partialCredit: 0.5 },
       { id: 'd', emotion: 'Confusion', isCorrect: false, partialCredit: 0.4 },
     ],
@@ -892,6 +892,68 @@ export const META_EQ_QUESTIONS: MetaEQQuestion[] = [
     scale: 7,
     idealDelta: 0,
   },
+  // Asymmetric: self = internal, other = behavioral (regulation vs impression management)
+  {
+    id: 'me_013',
+    type: 'meta_eq',
+    dimension: 'self_regulation',
+    facet: 'impulse_control',
+    difficulty: 'medium',
+    version: 1,
+    selfStatement: 'I feel calm under pressure.',
+    otherStatement: 'I appear calm under pressure.',
+    scale: 7,
+    idealDelta: 0,
+  },
+  {
+    id: 'me_014',
+    type: 'meta_eq',
+    dimension: 'empathy',
+    facet: 'compassionate_concern',
+    difficulty: 'medium',
+    version: 1,
+    selfStatement: 'I feel moved by others\' struggles.',
+    otherStatement: 'I show care when others are struggling.',
+    scale: 7,
+    idealDelta: 0,
+  },
+  {
+    id: 'me_015',
+    type: 'meta_eq',
+    dimension: 'self_regulation',
+    facet: 'stress_management',
+    difficulty: 'hard',
+    version: 1,
+    selfStatement: 'I feel in control of my reactions when stressed.',
+    otherStatement: 'I come across as controlled in my reactions when stressed.',
+    scale: 7,
+    idealDelta: 0,
+  },
+  // Asymmetric: self = internal, other = behavioral (2 more for calibration resolution)
+  {
+    id: 'me_016',
+    type: 'meta_eq',
+    dimension: 'empathy',
+    facet: 'emotional_reading',
+    difficulty: 'medium',
+    version: 1,
+    selfStatement: 'I feel attuned to others\' emotional states.',
+    otherStatement: 'I respond in ways that show I notice others\' emotions.',
+    scale: 7,
+    idealDelta: 0,
+  },
+  {
+    id: 'me_017',
+    type: 'meta_eq',
+    dimension: 'motivation',
+    facet: 'intrinsic_drive',
+    difficulty: 'medium',
+    version: 1,
+    selfStatement: 'I feel motivated even when progress is slow.',
+    otherStatement: 'I keep showing up and taking steps toward goals.',
+    scale: 7,
+    idealDelta: 0,
+  },
 ];
 
 // =============================================================================
@@ -1047,6 +1109,22 @@ export const PHYSIOLOGICAL_PROXY_QUESTIONS: PhysiologicalProxyQuestion[] = [
       { id: 'b', text: 'Sometimes, if I focus on it', awarenessLevel: 'medium', bodyArea: 'cardiovascular' },
       { id: 'c', text: 'Only in extreme situations', awarenessLevel: 'low', bodyArea: 'cardiovascular' },
       { id: 'd', text: 'No, I never notice it', awarenessLevel: 'low' },
+    ],
+  },
+  // Gate item only: discriminates high awareness + regulation from high awareness + anxiety (not scored)
+  {
+    id: 'pp_gate',
+    type: 'physiological_proxy',
+    dimension: 'self_awareness',
+    facet: 'interoceptive_awareness',
+    difficulty: 'medium',
+    version: 1,
+    prompt: 'When I notice body sensations, I can usually regulate them.',
+    options: [
+      { id: 'a', text: 'Usually yes - I can calm or shift them', awarenessLevel: 'high' },
+      { id: 'b', text: 'Sometimes', awarenessLevel: 'medium' },
+      { id: 'c', text: 'Rarely - they often overwhelm me', awarenessLevel: 'low' },
+      { id: 'd', text: 'I don\'t usually notice body sensations', awarenessLevel: 'low' },
     ],
   },
 ];
@@ -1206,6 +1284,31 @@ export const CONSISTENCY_PROBE_QUESTIONS: ConsistencyProbeQuestion[] = [
     pairedWithId: 'cp_011',
     expectedCorrelation: 'negative',
   },
+  // Pair 7: Orthogonal (same polarity, positive correlation) — catches straight-lining / acquiescence
+  {
+    id: 'cp_013',
+    type: 'consistency_probe',
+    dimension: 'self_regulation',
+    facet: 'stress_management',
+    difficulty: 'medium',
+    version: 1,
+    statement: 'I am emotionally steady under stress.',
+    scale: 7,
+    pairedWithId: 'cp_014',
+    expectedCorrelation: 'positive',
+  },
+  {
+    id: 'cp_014',
+    type: 'consistency_probe',
+    dimension: 'self_regulation',
+    facet: 'stress_management',
+    difficulty: 'medium',
+    version: 1,
+    statement: 'Stress rarely disrupts my emotional balance.',
+    scale: 7,
+    pairedWithId: 'cp_013',
+    expectedCorrelation: 'positive',
+  },
 ];
 
 // =============================================================================
@@ -1243,7 +1346,7 @@ export const RANKING_ALLOCATION_QUESTIONS: RankingAllocationQuestion[] = [
     options: [
       { id: 'a', text: 'Staying calm under pressure', dimension: 'self_regulation' },
       { id: 'b', text: 'Understanding what I\'m feeling', dimension: 'self_awareness' },
-      { id: 'c', text: 'Bouncing back from setbacks', dimension: 'motivation' },
+      { id: 'c', text: 'Continuing toward long-term goals even when progress is slow', dimension: 'motivation' },
       { id: 'd', text: 'Getting support from others', dimension: 'social_skills' },
     ],
   },
@@ -1419,12 +1522,15 @@ export function selectFullTestQuestions(): EQQuestion[] {
   // 6 physiological
   questions.push(...shuffleArray(PHYSIOLOGICAL_PROXY_QUESTIONS).slice(0, 6));
   
-  // 8 consistency probes (4 pairs)
+  // 8 consistency probes (4 pairs drawn from 7 pairs; includes positive-correlation pair for straight-line detection)
   const pairs = [
     [CONSISTENCY_PROBE_QUESTIONS[0], CONSISTENCY_PROBE_QUESTIONS[1]],
     [CONSISTENCY_PROBE_QUESTIONS[2], CONSISTENCY_PROBE_QUESTIONS[3]],
     [CONSISTENCY_PROBE_QUESTIONS[4], CONSISTENCY_PROBE_QUESTIONS[5]],
     [CONSISTENCY_PROBE_QUESTIONS[6], CONSISTENCY_PROBE_QUESTIONS[7]],
+    [CONSISTENCY_PROBE_QUESTIONS[8], CONSISTENCY_PROBE_QUESTIONS[9]],
+    [CONSISTENCY_PROBE_QUESTIONS[10], CONSISTENCY_PROBE_QUESTIONS[11]],
+    [CONSISTENCY_PROBE_QUESTIONS[12], CONSISTENCY_PROBE_QUESTIONS[13]],
   ];
   const selectedPairs = shuffleArray(pairs).slice(0, 4);
   selectedPairs.forEach(pair => questions.push(...pair));

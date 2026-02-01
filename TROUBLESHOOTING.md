@@ -49,13 +49,14 @@ If the **email confirmation link** (or magic link) from Supabase sends users to 
 
 1. **Set your app URL in Supabase Dashboard**  
    Go to **Authentication → URL Configuration**:
-   - **Site URL**: Set to your production app URL (e.g. `https://your-app.vercel.app`). This is the default redirect target.
-   - **Redirect URLs**: Add the same URL (and any other allowed origins, e.g. `http://localhost:8081` for local dev). Supabase only redirects to URLs in this list.
+   - **Site URL**: Set to your production app URL (e.g. `https://appv1-erd1.vercel.app`). This is the default redirect target.
+   - **Redirect URLs**: Add your production URL and keep localhost for dev, e.g.  
+     `https://appv1-erd1.vercel.app`, `https://appv1-erd1.vercel.app/**`, `http://localhost:8081`, `http://localhost:8081/**`. Supabase only redirects to URLs in this list.
 
 2. **Set `EXPO_PUBLIC_APP_URL` for production**  
    In your `.env` (and in Vercel **Environment Variables** if you deploy there), set:
    ```bash
-   EXPO_PUBLIC_APP_URL=https://your-app.vercel.app
+   EXPO_PUBLIC_APP_URL=https://appv1-erd1.vercel.app
    ```
    The app uses this (and on web, the current origin) when sending the redirect URL to Supabase for sign-up confirmation emails.
 
