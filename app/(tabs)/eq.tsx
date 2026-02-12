@@ -30,6 +30,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { selectCheckInQuestions } from '@/data/eq-questions';
 import { calculateEQScore } from '@/services/eq-scoring';
+import { saveEQAssessmentResult } from '@/services/eq-storage';
 import {
   AnimationDuration,
   createQuestionTransition,
@@ -60,6 +61,7 @@ export default function EQCheckInScreen() {
   const [responses, setResponses] = useState<EQResponse[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
   
   // Per-question state
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
@@ -78,8 +80,10 @@ export default function EQCheckInScreen() {
   useEffect(() => {
     // Select questions for this check-in
     const selectedQuestions = selectCheckInQuestions();
+    const startTime = Date.now();
     setQuestions(selectedQuestions);
-    setQuestionStartTime(Date.now());
+    setSessionStartTime(startTime);
+    setQuestionStartTime(startTime);
   }, []);
 
   const currentQuestion = questions[currentIndex];
@@ -131,6 +135,14 @@ export default function EQCheckInScreen() {
       );
       setResult(assessmentResult);
       setIsComplete(true);
+      
+      // Save to database
+      if (user?.id) {
+        saveEQAssessmentResult(assessmentResult, questions, sessionStartTime).catch((error) => {
+          console.error('[EQ Check-In] Failed to save results:', error);
+          // Don't block UI - results are shown even if save fails
+        });
+      }
     }
   };
 
@@ -152,6 +164,13 @@ export default function EQCheckInScreen() {
       );
       setResult(assessmentResult);
       setIsComplete(true);
+      
+      // Save to database
+      if (user?.id) {
+        saveEQAssessmentResult(assessmentResult, questions, sessionStartTime).catch((error) => {
+          console.error('[EQ Check-In] Failed to save results:', error);
+        });
+      }
     }
   };
 

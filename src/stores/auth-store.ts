@@ -33,6 +33,8 @@ interface AuthStore extends AuthState {
   refreshOnboardingStatus: () => Promise<void>;
   /** Re-fetch display name from profiles and update user (e.g. after onboarding or profile edit). */
   refreshDisplayName: () => Promise<void>;
+  /** Re-validate session from storage (e.g. when app comes to foreground after token refresh). */
+  revalidateSession: () => Promise<void>;
 }
 
 function mapSupabaseUserToAppUser(
@@ -295,6 +297,39 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }));
     } catch (_) {
       // Non-fatal
+    }
+  },
+
+  revalidateSession: async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const user = await getUserWithProfile(session.user);
+        const needsEmailConfirmation =
+          typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
+          !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
+        let hasCompletedOnboarding = false;
+        try {
+          const { data: row } = await supabase
+            .from('user_onboarding')
+            .select('completed_at')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+          hasCompletedOnboarding = !!row?.completed_at;
+        } catch {
+          // ignore
+        }
+        set({
+          user,
+          isAuthenticated: true,
+          hasCompletedOnboarding,
+          needsEmailConfirmation: !!needsEmailConfirmation,
+        });
+      } else {
+        set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
+      }
+    } catch (_) {
+      // Non-fatal; keep current state
     }
   },
 }));

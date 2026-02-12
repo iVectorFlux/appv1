@@ -3,18 +3,24 @@
  *
  * Bottom tab navigation for main app screens.
  * Protects all tab routes: direct /home, /profile, etc. require sign-in.
+ * Uses safe area insets so tab bar is not cut off on Android phone browser / notched devices.
  */
 
 import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function TabsLayout() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } = useAuthStore();
+
+  const tabBarPaddingBottom = Math.max(insets.bottom, 8);
+  const tabBarHeight = 56 + tabBarPaddingBottom;
 
   if (isLoading) {
     return (
@@ -37,6 +43,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
@@ -44,8 +51,9 @@ export default function TabsLayout() {
           borderTopColor: colors.borderLight,
           borderTopWidth: 1,
           paddingTop: 8,
-          paddingBottom: 8,
-          height: 60,
+          paddingBottom: tabBarPaddingBottom,
+          height: tabBarHeight,
+          minHeight: tabBarHeight,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -55,6 +63,8 @@ export default function TabsLayout() {
         tabBarIconStyle: {
           marginTop: 4,
         },
+        // Ensure tab screen content can fill and scroll (fixes Android browser scroll)
+        sceneStyle: { flex: 1 },
       }}
     >
       <Tabs.Screen

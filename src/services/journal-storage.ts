@@ -12,19 +12,46 @@ function encryptedToStorage(encrypted: string): string {
 function encryptedFromRow(value: unknown): string {
   if (value == null) return '';
   if (typeof value === 'string') return value;
-  if (value instanceof ArrayBuffer) return btoa(String.fromCharCode(...new Uint8Array(value)));
-  return btoa(String.fromCharCode(...new Uint8Array(value as ArrayBuffer)));
+  if (value instanceof ArrayBuffer) {
+    const arr = new Uint8Array(value);
+    const chunks: string[] = [];
+    for (let i = 0; i < arr.length; i += 8192) chunks.push(String.fromCharCode(...arr.subarray(i, i + 8192)));
+    return btoa(chunks.join(''));
+  }
+  if (typeof value === 'object' && value !== null && 'byteLength' in value) {
+    const arr = new Uint8Array(value as ArrayBuffer);
+    const chunks: string[] = [];
+    for (let i = 0; i < arr.length; i += 8192) chunks.push(String.fromCharCode(...arr.subarray(i, i + 8192)));
+    return btoa(chunks.join(''));
+  }
+  return '';
+}
+
+function normalizeEmotions(value: unknown): JournalEntry['emotions'] {
+  if (Array.isArray(value)) return value as JournalEntry['emotions'];
+  if (value == null) return [];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed) ? (parsed as JournalEntry['emotions']) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 function mapSupabaseRowToEntry(row: Record<string, unknown>): JournalEntry {
+  const createdAt = row.created_at != null ? new Date(row.created_at as string).getTime() : Date.now();
+  const updatedAt = row.updated_at != null ? new Date(row.updated_at as string).getTime() : Date.now();
   return {
     id: row.id as string,
     userId: row.user_id as string,
-    createdAt: new Date(row.created_at as string).getTime(),
-    updatedAt: new Date(row.updated_at as string).getTime(),
+    createdAt,
+    updatedAt,
     entrySource: (row.entry_source === 'reflect' ? 'reflect' : 'journal_only') as JournalEntry['entrySource'],
     pleasantness: row.pleasantness as number | undefined,
-    emotions: (row.emotions as JournalEntry['emotions']) ?? [],
+    emotions: normalizeEmotions(row.emotions),
     energyLevel: (row.energy_level as JournalEntry['energyLevel']) ?? 1,
     reasons: row.reasons as string[] | undefined,
     journalTextEncrypted: encryptedFromRow(row.journal_text_encrypted),

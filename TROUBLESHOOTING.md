@@ -100,6 +100,11 @@ If the **email confirmation link** (or magic link) from Supabase sends users to 
 1. **Supabase Dashboard** → **Authentication** → **Settings**: Check JWT expiry and any “Session timeout” or “Inactivity” settings (Pro).
 2. **Storage**: On web, clearing site data removes the session. On native, reinstalling or clearing app data does the same.
 3. **Network**: If refresh fails (e.g. offline), the next successful refresh will restore the session; if the app was closed while offline, the user may need to sign in again.
+4. The app now **re-validates the session when the app comes to the foreground** (tab focus or app resume), so token refresh is reflected and unexpected logouts are reduced.
+
+### Multiple users / one device
+
+**One session per app instance**: The app uses a single Supabase auth session per browser or app install. So **only one user can be logged in at a time on a given device or browser**. When a second user signs in, they replace the first user's session. To switch users, sign out first, then the other user can sign in. Each **different device** can have its own logged-in user at the same time.
 
 ## Verification Steps
 

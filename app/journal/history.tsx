@@ -53,13 +53,16 @@ export default function JournalHistoryScreen() {
   const [entries, setEntries] = useState<ListEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadFromDb = useCallback(async () => {
     if (!user?.id) {
       setEntries([]);
+      setLoadError(null);
       setLoading(false);
       return;
     }
+    setLoadError(null);
     try {
       const rows = await getJournalEntries(user.id, 100);
       const decrypted: ListEntry[] = [];
@@ -79,8 +82,10 @@ export default function JournalHistoryScreen() {
         });
       }
       setEntries(decrypted);
-    } catch {
+    } catch (e) {
+      console.error('[Journal history] Load failed:', e);
       setEntries([]);
+      setLoadError('Could not load entries. Pull to try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -114,6 +119,12 @@ export default function JournalHistoryScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.mutedText}>Loading entries…</Text>
+        </View>
+      ) : loadError ? (
+        <View style={styles.centered}>
+          <Ionicons name="warning-outline" size={48} color={colors.textMuted} style={styles.emptyIcon} />
+          <Text style={styles.emptyTitle}>Couldn't load entries</Text>
+          <Text style={styles.mutedText}>{loadError}</Text>
         </View>
       ) : entries.length === 0 ? (
         <View style={styles.centered}>

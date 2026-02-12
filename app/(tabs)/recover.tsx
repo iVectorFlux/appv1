@@ -389,8 +389,9 @@ export default function RecoverScreen() {
             iconColor={colors.accentSoft}
           />
           <ListCard
-            onPress={() => {}}
+            onPress={() => router.push('/grounding')}
             title="Grounding"
+            subtitle="Guided reset for stress & overwhelm"
             icon="leaf-outline"
             iconBackgroundColor={colors.accentCalm + '20'}
             iconColor={colors.accentCalm}

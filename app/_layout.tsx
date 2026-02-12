@@ -2,21 +2,28 @@
  * Root Layout
  * 
  * Expo Router root layout with navigation setup.
- * Includes mobile frame wrapper for web platform.
+ * On web desktop: mobile frame wrapper. On web mobile (e.g. Android phone browser): full viewport for proper scroll and tab bar.
  */
 
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { Platform, View, StyleSheet, type ViewStyle } from 'react-native';
+import { AppState, Platform, View, StyleSheet, useWindowDimensions, type ViewStyle } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { initializeDatabase } from '@/services/database';
 import { useColors } from '@/constants/design-tokens';
 
+const MOBILE_WEB_BREAKPOINT = 500;
+
 export default function RootLayout() {
   const { initialize } = useAuthStore();
   const { initialize: initializeTheme } = useThemeStore();
   const colors = useColors();
+  const { width: windowWidth } = useWindowDimensions();
+  const isMobileWeb = Platform.OS === 'web' && windowWidth <= MOBILE_WEB_BREAKPOINT;
+
+  const { revalidateSession } = useAuthStore();
 
   useEffect(() => {
     // Initialize database, auth, and theme
@@ -38,50 +45,64 @@ export default function RootLayout() {
     init();
   }, [initialize, initializeTheme]);
 
-  // On web, wrap in mobile frame
+  // Re-validate session when app comes to foreground so token refresh is reflected and we don't log out unexpectedly
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        revalidateSession();
+      }
+    });
+    return () => subscription.remove();
+  }, [revalidateSession]);
+
+  const stackContent = (
+    <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background, flex: 1 },
+        }}
+      >
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen 
+          name="full-eq-test" 
+          options={{ presentation: 'card', animation: 'slide_from_right' }} 
+        />
+        <Stack.Screen 
+          name="learning-detail" 
+          options={{ presentation: 'card', animation: 'slide_from_right' }} 
+        />
+        <Stack.Screen 
+          name="journal" 
+          options={{ presentation: 'card', animation: 'slide_from_right' }} 
+        />
+        <Stack.Screen 
+          name="grounding" 
+          options={{ presentation: 'card', animation: 'slide_from_right' }} 
+        />
+  </Stack>
+  );
+
+  // On web: mobile viewport (e.g. Android phone browser) = full screen for proper scroll and tab bar; desktop = decorative frame
   if (Platform.OS === 'web') {
-    return (
+    const wrapped = isMobileWeb ? (
+      <View style={[styles.webFullScreen, { backgroundColor: colors.background }]}>
+        {stackContent}
+      </View>
+    ) : (
       <View style={styles.webContainer}>
         <View style={[styles.mobileFrame, { backgroundColor: colors.background }]}>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen 
-              name="full-eq-test" 
-              options={{ 
-                // On web, use card presentation to stay within mobile frame
-                presentation: 'card',
-                animation: 'slide_from_right',
-              }} 
-            />
-            <Stack.Screen 
-              name="learning-detail" 
-              options={{ 
-                presentation: 'card',
-                animation: 'slide_from_right',
-              }} 
-            />
-            <Stack.Screen 
-              name="journal" 
-              options={{ 
-                presentation: 'card',
-                animation: 'slide_from_right',
-              }} 
-            />
-          </Stack>
+          {stackContent}
         </View>
       </View>
     );
+    return <SafeAreaProvider>{wrapped}</SafeAreaProvider>;
   }
 
   // On native platforms, use standard Stack
   return (
+    <SafeAreaProvider>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -112,7 +133,15 @@ export default function RootLayout() {
           animation: 'slide_from_right',
         }} 
       />
+      <Stack.Screen 
+        name="grounding" 
+        options={{ 
+          presentation: 'card',
+          animation: 'slide_from_right',
+        }} 
+      />
     </Stack>
+    </SafeAreaProvider>
   );
 }
 
@@ -126,6 +155,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
     minHeight: '100vh' as any,
+  },
+  webFullScreen: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   mobileFrame: {
     width: 393,

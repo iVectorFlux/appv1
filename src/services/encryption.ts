@@ -87,6 +87,11 @@ export async function encryptJournalText(
 }
 
 export async function decryptJournalText(encrypted: string, userId: string): Promise<string> {
+  if (encrypted == null || String(encrypted).trim() === '') return '';
   await getEncryptionKey(userId);
-  return base64Decode(encrypted);
+  try {
+    return base64Decode(String(encrypted));
+  } catch {
+    return '';
+  }
 }

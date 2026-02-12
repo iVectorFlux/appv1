@@ -31,6 +31,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { selectFullTestQuestions } from '@/data/eq-questions';
 import { calculateEQScore, getScoreLevel, getScoreLevelDescription, getDimensionDescription } from '@/services/eq-scoring';
+import { saveEQAssessmentResult } from '@/services/eq-storage';
 import {
   AnimationDuration,
   AnimationConfigs,
@@ -75,6 +76,7 @@ export default function FullEQTestScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<EQResponse[]>([]);
   const [result, setResult] = useState<EQAssessmentResult | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
 
   // Per-question state
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
@@ -240,6 +242,14 @@ export default function FullEQTestScreen() {
       );
       setResult(assessmentResult);
       setScreenState('results');
+      
+      // Save to database
+      if (user?.id) {
+        saveEQAssessmentResult(assessmentResult, questions, sessionStartTime).catch((error) => {
+          console.error('[Full EQ Test] Failed to save results:', error);
+          // Don't block UI - results are shown even if save fails
+        });
+      }
     }
   };
 
@@ -258,6 +268,13 @@ export default function FullEQTestScreen() {
       );
       setResult(assessmentResult);
       setScreenState('results');
+      
+      // Save to database
+      if (user?.id) {
+        saveEQAssessmentResult(assessmentResult, questions, sessionStartTime).catch((error) => {
+          console.error('[Full EQ Test] Failed to save results:', error);
+        });
+      }
     }
   };
 
@@ -336,8 +353,10 @@ export default function FullEQTestScreen() {
           <Button
             title="Begin Assessment"
             onPress={() => {
+              const startTime = Date.now();
+              setSessionStartTime(startTime);
+              setQuestionStartTime(startTime);
               setScreenState('test');
-              setQuestionStartTime(Date.now());
             }}
             size="lg"
             fullWidth

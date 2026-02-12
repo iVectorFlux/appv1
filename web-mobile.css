@@ -38,8 +38,8 @@ html, body {
   background-color: #000;
 }
 
-/* Mobile viewport - iPhone 16 Pro */
-@media (min-width: 393px) {
+/* Desktop: constrain to mobile frame size. Mobile (e.g. Android phone): full viewport via JS + this media query */
+@media (min-width: 501px) {
   #root > div {
     max-width: 393px;
     max-height: 852px;
