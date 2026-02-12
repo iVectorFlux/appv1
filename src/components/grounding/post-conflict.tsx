@@ -2,12 +2,13 @@
  * Post-Conflict Reset — Mode 5 (4-6 min)
  *
  * Steps:
- *  1. Label emotion — selection buttons
- *  2. Locate in body — text prompt (body map future)
- *  3. Breath release — 3 slow breaths
+ *  1. Label emotion — selection buttons with glow
+ *  2. Locate in body — body area tags
+ *  3. Breath release — 3 slow breaths with glowing orb
  *  4. Fact vs interpretation — two text prompts
  *
- * Design: slower pacing, longer transitions, dark bg, no scroll.
+ * Design: slower pacing, longer transitions, glowing orb, elevated cards,
+ *         step progress, dark bg.
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -32,6 +33,15 @@ const BODY_LOCATIONS = POST_CONFLICT_STEPS[1].bodyPrompts;
 const BREATH = { inhale: 4000, hold: 2000, exhale: 6000 };
 const BREATH_CYCLES = 3;
 
+const STEP_LABELS: Record<Step, string> = {
+  label: 'Step 1 of 4 · Name It',
+  locate: 'Step 2 of 4 · Locate It',
+  breathe: 'Step 3 of 4 · Release',
+  reframe: 'Step 4 of 4 · Reframe',
+};
+
+const STEP_ORDER: Step[] = ['label', 'locate', 'breathe', 'reframe'];
+
 export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
   const colors = useColors();
   const [step, setStep] = useState<Step>('label');
@@ -44,9 +54,24 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
 
   const textFade = useRef(new Animated.Value(1)).current;
   const orbScale = useRef(new Animated.Value(1)).current;
-  const startTime = useRef(Date.now());
+  const orbOpacity = useRef(new Animated.Value(0.5)).current;
+  const ringPulse = useRef(new Animated.Value(1)).current;
 
-  // ── Transition helper (slower pacing) ─────────────────────────
+  const currentStepIdx = STEP_ORDER.indexOf(step);
+
+  // Ambient pulse
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(ringPulse, { toValue: 1.06, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(ringPulse, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [ringPulse]);
+
+  // Slower transitions for this mode
   const fadeToStep = useCallback(
     (next: Step) => {
       Animated.timing(textFade, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
@@ -58,145 +83,125 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
     [textFade],
   );
 
-  // ── Breathing ─────────────────────────────────────────────────
+  // Breathing
   const runBreathCycle = useCallback(
     (cycle: number) => {
-      if (cycle >= BREATH_CYCLES) {
-        fadeToStep('reframe');
-        return;
-      }
+      if (cycle >= BREATH_CYCLES) { fadeToStep('reframe'); return; }
       setBreathCycle(cycle);
-
       setBreathPhase('in');
-      Animated.timing(orbScale, { toValue: 1.3, duration: BREATH.inhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }).start(() => {
+      Animated.parallel([
+        Animated.timing(orbScale, { toValue: 1.3, duration: BREATH.inhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(orbOpacity, { toValue: 0.85, duration: BREATH.inhale, useNativeDriver: true }),
+      ]).start(() => {
         setBreathPhase('hold');
         setTimeout(() => {
           setBreathPhase('out');
-          Animated.timing(orbScale, { toValue: 1, duration: BREATH.exhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }).start(() => {
-            runBreathCycle(cycle + 1);
-          });
+          Animated.parallel([
+            Animated.timing(orbScale, { toValue: 1, duration: BREATH.exhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(orbOpacity, { toValue: 0.5, duration: BREATH.exhale, useNativeDriver: true }),
+          ]).start(() => runBreathCycle(cycle + 1));
         }, BREATH.hold);
       });
     },
-    [fadeToStep, orbScale],
+    [fadeToStep, orbScale, orbOpacity],
   );
 
-  useEffect(() => {
-    if (step === 'breathe') {
-      runBreathCycle(0);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  useEffect(() => { if (step === 'breathe') runBreathCycle(0); }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const styles = createStyles(colors);
-
-  const phaseLabel = breathPhase === 'in' ? 'Breathe in' : breathPhase === 'hold' ? 'Hold' : 'Let it out';
+  const phaseLabel = breathPhase === 'in' ? 'Breathe in deeply' : breathPhase === 'hold' ? 'Hold gently' : 'Let it all out';
 
   return (
     <View style={styles.container}>
-      {/* Close */}
-      <TouchableOpacity style={styles.closeBtn} onPress={onExit}>
-        <Ionicons name="close" size={24} color={colors.textMuted} />
-      </TouchableOpacity>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <Text style={styles.stepLabel}>{STEP_LABELS[step]}</Text>
+        <TouchableOpacity style={styles.closeBtn} onPress={onExit} hitSlop={12}>
+          <Ionicons name="close" size={22} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
 
-      {/* Step indicator */}
-      <View style={styles.stepRow}>
-        {(['label', 'locate', 'breathe', 'reframe'] as Step[]).map((s, i) => (
-          <View
-            key={s}
-            style={[
-              styles.stepDot,
-              (step === s || (['label', 'locate', 'breathe', 'reframe'].indexOf(step) > i)) && { backgroundColor: colors.primary },
-            ]}
-          />
+      {/* Progress segments */}
+      <View style={styles.progressRow}>
+        {STEP_ORDER.map((s, i) => (
+          <View key={s} style={[styles.progressSeg, i <= currentStepIdx && { backgroundColor: colors.accentSoft }]} />
         ))}
       </View>
 
       <Animated.View style={[styles.center, { opacity: textFade }]}>
 
-        {/* ── LABEL EMOTION ───────────────────────────────── */}
+        {/* ── LABEL EMOTION ───────────────────────────── */}
         {step === 'label' && (
           <>
             <Text style={styles.heading}>What are you feeling{'\n'}right now?</Text>
-            <View style={styles.emotionWrap}>
+            <Text style={styles.subheading}>Choose the closest match</Text>
+            <View style={styles.tagWrap}>
               {POST_CONFLICT_EMOTIONS.map((e) => (
                 <TouchableOpacity
                   key={e}
                   onPress={() => setSelectedEmotion(selectedEmotion === e ? null : e)}
-                  style={[
-                    styles.emotionTag,
-                    selectedEmotion === e && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
+                  style={[styles.tag, selectedEmotion === e && { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }]}
                 >
-                  <Text
-                    style={[
-                      styles.emotionTagText,
-                      selectedEmotion === e && { color: colors.primaryForeground },
-                    ]}
-                  >
-                    {e}
-                  </Text>
+                  <Text style={[styles.tagText, selectedEmotion === e && { color: colors.primaryForeground }]}>{e}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             <TouchableOpacity
-              style={[styles.primaryBtn, !selectedEmotion && { opacity: 0.4 }]}
+              style={[styles.primaryBtn, !selectedEmotion && { opacity: 0.35 }]}
               onPress={() => selectedEmotion && fadeToStep('locate')}
               activeOpacity={0.8}
               disabled={!selectedEmotion}
             >
               <Text style={styles.primaryBtnText}>Next</Text>
+              <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
             </TouchableOpacity>
           </>
         )}
 
-        {/* ── LOCATE IN BODY ──────────────────────────────── */}
+        {/* ── LOCATE IN BODY ──────────────────────────── */}
         {step === 'locate' && (
           <>
-            <Ionicons name="body-outline" size={40} color={colors.accentSoft} style={{ marginBottom: Spacing.xl }} />
+            <View style={styles.iconGlow}>
+              <Ionicons name="body-outline" size={40} color={colors.accentSoft} />
+            </View>
             <Text style={styles.heading}>Where do you feel this{'\n'}in your body?</Text>
-            <View style={styles.emotionWrap}>
+            <View style={styles.tagWrap}>
               {BODY_LOCATIONS.map((loc) => (
                 <TouchableOpacity
                   key={loc}
                   onPress={() => setSelectedBody(selectedBody === loc ? null : loc)}
-                  style={[
-                    styles.emotionTag,
-                    selectedBody === loc && { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft },
-                  ]}
+                  style={[styles.tag, selectedBody === loc && { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }]}
                 >
-                  <Text
-                    style={[
-                      styles.emotionTagText,
-                      selectedBody === loc && { color: colors.primaryForeground },
-                    ]}
-                  >
-                    {loc}
-                  </Text>
+                  <Text style={[styles.tagText, selectedBody === loc && { color: colors.primaryForeground }]}>{loc}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             <TouchableOpacity
-              style={[styles.primaryBtn, !selectedBody && { opacity: 0.4 }]}
+              style={[styles.primaryBtn, !selectedBody && { opacity: 0.35 }]}
               onPress={() => selectedBody && fadeToStep('breathe')}
               activeOpacity={0.8}
               disabled={!selectedBody}
             >
               <Text style={styles.primaryBtnText}>Next</Text>
+              <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
             </TouchableOpacity>
           </>
         )}
 
-        {/* ── BREATH RELEASE ──────────────────────────────── */}
+        {/* ── BREATH RELEASE ──────────────────────────── */}
         {step === 'breathe' && (
           <>
-            <Animated.View style={[styles.orb, { transform: [{ scale: orbScale }] }]} />
+            <View style={styles.orbContainer}>
+              <Animated.View style={[styles.orbRing3, { transform: [{ scale: Animated.multiply(orbScale, ringPulse) }], opacity: Animated.multiply(orbOpacity, new Animated.Value(0.12)) }]} />
+              <Animated.View style={[styles.orbRing2, { transform: [{ scale: orbScale }], opacity: Animated.multiply(orbOpacity, new Animated.Value(0.25)) }]} />
+              <Animated.View style={[styles.orbCore, { transform: [{ scale: orbScale }], opacity: orbOpacity }]} />
+            </View>
             <Text style={styles.heading}>{phaseLabel}</Text>
-            <Text style={styles.counter}>Breath {breathCycle + 1} of {BREATH_CYCLES}</Text>
+            <Text style={styles.counterText}>Breath {breathCycle + 1} of {BREATH_CYCLES}</Text>
           </>
         )}
 
-        {/* ── FACT vs INTERPRETATION ──────────────────────── */}
+        {/* ── FACT vs INTERPRETATION ──────────────────── */}
         {step === 'reframe' && (
           <ScrollView
             style={{ flex: 1, width: '100%' }}
@@ -204,31 +209,34 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={[styles.heading, { marginTop: Spacing['2xl'] }]}>Separate fact from story</Text>
+            <Text style={[styles.heading, { marginTop: Spacing.xl }]}>Separate fact from story</Text>
+            <Text style={styles.subheading}>This helps you see clearly</Text>
 
-            <Text style={styles.inputLabel}>What actually happened?</Text>
-            <TextInput
-              value={factText}
-              onChangeText={setFactText}
-              placeholder="Just the facts"
-              placeholderTextColor={colors.textMuted}
-              style={styles.input}
-              multiline
-              textAlignVertical="top"
-            />
+            <View style={styles.inputCard}>
+              <Text style={styles.inputLabel}>What actually happened?</Text>
+              <TextInput
+                value={factText}
+                onChangeText={setFactText}
+                placeholder="Just the facts — no judgment"
+                placeholderTextColor={colors.textMuted}
+                style={styles.input}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
 
-            <Text style={[styles.inputLabel, { marginTop: Spacing.xl }]}>
-              What story am I telling myself?
-            </Text>
-            <TextInput
-              value={storyText}
-              onChangeText={setStoryText}
-              placeholder="The interpretation"
-              placeholderTextColor={colors.textMuted}
-              style={styles.input}
-              multiline
-              textAlignVertical="top"
-            />
+            <View style={[styles.inputCard, { marginTop: Spacing.md }]}>
+              <Text style={styles.inputLabel}>What story am I telling myself?</Text>
+              <TextInput
+                value={storyText}
+                onChangeText={setStoryText}
+                placeholder="The interpretation, the assumptions"
+                placeholderTextColor={colors.textMuted}
+                style={styles.input}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
 
             <TouchableOpacity
               style={[styles.primaryBtn, { marginTop: Spacing['2xl'] }]}
@@ -236,9 +244,10 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
               activeOpacity={0.8}
             >
               <Text style={styles.primaryBtnText}>Finish</Text>
+              <Ionicons name="checkmark" size={18} color={colors.primaryForeground} />
             </TouchableOpacity>
 
-            <Text style={styles.note}>Nothing is saved. This space is temporary.</Text>
+            <Text style={styles.privacyNote}>Nothing is saved. This space is just for you.</Text>
           </ScrollView>
         )}
       </Animated.View>
@@ -248,122 +257,46 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
 
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    closeBtn: {
-      position: 'absolute',
-      top: Spacing['3xl'],
-      right: Spacing.xl,
-      zIndex: 10,
-      padding: Spacing.sm,
-    },
-    stepRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      gap: Spacing.sm,
-      marginTop: Spacing['5xl'],
-    },
-    stepDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.surface,
-    },
-    center: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: Spacing.xl,
-    },
-    heading: {
-      fontSize: Typography.fontSize['2xl'],
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
-      fontFamily: Typography.fontFamily.heading,
-      textAlign: 'center',
-      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize['2xl'],
-      marginBottom: Spacing.xl,
-    },
-    counter: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textMuted,
-      fontFamily: Typography.fontFamily.primary,
-      marginTop: Spacing.sm,
-    },
-    orb: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: colors.accentSoft,
-      marginBottom: Spacing['3xl'],
-      opacity: 0.7,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
 
-    /* ── Emotion / body tags ─────────────────────────── */
-    emotionWrap: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: Spacing.sm,
-      marginBottom: Spacing['2xl'],
-      maxWidth: 340,
-    },
-    emotionTag: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.sm,
-      borderRadius: Radius.full,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    emotionTagText: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
-      fontFamily: Typography.fontFamily.primary,
-    },
+    /* ── Top ───────────────────────────────────────────── */
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['4xl'] },
+    stepLabel: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, letterSpacing: 0.5 },
+    closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
 
-    /* ── Text inputs ─────────────────────────────────── */
-    inputLabel: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textSecondary,
-      fontFamily: Typography.fontFamily.primary,
-      alignSelf: 'flex-start',
-      marginBottom: Spacing.sm,
-    },
-    input: {
-      width: '100%',
-      backgroundColor: colors.surface,
-      borderRadius: Radius.lg,
-      padding: Spacing.lg,
-      fontSize: Typography.fontSize.base,
-      color: colors.textPrimary,
-      fontFamily: Typography.fontFamily.primary,
-      minHeight: 80,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-    },
-    note: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
-      fontFamily: Typography.fontFamily.primary,
-      textAlign: 'center',
-      marginTop: Spacing.xl,
-    },
+    /* ── Progress ─────────────────────────────────────── */
+    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing.xl, marginTop: Spacing.md },
+    progressSeg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.surface },
 
-    /* ── Buttons ─────────────────────────────────────── */
-    primaryBtn: {
-      backgroundColor: colors.primary,
-      borderRadius: Radius.lg,
-      paddingVertical: Spacing.md,
-      paddingHorizontal: Spacing['3xl'],
-    },
-    primaryBtnText: {
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.primaryForeground,
-      fontFamily: Typography.fontFamily.primary,
-    },
+    /* ── Center ───────────────────────────────────────── */
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+
+    /* ── Typography ────────────────────────────────────── */
+    heading: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 38, marginBottom: Spacing.sm },
+    subheading: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing['2xl'] },
+    counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+
+    /* ── Icon glow ─────────────────────────────────────── */
+    iconGlow: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.accentSoft + '18', borderWidth: 1.5, borderColor: colors.accentSoft + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
+
+    /* ── Orb ───────────────────────────────────────────── */
+    orbContainer: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
+    orbRing3: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: colors.accentSoft },
+    orbRing2: { position: 'absolute', width: 155, height: 155, borderRadius: 78, backgroundColor: colors.accentSoft },
+    orbCore: { width: 110, height: 110, borderRadius: 55, backgroundColor: colors.accentSoft },
+
+    /* ── Tags ──────────────────────────────────────────── */
+    tagWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing['2xl'], maxWidth: 360 },
+    tag: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 2, borderRadius: Radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+    tagText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
+
+    /* ── Input cards ───────────────────────────────────── */
+    inputCard: { width: '100%', backgroundColor: colors.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.borderLight, overflow: 'hidden' },
+    inputLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+    input: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, paddingTop: Spacing.sm, fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, minHeight: 80 },
+    privacyNote: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginTop: Spacing.xl },
+
+    /* ── Primary button ────────────────────────────────── */
+    primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.accentSoft, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing['2xl'] },
+    primaryBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

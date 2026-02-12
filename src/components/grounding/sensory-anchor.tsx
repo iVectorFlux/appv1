@@ -1,15 +1,14 @@
 /**
  * Sensory Anchor — Mode 2 (5-4-3-2-1, 3-4 min)
  *
- * 5 sequential full-screen cards:
- *  See 5 → Touch 4 → Hear 3 → Smell 2 → Taste 1
+ * 5 sequential full-screen cards: See 5 → Touch 4 → Hear 3 → Smell 2 → Taste 1
  *
- * Design: animated card transitions (fade + slide), progress dots,
- *         dark bg, large typography, no scroll.
+ * Design: animated card transitions, glowing icon ring, large count number,
+ *         progress track with labels, dark bg.
  */
 
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { SENSORY_ANCHOR_STEPS } from '@/data/grounding-content';
@@ -17,86 +16,101 @@ import type { GroundingModeProps } from '@/types/grounding';
 
 const STEPS = SENSORY_ANCHOR_STEPS;
 
+/** Color accent per sense for visual variety */
+const SENSE_COLORS = (c: ReturnType<typeof useColors>) => [
+  c.accentCalm,   // See
+  c.accentWarm,   // Touch
+  c.accentEnergy,  // Hear
+  c.accentSoft,   // Smell
+  c.primary,      // Taste
+] as const;
+
 export function SensoryAnchor({ onComplete, onExit }: GroundingModeProps) {
   const colors = useColors();
   const [currentIdx, setCurrentIdx] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const startTime = useRef(Date.now());
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const ringPulse = useRef(new Animated.Value(1)).current;
 
   const current = STEPS[currentIdx];
+  const accent = SENSE_COLORS(colors)[currentIdx];
+
+  // Subtle ring pulse
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(ringPulse, { toValue: 1.06, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(ringPulse, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [ringPulse]);
 
   const advance = useCallback(() => {
-    // Exit animation
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: -30, duration: 250, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: -40, duration: 200, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 0.95, duration: 200, useNativeDriver: true }),
     ]).start(() => {
       const nextIdx = currentIdx + 1;
-      if (nextIdx >= STEPS.length) {
-        const elapsed = Date.now() - startTime.current;
-        onComplete(100);
-        return;
-      }
+      if (nextIdx >= STEPS.length) { onComplete(100); return; }
       setCurrentIdx(nextIdx);
-      slideAnim.setValue(40);
+      slideAnim.setValue(50);
+      scaleAnim.setValue(0.96);
       fadeAnim.setValue(0);
-      // Enter animation
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]).start();
     });
-  }, [currentIdx, fadeAnim, slideAnim, onComplete]);
+  }, [currentIdx, fadeAnim, slideAnim, scaleAnim, onComplete]);
 
   const styles = createStyles(colors);
 
   return (
     <View style={styles.container}>
-      {/* Close */}
-      <TouchableOpacity style={styles.closeBtn} onPress={onExit}>
-        <Ionicons name="close" size={24} color={colors.textMuted} />
-      </TouchableOpacity>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <Text style={styles.stepLabel}>Step {currentIdx + 1} of {STEPS.length}</Text>
+        <TouchableOpacity style={styles.closeBtn} onPress={onExit} hitSlop={12}>
+          <Ionicons name="close" size={22} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
 
-      {/* Progress dots */}
-      <View style={styles.dotsRow}>
+      {/* Progress track */}
+      <View style={styles.progressRow}>
         {STEPS.map((s, i) => (
-          <View
-            key={s.id}
-            style={[
-              styles.dot,
-              i <= currentIdx && { backgroundColor: colors.primary },
-            ]}
-          />
+          <View key={s.id} style={[styles.progressSeg, i <= currentIdx && { backgroundColor: accent }]} />
         ))}
       </View>
 
-      {/* Card content */}
-      <Animated.View
-        style={[
-          styles.center,
-          { opacity: fadeAnim, transform: [{ translateX: slideAnim }] },
-        ]}
-      >
-        <View style={styles.iconWrap}>
-          <Ionicons name={(current.icon as any)} size={48} color={colors.accentCalm} />
+      {/* Card */}
+      <Animated.View style={[styles.center, { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }]}>
+        {/* Icon with glow ring */}
+        <View style={styles.iconOuter}>
+          <Animated.View style={[styles.iconGlowRing, { backgroundColor: accent + '12', transform: [{ scale: ringPulse }] }]} />
+          <View style={[styles.iconInner, { backgroundColor: accent + '20', borderColor: accent + '35' }]}>
+            <Ionicons name={current.icon as any} size={44} color={accent} />
+          </View>
         </View>
 
-        <Text style={styles.sense}>{current.sense}</Text>
-        <Text style={styles.countBig}>{current.count}</Text>
-        <Text style={styles.prompt}>{current.prompt}</Text>
+        <Text style={styles.senseLabel}>{current.sense}</Text>
 
-        <Text style={styles.hint}>
-          Take your time. There's no rush.
-        </Text>
+        {/* Big count */}
+        <Text style={[styles.countBig, { color: accent }]}>{current.count}</Text>
+
+        <Text style={styles.prompt}>{current.prompt}</Text>
+        <Text style={styles.hint}>Take your time. There's no rush.</Text>
       </Animated.View>
 
-      {/* Next button */}
+      {/* Bottom */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.nextBtn} onPress={advance} activeOpacity={0.8}>
-          <Text style={styles.nextBtnText}>
-            {currentIdx < STEPS.length - 1 ? 'Next' : 'Finish'}
-          </Text>
+        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: accent }]} onPress={advance} activeOpacity={0.8}>
+          <Text style={styles.nextBtnText}>{currentIdx < STEPS.length - 1 ? 'Next' : 'Finish'}</Text>
+          <Ionicons name={currentIdx < STEPS.length - 1 ? 'arrow-forward' : 'checkmark'} size={20} color={colors.primaryForeground} />
         </TouchableOpacity>
       </View>
     </View>
@@ -105,89 +119,32 @@ export function SensoryAnchor({ onComplete, onExit }: GroundingModeProps) {
 
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    closeBtn: {
-      position: 'absolute',
-      top: Spacing['3xl'],
-      right: Spacing.xl,
-      zIndex: 10,
-      padding: Spacing.sm,
-    },
-    dotsRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      gap: Spacing.sm,
-      marginTop: Spacing['5xl'],
-    },
-    dot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: colors.surface,
-    },
-    center: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: Spacing.xl,
-    },
-    iconWrap: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: colors.accentCalm + '18',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: Spacing['2xl'],
-    },
-    sense: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textMuted,
-      fontFamily: Typography.fontFamily.primary,
-      textTransform: 'uppercase',
-      letterSpacing: 2,
-      marginBottom: Spacing.sm,
-    },
-    countBig: {
-      fontSize: 64,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-      fontFamily: Typography.fontFamily.heading,
-      marginBottom: Spacing.md,
-    },
-    prompt: {
-      fontSize: Typography.fontSize['2xl'],
-      fontWeight: Typography.fontWeight.medium,
-      color: colors.textPrimary,
-      fontFamily: Typography.fontFamily.heading,
-      textAlign: 'center',
-      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize['2xl'],
-      marginBottom: Spacing.xl,
-    },
-    hint: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textMuted,
-      fontFamily: Typography.fontFamily.primary,
-      textAlign: 'center',
-    },
-    bottomBar: {
-      padding: Spacing.xl,
-      paddingBottom: Spacing['3xl'],
-    },
-    nextBtn: {
-      backgroundColor: colors.primary,
-      borderRadius: Radius.lg,
-      paddingVertical: Spacing.lg,
-      alignItems: 'center',
-    },
-    nextBtnText: {
-      fontSize: Typography.fontSize.lg,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.primaryForeground,
-      fontFamily: Typography.fontFamily.primary,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
+
+    /* ── Top ───────────────────────────────────────────── */
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['4xl'] },
+    stepLabel: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, letterSpacing: 0.5 },
+    closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
+
+    /* ── Progress ─────────────────────────────────────── */
+    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing.xl, marginTop: Spacing.md },
+    progressSeg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.surface },
+
+    /* ── Center ───────────────────────────────────────── */
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+
+    /* ── Icon ──────────────────────────────────────────── */
+    iconOuter: { width: 130, height: 130, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
+    iconGlowRing: { position: 'absolute', width: 130, height: 130, borderRadius: 65 },
+    iconInner: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
+
+    senseLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textTransform: 'uppercase', letterSpacing: 3, marginBottom: Spacing.sm },
+    countBig: { fontSize: 80, fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.md, lineHeight: 88 },
+    prompt: { fontSize: 26, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 36, marginBottom: Spacing.lg },
+    hint: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textAlign: 'center' },
+
+    /* ── Bottom ────────────────────────────────────────── */
+    bottomBar: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing['3xl'] },
+    nextBtn: { borderRadius: Radius.lg, paddingVertical: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+    nextBtnText: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });
