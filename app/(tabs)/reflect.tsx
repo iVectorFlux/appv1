@@ -10,7 +10,7 @@
  * PRIVACY: Journal text is encrypted and never analyzed.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -40,14 +40,41 @@ const ALL_EMOTIONS: EmotionTag[] = [
   'Energized', 'Disappointed', 'Proud', 'Tired', 'Confident', 'Uncertain'
 ];
 
-// Top emotions shown first (12 most common)
-const TOP_EMOTIONS: EmotionTag[] = [
-  'Happy', 'Calm', 'Anxious', 'Stressed', 'Sad', 'Tired',
-  'Relaxed', 'Overwhelmed', 'Frustrated', 'Peaceful', 'Worried', 'Content'
-];
+type ValenceBand = 'unpleasant' | 'neutral' | 'pleasant';
+type EnergyBand = 'low' | 'mid' | 'high';
 
-// Remaining emotions
-const MORE_EMOTIONS: EmotionTag[] = ALL_EMOTIONS.filter(emotion => !TOP_EMOTIONS.includes(emotion));
+const EMOTION_POOLS: Record<string, EmotionTag[]> = {
+  unpleasant_low: ['Sad', 'Tired', 'Exhausted', 'Empty', 'Lonely', 'Disappointed'],
+  unpleasant_mid: ['Stressed', 'Anxious', 'Worried', 'Overwhelmed', 'Tense', 'On edge', 'Confused', 'Upset'],
+  unpleasant_high: ['Angry', 'Irritated', 'Frustrated', 'Restless', 'On edge', 'Tense', 'Stressed', 'Upset'],
+  neutral_low: ['Neutral', 'Unsure', 'Mixed', 'Confused', 'Uncertain'],
+  neutral_mid: ['Neutral', 'Mixed', 'Unsure', 'Confused', 'Uncertain', 'Grounded'],
+  neutral_high: ['Neutral', 'Mixed', 'Unsure', 'Confused', 'Uncertain', 'Restless'],
+  pleasant_low: ['Calm', 'Relaxed', 'Peaceful', 'Content', 'Grounded', 'Grateful'],
+  pleasant_mid: ['Content', 'Grateful', 'Happy', 'Calm', 'Confident', 'Hopeful'],
+  pleasant_high: ['Happy', 'Excited', 'Energized', 'Hopeful', 'Confident', 'Proud', 'Grateful'],
+};
+
+function getValenceBand(pleasantness: number): ValenceBand {
+  if (pleasantness <= 40) return 'unpleasant';
+  if (pleasantness >= 60) return 'pleasant';
+  return 'neutral';
+}
+
+function getEnergyBand(energyLevel: EnergyLevel): EnergyBand {
+  if (energyLevel <= 2) return 'low';
+  if (energyLevel >= 4) return 'high';
+  return 'mid';
+}
+
+function getEmotionPool(pleasantness: number, energyLevel: EnergyLevel): EmotionTag[] {
+  const v = getValenceBand(pleasantness);
+  const e = getEnergyBand(energyLevel);
+  const key = `${v}_${e}`;
+  const pool = EMOTION_POOLS[key] ?? [];
+  // Safety: only show emotions we actually support
+  return pool.filter((x) => ALL_EMOTIONS.includes(x));
+}
 
 const REASONS = [
   'Work / School', 'Family', 'Relationships', 'Health & Body', 'Self',
@@ -66,6 +93,21 @@ export default function ReflectScreen() {
   const [pleasantness, setPleasantness] = useState(50); // 0 = highly unpleasant, 100 = highly pleasant
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(3);
   const [selectedEmotions, setSelectedEmotions] = useState<EmotionTag[]>([]);
+  const filteredEmotionPool = useMemo(() => {
+    const pool = getEmotionPool(pleasantness, energyLevel);
+    // Always include already-selected emotions so users can unselect even after changing sliders
+    const merged: EmotionTag[] = [];
+    for (const e of [...pool, ...selectedEmotions]) {
+      if (!merged.includes(e)) merged.push(e);
+    }
+    return merged;
+  }, [pleasantness, energyLevel, selectedEmotions]);
+
+  const topEmotions = useMemo(() => filteredEmotionPool.slice(0, 12), [filteredEmotionPool]);
+  const moreEmotions = useMemo(
+    () => filteredEmotionPool.filter((e) => !topEmotions.includes(e)),
+    [filteredEmotionPool, topEmotions],
+  );
   const [showMoreEmotions, setShowMoreEmotions] = useState(false);
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [journalText, setJournalText] = useState('');
@@ -325,7 +367,7 @@ export default function ReflectScreen() {
       )}
 
       <View style={styles.emotionGrid}>
-        {TOP_EMOTIONS.map((emotion) => {
+        {topEmotions.map((emotion) => {
           const isSelected = selectedEmotions.includes(emotion);
           const emotionColor = getEmotionColor(emotion);
           return (
@@ -365,7 +407,7 @@ export default function ReflectScreen() {
       {showMoreEmotions && (
         <View style={styles.moreEmotionsContainer}>
           <View style={styles.moreEmotionsGrid}>
-            {MORE_EMOTIONS.map((emotion) => {
+            {moreEmotions.map((emotion) => {
               const isSelected = selectedEmotions.includes(emotion);
               const emotionColor = getEmotionColor(emotion);
               return (

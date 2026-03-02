@@ -29,8 +29,13 @@ import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/des
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { selectCheckInQuestions } from '@/data/eq-questions';
+import { loadCheckInQuestions } from '@/services/eq-questions-loader';
 import { calculateEQScore } from '@/services/eq-scoring';
-import { saveEQAssessmentResult } from '@/services/eq-storage';
+import {
+  startEQAssessmentSession,
+  saveResponseToSession,
+  completeEQAssessmentSession,
+} from '@/services/eq-storage';
 import {
   AnimationDuration,
   createQuestionTransition,
@@ -57,6 +62,7 @@ export default function EQCheckInScreen() {
   const { user } = useAuthStore();
   
   const [questions, setQuestions] = useState<EQQuestion[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<EQResponse[]>([]);
   const [isComplete, setIsComplete] = useState(false);
@@ -78,13 +84,26 @@ export default function EQCheckInScreen() {
   const isTransitioning = useRef(false);
 
   useEffect(() => {
-    // Select questions for this check-in
-    const selectedQuestions = selectCheckInQuestions();
+    let cancelled = false;
     const startTime = Date.now();
-    setQuestions(selectedQuestions);
     setSessionStartTime(startTime);
     setQuestionStartTime(startTime);
+    (async () => {
+      const fromDb = await loadCheckInQuestions();
+      if (cancelled) return;
+      const useDb = fromDb && fromDb.length > 0;
+      if (__DEV__) console.log('[EQ Check-In] Questions source:', useDb ? `DB (${fromDb.length} selected)` : 'in-code fallback');
+      setQuestions(useDb ? fromDb : selectCheckInQuestions());
+    })();
+    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (questions.length === 0 || !user?.id) return;
+    startEQAssessmentSession(user.id, 'check_in', questions.length)
+      .then(setSessionId)
+      .catch((e) => console.error('[EQ Check-In] Failed to start session:', e));
+  }, [questions.length, user?.id]);
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
@@ -116,8 +135,22 @@ export default function EQCheckInScreen() {
 
   const recordResponse = (response: EQResponse) => {
     const newResponses = [...responses, response];
+    const orderIndex = newResponses.length - 1;
     setResponses(newResponses);
-    
+
+    const q = questions[currentIndex];
+    if (user?.id && sessionId && q) {
+      saveResponseToSession(
+        sessionId,
+        user.id,
+        q.id,
+        q.type,
+        q.dimension,
+        response,
+        orderIndex
+      ).catch((err) => console.error('[EQ Check-In] Failed to save response:', err));
+    }
+
     if (currentIndex < questions.length - 1) {
       animateTransition(() => {
         setCurrentIndex(currentIndex + 1);
@@ -126,7 +159,6 @@ export default function EQCheckInScreen() {
         setQuestionStartTime(Date.now());
       });
     } else {
-      // Calculate results
       const assessmentResult = calculateEQScore(
         questions,
         newResponses,
@@ -135,12 +167,9 @@ export default function EQCheckInScreen() {
       );
       setResult(assessmentResult);
       setIsComplete(true);
-      
-      // Save to database
-      if (user?.id) {
-        saveEQAssessmentResult(assessmentResult, questions, sessionStartTime).catch((error) => {
-          console.error('[EQ Check-In] Failed to save results:', error);
-          // Don't block UI - results are shown even if save fails
+      if (user?.id && sessionId) {
+        completeEQAssessmentSession(sessionId, assessmentResult, sessionStartTime).catch((err) => {
+          console.error('[EQ Check-In] Failed to complete session:', err);
         });
       }
     }
@@ -155,7 +184,6 @@ export default function EQCheckInScreen() {
         setQuestionStartTime(Date.now());
       });
     } else {
-      // Calculate results with partial responses
       const assessmentResult = calculateEQScore(
         questions,
         responses,
@@ -164,11 +192,9 @@ export default function EQCheckInScreen() {
       );
       setResult(assessmentResult);
       setIsComplete(true);
-      
-      // Save to database
-      if (user?.id) {
-        saveEQAssessmentResult(assessmentResult, questions, sessionStartTime).catch((error) => {
-          console.error('[EQ Check-In] Failed to save results:', error);
+      if (user?.id && sessionId) {
+        completeEQAssessmentSession(sessionId, assessmentResult, sessionStartTime).catch((err) => {
+          console.error('[EQ Check-In] Failed to complete session:', err);
         });
       }
     }

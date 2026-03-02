@@ -1,11 +1,10 @@
 /**
- * Grounding Entry Screen
+ * Breathing Hub Screen
  *
- * State machine: 'detect' → 'select' → 'active' → 'complete'
+ * State machine: 'select' → 'active' → 'complete'
  *
- * - detect:  Self-rate stress + emotional tone → recommended mode
- * - select:  Browse all 5 modes (optional)
- * - active:  Renders chosen mode component full-screen
+ * - select:  Choose a tag + pick a technique
+ * - active:  Renders chosen technique full-screen
  * - complete: Post-session stress re-rate + save
  */
 
@@ -21,16 +20,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import { saveRecoverySession } from '@/services/recovery-storage';
-import { GROUNDING_MODES, EMOTIONAL_TONES, recommendMode } from '@/data/grounding-content';
-import type {
-  GroundingMode,
-  StressLevel,
-  EmotionalTone,
-  GroundingSession,
-} from '@/types/grounding';
+import { GROUNDING_MODES } from '@/data/grounding-content';
+import type { GroundingMode, StressLevel, EmotionalTone, GroundingSession } from '@/types/grounding';
 
 // Mode components
 import { QuickReset } from '@/components/grounding/quick-reset';
@@ -39,42 +33,38 @@ import { PanicInterrupt } from '@/components/grounding/panic-interrupt';
 import { PreMeeting } from '@/components/grounding/pre-meeting';
 import { PostConflict } from '@/components/grounding/post-conflict';
 
-type ScreenState = 'detect' | 'select' | 'active' | 'complete';
+type ScreenState = 'select' | 'active' | 'complete';
+type BreathingTag =
+  | 'anger'
+  | 'panic'
+  | 'conflict'
+  | 'pre_meeting'
+  | 'calm'
+  | 'reset'
+  | 'focus'
+  | 'post_meeting';
 
 /** Stress level color gradient from cool → warm */
-const STRESS_COLORS = ['#60A5FA', '#34D399', '#FBBF24', '#F97316', '#EF4444'];
+const STRESS_COLORS = ['#60A5FA', '#34D399', '#FBBF24', '#F97316', '#FB923C'];
 
 export default function GroundingScreen() {
   const router = useRouter();
   const colors = useColors();
   const { user } = useAuthStore();
 
-  const [screen, setScreen] = useState<ScreenState>('detect');
+  const [screen, setScreen] = useState<ScreenState>('select');
   const [stressLevel, setStressLevel] = useState<StressLevel>(3);
   const [emotionalTone, setEmotionalTone] = useState<EmotionalTone | null>(null);
   const [selectedMode, setSelectedMode] = useState<GroundingMode | null>(null);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<BreathingTag | null>(null);
   const [sessionStart, setSessionStart] = useState<string>('');
-  const [stressAfter, setStressAfter] = useState<StressLevel>(3);
+  const [stressAfter, setStressAfter] = useState<StressLevel | null>(null);
   const [completionPct, setCompletionPct] = useState(0);
+  const [helpful, setHelpful] = useState<boolean | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  const recommended = recommendMode(stressLevel, emotionalTone);
-  const recommendedConfig = GROUNDING_MODES.find((m) => m.id === recommended)!;
-
-  // Ambient pulse for recommended card
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.02, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [pulseAnim]);
 
   const transitionTo = useCallback(
     (next: ScreenState) => {
@@ -106,13 +96,15 @@ export default function GroundingScreen() {
   const handleModeComplete = useCallback(
     (pct: number) => {
       setCompletionPct(pct);
-      setStressAfter(stressLevel);
+      // Stress re-rate only for techniques meant to reduce stress (not pre-meeting).
+      setStressAfter(selectedMode && selectedMode !== 'pre_meeting' ? stressLevel : null);
+      setHelpful(null);
       transitionTo('complete');
     },
-    [stressLevel, transitionTo],
+    [selectedMode, stressLevel, transitionTo],
   );
 
-  const handleModeExit = useCallback(() => transitionTo('detect'), [transitionTo]);
+  const handleModeExit = useCallback(() => transitionTo('select'), [transitionTo]);
 
   const handleDone = useCallback(async () => {
     if (user?.id && selectedMode) {
@@ -148,138 +140,116 @@ export default function GroundingScreen() {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // DETECT
+  // SELECT
   // ═══════════════════════════════════════════════════════════════════
-  if (screen === 'detect') {
+  if (screen === 'select') {
+    const tags: Array<{ id: BreathingTag; label: string; defaultStress: StressLevel }> = [
+      { id: 'calm', label: 'Calm', defaultStress: 2 },
+      { id: 'reset', label: 'Reset', defaultStress: 3 },
+      { id: 'focus', label: 'Focus', defaultStress: 3 },
+      { id: 'panic', label: 'Panic', defaultStress: 5 },
+      { id: 'anger', label: 'Anger', defaultStress: 5 },
+      { id: 'conflict', label: 'Conflict', defaultStress: 4 },
+      { id: 'pre_meeting', label: 'Pre‑meeting', defaultStress: 4 },
+      { id: 'post_meeting', label: 'Post‑meeting', defaultStress: 2 },
+    ];
+
+    const recommendedByTag: Record<BreathingTag, GroundingMode> = {
+      calm: 'sensory_anchor',
+      reset: 'quick_reset',
+      focus: 'sensory_anchor',
+      panic: 'panic_interrupt',
+      anger: 'quick_reset',
+      conflict: 'post_conflict',
+      pre_meeting: 'pre_meeting',
+      post_meeting: 'quick_reset',
+    };
+
+    const accentForMode = (mode: GroundingMode) => {
+      if (mode === 'quick_reset') return colors.accentWarm;
+      if (mode === 'panic_interrupt') return colors.primary;
+      if (mode === 'sensory_anchor') return colors.accentCalm;
+      if (mode === 'pre_meeting') return colors.accentEnergy;
+      return colors.accentSoft;
+    };
+
+    const renderTechniqueCard = (mode: GroundingMode, isRecommended: boolean) => {
+      const cfg = GROUNDING_MODES.find((m) => m.id === mode);
+      const accent = accentForMode(mode);
+      return (
+        <TouchableOpacity
+          key={mode}
+          style={[
+            styles.techniqueCard,
+            Shadows.card,
+            { borderColor: isRecommended ? accent : colors.borderLight },
+          ]}
+          activeOpacity={0.9}
+          onPress={() => {
+            setSelectedScenarioId(selectedTag);
+            setEmotionalTone(null);
+            beginMode(mode);
+          }}
+        >
+          <View style={[styles.techniqueIconWrap, { backgroundColor: accent }]}>
+            <Ionicons name={(cfg?.icon as any) ?? 'leaf-outline'} size={22} color={colors.primaryForeground} />
+          </View>
+          <Text style={styles.techniqueTitle}>{cfg?.label ?? mode}</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+      );
+    };
+
+    const recommendedMode = selectedTag ? recommendedByTag[selectedTag] : null;
+
     return (
       <View style={styles.container}>
-        {/* Top bar */}
         <View style={styles.topBar}>
-          <Text style={styles.topTitle}>Ground Yourself</Text>
+          <Text style={styles.topTitle}>Breathing</Text>
           <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()} hitSlop={12}>
             <Ionicons name="close" size={22} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         <Animated.View style={[styles.flexOne, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-          <ScrollView contentContainerStyle={styles.detectScroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.heading}>How are you right now?</Text>
+          <ScrollView contentContainerStyle={styles.selectScroll} showsVerticalScrollIndicator={false}>
+            <Text style={styles.heading}>What do you want to shift?</Text>
 
-            {/* Stress level */}
-            <Text style={styles.stressSectionLabel}>Stress level</Text>
-            <View style={styles.stressRow}>
-              {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
-                const isSelected = stressLevel === level;
-                const accentColor = STRESS_COLORS[level - 1];
-                return (
-                  <TouchableOpacity
-                    key={level}
-                    onPress={() => setStressLevel(level)}
-                    style={[styles.stressPill, isSelected && { backgroundColor: accentColor, borderColor: accentColor }]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.stressPillText, isSelected && { color: '#fff' }]}>{level}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <View style={styles.stressLabelsRow}>
-              <Text style={styles.stressCaption}>Low</Text>
-              <Text style={styles.stressCaption}>High</Text>
-            </View>
-
-            {/* Emotional tone */}
-            <Text style={[styles.sectionLabel, { marginTop: Spacing['2xl'] }]}>What best describes how you feel?</Text>
-            <View style={styles.toneWrap}>
-              {EMOTIONAL_TONES.map((t) => {
-                const isSelected = emotionalTone === t.id;
+            <View style={styles.tagRow}>
+              {tags.map((t) => {
+                const active = selectedTag === t.id;
+                const accent = accentForMode(recommendedByTag[t.id]);
                 return (
                   <TouchableOpacity
                     key={t.id}
-                    onPress={() => setEmotionalTone(isSelected ? null : t.id)}
-                    style={[styles.toneTag, isSelected && styles.toneTagActive]}
-                    activeOpacity={0.7}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      setSelectedTag(active ? null : t.id);
+                      setStressLevel(t.defaultStress);
+                    }}
+                    style={[
+                      styles.tagPill,
+                      { borderColor: accent + '33' },
+                      active && { backgroundColor: accent, borderColor: accent },
+                    ]}
                   >
-                    <Text style={[styles.toneTagText, isSelected && styles.toneTagTextActive]}>{t.label}</Text>
+                    <Text style={[styles.tagPillText, active && { color: colors.primaryForeground }]}>{t.label}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            {/* Recommendation card */}
-            <Animated.View style={[styles.recommendCard, { transform: [{ scale: pulseAnim }] }]}>
-              <View style={styles.recommendIconWrap}>
-                <Ionicons name={recommendedConfig.icon as any} size={22} color={colors.primary} />
-              </View>
-              <View style={styles.recommendContent}>
-                <Text style={styles.recommendSmall}>Recommended for you</Text>
-                <Text style={styles.recommendTitle}>{recommendedConfig.label}</Text>
-                <Text style={styles.recommendDuration}>{recommendedConfig.duration}</Text>
-              </View>
-            </Animated.View>
+            {recommendedMode && (
+              <>
+                <Text style={styles.sectionHeader}>Recommended</Text>
+                {renderTechniqueCard(recommendedMode, true)}
+              </>
+            )}
 
-            <TouchableOpacity style={styles.beginBtn} onPress={() => beginMode(recommended)} activeOpacity={0.85}>
-              <Text style={styles.beginBtnText}>Begin</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.primaryForeground} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.chooseOther} onPress={() => transitionTo('select')} activeOpacity={0.8}>
-              <Ionicons name="list-outline" size={20} color={colors.primary} />
-              <Text style={styles.chooseOtherText}>Choose another mode</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-            </TouchableOpacity>
-          </ScrollView>
-        </Animated.View>
-      </View>
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // SELECT
-  // ═══════════════════════════════════════════════════════════════════
-  if (screen === 'select') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backRow} onPress={() => transitionTo('detect')}>
-            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
-            <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
-          <View />
-        </View>
-
-        <Animated.View style={[styles.flexOne, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-          <ScrollView contentContainerStyle={styles.selectScroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.heading}>Choose a mode</Text>
-
-            {GROUNDING_MODES.map((mode) => {
-              const isRecommended = mode.id === recommended;
-              return (
-                <TouchableOpacity
-                  key={mode.id}
-                  style={[styles.modeCard, isRecommended && { borderColor: colors.primary }]}
-                  activeOpacity={0.75}
-                  onPress={() => beginMode(mode.id)}
-                >
-                  <View style={[styles.modeIcon, isRecommended && { backgroundColor: colors.primary + '20' }]}>
-                    <Ionicons name={mode.icon as any} size={26} color={isRecommended ? colors.primary : colors.textSecondary} />
-                  </View>
-                  <View style={styles.modeContent}>
-                    <View style={styles.modeHeader}>
-                      <Text style={styles.modeTitle}>{mode.label}</Text>
-                      {isRecommended && (
-                        <View style={styles.recBadge}>
-                          <Text style={styles.recBadgeText}>Recommended</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.modeSub}>{mode.subtitle} · {mode.duration}</Text>
-                    <Text style={styles.modeDesc}>{mode.description}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
-              );
-            })}
+            <Text style={styles.sectionHeader}>All techniques</Text>
+            <View style={styles.techniqueList}>
+              {GROUNDING_MODES.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
+            </View>
           </ScrollView>
         </Animated.View>
       </View>
@@ -289,7 +259,7 @@ export default function GroundingScreen() {
   // ═══════════════════════════════════════════════════════════════════
   // COMPLETE
   // ═══════════════════════════════════════════════════════════════════
-  const delta = stressLevel - stressAfter;
+  const delta = stressAfter != null ? stressLevel - stressAfter : 0;
   const modeLabel = GROUNDING_MODES.find((m) => m.id === selectedMode)?.label ?? '';
 
   return (
@@ -302,39 +272,69 @@ export default function GroundingScreen() {
           </View>
         </View>
 
-        <Text style={styles.completeHeading}>Session complete</Text>
+        <Text style={styles.completeHeading}>Did it help?</Text>
         {modeLabel ? <Text style={styles.completeModeName}>{modeLabel}</Text> : null}
 
-        <Text style={[styles.stressSectionLabel, { marginTop: Spacing['3xl'], textAlign: 'center' }]}>How's your stress now?</Text>
-        <View style={styles.stressRow}>
-          {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
-            const isSelected = stressAfter === level;
-            const accentColor = STRESS_COLORS[level - 1];
-            return (
-              <TouchableOpacity
-                key={level}
-                onPress={() => setStressAfter(level)}
-                style={[styles.stressPill, isSelected && { backgroundColor: accentColor, borderColor: accentColor }]}
-              >
-                <Text style={[styles.stressPillText, isSelected && { color: '#fff' }]}>{level}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <View style={styles.stressLabelsRow}>
-          <Text style={styles.stressCaption}>Low</Text>
-          <Text style={styles.stressCaption}>High</Text>
+        <View style={styles.thumbRow}>
+          <TouchableOpacity
+            onPress={() => setHelpful(true)}
+            activeOpacity={0.85}
+            style={[styles.thumbBtn, helpful === true && styles.thumbBtnActive]}
+          >
+            <Ionicons name="thumbs-up-outline" size={22} color={helpful === true ? colors.primaryForeground : colors.textPrimary} />
+            <Text style={[styles.thumbText, helpful === true && styles.thumbTextActive]}>Yes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setHelpful(false)}
+            activeOpacity={0.85}
+            style={[styles.thumbBtn, helpful === false && styles.thumbBtnActive]}
+          >
+            <Ionicons name="thumbs-down-outline" size={22} color={helpful === false ? colors.primaryForeground : colors.textPrimary} />
+            <Text style={[styles.thumbText, helpful === false && styles.thumbTextActive]}>Not really</Text>
+          </TouchableOpacity>
         </View>
 
-        {delta > 0 && (
+        {stressAfter != null && (
+          <>
+            <Text style={[styles.stressSectionLabel, { marginTop: Spacing['2xl'], textAlign: 'center' }]}>
+              How's your stress now?
+            </Text>
+            <View style={styles.stressRow}>
+              {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
+                const isSelected = stressAfter === level;
+                const accentColor = STRESS_COLORS[level - 1];
+                return (
+                  <TouchableOpacity
+                    key={level}
+                    onPress={() => setStressAfter(level)}
+                    style={[styles.stressPill, isSelected && { backgroundColor: accentColor, borderColor: accentColor }]}
+                  >
+                    <Text style={[styles.stressPillText, isSelected && { color: '#fff' }]}>{level}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={styles.stressLabelsRow}>
+              <Text style={styles.stressCaption}>Low</Text>
+              <Text style={styles.stressCaption}>High</Text>
+            </View>
+          </>
+        )}
+
+        {stressAfter != null && delta > 0 && (
           <View style={styles.deltaCard}>
             <Ionicons name="trending-down" size={20} color={colors.success} />
             <Text style={styles.deltaText}>Stress dropped by {delta} point{delta > 1 ? 's' : ''}</Text>
           </View>
         )}
 
-        <TouchableOpacity style={[styles.beginBtn, { marginTop: Spacing['3xl'], alignSelf: 'stretch' }]} onPress={handleDone} activeOpacity={0.85}>
-          <Text style={styles.beginBtnText}>Done</Text>
+        <TouchableOpacity
+          style={[styles.primaryBtn, { marginTop: Spacing['3xl'], alignSelf: 'stretch', opacity: helpful == null ? 0.6 : 1 }]}
+          onPress={handleDone}
+          activeOpacity={0.85}
+          disabled={helpful == null}
+        >
+          <Text style={styles.primaryBtnText}>Done</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -357,12 +357,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     backRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
     backText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontWeight: Typography.fontWeight.medium, fontFamily: Typography.fontFamily.primary },
 
-    /* ── Detect ────────────────────────────────────────── */
+    /* ── Headings & stress scale (used on complete screen) ───────────── */
     detectScroll: { padding: Spacing.xl, paddingTop: Spacing.xl, paddingBottom: Spacing['5xl'] },
     heading: { fontSize: 26, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing['2xl'], lineHeight: 34 },
     sectionLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.md },
 
-    /* Stress level — compact */
     stressSectionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.medium, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.sm },
     stressRow: { flexDirection: 'row', gap: Spacing.xs },
     stressPill: {
@@ -374,68 +373,63 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     stressLabelsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
     stressCaption: { fontSize: 10, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
 
-    /* Tone tags */
+    /* Tone tags (kept for future use if we reintroduce tone selection) */
     toneWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     toneTag: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
     toneTagActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     toneTagText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
     toneTagTextActive: { color: colors.primaryForeground },
 
-    /* Recommend card — compact */
-    recommendCard: {
-      flexDirection: 'row', alignItems: 'center',
-      backgroundColor: colors.surface, borderRadius: Radius.xl,
-      padding: Spacing.md, marginTop: Spacing['2xl'],
-      borderWidth: 1, borderColor: colors.primary + '25',
-    },
-    recommendIconWrap: {
-      width: 44, height: 44, borderRadius: 22,
-      backgroundColor: colors.primary + '12',
-      alignItems: 'center', justifyContent: 'center', marginRight: Spacing.sm,
-    },
-    recommendContent: { flex: 1 },
-    recommendSmall: { fontSize: 10, color: colors.primary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.semibold, marginBottom: 1, textTransform: 'uppercase', letterSpacing: 0.5 },
-    recommendTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading },
-    recommendDuration: { fontSize: Typography.fontSize.xs, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, marginTop: 1 },
-
-    /* Begin button */
-    beginBtn: {
-      backgroundColor: colors.primary, borderRadius: Radius.lg,
-      paddingVertical: Spacing.lg, flexDirection: 'row',
-      alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
-      marginTop: Spacing.xl,
-    },
-    beginBtnText: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.bold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
-
-    chooseOther: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      marginTop: Spacing.xl, gap: Spacing.sm,
-      paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg,
-      borderRadius: Radius.lg, borderWidth: 1.5, borderColor: colors.primary,
-      backgroundColor: colors.primary + '08',
-    },
-    chooseOtherText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primary, fontFamily: Typography.fontFamily.primary },
-
-    /* ── Select ────────────────────────────────────────── */
+    /* Breathing hub */
     selectScroll: { padding: Spacing.xl, paddingBottom: Spacing['5xl'] },
-    modeCard: {
-      flexDirection: 'row', alignItems: 'center',
-      backgroundColor: colors.surface, borderRadius: Radius['2xl'],
-      padding: Spacing.lg, marginBottom: Spacing.md,
-      borderWidth: 1.5, borderColor: colors.borderLight,
+    tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm },
+    tagPill: {
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.full,
+      backgroundColor: colors.floating,
+      borderWidth: 1,
     },
-    modeIcon: {
-      width: 52, height: 52, borderRadius: 26,
-      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderLight,
-      alignItems: 'center', justifyContent: 'center', marginRight: Spacing.md,
+    tagPillText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.primary,
+      fontWeight: Typography.fontWeight.semibold,
     },
-    modeContent: { flex: 1 },
-    modeHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: 2 },
-    modeTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading },
-    recBadge: { backgroundColor: colors.primary + '18', paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: Radius.full },
-    recBadgeText: { fontSize: 10, color: colors.primary, fontWeight: Typography.fontWeight.semibold, fontFamily: Typography.fontFamily.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
-    modeSub: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.xs },
-    modeDesc: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm },
+    sectionHeader: {
+      marginTop: Spacing['2xl'],
+      marginBottom: Spacing.md,
+      fontSize: Typography.fontSize.xs,
+      color: colors.textMuted,
+      fontFamily: Typography.fontFamily.primary,
+      fontWeight: Typography.fontWeight.semibold,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    techniqueList: { gap: Spacing.md },
+    techniqueCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      backgroundColor: colors.floating,
+      borderRadius: Radius.xl,
+      padding: Spacing.lg,
+      borderWidth: 1.5,
+    },
+    techniqueIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    techniqueTitle: {
+      flex: 1,
+      fontSize: Typography.fontSize.lg,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.heading,
+    },
 
     /* ── Complete ──────────────────────────────────────── */
     completeWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
@@ -453,6 +447,21 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     },
     completeHeading: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs },
     completeModeName: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary },
+    thumbRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing['2xl'] },
+    thumbBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.full,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    thumbBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    thumbText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.semibold },
+    thumbTextActive: { color: colors.primaryForeground },
     deltaCard: {
       flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
       backgroundColor: colors.success + '12', borderRadius: Radius.lg,
@@ -460,4 +469,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       marginTop: Spacing.xl,
     },
     deltaText: { fontSize: Typography.fontSize.base, color: colors.success, fontWeight: Typography.fontWeight.medium, fontFamily: Typography.fontFamily.primary },
+
+    primaryBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: Radius.lg,
+      paddingVertical: Spacing.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryBtnText: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.bold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

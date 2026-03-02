@@ -78,7 +78,8 @@ const lightTheme: ThemeColors = {
   borderLight: 'rgba(31, 41, 55, 0.06)',
   
   // Semantic
-  destructive: '#DC2626',
+  // No red in the app: use warm orange for destructive
+  destructive: '#F97316',
   destructiveForeground: '#FFFFFF',
   success: '#059669',
   successForeground: '#FFFFFF',
@@ -114,7 +115,8 @@ const darkTheme: ThemeColors = {
   border: 'rgba(241, 245, 249, 0.12)',
   borderLight: 'rgba(241, 245, 249, 0.08)',
   
-  destructive: '#EF4444',
+  // No red in the app: use warm orange for destructive
+  destructive: '#FB923C',
   destructiveForeground: '#FFFFFF',
   success: '#10B981',
   successForeground: '#FFFFFF',

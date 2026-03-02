@@ -19,6 +19,8 @@ import type {
   PhysiologicalProxyQuestion,
   ConsistencyProbeQuestion,
   RankingAllocationQuestion,
+  SJTDecisionQuestion,
+  EmotionPerceptionQuestion,
   EQQuestion,
 } from '@/types/eq-assessment';
 
@@ -278,7 +280,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'self_accuracy',
     difficulty: 'medium',
     version: 1,
-    statement: 'I have a clear understanding of my emotional patterns over time.',
+    statement: 'I understand how my emotions tend to work over time.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -291,7 +293,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'interoceptive_awareness',
     difficulty: 'hard',
     version: 1,
-    statement: 'I notice physical sensations in my body before I consciously recognize an emotion.',
+    statement: 'I notice feelings in my body before I can name the emotion.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -344,7 +346,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'stress_management',
     difficulty: 'hard',
     version: 1,
-    statement: 'Under pressure, I can intentionally shift my emotional state.',
+    statement: 'When under pressure, I can change how I feel on purpose.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -358,7 +360,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'emotional_reading',
     difficulty: 'easy',
     version: 1,
-    statement: 'I notice emotional changes in others, even when they try to hide them.',
+    statement: 'I notice when others\' feelings change, even when they hide it.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -371,7 +373,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'perspective_taking',
     difficulty: 'medium',
     version: 1,
-    statement: 'I find it hard to see situations from other people\'s point of view.',
+    statement: 'I find it hard to see things the way others see them.',
     scale: 7,
     reverseKeyed: true,  // Reverse keyed
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -384,7 +386,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'compassionate_concern',
     difficulty: 'medium',
     version: 1,
-    statement: 'I genuinely feel moved by others\' struggles and want to help.',
+    statement: 'When others struggle, I feel for them and want to help.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -397,7 +399,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'emotional_reading',
     difficulty: 'hard',
     version: 1,
-    statement: 'I can sense the emotional atmosphere of a room immediately upon entering.',
+    statement: 'I can tell how people in a room feel as soon as I walk in.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -411,7 +413,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'communication_clarity',
     difficulty: 'easy',
     version: 1,
-    statement: 'In tense discussions, I usually express my emotions clearly without escalating conflict.',
+    statement: 'In difficult talks, I say how I feel clearly without making things worse.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -424,7 +426,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'conflict_navigation',
     difficulty: 'medium',
     version: 1,
-    statement: 'I tend to avoid difficult conversations about emotions.',
+    statement: 'I often avoid talking about feelings when it is hard.',
     scale: 7,
     reverseKeyed: true,  // Reverse keyed
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -437,7 +439,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'influence',
     difficulty: 'medium',
     version: 1,
-    statement: 'In tense discussions, I often help shift the mood in a constructive direction.',
+    statement: 'In tense talks, I often help turn the mood in a better direction.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -450,7 +452,7 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     facet: 'conflict_navigation',
     difficulty: 'hard',
     version: 1,
-    statement: 'In tense discussions, I usually help others find common ground.',
+    statement: 'In tense talks, I usually help people find something they agree on.',
     scale: 7,
     reverseKeyed: false,
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
@@ -509,6 +511,73 @@ export const LIKERT_QUESTIONS: LikertQuestion[] = [
     anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
     socialDesirabilityRisk: 'high',
   },
+  // Impression management items (improbable endorsements; used for validity index only)
+  {
+    id: 'lk_im_01',
+    type: 'likert',
+    dimension: 'self_awareness',
+    difficulty: 'medium',
+    version: 1,
+    statement: 'I never feel jealous of others.',
+    scale: 7,
+    reverseKeyed: false,
+    anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
+    socialDesirabilityRisk: 'high',
+    impressionManagementItem: true,
+  },
+  {
+    id: 'lk_im_02',
+    type: 'likert',
+    dimension: 'self_regulation',
+    difficulty: 'medium',
+    version: 1,
+    statement: 'I always stay calm in every situation.',
+    scale: 7,
+    reverseKeyed: false,
+    anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
+    socialDesirabilityRisk: 'high',
+    impressionManagementItem: true,
+  },
+  {
+    id: 'lk_im_03',
+    type: 'likert',
+    dimension: 'empathy',
+    difficulty: 'medium',
+    version: 1,
+    statement: 'I have never misunderstood how someone else felt.',
+    scale: 7,
+    reverseKeyed: false,
+    anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
+    socialDesirabilityRisk: 'high',
+    impressionManagementItem: true,
+  },
+  // Frequency-anchored items (~30% of Likert can use this for behavioral validity)
+  {
+    id: 'lk_021',
+    type: 'likert',
+    dimension: 'self_regulation',
+    difficulty: 'medium',
+    version: 1,
+    statement: 'In the past 2 weeks, I have paused before reacting when I was upset.',
+    scale: 7,
+    reverseKeyed: false,
+    anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
+    socialDesirabilityRisk: 'medium',
+    frequencyAnchor: 'past_2_weeks',
+  },
+  {
+    id: 'lk_022',
+    type: 'likert',
+    dimension: 'empathy',
+    difficulty: 'medium',
+    version: 1,
+    statement: 'In the past 2 weeks, I noticed when someone seemed stressed or down.',
+    scale: 7,
+    reverseKeyed: false,
+    anchorLabels: { low: 'Strongly Disagree', high: 'Strongly Agree' },
+    socialDesirabilityRisk: 'low',
+    frequencyAnchor: 'past_2_weeks',
+  },
 ];
 
 // =============================================================================
@@ -523,7 +592,7 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'easy',
     version: 1,
-    scenario: 'Feeling tense while anticipating an evaluation or test',
+    scenario: 'You are waiting for a test or review. You feel tense and worried.',
     options: [
       { id: 'a', emotion: 'Fear', isCorrect: false, partialCredit: 0.5 },
       { id: 'b', emotion: 'Anxiety', isCorrect: true, partialCredit: 1 },
@@ -538,7 +607,7 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'medium',
     version: 1,
-    scenario: 'Wanting something that someone else has',
+    scenario: 'You want something that another person has.',
     options: [
       { id: 'a', emotion: 'Jealousy', isCorrect: false, partialCredit: 0.6 },
       { id: 'b', emotion: 'Envy', isCorrect: true, partialCredit: 1 },
@@ -553,7 +622,7 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'medium',
     version: 1,
-    scenario: 'Feeling bad after doing something that goes against your values',
+    scenario: 'You did something that goes against your values. You feel bad about it.',
     options: [
       { id: 'a', emotion: 'Shame', isCorrect: false, partialCredit: 0.6 },
       { id: 'b', emotion: 'Guilt', isCorrect: true, partialCredit: 1 },
@@ -568,11 +637,11 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'hard',
     version: 1,
-    scenario: 'Feeling like you don\'t measure up to others\' expectations of who you should be',
+    scenario: 'You feel you are not good enough compared to what others expect of you.',
     options: [
       { id: 'a', emotion: 'Guilt', isCorrect: false, partialCredit: 0.4 },
       { id: 'b', emotion: 'Shame', isCorrect: true, partialCredit: 1 },
-      { id: 'c', emotion: 'Inadequacy', isCorrect: false, partialCredit: 0.8 },
+      { id: 'c', emotion: 'Not good enough', isCorrect: false, partialCredit: 0.8 },
       { id: 'd', emotion: 'Disappointment', isCorrect: false, partialCredit: 0.5 },
     ],
   },
@@ -583,7 +652,7 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'easy',
     version: 1,
-    scenario: 'A warm feeling when receiving an unexpected kindness',
+    scenario: 'Someone is kind to you and you did not expect it. You feel a warm thankfulness.',
     options: [
       { id: 'a', emotion: 'Happiness', isCorrect: false, partialCredit: 0.5 },
       { id: 'b', emotion: 'Gratitude', isCorrect: true, partialCredit: 1 },
@@ -598,12 +667,12 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'medium',
     version: 1,
-    scenario: 'Feeling bitter about a past event where you were treated unfairly',
+    scenario: 'Something unfair happened to you in the past. You still feel bitter about it.',
     options: [
       { id: 'a', emotion: 'Anger', isCorrect: false, partialCredit: 0.5 },
       { id: 'b', emotion: 'Resentment', isCorrect: true, partialCredit: 1 },
       { id: 'c', emotion: 'Frustration', isCorrect: false, partialCredit: 0.4 },
-      { id: 'd', emotion: 'Indignation', isCorrect: false, partialCredit: 0.7 },
+      { id: 'd', emotion: 'Upset that it was unfair', isCorrect: false, partialCredit: 0.7 },
     ],
   },
   {
@@ -613,12 +682,12 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'hard',
     version: 1,
-    scenario: 'Feeling a mix of pleasure and discomfort when someone praises you publicly',
+    scenario: 'Someone praises you in front of others. You feel good and awkward at the same time.',
     options: [
       { id: 'a', emotion: 'Pride', isCorrect: false, partialCredit: 0.5 },
-      { id: 'b', emotion: 'Self-consciousness', isCorrect: true, partialCredit: 1 },
+      { id: 'b', emotion: 'Self-conscious', isCorrect: true, partialCredit: 1 },
       { id: 'c', emotion: 'Embarrassment', isCorrect: false, partialCredit: 0.7 },
-      { id: 'd', emotion: 'Humility', isCorrect: false, partialCredit: 0.4 },
+      { id: 'd', emotion: 'Humble', isCorrect: false, partialCredit: 0.4 },
     ],
   },
   {
@@ -628,12 +697,12 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'easy',
     version: 1,
-    scenario: 'Feeling a strong desire to escape from an uncomfortable situation',
+    scenario: 'You are in a situation you dislike. You really want to leave.',
     options: [
       { id: 'a', emotion: 'Fear', isCorrect: false, partialCredit: 0.6 },
       { id: 'b', emotion: 'Anxiety', isCorrect: false, partialCredit: 0.5 },
-      { id: 'c', emotion: 'Discomfort', isCorrect: false, partialCredit: 0.7 },
-      { id: 'd', emotion: 'Aversion', isCorrect: true, partialCredit: 1 },
+      { id: 'c', emotion: 'Uncomfortable', isCorrect: false, partialCredit: 0.7 },
+      { id: 'd', emotion: 'Wanting to get away', isCorrect: true, partialCredit: 1 },
     ],
   },
   {
@@ -643,11 +712,11 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'medium',
     version: 1,
-    scenario: 'Feeling pleased about someone else\'s misfortune',
+    scenario: 'Something bad happened to someone else. You feel pleased about it.',
     options: [
       { id: 'a', emotion: 'Satisfaction', isCorrect: false, partialCredit: 0.3 },
-      { id: 'b', emotion: 'Schadenfreude', isCorrect: true, partialCredit: 1 },
-      { id: 'c', emotion: 'Vindication', isCorrect: false, partialCredit: 0.5 },
+      { id: 'b', emotion: 'Pleased when others fail', isCorrect: true, partialCredit: 1 },
+      { id: 'c', emotion: 'Proven right', isCorrect: false, partialCredit: 0.5 },
       { id: 'd', emotion: 'Glee', isCorrect: false, partialCredit: 0.4 },
     ],
   },
@@ -658,10 +727,10 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'hard',
     version: 1,
-    scenario: 'Feeling simultaneously drawn to and fearful of something',
+    scenario: 'You want something but you are also scared of it. You feel both at once.',
     options: [
       { id: 'a', emotion: 'Conflict', isCorrect: false, partialCredit: 0.4 },
-      { id: 'b', emotion: 'Ambivalence', isCorrect: true, partialCredit: 1 },
+      { id: 'b', emotion: 'Mixed feelings', isCorrect: true, partialCredit: 1 },
       { id: 'c', emotion: 'Confusion', isCorrect: false, partialCredit: 0.3 },
       { id: 'd', emotion: 'Hesitation', isCorrect: false, partialCredit: 0.5 },
     ],
@@ -673,10 +742,10 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'easy',
     version: 1,
-    scenario: 'Feeling empty and lacking interest in activities you usually enjoy',
+    scenario: 'You feel empty inside. Things you used to enjoy do not interest you anymore.',
     options: [
       { id: 'a', emotion: 'Sadness', isCorrect: false, partialCredit: 0.6 },
-      { id: 'b', emotion: 'Apathy', isCorrect: true, partialCredit: 1 },
+      { id: 'b', emotion: 'No interest in anything', isCorrect: true, partialCredit: 1 },
       { id: 'c', emotion: 'Boredom', isCorrect: false, partialCredit: 0.5 },
       { id: 'd', emotion: 'Tiredness', isCorrect: false, partialCredit: 0.4 },
     ],
@@ -688,12 +757,12 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'medium',
     version: 1,
-    scenario: 'Feeling a longing for something in the past that can\'t be recovered',
+    scenario: 'You miss something from the past. You know you cannot have it back.',
     options: [
       { id: 'a', emotion: 'Sadness', isCorrect: false, partialCredit: 0.5 },
       { id: 'b', emotion: 'Nostalgia', isCorrect: true, partialCredit: 1 },
       { id: 'c', emotion: 'Grief', isCorrect: false, partialCredit: 0.6 },
-      { id: 'd', emotion: 'Melancholy', isCorrect: false, partialCredit: 0.7 },
+      { id: 'd', emotion: 'Longing', isCorrect: false, partialCredit: 0.7 },
     ],
   },
   {
@@ -703,10 +772,10 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'hard',
     version: 1,
-    scenario: 'Feeling overwhelmed by too many options or demands',
+    scenario: 'Too much is going on. You feel swamped and cannot keep up.',
     options: [
       { id: 'a', emotion: 'Anxiety', isCorrect: false, partialCredit: 0.6 },
-      { id: 'b', emotion: 'Overwhelm', isCorrect: true, partialCredit: 1 },
+      { id: 'b', emotion: 'Overwhelmed', isCorrect: true, partialCredit: 1 },
       { id: 'c', emotion: 'Stress', isCorrect: false, partialCredit: 0.5 },
       { id: 'd', emotion: 'Confusion', isCorrect: false, partialCredit: 0.4 },
     ],
@@ -718,11 +787,11 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'medium',
     version: 1,
-    scenario: 'Feeling annoyed when someone breaks an unspoken social rule',
+    scenario: 'Someone broke a rule that everyone knows but no one talks about. You feel annoyed.',
     options: [
       { id: 'a', emotion: 'Anger', isCorrect: false, partialCredit: 0.4 },
       { id: 'b', emotion: 'Irritation', isCorrect: false, partialCredit: 0.7 },
-      { id: 'c', emotion: 'Indignation', isCorrect: true, partialCredit: 1 },
+      { id: 'c', emotion: 'Upset that it was wrong', isCorrect: true, partialCredit: 1 },
       { id: 'd', emotion: 'Disgust', isCorrect: false, partialCredit: 0.5 },
     ],
   },
@@ -733,12 +802,12 @@ export const EMOTION_VOCABULARY_QUESTIONS: EmotionVocabularyQuestion[] = [
     facet: 'emotional_granularity',
     difficulty: 'hard',
     version: 1,
-    scenario: 'Feeling a deep sense of connection and oneness with something larger than yourself',
+    scenario: 'You feel deeply connected to something much bigger than you.',
     options: [
       { id: 'a', emotion: 'Happiness', isCorrect: false, partialCredit: 0.3 },
       { id: 'b', emotion: 'Peace', isCorrect: false, partialCredit: 0.5 },
       { id: 'c', emotion: 'Awe', isCorrect: true, partialCredit: 1 },
-      { id: 'd', emotion: 'Transcendence', isCorrect: false, partialCredit: 0.8 },
+      { id: 'd', emotion: 'Deep connection', isCorrect: false, partialCredit: 0.8 },
     ],
   },
 ];
@@ -1424,6 +1493,194 @@ export const RANKING_ALLOCATION_QUESTIONS: RankingAllocationQuestion[] = [
 ];
 
 // =============================================================================
+// 8. SJT DECISION TASKS (scenario + 4 options with effectiveness 0–1)
+// =============================================================================
+
+export const SJT_DECISION_QUESTIONS: SJTDecisionQuestion[] = [
+  {
+    id: 'sjt_001',
+    type: 'sjt_decision',
+    dimension: 'self_regulation',
+    difficulty: 'medium',
+    version: 1,
+    scenario: 'A colleague criticizes your work in front of the team. You feel hot and want to reply right away.',
+    options: [
+      { id: 'a', text: 'Take a breath, acknowledge their point, and suggest talking about it later in private.', dimension: 'self_regulation', effectiveness: 0.9 },
+      { id: 'b', text: 'Defend your work and list why they are wrong.', dimension: 'self_regulation', effectiveness: 0.35 },
+      { id: 'c', text: 'Say nothing and leave the room to cool off.', dimension: 'self_regulation', effectiveness: 0.5 },
+      { id: 'd', text: 'Dismiss the comment and change the subject.', dimension: 'self_regulation', effectiveness: 0.2 },
+    ],
+  },
+  {
+    id: 'sjt_002',
+    type: 'sjt_decision',
+    dimension: 'empathy',
+    difficulty: 'medium',
+    version: 1,
+    scenario: 'Your teammate has been quiet and withdrawn for two days. You think something is wrong.',
+    options: [
+      { id: 'a', text: 'Find a private moment to ask how they are and just listen.', dimension: 'empathy', effectiveness: 0.92 },
+      { id: 'b', text: 'Send a quick message: "You okay?" and move on.', dimension: 'empathy', effectiveness: 0.45 },
+      { id: 'c', text: 'Assume they want space and not bring it up.', dimension: 'empathy', effectiveness: 0.3 },
+      { id: 'd', text: 'Tell them to cheer up so the team is not affected.', dimension: 'empathy', effectiveness: 0.1 },
+    ],
+  },
+  {
+    id: 'sjt_003',
+    type: 'sjt_decision',
+    dimension: 'resilience',
+    difficulty: 'hard',
+    version: 1,
+    scenario: 'A project you led was just cancelled. You spent months on it.',
+    options: [
+      { id: 'a', text: 'Let yourself feel disappointed briefly, then focus on what you can control and what you learned.', dimension: 'resilience', effectiveness: 0.88 },
+      { id: 'b', text: 'Push the feelings aside and volunteer for the next project right away.', dimension: 'resilience', effectiveness: 0.4 },
+      { id: 'c', text: 'Talk to a trusted peer about it, then move on.', dimension: 'resilience', effectiveness: 0.55 },
+      { id: 'd', text: 'Step back from the team for a few days until you feel better.', dimension: 'resilience', effectiveness: 0.25 },
+    ],
+  },
+  {
+    id: 'sjt_004',
+    type: 'sjt_decision',
+    dimension: 'social_skills',
+    difficulty: 'medium',
+    version: 1,
+    scenario: 'Two team members are in conflict and it is affecting work. You are not the manager.',
+    options: [
+      { id: 'a', text: 'Offer to help them talk: each shares their view and one thing they appreciate about the other.', dimension: 'social_skills', effectiveness: 0.85 },
+      { id: 'b', text: 'Tell both to sort it out before the next meeting.', dimension: 'social_skills', effectiveness: 0.3 },
+      { id: 'c', text: 'Tell the manager without talking to either person first.', dimension: 'social_skills', effectiveness: 0.4 },
+      { id: 'd', text: 'Take over their tasks so they do not have to work together.', dimension: 'social_skills', effectiveness: 0.2 },
+    ],
+  },
+  {
+    id: 'sjt_005',
+    type: 'sjt_decision',
+    dimension: 'self_awareness',
+    difficulty: 'medium',
+    version: 1,
+    scenario: 'You notice you are snapping at small requests. You are not sure why.',
+    options: [
+      { id: 'a', text: 'Pause and check in with yourself: stress, sleep, or something else? Then adjust or say you need space.', dimension: 'self_awareness', effectiveness: 0.9 },
+      { id: 'b', text: 'Apologize each time and try to be nicer without looking at the cause.', dimension: 'self_awareness', effectiveness: 0.5 },
+      { id: 'c', text: 'Blame others for asking too much.', dimension: 'self_awareness', effectiveness: 0.15 },
+      { id: 'd', text: 'Ignore it and hope it passes.', dimension: 'self_awareness', effectiveness: 0.35 },
+    ],
+  },
+  {
+    id: 'sjt_006',
+    type: 'sjt_decision',
+    dimension: 'resilience',
+    difficulty: 'medium',
+    version: 1,
+    scenario: 'You get harsh feedback from a client. Your first reaction is to get defensive.',
+    options: [
+      { id: 'a', text: 'Notice you feel defensive, then re-read the feedback and pick one small thing you can improve.', dimension: 'resilience', effectiveness: 0.88 },
+      { id: 'b', text: 'Reply right away and explain why the client is wrong.', dimension: 'resilience', effectiveness: 0.25 },
+      { id: 'c', text: 'Forward the email to your manager and ask them to handle it.', dimension: 'resilience', effectiveness: 0.4 },
+      { id: 'd', text: 'Avoid the client for a while until things cool down.', dimension: 'resilience', effectiveness: 0.2 },
+    ],
+  },
+];
+
+// =============================================================================
+// 9. EMOTION PERCEPTION (detect emotion from text/tone/context)
+// =============================================================================
+
+export const EMOTION_PERCEPTION_QUESTIONS: EmotionPerceptionQuestion[] = [
+  {
+    id: 'ep_001',
+    type: 'emotion_perception',
+    dimension: 'empathy',
+    format: 'text_scenario',
+    difficulty: 'easy',
+    version: 1,
+    scenario: 'A friend says: "I got the promotion... but I will miss my team."',
+    options: [
+      { id: 'a', emotion: 'Happy and sad at once', isCorrect: true, partialCredit: 1 },
+      { id: 'b', emotion: 'Anger', isCorrect: false, partialCredit: 0 },
+      { id: 'c', emotion: 'Pure joy', isCorrect: false, partialCredit: 0 },
+      { id: 'd', emotion: 'Anxiety', isCorrect: false, partialCredit: 0.2 },
+    ],
+  },
+  {
+    id: 'ep_002',
+    type: 'emotion_perception',
+    dimension: 'empathy',
+    format: 'text_scenario',
+    difficulty: 'medium',
+    version: 1,
+    scenario: 'A coworker says in a flat voice: "Sure, I can take the extra shift. No problem." They look away.',
+    options: [
+      { id: 'a', emotion: 'Really willing', isCorrect: false, partialCredit: 0 },
+      { id: 'b', emotion: 'Reluctant or resentful', isCorrect: true, partialCredit: 1 },
+      { id: 'c', emotion: 'Confused', isCorrect: false, partialCredit: 0.3 },
+      { id: 'd', emotion: 'Excited', isCorrect: false, partialCredit: 0 },
+    ],
+  },
+  {
+    id: 'ep_003',
+    type: 'emotion_perception',
+    dimension: 'empathy',
+    format: 'context_inference',
+    difficulty: 'medium',
+    version: 1,
+    scenario: 'Before a big talk, someone says: "I have done this many times. It is just another day." Their hands are clasped tightly.',
+    options: [
+      { id: 'a', emotion: 'Confident and relaxed', isCorrect: false, partialCredit: 0 },
+      { id: 'b', emotion: 'Nervous but holding it together', isCorrect: true, partialCredit: 1 },
+      { id: 'c', emotion: 'Bored', isCorrect: false, partialCredit: 0 },
+      { id: 'd', emotion: 'Angry', isCorrect: false, partialCredit: 0 },
+    ],
+  },
+  {
+    id: 'ep_004',
+    type: 'emotion_perception',
+    dimension: 'empathy',
+    format: 'text_scenario',
+    difficulty: 'easy',
+    version: 1,
+    scenario: '"They forgot my birthday again. It is fine. I do not care."',
+    options: [
+      { id: 'a', emotion: 'Hurt', isCorrect: true, partialCredit: 1 },
+      { id: 'b', emotion: 'Does not care', isCorrect: false, partialCredit: 0.2 },
+      { id: 'c', emotion: 'Grateful', isCorrect: false, partialCredit: 0 },
+      { id: 'd', emotion: 'Relief', isCorrect: false, partialCredit: 0 },
+    ],
+  },
+  {
+    id: 'ep_005',
+    type: 'emotion_perception',
+    dimension: 'empathy',
+    format: 'tone_interpretation',
+    difficulty: 'hard',
+    version: 1,
+    scenario: 'Someone you manage says: "Your feedback was really helpful." They pause, look away, then say: "Really."',
+    options: [
+      { id: 'a', emotion: 'Truly thankful', isCorrect: false, partialCredit: 0.3 },
+      { id: 'b', emotion: 'Sarcastic or not meaning it', isCorrect: true, partialCredit: 1 },
+      { id: 'c', emotion: 'Neutral', isCorrect: false, partialCredit: 0.2 },
+      { id: 'd', emotion: 'Fear', isCorrect: false, partialCredit: 0 },
+    ],
+  },
+  {
+    id: 'ep_006',
+    type: 'emotion_perception',
+    dimension: 'empathy',
+    format: 'text_scenario',
+    difficulty: 'medium',
+    version: 1,
+    scenario: '"I have tried everything. Nothing works. Maybe I am not good enough for this."',
+    options: [
+      { id: 'a', emotion: 'Determined', isCorrect: false, partialCredit: 0 },
+      { id: 'b', emotion: 'Frustrated and doubting themselves', isCorrect: true, partialCredit: 1 },
+      { id: 'c', emotion: 'Curious', isCorrect: false, partialCredit: 0 },
+      { id: 'd', emotion: 'Proud', isCorrect: false, partialCredit: 0 },
+    ],
+  },
+];
+
+// =============================================================================
 // COMBINED QUESTION BANK
 // =============================================================================
 
@@ -1435,6 +1692,8 @@ export const ALL_QUESTIONS: EQQuestion[] = [
   ...PHYSIOLOGICAL_PROXY_QUESTIONS,
   ...CONSISTENCY_PROBE_QUESTIONS,
   ...RANKING_ALLOCATION_QUESTIONS,
+  ...SJT_DECISION_QUESTIONS,
+  ...EMOTION_PERCEPTION_QUESTIONS,
 ];
 
 // =============================================================================
@@ -1538,6 +1797,12 @@ export function selectFullTestQuestions(): EQQuestion[] {
   // 4 ranking allocation
   questions.push(...shuffleArray(RANKING_ALLOCATION_QUESTIONS).slice(0, 4));
   
+  // 6 SJT decision
+  questions.push(...shuffleArray(SJT_DECISION_QUESTIONS).slice(0, 6));
+  
+  // 6 emotion perception
+  questions.push(...shuffleArray(EMOTION_PERCEPTION_QUESTIONS).slice(0, 6));
+  
   // Shuffle final order (but keep consistency pairs somewhat separated)
   return shuffleArray(questions);
 }
@@ -1551,5 +1816,7 @@ export const QUESTION_COUNTS = {
   physiological_proxy: PHYSIOLOGICAL_PROXY_QUESTIONS.length,
   consistency_probe: CONSISTENCY_PROBE_QUESTIONS.length,
   ranking_allocation: RANKING_ALLOCATION_QUESTIONS.length,
+  sjt_decision: SJT_DECISION_QUESTIONS.length,
+  emotion_perception: EMOTION_PERCEPTION_QUESTIONS.length,
   total: ALL_QUESTIONS.length,
 };

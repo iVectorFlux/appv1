@@ -2,8 +2,7 @@
  * Recover Screen
  * 
  * Includes:
- * - Short breathing exercises
- * - Grounding practices
+ * - Breathing techniques
  * - "Release & Let Go" flow
  */
 
@@ -25,7 +24,7 @@ import { ListCard } from '@/components/ui/list-card';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 
-type RecoverView = 'main' | 'breathing' | 'release';
+type RecoverView = 'main' | 'release';
 
 const AFFIRMATIONS = [
   "You are releasing what no longer serves you.",
@@ -43,10 +42,6 @@ export default function RecoverScreen() {
   const [releaseText, setReleaseText] = useState('');
   const [isReleasing, setIsReleasing] = useState(false);
   const [hasReleased, setHasReleased] = useState(false);
-  const [breathCount, setBreathCount] = useState(0);
-  const [isBreathing, setIsBreathing] = useState(false);
-  const [breathPhase, setBreathPhase] = useState<'in' | 'out'>('in');
-  const scaleAnim = React.useRef(new Animated.Value(1)).current;
   
   // Animation refs for release flow
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -146,96 +141,7 @@ export default function RecoverScreen() {
     }, 4000);
   };
 
-  const startBreathing = () => {
-    setIsBreathing(true);
-    setBreathCount(0);
-    setBreathPhase('in');
-
-    // Breathing animation cycle - 6 complete breaths
-    const animateBreath = (breathNumber: number) => {
-      if (breathNumber >= 6) {
-        setIsBreathing(false);
-        scaleAnim.setValue(1);
-        // Navigate to home after completion
-        setTimeout(() => {
-          router.replace('/(tabs)/home');
-        }, 1000);
-        return;
-      }
-
-      // Breathe in
-      setBreathPhase('in');
-      Animated.timing(scaleAnim, {
-        toValue: 1.3,
-        duration: 4000,
-        useNativeDriver: true,
-      }).start(() => {
-        // Breathe out
-        setBreathPhase('out');
-        setBreathCount(breathNumber * 2 + 1);
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 4000,
-          useNativeDriver: true,
-        }).start(() => {
-          setBreathCount((breathNumber + 1) * 2);
-          animateBreath(breathNumber + 1);
-        });
-      });
-    };
-
-    animateBreath(0);
-  };
-
   const styles = createStyles(colors);
-
-  if (view === 'breathing') {
-    return (
-      <View style={styles.container}>
-        <TouchableOpacity
-          onPress={() => {
-            setView('main');
-            setIsBreathing(false);
-            scaleAnim.setValue(1);
-          }}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-
-        <View style={styles.breathingContainer}>
-          {!isBreathing ? (
-            <>
-              <Text style={styles.breathingTitle}>Slow Breathing</Text>
-              <Button
-                title="Begin"
-                onPress={startBreathing}
-                size="lg"
-              />
-            </>
-          ) : (
-            <>
-              <Animated.View
-                style={[
-                  styles.breathingCircle,
-                  {
-                    transform: [{ scale: scaleAnim }],
-                  },
-                ]}
-              />
-              <Text style={styles.breathingInstruction}>
-                {breathPhase === 'in' ? 'Breathe in...' : 'Breathe out...'}
-              </Text>
-              <Text style={styles.breathCount}>
-                Breath {Math.floor(breathCount / 2) + 1} of 6
-              </Text>
-            </>
-          )}
-        </View>
-      </View>
-    );
-  }
 
   if (view === 'release') {
     return (
@@ -374,24 +280,8 @@ export default function RecoverScreen() {
         <Text style={styles.sectionTitle}>Quick calm</Text>
         <View style={styles.cardList}>
           <ListCard
-            onPress={() => setView('breathing')}
-            title="Slow Breathing"
-            icon="water-outline"
-            iconBackgroundColor={colors.accentCalm + '20'}
-            iconColor={colors.accentCalm}
-          />
-          <ListCard
-            onPress={() => {}}
-            title="Body Reset"
-            subtitle="5 minutes · Release physical tension"
-            icon="body-outline"
-            iconBackgroundColor={colors.accentSoft + '20'}
-            iconColor={colors.accentSoft}
-          />
-          <ListCard
             onPress={() => router.push('/grounding')}
-            title="Grounding"
-            subtitle="Guided reset for stress & overwhelm"
+            title="Breathing"
             icon="leaf-outline"
             iconBackgroundColor={colors.accentCalm + '20'}
             iconColor={colors.accentCalm}
@@ -490,7 +380,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accentCalm,
     marginBottom: Spacing['3xl'],
   },
   breathingInstruction: {

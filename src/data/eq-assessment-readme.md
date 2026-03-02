@@ -257,6 +257,11 @@ calibrationScore = 100 - (averageDelta × 100)
 
 **Best for:** Leadership development, coaching contexts
 
+**In the test:**
+- **Full test:** 8 Meta-EQ questions are included. You rate yourself, then rate "how would others rate you" on the same statement.
+- **Scoring:** There is **no negative marking**. The score is **calibration**: how close your self-rating is to your predicted-other rating. Slight under-rating is rewarded (hidden strengths). The result feeds the **self-awareness** dimension and a separate **metaEQOutput** (metaEQScore 0–100, calibrationType: over / under / accurate, blindSpots, hiddenStrengths).
+- **Check-in:** Meta-EQ is not shown (0 items) to keep check-ins short.
+
 ---
 
 ### 5. Physiological Proxy Questions (10 questions)
@@ -629,14 +634,36 @@ src/
 ├── types/
 │   └── eq-assessment.ts     # Type definitions for all question/response types
 ├── data/
-│   └── eq-questions.ts      # Question bank (90 questions)
+│   ├── eq-questions.ts      # Question bank (in-code)
+│   └── eq-questions-db.ts   # Build DB rows from questions for seeding
 ├── services/
 │   └── eq-scoring.ts        # Scoring algorithms
+scripts/
+└── seed-eq-questions.ts     # Outputs SQL to seed eq_questions table
 app/
 ├── (tabs)/
 │   └── eq.tsx               # Check-in screen
 └── full-eq-test.tsx         # Full assessment screen
 ```
+
+### Questions in the database
+
+All questions can be stored in the **eq_questions** table (migration `00005_eq_questions.sql`) for reporting, admin, or server-side scoring.
+
+| Column | Purpose |
+|--------|---------|
+| **id** | Same as in-code ID (e.g. `lk_001`, `ev_001`, `me_001`) |
+| **type** | Question type (forced_choice, likert, meta_eq, …) |
+| **domain** | EQ dimension (self_awareness, empathy, resilience, …) |
+| **facet** | Optional sub-dimension |
+| **difficulty** | easy / medium / hard |
+| **version** | For A/B or future updates |
+| **reverse_keyed** | **Likert only:** true = disagreement is scored as positive (scale inverted). Not negative marking. |
+| **negative_marking** | Reserved; we do not deduct points for wrong answers. |
+| **scoring_config** | Type-specific: scale, ideal_delta, paired_with_id, effectiveness/partial_credit per option, etc. |
+| **payload** | Full question content (statement, scenario, options) for rendering. |
+
+**Seed from code:** Run `npx tsx scripts/seed-eq-questions.ts` (after applying the migration). Redirect output to a file and run in Supabase SQL Editor, or use the generated SQL in a one-off migration. The app continues to use the in-code question bank by default; you can add a loader that fetches from `eq_questions` and falls back to code when the table is empty or offline.
 
 ### Key Types
 

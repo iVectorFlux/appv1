@@ -281,7 +281,7 @@ export default function OnboardingScreen() {
                 </View>
                 <View style={styles.wayCardText}>
                   <Text style={styles.wayRowLabel}>Recover</Text>
-                  <Text style={styles.wayRowDesc}>Breathing and grounding when things feel heavy.</Text>
+                  <Text style={styles.wayRowDesc}>Breathing techniques when things feel heavy.</Text>
                 </View>
               </View>
             </View>

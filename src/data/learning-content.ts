@@ -121,6 +121,25 @@ export const LEARNING_MODULES: LearningModule[] = [
       'Use the "5 Whys" to find your deeper motivation',
     ],
   },
+  {
+    id: 'resilience_1',
+    dimension: 'resilience',
+    title: 'Bounce Back',
+    subtitle: 'Building Stress Resilience',
+    description: 'Learn how to recover from setbacks, manage stress, and sustain performance under pressure.',
+    audioUrl: `${S3_BASE}/Resilience_Bounce_Back.m4a`,
+    videoUrl: `${S3_BASE}/Resilience_Bounce_Back.mp4`,
+    audioDuration: '9 min',
+    videoDuration: '6 min',
+    icon: 'shield-checkmark-outline',
+    color: '#F97316',
+    keyTakeaways: [
+      'Resilience is a skill you can build, not a fixed trait',
+      'Recovery rituals help reset after stress',
+      'Reframe setbacks as learning, not failure',
+      'Connect with support before you\'re in crisis',
+    ],
+  },
 ];
 
 // Get modules by dimension
@@ -164,5 +183,11 @@ export const DIMENSION_INFO: Record<EQDimension, { name: string; description: st
     description: 'Driving yourself toward meaningful goals',
     icon: 'flame-outline',
     color: '#FBBF24',
+  },
+  resilience: {
+    name: 'Resilience',
+    description: 'Recovering from setbacks and managing stress',
+    icon: 'shield-checkmark-outline',
+    color: '#F97316',
   },
 };

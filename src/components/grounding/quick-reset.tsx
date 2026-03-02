@@ -2,7 +2,7 @@
  * Quick Reset — Mode 1 (60 seconds, auto-complete)
  *
  * Steps:
- *  1. 4-2-6 breathing with glowing orb (3 cycles ≈ 36s)
+ *  1. Physiological sigh breathing with glowing orb (3 cycles ≈ 30s)
  *  2. "Name 3 objects you can see" text prompt (15s)
  *  3. "Press feet into floor" hold timer (10s)
  *
@@ -15,10 +15,16 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import type { GroundingModeProps } from '@/types/grounding';
+import { PHYSIOLOGICAL_SIGH_PATTERN } from '@/data/grounding-content';
 
 type Step = 'breathe' | 'anchor' | 'ground';
 
-const BREATH = { inhale: 4000, hold: 2000, exhale: 6000 };
+// Map physiological sigh pattern (seconds) to ms for animation
+const BREATH = {
+  inhale: PHYSIOLOGICAL_SIGH_PATTERN.inhale * 1000,
+  hold: PHYSIOLOGICAL_SIGH_PATTERN.sighInhale * 1000,
+  exhale: PHYSIOLOGICAL_SIGH_PATTERN.exhale * 1000,
+};
 const BREATH_CYCLES = 3;
 const ANCHOR_DURATION = 15_000;
 const GROUND_DURATION = 10_000;
@@ -67,35 +73,6 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
     }).start();
   }, [progressAnim]);
 
-  // Breathing animation
-  const runBreathCycle = useCallback(
-    (cycle: number) => {
-      if (cycle >= BREATH_CYCLES) {
-        fadeToStep('anchor');
-        return;
-      }
-      setBreathCycle(cycle);
-
-      setBreathPhase('in');
-      Animated.parallel([
-        Animated.timing(orbScale, { toValue: 1.35, duration: BREATH.inhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(orbOpacity, { toValue: 0.9, duration: BREATH.inhale, useNativeDriver: true }),
-      ]).start(() => {
-        setBreathPhase('hold');
-        setTimeout(() => {
-          setBreathPhase('out');
-          Animated.parallel([
-            Animated.timing(orbScale, { toValue: 1, duration: BREATH.exhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-            Animated.timing(orbOpacity, { toValue: 0.5, duration: BREATH.exhale, useNativeDriver: true }),
-          ]).start(() => runBreathCycle(cycle + 1));
-        }, BREATH.hold);
-      });
-    },
-    [orbScale, orbOpacity],
-  );
-
-  useEffect(() => { runBreathCycle(0); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const fadeToStep = useCallback(
     (next: Step) => {
       Animated.timing(textFade, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
@@ -106,6 +83,68 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
     },
     [textFade],
   );
+
+  // Breathing animation
+  const runBreathCycle = useCallback(
+    (cycle: number) => {
+      if (cycle >= BREATH_CYCLES) {
+        fadeToStep('anchor');
+        return;
+      }
+      setBreathCycle(cycle);
+
+      // First inhale – smooth expansion
+      setBreathPhase('in');
+      Animated.parallel([
+        Animated.timing(orbScale, {
+          toValue: 1.25,
+          duration: BREATH.inhale,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(orbOpacity, {
+          toValue: 0.85,
+          duration: BREATH.inhale,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Second quick top-up inhale
+        setBreathPhase('hold');
+        Animated.parallel([
+          Animated.timing(orbScale, {
+            toValue: 1.35,
+            duration: BREATH.hold,
+            easing: Easing.inOut(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(orbOpacity, {
+            toValue: 0.95,
+            duration: BREATH.hold,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // Long exhale
+          setBreathPhase('out');
+          Animated.parallel([
+            Animated.timing(orbScale, {
+              toValue: 1,
+              duration: BREATH.exhale,
+              easing: Easing.inOut(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(orbOpacity, {
+              toValue: 0.5,
+              duration: BREATH.exhale,
+              useNativeDriver: true,
+            }),
+          ]).start(() => runBreathCycle(cycle + 1));
+        });
+      });
+    },
+    [fadeToStep, orbOpacity, orbScale],
+  );
+
+  useEffect(() => { runBreathCycle(0); }, [runBreathCycle]);
 
   // Anchor countdown
   useEffect(() => {
@@ -138,8 +177,18 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
   }, [step, onComplete]);
 
   const styles = createStyles(colors);
-  const phaseLabel = breathPhase === 'in' ? 'Breathe in' : breathPhase === 'hold' ? 'Hold' : 'Breathe out';
-  const phaseTiming = breathPhase === 'in' ? '4s' : breathPhase === 'hold' ? '2s' : '6s';
+  const phaseLabel =
+    breathPhase === 'in'
+      ? 'Breathe in through your nose'
+      : breathPhase === 'hold'
+      ? 'Take a short top-up inhale'
+      : 'Long exhale through your mouth';
+  const phaseTiming =
+    breathPhase === 'in'
+      ? `${PHYSIOLOGICAL_SIGH_PATTERN.inhale}s`
+      : breathPhase === 'hold'
+      ? `${PHYSIOLOGICAL_SIGH_PATTERN.sighInhale}s`
+      : `${PHYSIOLOGICAL_SIGH_PATTERN.exhale}s`;
 
   return (
     <View style={styles.container}>
@@ -167,16 +216,26 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
               <Animated.View style={[styles.orbCore, { transform: [{ scale: orbScale }], opacity: orbOpacity }]} />
             </View>
 
-            <Text style={styles.phaseText}>{phaseLabel}</Text>
-            <Text style={styles.phaseTiming}>{phaseTiming}</Text>
-            <Text style={styles.counterText}>Breath {breathCycle + 1} of {BREATH_CYCLES}</Text>
+            <View style={styles.breathTextBlock}>
+              <Text style={styles.phaseText}>{phaseLabel}</Text>
+              <View style={styles.metaRow}>
+                <View style={styles.metaPill}>
+                  <Text style={styles.metaPillText}>{phaseTiming}</Text>
+                </View>
+                <View style={styles.metaPill}>
+                  <Text style={styles.metaPillText}>
+                    Breath {breathCycle + 1}/{BREATH_CYCLES}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </>
         )}
 
         {step === 'anchor' && (
           <>
             <View style={styles.iconGlow}>
-              <Ionicons name="eye-outline" size={44} color={colors.accentCalm} />
+              <Ionicons name="eye-outline" size={44} color={colors.destructive} />
             </View>
             <Text style={styles.promptText}>Name 3 objects{'\n'}you can see right now</Text>
             <Text style={styles.promptHint}>Look around slowly</Text>
@@ -189,7 +248,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
         {step === 'ground' && (
           <>
             <View style={styles.iconGlow}>
-              <Ionicons name="footsteps-outline" size={44} color={colors.accentCalm} />
+              <Ionicons name="footsteps-outline" size={44} color={colors.destructive} />
             </View>
             <Text style={styles.promptText}>Press your feet{'\n'}firmly into the floor</Text>
             <Text style={styles.promptHint}>Hold it. Feel the ground beneath you.</Text>
@@ -209,7 +268,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
 
     /* ── Progress ─────────────────────────────────────── */
     progressTrack: { height: 3, backgroundColor: colors.surface, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-    progressFill: { height: 3, backgroundColor: colors.primary, borderRadius: 2 },
+    progressFill: { height: 3, backgroundColor: colors.destructive, borderRadius: 2 },
 
     /* ── Top bar ──────────────────────────────────────── */
     topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['4xl'], zIndex: 10 },
@@ -221,20 +280,42 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
 
     /* ── Glowing orb ──────────────────────────────────── */
     orbContainer: { width: 260, height: 260, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
-    orbRing3: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: colors.accentCalm },
-    orbRing2: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: colors.accentCalm },
-    orbCore: { width: 140, height: 140, borderRadius: 70, backgroundColor: colors.accentCalm },
+    orbRing3: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: colors.destructive },
+    orbRing2: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: colors.destructive },
+    orbCore: { width: 140, height: 140, borderRadius: 70, backgroundColor: colors.destructive },
 
     /* ── Breath text ──────────────────────────────────── */
-    phaseText: { fontSize: Typography.fontSize['3xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs },
-    phaseTiming: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.lg },
-    counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+    breathTextBlock: { alignItems: 'center', marginTop: Spacing.xl, maxWidth: 320 },
+    phaseText: {
+      fontSize: 28,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.heading,
+      textAlign: 'center',
+      lineHeight: 36,
+      marginBottom: Spacing.md,
+    },
+    metaRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center', justifyContent: 'center' },
+    metaPill: {
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.full,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    metaPillText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textSecondary,
+      fontFamily: Typography.fontFamily.primary,
+      fontWeight: Typography.fontWeight.semibold,
+    },
 
     /* ── Prompt screens ───────────────────────────────── */
     iconGlow: {
       width: 88, height: 88, borderRadius: 44,
-      backgroundColor: colors.accentCalm + '18',
-      borderWidth: 1.5, borderColor: colors.accentCalm + '30',
+      backgroundColor: colors.destructive + '18',
+      borderWidth: 1.5, borderColor: colors.destructive + '30',
       alignItems: 'center', justifyContent: 'center',
       marginBottom: Spacing['2xl'],
     },
@@ -248,8 +329,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     /* ── Timer circle ─────────────────────────────────── */
     timerCircle: {
       width: 72, height: 72, borderRadius: 36,
-      borderWidth: 2.5, borderColor: colors.primary + '50',
+      borderWidth: 2.5, borderColor: colors.destructive + '50',
       alignItems: 'center', justifyContent: 'center',
     },
-    timerNumber: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.primary, fontFamily: Typography.fontFamily.heading },
+    timerNumber: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.destructive, fontFamily: Typography.fontFamily.heading },
   });

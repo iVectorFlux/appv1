@@ -33,6 +33,14 @@ import type {
   ConsistencyProbeResponse,
   RankingAllocationQuestion,
   RankingAllocationResponse,
+  SJTDecisionQuestion,
+  SJTDecisionResponse,
+  EmotionPerceptionQuestion,
+  EmotionPerceptionResponse,
+  MetaEQOutput,
+  LatentScoreLayers,
+  RiskIndicators,
+  ScoreWithCI,
 } from '@/types/eq-assessment';
 
 // =============================================================================
@@ -45,26 +53,30 @@ const DIMENSIONS: EQDimension[] = [
   'empathy',
   'social_skills',
   'motivation',
+  'resilience',
 ];
 
-// Weights for overall score composition
+// Weights for overall score composition (sum = 1.0)
 const DIMENSION_WEIGHTS: Record<EQDimension, number> = {
-  self_awareness: 0.25,
-  self_regulation: 0.20,
-  empathy: 0.20,
-  social_skills: 0.20,
-  motivation: 0.15,
+  self_awareness: 0.22,
+  self_regulation: 0.18,
+  empathy: 0.18,
+  social_skills: 0.18,
+  motivation: 0.14,
+  resilience: 0.10,
 };
 
-// Weights for question types in final score
+// Weights for question types in dimension aggregation
 const QUESTION_TYPE_WEIGHTS = {
-  forced_choice: 0.20,
-  likert: 0.15,
-  emotion_vocabulary: 0.15,
-  meta_eq: 0.20,
-  physiological_proxy: 0.10,
-  consistency_probe: 0.10,
-  ranking_allocation: 0.10,
+  forced_choice: 0.18,
+  likert: 0.14,
+  emotion_vocabulary: 0.12,
+  meta_eq: 0.18,
+  physiological_proxy: 0.08,
+  consistency_probe: 0.08,
+  ranking_allocation: 0.08,
+  sjt_decision: 0.10,
+  emotion_perception: 0.08,
 };
 
 // Minimum response time in ms to be considered valid
@@ -214,6 +226,7 @@ function forcedChoiceFormRange(questions: ForcedChoiceQuestion[]): Record<EQDime
     empathy: { min: 0, max: 0 },
     social_skills: { min: 0, max: 0 },
     motivation: { min: 0, max: 0 },
+    resilience: { min: 0, max: 0 },
   };
   questions.forEach(q => {
     q.options.forEach(opt => {
@@ -241,6 +254,7 @@ export function scoreForcedChoice(
     empathy: 0,
     social_skills: 0,
     motivation: 0,
+    resilience: 0,
   };
 
   responses.forEach(response => {
@@ -263,6 +277,7 @@ export function scoreForcedChoice(
     empathy: [],
     social_skills: [],
     motivation: [],
+    resilience: [],
   };
 
   DIMENSIONS.forEach(dim => {
@@ -285,13 +300,14 @@ export function scoreForcedChoice(
 export function scoreLikert(
   questions: LikertQuestion[],
   responses: LikertResponse[]
-): { scores: Record<EQDimension, number[]>; socialDesirabilityFlags: number } {
+): { scores: Record<EQDimension, number[]>; socialDesirabilityFlags: number; impressionManagementIndex: number } {
   const dimensionScores: Record<EQDimension, number[]> = {
     self_awareness: [],
     self_regulation: [],
     empathy: [],
     social_skills: [],
     motivation: [],
+    resilience: [],
   };
 
   const flagsPerDimension: Record<EQDimension, number> = {
@@ -300,8 +316,11 @@ export function scoreLikert(
     empathy: 0,
     social_skills: 0,
     motivation: 0,
+    resilience: 0,
   };
   let socialDesirabilityFlags = 0;
+  let impressionManagementEndorsements = 0;
+  let impressionManagementItemCount = 0;
 
   responses.forEach(response => {
     const question = questions.find(q => q.id === response.questionId);
@@ -319,6 +338,10 @@ export function scoreLikert(
       socialDesirabilityFlags++;
       flagsPerDimension[question.dimension]++;
     }
+    if (question.impressionManagementItem) {
+      impressionManagementItemCount++;
+      if (normalizedScore > 80) impressionManagementEndorsements++;
+    }
     dimensionScores[question.dimension].push(normalizedScore);
   });
 
@@ -330,7 +353,11 @@ export function scoreLikert(
     dimensionScores[dim] = dimensionScores[dim].map(s => s * factor);
   });
 
-  return { scores: dimensionScores, socialDesirabilityFlags };
+  const impressionManagementIndex = impressionManagementItemCount > 0
+    ? Math.min(1, impressionManagementEndorsements / impressionManagementItemCount)
+    : 0;
+
+  return { scores: dimensionScores, socialDesirabilityFlags, impressionManagementIndex };
 }
 
 /**
@@ -497,6 +524,7 @@ export function scoreRankingAllocation(
     empathy: [],
     social_skills: [],
     motivation: [],
+    resilience: [],
   };
 
   responses.forEach(response => {
@@ -512,6 +540,70 @@ export function scoreRankingAllocation(
   });
 
   return dimensionScores;
+}
+
+/**
+ * Score SJT Decision responses.
+ * Weighted mean effectiveness per dimension (0–1 → 0–100).
+ */
+export function scoreSJTDecision(
+  questions: SJTDecisionQuestion[],
+  responses: SJTDecisionResponse[]
+): { scoresByDimension: Record<EQDimension, number[]>; meanEffectiveness: number } {
+  const scoresByDimension: Record<EQDimension, number[]> = {
+    self_awareness: [],
+    self_regulation: [],
+    empathy: [],
+    social_skills: [],
+    motivation: [],
+    resilience: [],
+  };
+  let totalEffectiveness = 0;
+
+  responses.forEach(response => {
+    const question = questions.find(q => q.id === response.questionId);
+    if (!question) return;
+
+    const selectedOption = question.options.find(o => o.id === response.selectedOptionId);
+    if (selectedOption) {
+      const effectiveness100 = selectedOption.effectiveness * 100;
+      scoresByDimension[selectedOption.dimension].push(effectiveness100);
+      totalEffectiveness += effectiveness100;
+    }
+  });
+
+  const meanEffectiveness = responses.length > 0 ? totalEffectiveness / responses.length : 50;
+  return { scoresByDimension, meanEffectiveness };
+}
+
+/**
+ * Score Emotion Perception responses.
+ * Partial credit; primary load on empathy, secondary on self_awareness.
+ */
+const EMOTION_PERCEPTION_SPLIT = { empathy: 0.70, self_awareness: 0.30 } as const;
+
+export function scoreEmotionPerception(
+  questions: EmotionPerceptionQuestion[],
+  responses: EmotionPerceptionResponse[]
+): { score: number; scoresByDimension: Partial<Record<EQDimension, number>> } {
+  let totalCredit = 0;
+  responses.forEach(response => {
+    const question = questions.find(q => q.id === response.questionId);
+    if (!question) return;
+    const selectedOption = question.options.find(o => o.id === response.selectedOptionId);
+    if (selectedOption) {
+      const credit = selectedOption.partialCredit ?? (selectedOption.isCorrect ? 1 : 0);
+      totalCredit += credit;
+    }
+  });
+  const maxCredit = responses.length;
+  const score = maxCredit > 0 ? normalize(totalCredit, 0, maxCredit) : 50;
+  const scoresByDimension: Partial<Record<EQDimension, number>> = {};
+  if (responses.length > 0) {
+    scoresByDimension.empathy = score * EMOTION_PERCEPTION_SPLIT.empathy;
+    scoresByDimension.self_awareness = score * EMOTION_PERCEPTION_SPLIT.self_awareness;
+  }
+  return { score, scoresByDimension };
 }
 
 // =============================================================================
@@ -570,18 +662,26 @@ export function calculateEQScore(
   const rankingQs = questions.filter(q => q.type === 'ranking_allocation') as RankingAllocationQuestion[];
   const rankingRs = responses.filter(r => r.type === 'ranking_allocation') as RankingAllocationResponse[];
 
+  const sjtQs = questions.filter(q => q.type === 'sjt_decision') as SJTDecisionQuestion[];
+  const sjtRs = responses.filter(r => r.type === 'sjt_decision') as SJTDecisionResponse[];
+
+  const emotionPerceptionQs = questions.filter(q => q.type === 'emotion_perception') as EmotionPerceptionQuestion[];
+  const emotionPerceptionRs = responses.filter(r => r.type === 'emotion_perception') as EmotionPerceptionResponse[];
+
   // Exclude gate-only item (pp_gate) from physio score; use it only to gate contribution
   const physioQsScored = physioQs.filter(q => q.id !== 'pp_gate');
   const physioRsScored = physioRs.filter(r => r.questionId !== 'pp_gate');
 
   // Score each type
   const fcScores = scoreForcedChoice(forcedChoiceQs, forcedChoiceRs);
-  const { scores: likertScores, socialDesirabilityFlags } = scoreLikert(likertQs, likertRs);
+  const { scores: likertScores, socialDesirabilityFlags, impressionManagementIndex } = scoreLikert(likertQs, likertRs);
   const emotionVocab = scoreEmotionVocabulary(emotionVocabQs, emotionVocabRs);
   const metaEQ = scoreMetaEQ(metaEQQs, metaEQRs);
   const physioScore = scorePhysiologicalProxy(physioQsScored, physioRsScored);
   const consistency = scoreConsistencyProbes(consistencyQs, consistencyRs);
   const rankingScores = scoreRankingAllocation(rankingQs, rankingRs);
+  const sjtResult = scoreSJTDecision(sjtQs, sjtRs);
+  const emotionPerceptionResult = scoreEmotionPerception(emotionPerceptionQs, emotionPerceptionRs);
 
   // Response time analysis
   const responseTimeAnalysis = analyzeResponseTimes(responses);
@@ -617,6 +717,7 @@ export function calculateEQScore(
     empathy: 0,
     social_skills: 0,
     motivation: 0,
+    resilience: 0,
   };
 
   DIMENSIONS.forEach(dim => {
@@ -642,6 +743,12 @@ export function calculateEQScore(
         weightSum += QUESTION_TYPE_WEIGHTS.ranking_allocation * RANKING_DIMENSION_WEIGHT;
       });
     }
+    if (sjtResult.scoresByDimension[dim].length > 0) {
+      sjtResult.scoresByDimension[dim].forEach(s => {
+        weightedSum.push(s * QUESTION_TYPE_WEIGHTS.sjt_decision);
+        weightSum += QUESTION_TYPE_WEIGHTS.sjt_decision;
+      });
+    }
 
     if (dim === 'self_awareness') {
       if (physioRs.length > 0) {
@@ -652,6 +759,14 @@ export function calculateEQScore(
         weightedSum.push(metaEQ.calibrationScore * QUESTION_TYPE_WEIGHTS.meta_eq);
         weightSum += QUESTION_TYPE_WEIGHTS.meta_eq;
       }
+      if (emotionPerceptionResult.scoresByDimension.self_awareness !== undefined) {
+        weightedSum.push(emotionPerceptionResult.scoresByDimension.self_awareness * QUESTION_TYPE_WEIGHTS.emotion_perception);
+        weightSum += QUESTION_TYPE_WEIGHTS.emotion_perception;
+      }
+    }
+    if (dim === 'empathy' && emotionPerceptionResult.scoresByDimension.empathy !== undefined) {
+      weightedSum.push(emotionPerceptionResult.scoresByDimension.empathy * QUESTION_TYPE_WEIGHTS.emotion_perception);
+      weightSum += QUESTION_TYPE_WEIGHTS.emotion_perception;
     }
     if (emotionVocabByDim[dim] !== undefined) {
       weightedSum.push(emotionVocabByDim[dim]! * QUESTION_TYPE_WEIGHTS.emotion_vocabulary);
@@ -664,12 +779,12 @@ export function calculateEQScore(
   });
 
   // Cap self-awareness so it does not dominate (1.15 × mean of other dimensions)
-  const otherDims: EQDimension[] = ['self_regulation', 'empathy', 'social_skills', 'motivation'];
-  const otherMean = otherDims.reduce((s, d) => s + dimensionScores[d], 0) / 4;
+  const otherDims: EQDimension[] = ['self_regulation', 'empathy', 'social_skills', 'motivation', 'resilience'];
+  const otherMean = otherDims.reduce((s, d) => s + dimensionScores[d], 0) / 5;
   const saCap = otherMean * SELF_AWARENESS_CAP_MULTIPLIER;
   dimensionScores.self_awareness = Math.min(dimensionScores.self_awareness, saCap);
 
-  // Type-specific scores for transparency (unchanged semantics)
+  // Type-specific scores for transparency
   const typeScores = {
     forced_choice: mean(Object.values(fcScores).flat()) || 50,
     likert: mean(Object.values(likertScores).flat()) || 50,
@@ -678,6 +793,8 @@ export function calculateEQScore(
     physiological_proxy: physioScore || 50,
     consistency_probe: consistency.consistencyIndex * 100 || 50,
     ranking_allocation: mean(Object.values(rankingScores).flat()) || 50,
+    sjt_decision: sjtResult.meanEffectiveness || 50,
+    emotion_perception: emotionPerceptionResult.score || 50,
   };
 
   // Calculate overall score with dimension weights
@@ -698,6 +815,74 @@ export function calculateEQScore(
     else if (likertVar > LIKERT_VARIANCE_CHAOTIC) likertVarianceFlag = 'chaotic';
   }
 
+  // Meta-EQ as parallel index (calibrationType from mean self-other delta)
+  const meanSelfOtherDelta = metaEQRs.length > 0
+    ? mean(metaEQRs.map(r => {
+        const q = metaEQQs.find(qq => qq.id === r.questionId);
+        if (!q) return 0;
+        return (r.selfRating - r.otherRating) / q.scale;
+      }))
+    : 0;
+  const calibrationType: 'over' | 'under' | 'accurate' =
+    meanSelfOtherDelta > 0.15 ? 'over' : meanSelfOtherDelta < -0.15 ? 'under' : 'accurate';
+  const metaEQOutput: MetaEQOutput = {
+    metaEQScore: metaEQ.calibrationScore,
+    calibrationType,
+    blindSpots: metaEQ.blindSpots,
+    hiddenStrengths: metaEQ.hiddenStrengths,
+  };
+
+  // Confidence intervals (approximate SEM: 100 * 5 / sqrt(n) for n items per dimension; 95% CI)
+  const CONFIDENCE_LEVEL = 0.95;
+  const approxSEM = (dimScore: number, n: number) => (n < 2 ? 8 : Math.min(10, 100 * 5 / Math.sqrt(n)));
+  const dimensionScoresCI: Record<EQDimension, ScoreWithCI> = {} as Record<EQDimension, ScoreWithCI>;
+  DIMENSIONS.forEach(dim => {
+    const s = dimensionScores[dim];
+    const n = [fcScores[dim], likertScores[dim], rankingScores[dim], sjtResult.scoresByDimension[dim]].reduce((sum, arr) => sum + arr.length, 0) || 1;
+    const sem = approxSEM(s, n);
+    const margin = 1.96 * sem; // 95% CI
+    dimensionScoresCI[dim] = {
+      score: s,
+      lowerBound: Math.max(0, s - margin),
+      upperBound: Math.min(100, s + margin),
+      confidenceLevel: CONFIDENCE_LEVEL,
+    };
+  });
+
+  // Latent score layers: trait (Likert+FC), ability (SJT+perception+vocab), behavioral (meta+consistency+time)
+  const traitEQIndex = 0.5 * (typeScores.likert / 100) + 0.5 * (typeScores.forced_choice / 100);
+  const abilityScores = [typeScores.sjt_decision, typeScores.emotion_perception, typeScores.emotion_vocabulary].filter(Boolean);
+  const abilityEQIndex = abilityScores.length > 0 ? mean(abilityScores) / 100 : 0.5;
+  const behavioralReadinessIndex = (
+    (metaEQ.calibrationScore / 100) * 0.5 +
+    (consistency.consistencyIndex) * 0.3 +
+    (responseTimeAnalysis.suspiciouslyFast === 0 ? 1 : Math.max(0, 1 - responseTimeAnalysis.suspiciouslyFast / 10)) * 0.2
+  );
+  const latentLayers: LatentScoreLayers = {
+    traitEQIndex: Math.round(traitEQIndex * 100),
+    abilityEQIndex: Math.round(abilityEQIndex * 100),
+    behavioralReadinessIndex: Math.round(behavioralReadinessIndex * 100),
+  };
+
+  // Development potential: meta-EQ + consistency + motivation + response effort (0-100)
+  const developmentPotentialScore = Math.round(
+    ((metaEQOutput.metaEQScore / 100) * 0.35 +
+    consistency.consistencyIndex * 0.25 +
+    (dimensionScores.motivation / 100) * 0.25 +
+    (1 - Math.min(1, responseTimeAnalysis.suspiciouslyFast / 5)) * 0.15) * 100
+  );
+
+  // Risk indicators: burnout (low resilience + high interoception + low regulation), conflict (low regulation + low empathy)
+  const burnoutRisk: 'low' | 'elevated' | 'high' =
+    dimensionScores.resilience < 40 && gatedPhysioScore > 60 && dimensionScores.self_regulation < 45 ? 'high'
+    : dimensionScores.resilience < 50 && dimensionScores.self_regulation < 50 ? 'elevated'
+    : 'low';
+  const conflictRisk: 'low' | 'elevated' | 'high' =
+    dimensionScores.self_regulation < 40 && dimensionScores.empathy < 40 ? 'high'
+    : dimensionScores.self_regulation < 50 && dimensionScores.empathy < 50 ? 'elevated'
+    : 'low';
+  const riskIndicators: RiskIndicators = { burnoutRisk, conflictRisk };
+
   // Quality indicators
   const qualityIndicators: ScoreQualityIndicators = {
     consistencyIndex: consistency.consistencyIndex,
@@ -711,6 +896,7 @@ export function calculateEQScore(
     completionRate: Math.min(1, responses.length / questions.length),
     selfAwarenessCalibration: metaEQ.calibrationScore / 100,
     likertVarianceFlag,
+    impressionManagementIndex,
   };
 
   // Determine strengths and growth areas
@@ -735,7 +921,9 @@ export function calculateEQScore(
       empathy: Math.round(dimensionScores.empathy),
       social_skills: Math.round(dimensionScores.social_skills),
       motivation: Math.round(dimensionScores.motivation),
+      resilience: Math.round(dimensionScores.resilience),
     },
+    dimensionScoresCI,
     typeScores: {
       forced_choice: Math.round(typeScores.forced_choice),
       likert: Math.round(typeScores.likert),
@@ -744,7 +932,13 @@ export function calculateEQScore(
       physiological_proxy: Math.round(typeScores.physiological_proxy),
       consistency_probe: Math.round(typeScores.consistency_probe),
       ranking_allocation: Math.round(typeScores.ranking_allocation),
+      sjt_decision: Math.round(typeScores.sjt_decision),
+      emotion_perception: Math.round(typeScores.emotion_perception),
     },
+    metaEQOutput,
+    latentLayers,
+    developmentPotentialScore,
+    riskIndicators,
     qualityIndicators,
     responses,
     questionIds: questions.map(q => q.id),
@@ -786,7 +980,12 @@ function generateInsights(
   }
 
   if (dimensionScores.motivation >= 70) {
-    insights.push('You show resilience and maintain motivation even when facing challenges.');
+    insights.push('You maintain motivation and drive even when facing challenges.');
+  }
+  if (dimensionScores.resilience >= 70) {
+    insights.push('You show strong resilience and recover well from setbacks and stress.');
+  } else if (dimensionScores.resilience < 40) {
+    insights.push('Building resilience can help you manage stress and bounce back from difficulties.');
   }
 
   // Meta-EQ insights
@@ -855,7 +1054,8 @@ export function getDimensionDescription(dimension: EQDimension): string {
     self_regulation: 'Managing emotions, controlling impulses, and adapting to situations.',
     empathy: 'Understanding others\' emotions and perspectives with compassion.',
     social_skills: 'Communicating effectively, resolving conflicts, and influencing positively.',
-    motivation: 'Maintaining drive, resilience, and optimism toward goals.',
+    motivation: 'Maintaining drive and optimism toward goals.',
+    resilience: 'Recovering from setbacks, managing stress, and sustaining performance under pressure.',
   };
   return descriptions[dimension];
 }

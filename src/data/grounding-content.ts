@@ -19,12 +19,12 @@ import type {
 export const GROUNDING_MODES: GroundingModeConfig[] = [
   {
     id: 'quick_reset',
-    label: 'Quick Reset',
-    subtitle: 'Immediate downshift',
+    label: 'Physiological sigh',
+    subtitle: 'Fast reset from spikes',
     duration: '~1 min',
     durationMs: 60_000,
     icon: 'flash-outline',
-    description: 'A rapid breathing and grounding sequence to calm your nervous system in 60 seconds.',
+    description: 'Two short inhales and a long exhale to quickly dial down intense anger or anxiety.',
   },
   {
     id: 'sensory_anchor',
@@ -37,7 +37,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'panic_interrupt',
-    label: 'Panic Interrupt',
+    label: 'Box breathing',
     subtitle: 'Acute emotional spike',
     duration: '4-5 min',
     durationMs: 270_000,
@@ -46,7 +46,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'pre_meeting',
-    label: 'Pre-Meeting Reset',
+    label: 'Pre-meeting reset',
     subtitle: 'Performance stabilization',
     duration: '2-3 min',
     durationMs: 150_000,
@@ -55,7 +55,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'post_conflict',
-    label: 'Post-Conflict Reset',
+    label: 'Post-conflict reset',
     subtitle: 'Emotional processing',
     duration: '4-6 min',
     durationMs: 300_000,
@@ -126,12 +126,19 @@ export function recommendMode(
 // QUICK RESET STEPS
 // ============================================================================
 
+// Physiological sigh pattern (2 short inhales, long exhale)
+export const PHYSIOLOGICAL_SIGH_PATTERN = {
+  inhale: 2,
+  sighInhale: 2,
+  exhale: 6,
+} as const;
+
 export const QUICK_RESET_STEPS = [
   {
     id: 'breathe',
-    title: 'Breathe',
-    instruction: 'Follow the rhythm',
-    breathPattern: { inhale: 4, hold: 2, exhale: 6 },
+    title: 'Physiological Sigh',
+    instruction: 'Two short inhales, then a long exhale',
+    breathPattern: PHYSIOLOGICAL_SIGH_PATTERN,
     cycles: 3,
   },
   {

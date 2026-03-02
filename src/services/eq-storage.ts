@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import type { EQAssessmentResult, EQResponse, EQQuestion } from '@/types/eq-assessment';
+import type { EQAssessmentResult, EQQuestion, EQResponse } from '@/types/eq-assessment';
 
 /**
  * Start an EQ assessment session
@@ -33,13 +33,110 @@ export async function startEQAssessmentSession(
     throw new Error(error.message);
   }
 
+  if (__DEV__) {
+    console.log('[EQ Storage] Session started', { sessionId: data.id, assessmentType, totalQuestions });
+  }
   return data.id as string;
 }
 
 /**
- * Save EQ assessment results to Supabase
- * 
- * Creates/updates session, saves all responses, and creates score record
+ * Save a single response in real time (upsert by session_id + question_id so back/edit is safe).
+ */
+export async function saveResponseToSession(
+  sessionId: string,
+  userId: string,
+  questionId: string,
+  questionType: string,
+  domain: string,
+  response: EQResponse,
+  orderIndex: number
+): Promise<void> {
+  const row = {
+    user_id: userId,
+    session_id: sessionId,
+    question_id: questionId,
+    question_type: questionType,
+    domain,
+    response: response as unknown as Record<string, unknown>,
+    score: null,
+    order_index: orderIndex,
+  };
+  const { data: existing } = await supabase
+    .from('eq_check_ins')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('question_id', questionId)
+    .maybeSingle();
+
+  if (existing?.id) {
+    await supabase.from('eq_check_ins').update(row).eq('id', existing.id);
+  } else {
+    await supabase.from('eq_check_ins').insert(row);
+  }
+
+  await supabase
+    .from('eq_assessment_sessions')
+    .update({ questions_answered: orderIndex + 1, updated_at: new Date().toISOString() })
+    .eq('id', sessionId);
+
+  if (__DEV__) {
+    console.log('[EQ Storage] Saved response', { questionId, orderIndex: orderIndex + 1 });
+  }
+}
+
+/**
+ * Complete an existing session: update session row and insert eq_scores.
+ * Use when responses were saved in real time via saveResponseToSession.
+ */
+export async function completeEQAssessmentSession(
+  sessionId: string,
+  result: EQAssessmentResult,
+  sessionStartTime: number
+): Promise<void> {
+  const completedAt = new Date(result.completedAt);
+  const durationMs = completedAt.getTime() - sessionStartTime;
+
+  const { error: sessionError } = await supabase
+    .from('eq_assessment_sessions')
+    .update({
+      status: 'completed',
+      completed_at: result.completedAt,
+      duration_ms: durationMs,
+      questions_answered: result.responses.length,
+      overall_score: result.overallScore,
+      dimension_scores: result.dimensionScores,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+
+  if (sessionError) {
+    console.error('[EQ Storage] Failed to complete session:', sessionError);
+    throw sessionError;
+  }
+
+  const { error: scoreError } = await supabase.from('eq_scores').insert({
+    session_id: sessionId,
+    user_id: result.userId,
+    completed_at: result.completedAt,
+    overall_score: result.overallScore,
+    dimension_scores: result.dimensionScores,
+    quality_indicators: result.qualityIndicators,
+    strengths: result.strengths,
+    growth_areas: result.growthAreas,
+    insights: result.insights,
+    response_ids: result.questionIds,
+  });
+
+  if (scoreError) {
+    console.error('[EQ Storage] Failed to save score:', scoreError);
+    throw scoreError;
+  }
+  console.log('[EQ Storage] Session completed:', sessionId);
+}
+
+/**
+ * Save EQ assessment results to Supabase (legacy: no prior session).
+ * Creates session, saves all responses, and creates score record.
  */
 export async function saveEQAssessmentResult(
   result: EQAssessmentResult,
@@ -51,7 +148,6 @@ export async function saveEQAssessmentResult(
   const durationMs = completedAt.getTime() - sessionStartTime;
 
   try {
-    // 1. Create session
     const { data: sessionData, error: sessionError } = await supabase
       .from('eq_assessment_sessions')
       .insert({
@@ -69,14 +165,9 @@ export async function saveEQAssessmentResult(
       .select('id')
       .single();
 
-    if (sessionError) {
-      console.error('[EQ Storage] Failed to create session:', sessionError);
-      throw sessionError;
-    }
-
+    if (sessionError) throw sessionError;
     const sessionId = sessionData.id as string;
 
-    // 2. Save individual responses to eq_check_ins
     const checkIns = result.responses.map((response, index) => {
       const question = questions.find(q => q.id === response.questionId);
       return {
@@ -86,43 +177,30 @@ export async function saveEQAssessmentResult(
         question_type: response.type,
         domain: question?.dimension || 'self_awareness',
         response: response as unknown as Record<string, unknown>,
-        score: null, // Individual question scores not stored (only overall)
+        score: null,
         order_index: index,
       };
     });
 
     if (checkIns.length > 0) {
-      const { error: checkInsError } = await supabase
-        .from('eq_check_ins')
-        .insert(checkIns);
-
-      if (checkInsError) {
-        console.error('[EQ Storage] Failed to save check-ins:', checkInsError);
-        // Don't throw - session is already created, continue to save score
-      }
+      const { error: checkInsError } = await supabase.from('eq_check_ins').insert(checkIns);
+      if (checkInsError) console.error('[EQ Storage] Failed to save check-ins:', checkInsError);
     }
 
-    // 3. Save final score to eq_scores
-    const { error: scoreError } = await supabase
-      .from('eq_scores')
-      .insert({
-        session_id: sessionId,
-        user_id: userId,
-        completed_at: result.completedAt,
-        overall_score: result.overallScore,
-        dimension_scores: result.dimensionScores,
-        quality_indicators: result.qualityIndicators,
-        strengths: result.strengths,
-        growth_areas: result.growthAreas,
-        insights: result.insights,
-        response_ids: result.questionIds,
-      });
+    const { error: scoreError } = await supabase.from('eq_scores').insert({
+      session_id: sessionId,
+      user_id: userId,
+      completed_at: result.completedAt,
+      overall_score: result.overallScore,
+      dimension_scores: result.dimensionScores,
+      quality_indicators: result.qualityIndicators,
+      strengths: result.strengths,
+      growth_areas: result.growthAreas,
+      insights: result.insights,
+      response_ids: result.questionIds,
+    });
 
-    if (scoreError) {
-      console.error('[EQ Storage] Failed to save score:', scoreError);
-      throw scoreError;
-    }
-
+    if (scoreError) throw scoreError;
     console.log('[EQ Storage] Successfully saved assessment result:', sessionId);
   } catch (error) {
     console.error('[EQ Storage] Error saving assessment:', error);

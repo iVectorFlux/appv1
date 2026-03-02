@@ -135,7 +135,7 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
       {/* Progress segments */}
       <View style={styles.progressRow}>
         {STEP_ORDER.map((s, i) => (
-          <View key={s} style={[styles.progressSeg, i <= currentStepIdx && { backgroundColor: colors.primary }]} />
+          <View key={s} style={[styles.progressSeg, i <= currentStepIdx && { backgroundColor: colors.accentEnergy }]} />
         ))}
       </View>
 
@@ -157,7 +157,7 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
         {step === 'goal' && (
           <>
             <View style={styles.iconGlow}>
-              <Ionicons name="flag-outline" size={36} color={colors.primary} />
+              <Ionicons name="flag-outline" size={36} color={colors.accentEnergy} />
             </View>
             <Text style={styles.heading}>What's your goal{'\n'}for this?</Text>
             <View style={styles.inputCard}>
@@ -187,7 +187,7 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
         {step === 'tone' && (
           <>
             <View style={styles.iconGlow}>
-              <Ionicons name="mic-outline" size={36} color={colors.primary} />
+              <Ionicons name="mic-outline" size={36} color={colors.accentEnergy} />
             </View>
             <Text style={styles.heading}>How do you want{'\n'}to come across?</Text>
             <View style={styles.toneWrap}>
@@ -217,7 +217,7 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
         {step === 'anchor' && (
           <>
             <View style={styles.iconGlow}>
-              <Ionicons name="body-outline" size={36} color={colors.primary} />
+              <Ionicons name="body-outline" size={36} color={colors.accentEnergy} />
             </View>
             <Text style={styles.anchorInstruction}>Sit tall. Shoulders back.{'\n'}Feet flat on the floor.</Text>
             <View style={styles.anchorCard}>
@@ -225,8 +225,8 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
               <Text style={styles.anchorSentence}>I am prepared and present.</Text>
               <Text style={[styles.anchorQuote, { textAlign: 'right' }]}>"</Text>
             </View>
-            <View style={[styles.timerCircle, { borderColor: colors.primary + '50' }]}>
-              <Text style={[styles.timerNumber, { color: colors.primary }]}>{anchorCountdown}</Text>
+            <View style={[styles.timerCircle, { borderColor: colors.accentEnergy + '50' }]}>
+              <Text style={[styles.timerNumber, { color: colors.accentEnergy }]}>{anchorCountdown}</Text>
             </View>
           </>
         )}
@@ -253,16 +253,16 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
 
     /* ── Orb ───────────────────────────────────────────── */
     orbContainer: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
-    orbRing3: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: colors.accentCalm },
-    orbRing2: { position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: colors.accentCalm },
-    orbCore: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.accentCalm },
+    orbRing3: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: colors.accentEnergy },
+    orbRing2: { position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: colors.accentEnergy },
+    orbCore: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.accentEnergy },
 
     /* ── Typography ────────────────────────────────────── */
     heading: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 38, marginBottom: Spacing.lg },
     counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
 
     /* ── Icon glow ─────────────────────────────────────── */
-    iconGlow: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary + '15', borderWidth: 1.5, borderColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
+    iconGlow: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.accentEnergy + '15', borderWidth: 1.5, borderColor: colors.accentEnergy + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
 
     /* ── Goal input ───────────────────────────────────── */
     inputCard: { width: '100%', backgroundColor: colors.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.borderLight, marginBottom: Spacing.xl, overflow: 'hidden' },
@@ -271,21 +271,21 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     /* ── Tone tags ────────────────────────────────────── */
     toneWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing['2xl'] },
     toneTag: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 2, borderRadius: Radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-    toneTagActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    toneTagActive: { backgroundColor: colors.accentEnergy, borderColor: colors.accentEnergy },
     toneTagText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
     toneTagTextActive: { color: colors.primaryForeground },
 
     /* ── Anchor ────────────────────────────────────────── */
     anchorInstruction: { fontSize: 24, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 34, marginBottom: Spacing['2xl'] },
-    anchorCard: { backgroundColor: colors.surface, borderRadius: Radius['2xl'], paddingHorizontal: Spacing['2xl'], paddingVertical: Spacing.xl, borderWidth: 1.5, borderColor: colors.primary + '25', marginBottom: Spacing['2xl'], width: '100%' },
-    anchorQuote: { fontSize: 36, color: colors.primary + '40', fontFamily: Typography.fontFamily.heading, lineHeight: 36 },
-    anchorSentence: { fontSize: 22, fontWeight: Typography.fontWeight.medium, color: colors.primary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', fontStyle: 'italic', paddingVertical: Spacing.sm },
+    anchorCard: { backgroundColor: colors.surface, borderRadius: Radius['2xl'], paddingHorizontal: Spacing['2xl'], paddingVertical: Spacing.xl, borderWidth: 1.5, borderColor: colors.accentEnergy + '25', marginBottom: Spacing['2xl'], width: '100%' },
+    anchorQuote: { fontSize: 36, color: colors.accentEnergy + '40', fontFamily: Typography.fontFamily.heading, lineHeight: 36 },
+    anchorSentence: { fontSize: 22, fontWeight: Typography.fontWeight.medium, color: colors.accentEnergy, fontFamily: Typography.fontFamily.heading, textAlign: 'center', fontStyle: 'italic', paddingVertical: Spacing.sm },
 
     /* ── Timer circle ──────────────────────────────────── */
     timerCircle: { width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
     timerNumber: { fontSize: 24, fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading },
 
     /* ── Primary button ────────────────────────────────── */
-    primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.primary, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing['2xl'] },
+    primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.accentEnergy, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing['2xl'] },
     primaryBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

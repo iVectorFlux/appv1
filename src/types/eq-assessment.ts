@@ -18,7 +18,8 @@ export type EQDimension =
   | 'self_regulation'     // Managing emotions, impulse control, adaptability
   | 'empathy'             // Understanding others' emotions, perspective-taking
   | 'social_skills'       // Communication, influence, conflict management
-  | 'motivation';         // Drive, resilience, optimism
+  | 'motivation'          // Drive, intrinsic motivation, optimism
+  | 'resilience';         // Recovery from setbacks, stress performance, burnout risk
 
 /**
  * Sub-facets for more granular measurement
@@ -59,7 +60,9 @@ export type QuestionType =
   | 'meta_eq'                   // Self vs predicted-other rating
   | 'physiological_proxy'       // Body awareness questions
   | 'consistency_probe'         // Paired items for reliability
-  | 'ranking_allocation';       // Distribute points
+  | 'ranking_allocation'        // Distribute points
+  | 'sjt_decision'              // Situational judgment: scenario + effectiveness-rated options
+  | 'emotion_perception';        // Emotion detection accuracy (text/tone/context)
 
 // =============================================================================
 // QUESTION STRUCTURES
@@ -103,6 +106,10 @@ export interface LikertQuestion extends BaseQuestion {
     high: string;           // e.g., "Strongly Agree"
   };
   socialDesirabilityRisk: 'low' | 'medium' | 'high';
+  /** Situational frequency anchoring (e.g. "In the past 2 weeks...") improves behavioral validity */
+  frequencyAnchor?: 'past_2_weeks';
+  /** True if this is an impression-management item (statistically improbable endorsement) */
+  impressionManagementItem?: boolean;
 }
 
 /**
@@ -171,6 +178,37 @@ export interface RankingAllocationQuestion extends BaseQuestion {
   maxPerOption: number;     // Usually totalPoints
 }
 
+/**
+ * SJT Decision: Scenario with 4 response options, each with effectiveness (0–1).
+ * Measures emotional decision quality and applied EQ.
+ */
+export interface SJTDecisionQuestion extends BaseQuestion {
+  type: 'sjt_decision';
+  scenario: string;
+  options: {
+    id: string;
+    text: string;
+    effectiveness: number;   // 0–1, expert-rated effectiveness
+    dimension: EQDimension;  // Primary competency mapped
+  }[];
+}
+
+/**
+ * Emotion Perception: Detect emotion from text micro-scenario, tone, or context.
+ * Direct measure of emotion detection accuracy (vs inferring from self-report).
+ */
+export interface EmotionPerceptionQuestion extends BaseQuestion {
+  type: 'emotion_perception';
+  format: 'text_scenario' | 'tone_interpretation' | 'context_inference';
+  scenario: string;
+  options: {
+    id: string;
+    emotion: string;
+    isCorrect: boolean;
+    partialCredit?: number;  // 0–1 for close answers
+  }[];
+}
+
 export type EQQuestion = 
   | ForcedChoiceQuestion 
   | LikertQuestion 
@@ -178,7 +216,9 @@ export type EQQuestion =
   | MetaEQQuestion 
   | PhysiologicalProxyQuestion 
   | ConsistencyProbeQuestion 
-  | RankingAllocationQuestion;
+  | RankingAllocationQuestion
+  | SJTDecisionQuestion
+  | EmotionPerceptionQuestion;
 
 // =============================================================================
 // RESPONSE STRUCTURES
@@ -235,6 +275,20 @@ export interface RankingAllocationResponse {
   responseTimeMs: number;
 }
 
+export interface SJTDecisionResponse {
+  questionId: string;
+  type: 'sjt_decision';
+  selectedOptionId: string;
+  responseTimeMs: number;
+}
+
+export interface EmotionPerceptionResponse {
+  questionId: string;
+  type: 'emotion_perception';
+  selectedOptionId: string;
+  responseTimeMs: number;
+}
+
 export type EQResponse = 
   | ForcedChoiceResponse 
   | LikertResponse 
@@ -242,7 +296,9 @@ export type EQResponse =
   | MetaEQResponse 
   | PhysiologicalProxyResponse 
   | ConsistencyProbeResponse 
-  | RankingAllocationResponse;
+  | RankingAllocationResponse
+  | SJTDecisionResponse
+  | EmotionPerceptionResponse;
 
 // =============================================================================
 // SCORING STRUCTURES
@@ -257,6 +313,17 @@ export interface DimensionScores {
   empathy: number;
   social_skills: number;
   motivation: number;
+  resilience: number;
+}
+
+/**
+ * Confidence interval for a score (for enterprise credibility)
+ */
+export interface ScoreWithCI {
+  score: number;
+  lowerBound: number;
+  upperBound: number;
+  confidenceLevel: number;  // e.g. 0.95
 }
 
 /**
@@ -273,6 +340,38 @@ export interface ScoreQualityIndicators {
   selfAwarenessCalibration: number;  // 0-1, from meta-EQ deltas
   /** 'uniform' = possible straight-lining; 'chaotic' = possible random responding */
   likertVarianceFlag?: 'uniform' | 'chaotic' | null;
+  /** 0-1, from improbable-endorsement items; higher = possible impression management */
+  impressionManagementIndex?: number;
+}
+
+/**
+ * Meta-EQ as its own parallel index (predicts learning speed, coaching effectiveness)
+ */
+export interface MetaEQOutput {
+  metaEQScore: number;           // 0-100
+  calibrationType: 'over' | 'under' | 'accurate';  // self vs others
+  blindSpots: string[];
+  hiddenStrengths: string[];
+}
+
+/**
+ * Latent score layers for multi-layer EQ profile
+ */
+export interface LatentScoreLayers {
+  /** From Likert + forced choice (trait self-report) */
+  traitEQIndex: number;
+  /** From SJT + emotion perception + emotion vocabulary (ability) */
+  abilityEQIndex: number;
+  /** From meta-EQ + consistency + response time (behavioral reliability) */
+  behavioralReadinessIndex: number;
+}
+
+/**
+ * Risk indicators for actionable org insights
+ */
+export interface RiskIndicators {
+  burnoutRisk?: 'low' | 'elevated' | 'high';   // low resilience + high interoception + low regulation
+  conflictRisk?: 'low' | 'elevated' | 'high';  // low regulation + low empathy
 }
 
 /**
@@ -288,6 +387,9 @@ export interface EQAssessmentResult {
   overallScore: number;               // 0-100 composite
   dimensionScores: DimensionScores;
   
+  // Confidence intervals per dimension (enterprise credibility)
+  dimensionScoresCI?: Record<EQDimension, ScoreWithCI>;
+  
   // Question type contributions
   typeScores: {
     forced_choice: number;
@@ -297,7 +399,21 @@ export interface EQAssessmentResult {
     physiological_proxy: number;
     consistency_probe: number;
     ranking_allocation: number;
+    sjt_decision: number;
+    emotion_perception: number;
   };
+  
+  // Meta-EQ as parallel index (learning speed, coaching effectiveness)
+  metaEQOutput?: MetaEQOutput;
+  
+  // Latent layers: trait vs ability vs behavioral
+  latentLayers?: LatentScoreLayers;
+  
+  // Development potential (meta-EQ + consistency + motivation + effort)
+  developmentPotentialScore?: number;  // 0-100
+  
+  // Risk indicators for orgs (burnout, conflict)
+  riskIndicators?: RiskIndicators;
   
   // Quality metrics
   qualityIndicators: ScoreQualityIndicators;
@@ -343,6 +459,8 @@ export interface AssessmentConfig {
     physiological_proxy: number;
     consistency_probe: number;
     ranking_allocation: number;
+    sjt_decision: number;
+    emotion_perception: number;
   };
   
   // Timing
@@ -362,6 +480,8 @@ export const CHECK_IN_CONFIG: AssessmentConfig = {
     physiological_proxy: 1,
     consistency_probe: 0,
     ranking_allocation: 0,
+    sjt_decision: 0,
+    emotion_perception: 0,
   },
   estimatedMinutes: 2,
   minQuestionsForValidScore: 3,
@@ -377,7 +497,9 @@ export const FULL_TEST_CONFIG: AssessmentConfig = {
     physiological_proxy: 6,
     consistency_probe: 8,
     ranking_allocation: 4,
+    sjt_decision: 6,
+    emotion_perception: 6,
   },
-  estimatedMinutes: 25,
-  minQuestionsForValidScore: 40,
+  estimatedMinutes: 28,
+  minQuestionsForValidScore: 45,
 };

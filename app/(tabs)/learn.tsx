@@ -31,6 +31,7 @@ const DIMENSION_FILTERS: (EQDimension | 'all')[] = [
   'empathy',
   'social_skills',
   'motivation',
+  'resilience',
 ];
 
 export default function LearnScreen() {

@@ -31,7 +31,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { selectFullTestQuestions } from '@/data/eq-questions';
 import { calculateEQScore, getScoreLevel, getScoreLevelDescription, getDimensionDescription } from '@/services/eq-scoring';
-import { saveEQAssessmentResult } from '@/services/eq-storage';
+import { loadFullTestQuestions } from '@/services/eq-questions-loader';
+import {
+  startEQAssessmentSession,
+  saveResponseToSession,
+  completeEQAssessmentSession,
+} from '@/services/eq-storage';
 import {
   AnimationDuration,
   AnimationConfigs,
@@ -55,6 +60,8 @@ import type {
   PhysiologicalProxyQuestion,
   ConsistencyProbeQuestion,
   RankingAllocationQuestion,
+  SJTDecisionQuestion,
+  EmotionPerceptionQuestion,
   ForcedChoiceResponse,
   LikertResponse,
   EmotionVocabularyResponse,
@@ -62,6 +69,8 @@ import type {
   PhysiologicalProxyResponse,
   ConsistencyProbeResponse,
   RankingAllocationResponse,
+  SJTDecisionResponse,
+  EmotionPerceptionResponse,
 } from '@/types/eq-assessment';
 
 type ScreenState = 'intro' | 'test' | 'results';
@@ -73,6 +82,8 @@ export default function FullEQTestScreen() {
 
   const [screenState, setScreenState] = useState<ScreenState>('intro');
   const [questions, setQuestions] = useState<EQQuestion[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<EQResponse[]>([]);
   const [result, setResult] = useState<EQAssessmentResult | null>(null);
@@ -101,9 +112,17 @@ export default function FullEQTestScreen() {
   const sharedStyles = useMemo(() => createSharedStyles(colors), [colors]);
 
   useEffect(() => {
-    // Pre-select questions
-    const selectedQuestions = selectFullTestQuestions();
-    setQuestions(selectedQuestions);
+    let cancelled = false;
+    (async () => {
+      setQuestionsLoading(true);
+      const fromDb = await loadFullTestQuestions();
+      if (cancelled) return;
+      const useDb = fromDb && fromDb.length > 0;
+      if (__DEV__) console.log('[Full EQ Test] Questions source:', useDb ? `DB (${fromDb.length} selected)` : 'in-code fallback');
+      setQuestions(useDb ? fromDb : selectFullTestQuestions());
+      setQuestionsLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
   
   // Animate progress bar
@@ -210,6 +229,15 @@ export default function FullEQTestScreen() {
       setAllocations(response.allocations ?? {});
       return;
     }
+    if (response.type === 'sjt_decision' || response.type === 'emotion_perception') {
+      setSelectedChoice(response.selectedOptionId);
+      setSelectedLeast(null);
+      setLikertValue(4);
+      setSelfRating(4);
+      setOtherRating(4);
+      setAllocations({});
+      return;
+    }
     resetQuestionState();
   };
 
@@ -225,15 +253,27 @@ export default function FullEQTestScreen() {
 
   const recordResponse = (response: EQResponse) => {
     const newResponses = [...responses, response];
+    const orderIndex = newResponses.length - 1;
     setResponses(newResponses);
-    
+
+    if (user?.id && sessionId && currentQuestion) {
+      saveResponseToSession(
+        sessionId,
+        user.id,
+        currentQuestion.id,
+        currentQuestion.type,
+        currentQuestion.dimension,
+        response,
+        orderIndex
+      ).catch((err) => console.error('[Full EQ Test] Failed to save response:', err));
+    }
+
     if (currentIndex < questions.length - 1) {
       animateTransition(() => {
         setCurrentIndex(currentIndex + 1);
         resetQuestionState();
       });
     } else {
-      // Calculate results
       const assessmentResult = calculateEQScore(
         questions,
         newResponses,
@@ -242,12 +282,9 @@ export default function FullEQTestScreen() {
       );
       setResult(assessmentResult);
       setScreenState('results');
-      
-      // Save to database
-      if (user?.id) {
-        saveEQAssessmentResult(assessmentResult, questions, sessionStartTime).catch((error) => {
-          console.error('[Full EQ Test] Failed to save results:', error);
-          // Don't block UI - results are shown even if save fails
+      if (user?.id && sessionId) {
+        completeEQAssessmentSession(sessionId, assessmentResult, sessionStartTime).catch((err) => {
+          console.error('[Full EQ Test] Failed to complete session:', err);
         });
       }
     }
@@ -268,11 +305,9 @@ export default function FullEQTestScreen() {
       );
       setResult(assessmentResult);
       setScreenState('results');
-      
-      // Save to database
-      if (user?.id) {
-        saveEQAssessmentResult(assessmentResult, questions, sessionStartTime).catch((error) => {
-          console.error('[Full EQ Test] Failed to save results:', error);
+      if (user?.id && sessionId) {
+        completeEQAssessmentSession(sessionId, assessmentResult, sessionStartTime).catch((err) => {
+          console.error('[Full EQ Test] Failed to complete session:', err);
         });
       }
     }
@@ -334,13 +369,15 @@ export default function FullEQTestScreen() {
             </View>
             <View style={styles.infoCard}>
               <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
-              <Text style={styles.infoText}>{questions.length} questions</Text>
+              <Text style={styles.infoText}>
+                {questionsLoading ? '…' : `${questions.length} questions`}
+              </Text>
             </View>
           </View>
           
           <View style={styles.dimensionsList}>
             <Text style={styles.dimensionsTitle}>What we measure:</Text>
-            {(['self_awareness', 'self_regulation', 'empathy', 'social_skills', 'motivation'] as EQDimension[]).map((dim) => (
+            {(['self_awareness', 'self_regulation', 'empathy', 'social_skills', 'motivation', 'resilience'] as EQDimension[]).map((dim) => (
               <View key={dim} style={styles.dimensionItem}>
                 <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
                 <Text style={styles.dimensionText}>
@@ -351,11 +388,19 @@ export default function FullEQTestScreen() {
           </View>
           
           <Button
-            title="Begin Assessment"
-            onPress={() => {
+            title={questionsLoading ? 'Loading questions…' : 'Begin Assessment'}
+            disabled={questionsLoading || questions.length === 0}
+            onPress={async () => {
+              if (!user?.id || questions.length === 0) return;
               const startTime = Date.now();
               setSessionStartTime(startTime);
               setQuestionStartTime(startTime);
+              try {
+                const sid = await startEQAssessmentSession(user.id, 'full_test', questions.length);
+                setSessionId(sid);
+              } catch (e) {
+                console.error('[Full EQ Test] Failed to start session:', e);
+              }
               setScreenState('test');
             }}
             size="lg"
@@ -414,7 +459,7 @@ export default function FullEQTestScreen() {
         <View style={styles.insightsCard}>
           <View style={styles.insightSection}>
             <View style={styles.insightHeader}>
-              <Ionicons name="star" size={20} color={colors.success} />
+              <Ionicons name="star" size={20} color={colors.accentEnergy} />
               <Text style={styles.insightTitle}>Top Strengths</Text>
             </View>
             {result.strengths.map((s, i) => (
@@ -559,6 +604,10 @@ export default function FullEQTestScreen() {
         return renderConsistencyProbe(currentQuestion as ConsistencyProbeQuestion);
       case 'ranking_allocation':
         return renderRankingAllocation(currentQuestion as RankingAllocationQuestion);
+      case 'sjt_decision':
+        return renderSJTDecision(currentQuestion as SJTDecisionQuestion);
+      case 'emotion_perception':
+        return renderEmotionPerception(currentQuestion as EmotionPerceptionQuestion);
       default:
         return null;
     }
@@ -751,6 +800,104 @@ export default function FullEQTestScreen() {
                     <Ionicons name="checkmark-circle" size={24} color={colors.primaryForeground} />
                   </Animated.View>
                 )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
+  // SJT Decision
+  const renderSJTDecision = (q: SJTDecisionQuestion) => {
+    const handleSubmit = () => {
+      if (!selectedChoice) return;
+      const response: SJTDecisionResponse = {
+        questionId: q.id,
+        type: 'sjt_decision',
+        selectedOptionId: selectedChoice,
+        responseTimeMs: getResponseTime(),
+      };
+      recordResponse(response);
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <Text style={styles.questionPrompt}>{q.scenario}</Text>
+        <Text style={styles.questionHint}>Which response is most effective?</Text>
+        <View style={styles.optionsContainer}>
+          {q.options.map((option) => {
+            const isSelected = selectedChoice === option.id;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.forcedChoiceOption,
+                  isSelected && styles.forcedChoiceOptionMost,
+                ]}
+                onPress={() => setSelectedChoice(option.id)}
+              >
+                <Text style={[
+                  styles.forcedChoiceText,
+                  isSelected && styles.forcedChoiceTextSelected,
+                ]}>
+                  {option.text}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Button
+          title="Next"
+          onPress={handleSubmit}
+          fullWidth
+          size="lg"
+          disabled={!selectedChoice}
+        />
+      </View>
+    );
+  };
+
+  // Emotion Perception
+  const renderEmotionPerception = (q: EmotionPerceptionQuestion) => {
+    const handleSelect = (optionId: string) => {
+      if (isTransitioning.current || selectedChoice) return;
+      setSelectedChoice(optionId);
+      animateSelection(() => {
+        const response: EmotionPerceptionResponse = {
+          questionId: q.id,
+          type: 'emotion_perception',
+          selectedOptionId: optionId,
+          responseTimeMs: getResponseTime(),
+        };
+        recordResponse(response);
+      });
+    };
+
+    return (
+      <View style={styles.questionContent}>
+        <Text style={styles.questionPrompt}>{q.scenario}</Text>
+        <Text style={styles.questionHint}>What emotion best fits?</Text>
+        <View style={styles.optionsContainer}>
+          {q.options.map((option) => {
+            const isSelected = selectedChoice === option.id;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[
+                  styles.forcedChoiceOption,
+                  isSelected && styles.forcedChoiceOptionMost,
+                ]}
+                onPress={() => handleSelect(option.id)}
+                activeOpacity={0.7}
+                disabled={!!selectedChoice}
+              >
+                <Text style={[
+                  styles.forcedChoiceText,
+                  isSelected && styles.forcedChoiceTextSelected,
+                ]}>
+                  {option.emotion}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -1658,7 +1805,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontWeight: Typography.fontWeight.medium,
   },
   qualityValueGood: {
-    color: colors.success,
+    color: colors.primary,
   },
   qualityValueWarning: {
     color: colors.warning,
