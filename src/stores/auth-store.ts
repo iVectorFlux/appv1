@@ -262,12 +262,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   setOnboardingComplete: async (stepsCompleted = ['goal']) => {
     const { user } = get();
     if (!user) return;
+    const userId = user.id;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+      const uid = session?.user?.id ?? userId;
       const { error } = await supabase.from('user_onboarding').upsert(
         {
-          user_id: session.user.id,
+          user_id: uid,
           started_at: new Date().toISOString(),
           completed_at: new Date().toISOString(),
           steps_completed: stepsCompleted,
@@ -277,7 +278,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         { onConflict: 'user_id' }
       );
       if (error) {
-        console.error('[Auth] user_onboarding upsert failed:', error.message, error.code, '- Run supabase/migrations/00001_initial_schema.sql in Supabase SQL Editor.');
+        console.error('[Auth] user_onboarding upsert failed:', error.message, error.code);
       }
       set({ hasCompletedOnboarding: true });
     } catch (error) {

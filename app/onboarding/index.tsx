@@ -68,7 +68,7 @@ const FREQUENCY_OPTIONS = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { setOnboardingComplete, refreshDisplayName } = useAuthStore();
+  const { user, setOnboardingComplete, refreshDisplayName } = useAuthStore();
   const colors = useColors();
 
   const [step, setStep] = useState(1);
@@ -107,10 +107,8 @@ export default function OnboardingScreen() {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const userId = session.user.id;
-
-        // Save optional personalization — goals (JSONB array) + frequency in one row
+      const userId = session?.user?.id ?? user?.id;
+      if (userId) {
         const goalsToSave = whyIds.filter((id) => id !== 'prefer_not_say');
         const frequencyMap: Record<string, string> = {
           daily: 'daily',
@@ -121,42 +119,43 @@ export default function OnboardingScreen() {
           when_overwhelmed: 'when_reminded',
           decide_later: 'no_reminders',
         };
-        const { error: prefsErr } = await supabase.from('user_preferences').upsert(
-          {
-            user_id: userId,
-            check_in_frequency: frequencyMap[frequencyId ?? ''] ?? 'few_times_week',
-            goals: goalsToSave,
-          },
-          { onConflict: 'user_id' }
-        );
-        if (prefsErr) {
-          console.error('[Onboarding] user_preferences upsert failed:', prefsErr.message, prefsErr.code);
+        try {
+          const { error: prefsErr } = await supabase.from('user_preferences').upsert(
+            {
+              user_id: userId,
+              check_in_frequency: frequencyMap[frequencyId ?? ''] ?? 'few_times_week',
+              goals: goalsToSave,
+            },
+            { onConflict: 'user_id' }
+          );
+          if (prefsErr) console.error('[Onboarding] user_preferences upsert failed:', prefsErr.message);
+        } catch (e) {
+          console.error('[Onboarding] user_preferences error:', e);
         }
-        // Save display name to profiles
         const nameToSave = displayName.trim();
         if (nameToSave) {
-          const { error: profileErr } = await supabase.from('profiles').update({ display_name: nameToSave }).eq('id', userId);
-          if (profileErr) {
-            console.error('[Onboarding] profiles display_name update failed:', profileErr.message, profileErr.code);
+          try {
+            const { error: profileErr } = await supabase.from('profiles').update({ display_name: nameToSave }).eq('id', userId);
+            if (profileErr) console.error('[Onboarding] profiles update failed:', profileErr.message);
+          } catch (e) {
+            console.error('[Onboarding] profiles error:', e);
           }
+          await refreshDisplayName();
         }
-        await refreshDisplayName();
-        // Save first emotion as data point
-        const { error: emotionErr } = await supabase.from('onboarding_emotional_check').insert({
-          user_id: userId,
-          question_id: 'onboarding_first_emotion',
-          value_type: 'emotion',
-          value_emotion: selectedEmotion,
-          order_index: 0,
-        });
-        if (emotionErr) {
-          console.error('[Onboarding] onboarding_emotional_check insert failed:', emotionErr.message, emotionErr.code);
+        try {
+          const { error: emotionErr } = await supabase.from('onboarding_emotional_check').insert({
+            user_id: userId,
+            question_id: 'onboarding_first_emotion',
+            value_type: 'emotion',
+            value_emotion: selectedEmotion,
+            order_index: 0,
+          });
+          if (emotionErr) console.error('[Onboarding] onboarding_emotional_check insert failed:', emotionErr.message);
+        } catch (e) {
+          console.error('[Onboarding] onboarding_emotional_check error:', e);
         }
-
-        await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'first_action']);
-      } else {
-        await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'first_action']);
       }
+      await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'first_action']);
       setShowConfirmation(true);
       setTimeout(() => {
         router.replace('/(tabs)/home');
@@ -164,7 +163,10 @@ export default function OnboardingScreen() {
     } catch (err) {
       console.error('[Onboarding] save error:', err);
       await setOnboardingComplete(['welcome', 'name', 'what_you_do', 'privacy', 'why', 'frequency', 'first_action']);
-      router.replace('/(tabs)/home');
+      setShowConfirmation(true);
+      setTimeout(() => {
+        router.replace('/(tabs)/home');
+      }, 1500);
     } finally {
       setLoading(false);
     }

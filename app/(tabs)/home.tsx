@@ -3,10 +3,9 @@
  *
  * Personal dashboard with greeting, quick actions, and daily tip.
  * No numeric scores, no streak pressure.
- * Design: calm, spacious, EQ-focused – cards have clear hierarchy and gentle depth.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, Animated, Image, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,18 +22,24 @@ const HERO_SIZE = 120;
 const EQ_ILLUSTRATION_URI = 'https://ungxepwjsmhckjgxphpa.supabase.co/storage/v1/object/public/Images/eq4.svg';
 
 const DAILY_TIPS = [
-  "Taking a moment to name your emotions can help you understand them better.",
-  "Deep breathing activates your parasympathetic nervous system, promoting calm.",
-  "Emotions are like weather - they pass. You don't have to act on every feeling.",
-  "Self-awareness is the foundation of emotional intelligence.",
-  "It's okay to feel multiple emotions at once. Humans are complex.",
-  "Recovery isn't avoiding difficult emotions - it's building capacity to handle them.",
+  'Taking a moment to name your emotions can help you understand them better.',
+  'Deep breathing activates your parasympathetic nervous system, promoting calm.',
+  'Emotions are like weather - they pass. You don\'t have to act on every feeling.',
+  'Self-awareness is the foundation of emotional intelligence.',
+  'It\'s okay to feel multiple emotions at once. Humans are complex.',
+  'Recovery isn\'t avoiding difficult emotions - it\'s building capacity to handle them.',
 ];
+
+function getTodaysTip(): string {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  return DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
+}
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const colors = useColors();
+  const [mounted, setMounted] = useState(false);
 
   const opacityHeader = useRef(new Animated.Value(0)).current;
   const opacityHero = useRef(new Animated.Value(0)).current;
@@ -42,6 +47,10 @@ export default function HomeScreen() {
   const opacityDailyTip = useRef(new Animated.Value(0)).current;
   const opacityQuick = useRef(new Animated.Value(0)).current;
   const opacityPrivacy = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const anims = [
@@ -64,6 +73,7 @@ export default function HomeScreen() {
   }, []);
 
   const getGreeting = () => {
+    if (!mounted) return 'Hello';
     const hour = new Date().getHours();
     let base = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const nameToShow = user?.displayName?.trim() || user?.username;
@@ -72,11 +82,6 @@ export default function HomeScreen() {
       base += `, ${name}`;
     }
     return base;
-  };
-
-  const getTodaysTip = () => {
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-    return DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
   };
 
   const styles = createStyles(colors);
@@ -150,7 +155,7 @@ export default function HomeScreen() {
               <Ionicons name="bulb-outline" size={20} color={colors.accentEnergy} />
               <Text style={styles.tipLabel}>Daily Insight</Text>
             </View>
-            <Text style={styles.tipText}>{getTodaysTip()}</Text>
+            <Text style={styles.tipText}>{mounted ? getTodaysTip() : DAILY_TIPS[0]}</Text>
           </View>
         </View>
       </Animated.View>
