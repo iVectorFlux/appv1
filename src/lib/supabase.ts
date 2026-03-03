@@ -11,14 +11,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 const supabaseUrl =
-  Constants.expoConfig?.extra?.supabaseUrl ?? process.env.EXPO_PUBLIC_SUPABASE_URL;
+  Constants.expoConfig?.extra?.supabaseUrl ?? process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey =
-  Constants.expoConfig?.extra?.supabaseAnonKey ?? process.env.EXPO_PUBLIC_SUPABASE_KEY;
+  Constants.expoConfig?.extra?.supabaseAnonKey ?? process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
-    'Supabase URL or anon key missing. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY in .env'
+    '[Supabase] URL or anon key missing. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY in .env and restart (expo start --web).'
   );
+}
+
+/** Use before any Supabase call to fail fast instead of hanging. */
+export function isSupabaseConfigured(): boolean {
+  return Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
 }
 
 /** Storage that only uses AsyncStorage in the browser (avoids "window is not defined" during SSR). */

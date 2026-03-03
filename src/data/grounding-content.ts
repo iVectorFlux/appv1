@@ -1,8 +1,15 @@
 /**
  * Grounding Module Content
  *
- * Static content for the 5 grounding modes: configs, step definitions,
- * and recommendation logic that maps user state to a suggested mode.
+ * Framed by autonomic physiology:
+ * - Sympathetic dominance → threat, urgency, mobilization
+ * - Parasympathetic activation → safety, regulation, recovery
+ * - Cognitive rumination → looping cortical activity
+ * - Identity destabilization → panic fragmentation
+ * - Performance stress → elevated arousal without danger
+ * - Post-event processing → unresolved emotional load
+ *
+ * Each technique shifts one or more of these mechanisms.
  */
 
 import type {
@@ -20,47 +27,52 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   {
     id: 'quick_reset',
     label: 'Physiological sigh',
-    subtitle: 'Fast reset from spikes',
+    subtitle: 'Fast nervous system reset',
     duration: '~1 min',
     durationMs: 60_000,
     icon: 'flash-outline',
-    description: 'Two short inhales and a long exhale to quickly dial down intense anger or anxiety.',
+    description: 'Reduces CO₂ imbalance and drives rapid vagal activation. Best for acute stress spikes—works in under 60 seconds.',
+    mechanism: 'Mild–moderate sympathetic activation; muscular tension',
   },
   {
     id: 'sensory_anchor',
     label: '5-4-3-2-1',
-    subtitle: 'Interrupt rumination',
+    subtitle: 'Rumination → sensory brain',
     duration: '3-4 min',
     durationMs: 210_000,
     icon: 'hand-left-outline',
-    description: 'Engage all five senses to anchor yourself in the present moment.',
+    description: 'Shifts from narrative brain to sensory brain. Interrupts the rumination loop and pulls attention from internal narrative.',
+    mechanism: 'Cognitive rumination',
   },
   {
-    id: 'panic_interrupt',
+    id: 'box_breathing',
     label: 'Box breathing',
-    subtitle: 'Acute emotional spike',
+    subtitle: 'Respiration + cognition + muscle',
     duration: '4-5 min',
     durationMs: 270_000,
     icon: 'shield-outline',
-    description: 'Structured box breathing, identity anchoring, and physical release for intense moments.',
+    description: 'Full protocol for high sympathetic surge and identity fragmentation: box breathing stabilizes rhythm, identity anchor restores orientation, tension release discharges muscular load. Physiological sigh alone is insufficient for full panic.',
+    mechanism: 'High sympathetic surge; derealization risk; identity fragmentation; shallow breathing; cognitive narrowing',
   },
   {
     id: 'pre_meeting',
     label: 'Pre-meeting reset',
-    subtitle: 'Performance stabilization',
+    subtitle: 'Regulated activation before performance',
     duration: '2-3 min',
     durationMs: 150_000,
     icon: 'briefcase-outline',
-    description: 'Center yourself before high-stakes situations with breath, goal framing, and posture.',
+    description: 'Downshifts arousal, aligns intention, sets tone and posture. Builds stable calm before high-stakes situations—calm as regulated activation, not absence of activation.',
+    mechanism: 'Performance stress; elevated arousal without danger',
   },
   {
     id: 'post_conflict',
     label: 'Post-conflict reset',
-    subtitle: 'Emotional processing',
+    subtitle: 'Emotion → language → reality check',
     duration: '4-6 min',
     durationMs: 300_000,
     icon: 'chatbubbles-outline',
-    description: 'Label, locate, breathe, and separate fact from interpretation after a difficult encounter.',
+    description: 'Labeling reduces amygdala activation; body localization increases interoceptive awareness; fact vs story breaks cognitive distortion. Converts emotion into structure and reality check.',
+    mechanism: 'Post-event processing; unresolved emotional load; anger (mobilization + narrative justification)',
   },
 ];
 
@@ -85,14 +97,22 @@ export const EMOTIONAL_TONES: { id: EmotionalTone; label: string }[] = [
 // ============================================================================
 
 /**
- * Recommend a grounding mode based on stress level and emotional tone.
+ * State → Primary tool (secondary in parentheses).
+ * Technique labels match GROUNDING_MODES (Box breathing = full protocol, not "Panic interrupt").
  *
- * Logic:
- * - Panicked or stress 5 → Panic Interrupt (most directive)
- * - Stress 4 + anxious/overwhelmed/restless → 5-4-3-2-1 (sensory interrupt)
- * - Tense/scattered → Pre-Meeting Reset (structured)
- * - Angry/sad/numb → Post-Conflict (processing)
- * - Default / low stress → Quick Reset (fastest)
+ * | State                  | Primary              | Secondary        |
+ * |------------------------|----------------------|------------------|
+ * | Stress spike           | Physiological sigh   | 5-4-3-2-1        |
+ * | Rumination             | 5-4-3-2-1            | Physiological sigh |
+ * | Panic                  | Box breathing        | —                |
+ * | Anger                  | Post-conflict reset  | Physiological sigh |
+ * | Pre-meeting            | Pre-meeting reset    | Physiological sigh |
+ * | Post-meeting (conflict)| Post-conflict reset  | —                |
+ * | Performance anxiety   | Pre-meeting reset    | Physiological sigh |
+ * | Emotional processing   | Post-conflict reset  | —                |
+ * | Freeze/dissociation    | Box breathing        | —                |
+ *
+ * recommendMode() uses stress level + emotional tone to pick the primary tool.
  */
 export function recommendMode(
   stressLevel: StressLevel,
@@ -100,7 +120,7 @@ export function recommendMode(
 ): GroundingMode {
   // Acute spike — directive intervention
   if (emotionalTone === 'panicked' || stressLevel === 5) {
-    return 'panic_interrupt';
+    return 'box_breathing';
   }
 
   // High stress + rumination-type emotions → sensory interrupt
@@ -168,10 +188,10 @@ export const SENSORY_ANCHOR_STEPS = [
 ] as const;
 
 // ============================================================================
-// PANIC INTERRUPT STEPS
+// BOX BREATHING STEPS
 // ============================================================================
 
-export const PANIC_INTERRUPT_STEPS = [
+export const BOX_BREATHING_STEPS = [
   {
     id: 'box_breathe',
     title: 'Box Breathing',

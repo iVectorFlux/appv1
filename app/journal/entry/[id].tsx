@@ -22,7 +22,6 @@ import { useColors, Spacing, Typography, Radius } from '@/constants/design-token
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { getJournalEntry, updateJournalEntry, deleteJournalEntry } from '@/services/journal-storage';
-import { decryptJournalText, encryptJournalText } from '@/services/encryption';
 
 export default function EditJournalEntryScreen() {
   const router = useRouter();
@@ -47,9 +46,8 @@ export default function EditJournalEntryScreen() {
         setLoading(false);
         return;
       }
-      const decrypted = await decryptJournalText(entry.journalTextEncrypted, entry.userId);
-      setText(decrypted);
-      setOriginalText(decrypted);
+      setText(entry.journalTextEncrypted ?? '');
+      setOriginalText(entry.journalTextEncrypted ?? '');
     } catch (e) {
       setError('Could not load entry.');
     } finally {
@@ -67,9 +65,8 @@ export default function EditJournalEntryScreen() {
     if (!params.id || !user?.id || !text.trim() || !hasChanges || saving) return;
     setSaving(true);
     try {
-      const { encrypted } = await encryptJournalText(text.trim(), user.id);
       await updateJournalEntry(params.id, {
-        journalTextEncrypted: encrypted,
+        journalTextEncrypted: text.trim(),
         updatedAt: Date.now(),
       });
       setOriginalText(text.trim());

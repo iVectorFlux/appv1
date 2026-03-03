@@ -1,5 +1,5 @@
 /**
- * Panic Interrupt — Mode 3 (4-5 min)
+ * Box breathing — 4-5 min
  *
  * Steps:
  *  1. Box breathing 4-4-4-4 (4 cycles) — animated square with glowing corners
@@ -13,25 +13,32 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
-import { PANIC_INTERRUPT_STEPS } from '@/data/grounding-content';
+import { BOX_BREATHING_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
 
 type Step = 'box_breathe' | 'identity' | 'release';
 
-const BOX = { side: 4000 };
+const BOX_SIDE_MS = 4000;
 const BOX_CYCLES = 4;
-const IDENTITY_PROMPTS = PANIC_INTERRUPT_STEPS[1].prompts;
+const IDENTITY_PROMPTS = BOX_BREATHING_STEPS[1].prompts;
 const RELEASE_CYCLES = 3;
 const RELEASE_HOLD = 5000;
 const RELEASE_REST = 5000;
 
 const STEP_LABELS: Record<Step, string> = {
-  box_breathe: 'Step 1 of 3 · Box Breathing',
-  identity: 'Step 2 of 3 · Identity Anchor',
-  release: 'Step 3 of 3 · Tension Release',
+  box_breathe: 'Step 1 of 3 · Box breath',
+  identity: 'Step 2 of 3 · Identity anchor',
+  release: 'Step 3 of 3 · Tension release',
 };
 
-export function PanicInterrupt({ onComplete, onExit }: GroundingModeProps) {
+const PHASE_COPY: Record<'in' | 'hold' | 'out' | 'holdEmpty', { main: string; sub: string }> = {
+  in: { main: 'Inhale', sub: 'Fill slowly' },
+  hold: { main: 'Hold', sub: 'Keep it gentle' },
+  out: { main: 'Exhale', sub: 'Let it go' },
+  holdEmpty: { main: 'Hold', sub: 'Rest' },
+};
+
+export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
   const colors = useColors();
   const [step, setStep] = useState<Step>('box_breathe');
   const [boxPhase, setBoxPhase] = useState<'in' | 'hold' | 'out' | 'holdEmpty'>('in');
@@ -42,8 +49,7 @@ export function PanicInterrupt({ onComplete, onExit }: GroundingModeProps) {
   const [countdown, setCountdown] = useState(0);
 
   const textFade = useRef(new Animated.Value(1)).current;
-  const squareGlow = useRef(new Animated.Value(0.3)).current;
-  const squareScale = useRef(new Animated.Value(1)).current;
+  const traceProgress = useRef(new Animated.Value(0)).current;
 
   const fadeToStep = useCallback(
     (next: Step) => {
@@ -56,7 +62,6 @@ export function PanicInterrupt({ onComplete, onExit }: GroundingModeProps) {
     [textFade],
   );
 
-  // Box breathing
   const runBoxCycle = useCallback(
     (cycle: number) => {
       if (cycle >= BOX_CYCLES) { fadeToStep('identity'); return; }
@@ -65,20 +70,20 @@ export function PanicInterrupt({ onComplete, onExit }: GroundingModeProps) {
       const phases: Array<'in' | 'hold' | 'out' | 'holdEmpty'> = ['in', 'hold', 'out', 'holdEmpty'];
       let phaseIdx = 0;
 
-      const glowTarget = (p: number) => [0.6, 0.9, 0.4, 0.2][p];
-      const scaleTarget = (p: number) => [1.06, 1.06, 0.98, 0.98][p];
-
       const nextPhase = () => {
         if (phaseIdx >= phases.length) { runBoxCycle(cycle + 1); return; }
         setBoxPhase(phases[phaseIdx]);
-        Animated.parallel([
-          Animated.timing(squareGlow, { toValue: glowTarget(phaseIdx), duration: BOX.side, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(squareScale, { toValue: scaleTarget(phaseIdx), duration: BOX.side, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-        ]).start(() => { phaseIdx++; nextPhase(); });
+        traceProgress.setValue(0);
+        Animated.timing(traceProgress, {
+          toValue: 1,
+          duration: BOX_SIDE_MS,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }).start(() => { phaseIdx++; nextPhase(); });
       };
       nextPhase();
     },
-    [fadeToStep, squareGlow, squareScale],
+    [fadeToStep, traceProgress],
   );
 
   useEffect(() => { runBoxCycle(0); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -124,11 +129,11 @@ export function PanicInterrupt({ onComplete, onExit }: GroundingModeProps) {
   useEffect(() => { if (step === 'release') runReleaseCycle(0); }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const styles = createStyles(colors);
-  const boxLabel = boxPhase === 'in' ? 'Breathe in' : boxPhase === 'hold' ? 'Hold' : boxPhase === 'out' ? 'Breathe out' : 'Hold empty';
+  const phaseCopy = PHASE_COPY[boxPhase];
+  const phaseOrder = ['in', 'hold', 'out', 'holdEmpty'].indexOf(boxPhase);
 
   return (
     <View style={styles.container}>
-      {/* Top bar */}
       <View style={styles.topBar}>
         <Text style={styles.stepLabel}>{STEP_LABELS[step]}</Text>
         <TouchableOpacity style={styles.closeBtn} onPress={onExit} hitSlop={12}>
@@ -137,23 +142,29 @@ export function PanicInterrupt({ onComplete, onExit }: GroundingModeProps) {
       </View>
 
       <Animated.View style={[styles.center, { opacity: textFade }]}>
-        {/* BOX BREATHING */}
         {step === 'box_breathe' && (
           <>
-            <View style={styles.squareContainer}>
-              {/* Outer glow */}
-              <Animated.View style={[styles.squareGlow, { opacity: Animated.multiply(squareGlow, new Animated.Value(0.3)), transform: [{ scale: squareScale }] }]} />
-              {/* Main square */}
-              <Animated.View style={[styles.square, { opacity: squareGlow, transform: [{ scale: squareScale }] }]}>
-                {/* Corner dots */}
-                {[styles.cornerTL, styles.cornerTR, styles.cornerBL, styles.cornerBR].map((pos, i) => (
-                  <Animated.View key={i} style={[styles.cornerDot, pos, { opacity: squareGlow }]} />
-                ))}
+            <View style={styles.boxWrap}>
+              <View style={styles.boxOutline} />
+              <Animated.View
+                style={[
+                  styles.boxTrace,
+                  {
+                    transform: [{
+                      rotate: traceProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [`${phaseOrder * 90}deg`, `${phaseOrder * 90 + 90}deg`],
+                      }),
+                    }],
+                  },
+                ]}
+              >
+                <View style={[styles.boxTraceSegment, { backgroundColor: colors.primary }]} />
               </Animated.View>
             </View>
-            <Text style={styles.directiveText}>{boxLabel}</Text>
-            <Text style={styles.directiveSub}>4 seconds each side</Text>
-            <Text style={styles.counterText}>Cycle {boxCycle + 1} of {BOX_CYCLES}</Text>
+            <Text style={styles.phaseMain}>{phaseCopy.main}</Text>
+            <Text style={styles.phaseSub}>{phaseCopy.sub}</Text>
+            <Text style={styles.counterText}>{boxCycle + 1} of {BOX_CYCLES}</Text>
           </>
         )}
 
@@ -200,15 +211,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
 
-    /* ── Square ────────────────────────────────────────── */
-    squareContainer: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
-    squareGlow: { position: 'absolute', width: 180, height: 180, borderRadius: Radius.lg, backgroundColor: colors.primary },
-    square: { width: 140, height: 140, borderWidth: 2.5, borderColor: colors.primary, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
-    cornerDot: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
-    cornerTL: { top: -5, left: -5 },
-    cornerTR: { top: -5, right: -5 },
-    cornerBL: { bottom: -5, left: -5 },
-    cornerBR: { bottom: -5, right: -5 },
+    /* ── Box breathing trace ───────────────────────────── */
+    boxWrap: { width: 160, height: 160, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
+    boxOutline: { position: 'absolute', width: 140, height: 140, borderWidth: 2, borderColor: colors.primary + '50', borderRadius: Radius.md },
+    boxTrace: { position: 'absolute', width: 140, height: 140, alignItems: 'center', justifyContent: 'flex-start' },
+    boxTraceSegment: { width: 12, height: 12, borderRadius: 6, marginTop: -6 },
+    phaseMain: { fontSize: 26, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', marginBottom: Spacing.xs },
+    phaseSub: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.lg },
 
     /* ── Typography ────────────────────────────────────── */
     directiveText: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 38, marginBottom: Spacing.sm },

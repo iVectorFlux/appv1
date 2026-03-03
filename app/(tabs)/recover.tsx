@@ -281,7 +281,7 @@ export default function RecoverScreen() {
         <View style={styles.cardList}>
           <ListCard
             onPress={() => router.push('/grounding')}
-            title="Breathing"
+            title="Grounding"
             icon="leaf-outline"
             iconBackgroundColor={colors.accentCalm + '20'}
             iconColor={colors.accentCalm}

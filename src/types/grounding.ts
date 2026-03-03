@@ -13,7 +13,7 @@
 export type GroundingMode =
   | 'quick_reset'      // ~60s
   | 'sensory_anchor'   // 3-4 min
-  | 'panic_interrupt'  // 4-5 min
+  | 'box_breathing'    // 4-5 min
   | 'pre_meeting'      // 2-3 min
   | 'post_conflict';   // 4-6 min
 
@@ -52,6 +52,8 @@ export interface GroundingSession {
   durationMs: number;
   startedAt: string;       // ISO string
   completedAt: string | null;
+  /** User answered "Did it help?" — Yes (true) or Not really (false). Null if skipped. */
+  helpful: boolean | null;
 }
 
 // ============================================================================
@@ -77,4 +79,6 @@ export interface GroundingModeConfig {
   durationMs: number;      // approximate ms for tracking
   icon: string;            // Ionicons name
   description: string;
+  /** What it shifts: sympathetic dominance, rumination, identity, etc. */
+  mechanism?: string;
 }

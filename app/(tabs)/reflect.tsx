@@ -4,7 +4,8 @@
  * Multi-step flow:
  * Step 1: Feeling slider (unpleasant to pleasant) + Energy level
  * Step 2: Emotion selection (1-3 max)
- * Step 3: Reason tags (optional) → Save (no journal text step)
+ * Step 3: Reason tags (optional)
+ * Step 4: Optional journal note → Save
  */
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
@@ -16,6 +17,7 @@ import {
   TouchableOpacity,
   Platform,
   Animated,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
@@ -79,7 +81,7 @@ const REASONS = [
 ];
 
 
-type ReflectStep = 1 | 2 | 3 | 'success';
+type ReflectStep = 1 | 2 | 3 | 4 | 'success';
 
 export default function ReflectScreen() {
   const router = useRouter();
@@ -89,6 +91,7 @@ export default function ReflectScreen() {
   const [pleasantness, setPleasantness] = useState(50); // 0 = highly unpleasant, 100 = highly pleasant
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(3);
   const [selectedEmotions, setSelectedEmotions] = useState<EmotionTag[]>([]);
+  const [journalText, setJournalText] = useState('');
   const filteredEmotionPool = useMemo(() => {
     const pool = getEmotionPool(pleasantness, energyLevel);
     // Always include already-selected emotions so users can unselect even after changing sliders
@@ -130,7 +133,7 @@ export default function ReflectScreen() {
   };
 
   const handleNext = () => {
-    if (typeof currentStep === 'number' && currentStep < 3) {
+    if (typeof currentStep === 'number' && currentStep < 4) {
       setCurrentStep((currentStep + 1) as ReflectStep);
     }
   };
@@ -154,7 +157,7 @@ export default function ReflectScreen() {
         energyLevel,
         emotions: selectedEmotions,
         reasons: selectedReasons.length > 0 ? selectedReasons : undefined,
-        journalTextEncrypted: '',
+        journalTextEncrypted: journalText.trim(),
         encryptionKeyId: undefined,
       });
       saved = true;
@@ -193,6 +196,7 @@ export default function ReflectScreen() {
     setEnergyLevel(3);
     setSelectedEmotions([]);
     setSelectedReasons([]);
+    setJournalText('');
     setShowMoreEmotions(false);
     successScale.setValue(0);
     successOpacity.setValue(0);
@@ -206,11 +210,12 @@ export default function ReflectScreen() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return true; // Always can proceed from step 1
+        return true;
       case 2:
-        return selectedEmotions.length > 0; // Need at least one emotion
+        return selectedEmotions.length > 0;
       case 3:
-        return true; // Reasons are optional
+      case 4:
+        return true; // Reasons and journal are optional
       default:
         return false;
     }
@@ -273,7 +278,7 @@ export default function ReflectScreen() {
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>How are you feeling?</Text>
-      
+
       {/* Pleasantness Card */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Pleasant or unpleasant?</Text>
@@ -423,6 +428,23 @@ export default function ReflectScreen() {
     </View>
   );
 
+  const renderStep4 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>Add a note?</Text>
+      <Text style={styles.stepSubtitle}>Optional — private and encrypted. Skip if you prefer.</Text>
+      <TextInput
+        value={journalText}
+        onChangeText={setJournalText}
+        placeholder="How are you really doing? What’s on your mind?"
+        placeholderTextColor={colors.textMuted}
+        style={[styles.journalInput, { color: colors.textPrimary, borderColor: colors.borderLight, backgroundColor: colors.surface }]}
+        multiline
+        textAlignVertical="top"
+        numberOfLines={4}
+      />
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -441,7 +463,7 @@ export default function ReflectScreen() {
 
       {/* Progress Indicator */}
       <View style={styles.progressContainer}>
-        {[1, 2, 3].map((step) => (
+        {[1, 2, 3, 4].map((step) => (
           <View
             key={step}
             style={[
@@ -462,6 +484,7 @@ export default function ReflectScreen() {
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
+        {currentStep === 4 && renderStep4()}
 
         {/* Navigation Buttons */}
         <View style={styles.navigationContainer}>
@@ -474,7 +497,7 @@ export default function ReflectScreen() {
               fullWidth
             />
           )}
-          {currentStep < 3 ? (
+          {currentStep < 4 ? (
             <Button
               title="Next"
               onPress={handleNext}
@@ -568,6 +591,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textSecondary,
     fontFamily: Typography.fontFamily.primary,
     marginBottom: Spacing.lg,
+  },
+  journalInput: {
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    minHeight: 120,
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.primary,
   },
   card: {
     backgroundColor: colors.floating,

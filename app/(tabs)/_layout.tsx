@@ -81,7 +81,7 @@ export default function TabsLayout() {
         options={{
           title: 'Reflect',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="journal-outline" size={size} color={color} />
+            <Ionicons name="heart-outline" size={size} color={color} />
           ),
         }}
       />
@@ -90,7 +90,7 @@ export default function TabsLayout() {
         options={{
           title: 'Recover',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="leaf-outline" size={size} color={color} />
+            <Ionicons name="fitness-outline" size={size} color={color} />
           ),
         }}
       />
@@ -99,7 +99,7 @@ export default function TabsLayout() {
         options={{
           title: 'Insights',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="analytics-outline" size={size} color={color} />
+            <Ionicons name="bulb-outline" size={size} color={color} />
           ),
         }}
       />

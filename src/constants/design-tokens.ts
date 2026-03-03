@@ -52,7 +52,7 @@ export const Radius = {
 
 export const Typography = {
   fontFamily: {
-    primary: 'System', // Will use Inter/Poppins when custom fonts are added
+    primary: 'System',
     heading: 'System',
   },
   fontSize: {

@@ -3,7 +3,7 @@
 import { Platform } from 'react-native';
 import type { JournalEntry } from '@/types';
 import * as db from '@/services/database';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 function encryptedToStorage(encrypted: string): string {
   return encrypted || '';
@@ -61,6 +61,9 @@ function mapSupabaseRowToEntry(row: Record<string, unknown>): JournalEntry {
 
 export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   if (Platform.OS === 'web') {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart (expo start --web).');
+    }
     const { data, error } = await supabase
       .from('journal_entries')
       .insert({
@@ -83,6 +86,9 @@ export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'creat
 
 export async function getJournalEntries(userId: string, limit: number = 50): Promise<JournalEntry[]> {
   if (Platform.OS === 'web') {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart (expo start --web).');
+    }
     const { data, error } = await supabase
       .from('journal_entries')
       .select('id, user_id, created_at, updated_at, entry_source, pleasantness, energy_level, emotions, reasons, journal_text_encrypted, encryption_key_id')
@@ -99,6 +105,9 @@ export async function getJournalEntries(userId: string, limit: number = 50): Pro
 
 export async function getJournalEntry(id: string): Promise<JournalEntry | null> {
   if (Platform.OS === 'web') {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart.');
+    }
     const { data, error } = await supabase
       .from('journal_entries')
       .select('id, user_id, created_at, updated_at, entry_source, pleasantness, energy_level, emotions, reasons, journal_text_encrypted, encryption_key_id')
@@ -114,6 +123,9 @@ export async function getJournalEntry(id: string): Promise<JournalEntry | null> 
 
 export async function updateJournalEntry(id: string, updates: { journalTextEncrypted: string; updatedAt: number }): Promise<void> {
   if (Platform.OS === 'web') {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart.');
+    }
     const { error } = await supabase
       .from('journal_entries')
       .update({
@@ -129,6 +141,9 @@ export async function updateJournalEntry(id: string, updates: { journalTextEncry
 
 export async function deleteJournalEntry(id: string): Promise<void> {
   if (Platform.OS === 'web') {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart.');
+    }
     const { error } = await supabase
       .from('journal_entries')
       .update({ is_deleted: true, deleted_at: new Date().toISOString() })

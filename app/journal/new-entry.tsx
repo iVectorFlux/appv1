@@ -21,7 +21,6 @@ import { useColors, Spacing, Typography, Radius } from '@/constants/design-token
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { createJournalEntry } from '@/services/journal-storage';
-import { encryptJournalText } from '@/services/encryption';
 
 export default function NewJournalEntryScreen() {
   const router = useRouter();
@@ -37,18 +36,24 @@ export default function NewJournalEntryScreen() {
     setSaving(true);
     setError(null);
     try {
-      const { encrypted, keyId } = await encryptJournalText(trimmed, user.id);
-      await createJournalEntry({
+      const SAVE_TIMEOUT_MS = 15000;
+      const savePromise = createJournalEntry({
         userId: user.id,
         entrySource: 'journal_only',
         emotions: [],
         energyLevel: 1,
-        journalTextEncrypted: encrypted,
-        encryptionKeyId: keyId,
+        journalTextEncrypted: trimmed,
+        encryptionKeyId: undefined,
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Save timed out. Check your connection and try again.')), SAVE_TIMEOUT_MS)
+      );
+      await Promise.race([savePromise, timeoutPromise]);
       router.back();
     } catch (e) {
-      setError('Could not save. Try again.');
+      const message = e instanceof Error ? e.message : 'Could not save. Try again.';
+      setError(message);
+      console.error('[Journal new-entry] Save failed:', e);
     } finally {
       setSaving(false);
     }

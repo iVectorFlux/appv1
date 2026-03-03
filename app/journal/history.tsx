@@ -23,7 +23,6 @@ import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/des
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { getJournalEntries, deleteJournalEntry } from '@/services/journal-storage';
-import { decryptJournalText } from '@/services/encryption';
 import type { JournalEntry, EmotionTag } from '@/types';
 
 type ListEntry = {
@@ -79,14 +78,8 @@ export default function JournalHistoryScreen() {
       const rows = await getJournalEntries(user.id, 100);
       const decrypted: ListEntry[] = [];
       for (const row of rows) {
-        let preview = '';
-        try {
-          const text = await decryptJournalText(row.journalTextEncrypted, row.userId);
-          preview = text.trim().slice(0, PREVIEW_LENGTH);
-          if (text.length > PREVIEW_LENGTH) preview += '…';
-        } catch {
-          preview = '…';
-        }
+        const raw = (row.journalTextEncrypted ?? '').trim();
+        const preview = raw ? (raw.slice(0, PREVIEW_LENGTH) + (raw.length > PREVIEW_LENGTH ? '…' : '')) : 'No text';
         decrypted.push({
           id: row.id,
           createdAt: row.createdAt,
@@ -99,7 +92,8 @@ export default function JournalHistoryScreen() {
     } catch (e) {
       console.error('[Journal history] Load failed:', e);
       setEntries([]);
-      setLoadError('Could not load entries. Pull to try again.');
+      const message = e instanceof Error ? e.message : 'Could not load entries.';
+      setLoadError(message.length > 80 ? message.slice(0, 80) + '…' : message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -161,11 +155,20 @@ export default function JournalHistoryScreen() {
           <Text style={styles.mutedText}>Loading entries…</Text>
         </View>
       ) : loadError ? (
-        <View style={styles.centered}>
+        <ScrollView
+          contentContainerStyle={styles.centered}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        >
           <Ionicons name="warning-outline" size={48} color={colors.textMuted} style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>Couldn't load entries</Text>
           <Text style={styles.mutedText}>{loadError}</Text>
-        </View>
+          <Text style={[styles.mutedText, { marginTop: Spacing.sm, fontSize: 12 }]}>
+            On web, check .env has EXPO_PUBLIC_SUPABASE_URL and KEY, then restart (expo start --web).
+          </Text>
+          <TouchableOpacity onPress={onRefresh} style={styles.retryBtn}>
+            <Text style={styles.retryBtnText}>Try again</Text>
+          </TouchableOpacity>
+        </ScrollView>
       ) : entries.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name="journal-outline" size={48} color={colors.textMuted} style={styles.emptyIcon} />
@@ -379,6 +382,20 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
       textAlign: 'center',
+      fontFamily: Typography.fontFamily.primary,
+    },
+    retryBtn: {
+      marginTop: Spacing.lg,
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.xl,
+      backgroundColor: colors.primary,
+      borderRadius: Radius.lg,
+      alignSelf: 'center',
+    },
+    retryBtnText: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.primaryForeground,
       fontFamily: Typography.fontFamily.primary,
     },
 
