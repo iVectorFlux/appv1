@@ -83,17 +83,31 @@ export default function EQCheckInScreen() {
   // Prevent double-submission
   const isTransitioning = useRef(false);
 
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
     const startTime = Date.now();
     setSessionStartTime(startTime);
     setQuestionStartTime(startTime);
+    const DB_TIMEOUT_MS = 4000;
+    const loadPromise = loadCheckInQuestions();
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), DB_TIMEOUT_MS)
+    );
     (async () => {
-      const fromDb = await loadCheckInQuestions();
-      if (cancelled) return;
-      const useDb = fromDb && fromDb.length > 0;
-      if (__DEV__) console.log('[EQ Check-In] Questions source:', useDb ? `DB (${fromDb.length} selected)` : 'in-code fallback');
-      setQuestions(useDb ? fromDb : selectCheckInQuestions());
+      try {
+        const fromDb = await Promise.race([loadPromise, timeoutPromise]);
+        if (cancelled) return;
+        const useDb = fromDb && fromDb.length > 0;
+        if (__DEV__) console.log('[EQ Check-In] Questions source:', useDb ? `DB (${fromDb.length} selected)` : 'in-code fallback');
+        setQuestions(useDb ? fromDb : selectCheckInQuestions());
+      } catch (e) {
+        if (!cancelled) setQuestions(selectCheckInQuestions());
+        if (__DEV__) console.warn('[EQ Check-In] DB load failed, using in-code questions', e);
+      } finally {
+        if (!cancelled) setQuestionsLoading(false);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -507,6 +521,14 @@ export default function EQCheckInScreen() {
       </View>
     );
   };
+
+  if (questionsLoading || questions.length === 0) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.loadingText}>Loading questions…</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

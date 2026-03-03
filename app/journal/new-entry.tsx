@@ -36,7 +36,7 @@ export default function NewJournalEntryScreen() {
     setSaving(true);
     setError(null);
     try {
-      const SAVE_TIMEOUT_MS = 15000;
+      const SAVE_TIMEOUT_MS = 25000;
       const savePromise = createJournalEntry({
         userId: user.id,
         entrySource: 'journal_only',

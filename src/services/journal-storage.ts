@@ -59,27 +59,44 @@ function mapSupabaseRowToEntry(row: Record<string, unknown>): JournalEntry {
   };
 }
 
+const JOURNAL_SAVE_RETRIES = 3;
+const JOURNAL_SAVE_RETRY_DELAY_MS = 1200;
+
+async function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
   if (Platform.OS === 'web') {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart (expo start --web).');
     }
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .insert({
-        user_id: entry.userId,
-        entry_source: entry.entrySource ?? 'journal_only',
-        pleasantness: entry.pleasantness ?? null,
-        energy_level: entry.energyLevel ?? 1,
-        emotions: entry.emotions ?? [],
-        reasons: entry.reasons ?? null,
-        journal_text_encrypted: encryptedToStorage(entry.journalTextEncrypted ?? ''),
-        encryption_key_id: null,
-      })
-      .select('id')
-      .single();
-    if (error) throw new Error(error.message);
-    return data.id as string;
+    let lastError: Error | null = null;
+    const row = {
+      user_id: entry.userId,
+      entry_source: entry.entrySource ?? 'journal_only',
+      pleasantness: entry.pleasantness ?? null,
+      energy_level: entry.energyLevel ?? 1,
+      emotions: entry.emotions ?? [],
+      reasons: entry.reasons ?? null,
+      journal_text_encrypted: encryptedToStorage(entry.journalTextEncrypted ?? ''),
+      encryption_key_id: null,
+    };
+    for (let attempt = 1; attempt <= JOURNAL_SAVE_RETRIES; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from('journal_entries')
+          .insert(row)
+          .select('id')
+          .single();
+        if (error) throw new Error(error.message);
+        return data.id as string;
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e));
+        if (attempt < JOURNAL_SAVE_RETRIES) await delay(JOURNAL_SAVE_RETRY_DELAY_MS);
+      }
+    }
+    throw lastError ?? new Error('Could not save journal entry.');
   }
   return db.createJournalEntry(entry);
 }
