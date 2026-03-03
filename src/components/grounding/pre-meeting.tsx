@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { PRE_MEETING_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
+import { TagChip } from '@/components/ui/tag-chip';
 
 type Step = 'breathe' | 'goal' | 'tone' | 'anchor';
 
@@ -192,13 +193,13 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
             <Text style={styles.heading}>How do you want{'\n'}to come across?</Text>
             <View style={styles.toneWrap}>
               {TONE_OPTIONS.map((t) => (
-                <TouchableOpacity
+                <TagChip
                   key={t}
+                  label={t}
+                  selected={selectedTone === t}
+                  selectedColor={colors.accentEnergy}
                   onPress={() => setSelectedTone(selectedTone === t ? null : t)}
-                  style={[styles.toneTag, selectedTone === t && styles.toneTagActive]}
-                >
-                  <Text style={[styles.toneTagText, selectedTone === t && styles.toneTagTextActive]}>{t}</Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
             <TouchableOpacity
@@ -268,12 +269,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     inputCard: { width: '100%', backgroundColor: colors.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.borderLight, marginBottom: Spacing.xl, overflow: 'hidden' },
     input: { padding: Spacing.lg, fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, minHeight: 88 },
 
-    /* ── Tone tags ────────────────────────────────────── */
+    /* ── Tone tags (same design as app-wide TagChip) ──── */
     toneWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing['2xl'] },
-    toneTag: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 2, borderRadius: Radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-    toneTagActive: { backgroundColor: colors.accentEnergy, borderColor: colors.accentEnergy },
-    toneTagText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
-    toneTagTextActive: { color: colors.primaryForeground },
 
     /* ── Anchor ────────────────────────────────────────── */
     anchorInstruction: { fontSize: 24, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 34, marginBottom: Spacing['2xl'] },

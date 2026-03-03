@@ -1,13 +1,10 @@
 /**
- * Reflect Screen (Journal)
- * 
+ * Reflect Screen (Check-in)
+ *
  * Multi-step flow:
  * Step 1: Feeling slider (unpleasant to pleasant) + Energy level
  * Step 2: Emotion selection (1-3 max)
- * Step 3: Reason tags (optional)
- * Step 4: Private journal input
- * 
- * PRIVACY: Journal text is encrypted and never analyzed.
+ * Step 3: Reason tags (optional) → Save (no journal text step)
  */
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
@@ -16,7 +13,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Platform,
   Animated,
@@ -25,12 +21,12 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { TagChip } from '@/components/ui/tag-chip';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { emotionColors } from '@/constants/themes';
 import type { EmotionTag, EnergyLevel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { createJournalEntry } from '@/services/journal-storage';
-import { encryptJournalText } from '@/services/encryption';
 
 const ALL_EMOTIONS: EmotionTag[] = [
   'Relaxed', 'Grounded', 'Peaceful', 'Anxious', 'Overwhelmed', 'On edge',
@@ -83,7 +79,7 @@ const REASONS = [
 ];
 
 
-type ReflectStep = 1 | 2 | 3 | 4 | 'success';
+type ReflectStep = 1 | 2 | 3 | 'success';
 
 export default function ReflectScreen() {
   const router = useRouter();
@@ -110,7 +106,6 @@ export default function ReflectScreen() {
   );
   const [showMoreEmotions, setShowMoreEmotions] = useState(false);
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
-  const [journalText, setJournalText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,14 +129,8 @@ export default function ReflectScreen() {
     }
   };
 
-  const getPlaceholder = () => {
-    if (selectedEmotions.length === 0) return "What's on your mind?";
-    if (selectedEmotions.length === 1) return `You're feeling ${selectedEmotions[0]}. Want to write about it?`;
-    return `You're feeling ${selectedEmotions.join(' and ')}. Want to write about it?`;
-  };
-
   const handleNext = () => {
-    if (typeof currentStep === 'number' && currentStep < 4) {
+    if (typeof currentStep === 'number' && currentStep < 3) {
       setCurrentStep((currentStep + 1) as ReflectStep);
     }
   };
@@ -158,10 +147,6 @@ export default function ReflectScreen() {
     setError(null);
     let saved = false;
     try {
-      const textToSave = journalText.trim();
-      const { encrypted, keyId } = textToSave
-        ? await encryptJournalText(textToSave, user.id)
-        : { encrypted: '', keyId: `encryption_key_${user.id}` };
       await createJournalEntry({
         userId: user.id,
         entrySource: 'reflect',
@@ -169,8 +154,8 @@ export default function ReflectScreen() {
         energyLevel,
         emotions: selectedEmotions,
         reasons: selectedReasons.length > 0 ? selectedReasons : undefined,
-        journalTextEncrypted: encrypted,
-        encryptionKeyId: keyId,
+        journalTextEncrypted: '',
+        encryptionKeyId: undefined,
       });
       saved = true;
       setCurrentStep('success');
@@ -208,7 +193,6 @@ export default function ReflectScreen() {
     setEnergyLevel(3);
     setSelectedEmotions([]);
     setSelectedReasons([]);
-    setJournalText('');
     setShowMoreEmotions(false);
     successScale.setValue(0);
     successOpacity.setValue(0);
@@ -227,8 +211,6 @@ export default function ReflectScreen() {
         return selectedEmotions.length > 0; // Need at least one emotion
       case 3:
         return true; // Reasons are optional
-      case 4:
-        return true; // Journal is optional
       default:
         return false;
     }
@@ -349,47 +331,36 @@ export default function ReflectScreen() {
       <Text style={styles.stepSubtitle}>Pick up to 3</Text>
 
       {selectedEmotions.length > 0 && (
-        <View style={styles.selectedEmotionsContainer}>
+        <View style={styles.selectedEmotionsTagGrid}>
           {selectedEmotions.map((emotion) => {
             const emotionColor = getEmotionColor(emotion);
             return (
-              <TouchableOpacity
+              <TagChip
                 key={emotion}
-                style={[styles.selectedEmotionChip, { backgroundColor: emotionColor }]}
+                label={emotion}
+                selected
+                selectedColor={emotionColor}
                 onPress={() => toggleEmotion(emotion)}
-              >
-                <Text style={[styles.selectedEmotionText, { color: '#FFFFFF' }]}>{emotion}</Text>
-                <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.9)" />
-              </TouchableOpacity>
+                rightElement={<Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.9)" />}
+              />
             );
           })}
         </View>
       )}
 
-      <View style={styles.emotionGrid}>
+      <View style={styles.tagGrid}>
         {topEmotions.map((emotion) => {
           const isSelected = selectedEmotions.includes(emotion);
           const emotionColor = getEmotionColor(emotion);
           return (
-            <TouchableOpacity
+            <TagChip
               key={emotion}
+              label={emotion}
+              selected={isSelected}
+              selectedColor={emotionColor}
               onPress={() => toggleEmotion(emotion)}
-              style={[
-                styles.emotionChip,
-                isSelected && { backgroundColor: emotionColor, borderColor: emotionColor },
-                !isSelected && { borderLeftWidth: 3, borderLeftColor: emotionColor },
-              ]}
               disabled={!isSelected && selectedEmotions.length >= 3}
-            >
-              <Text
-                style={[
-                  styles.emotionChipText,
-                  isSelected && { color: '#FFFFFF' },
-                ]}
-              >
-                {emotion}
-              </Text>
-            </TouchableOpacity>
+            />
           );
         })}
       </View>
@@ -406,30 +377,19 @@ export default function ReflectScreen() {
 
       {showMoreEmotions && (
         <View style={styles.moreEmotionsContainer}>
-          <View style={styles.moreEmotionsGrid}>
+          <View style={styles.tagGrid}>
             {moreEmotions.map((emotion) => {
               const isSelected = selectedEmotions.includes(emotion);
               const emotionColor = getEmotionColor(emotion);
               return (
-                <TouchableOpacity
+                <TagChip
                   key={emotion}
+                  label={emotion}
+                  selected={isSelected}
+                  selectedColor={emotionColor}
                   onPress={() => toggleEmotion(emotion)}
-                  style={[
-                    styles.emotionChip,
-                    isSelected && { backgroundColor: emotionColor, borderColor: emotionColor },
-                    !isSelected && { borderLeftWidth: 3, borderLeftColor: emotionColor },
-                  ]}
                   disabled={!isSelected && selectedEmotions.length >= 3}
-                >
-                  <Text
-                    style={[
-                      styles.emotionChipText,
-                      isSelected && { color: '#FFFFFF' },
-                    ]}
-                  >
-                    {emotion}
-                  </Text>
-                </TouchableOpacity>
+                />
               );
             })}
           </View>
@@ -448,54 +408,17 @@ export default function ReflectScreen() {
   const renderStep3 = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>What's this related to?</Text>
+      <Text style={styles.stepSubtitle}>Optional — pick any that apply</Text>
 
-      <View style={styles.reasonGrid}>
-        {REASONS.map((reason) => {
-          const isSelected = selectedReasons.includes(reason);
-          return (
-            <TouchableOpacity
-              key={reason}
-              onPress={() => toggleReason(reason)}
-              style={[
-                styles.reasonChip,
-                isSelected && styles.reasonChipSelected,
-              ]}
-            >
-              <Text style={[
-                styles.reasonChipText,
-                isSelected && styles.reasonChipTextSelected,
-              ]}>
-                {reason}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-
-  const renderStep4 = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Journal</Text>
-
-      <TextInput
-        value={journalText}
-        onChangeText={setJournalText}
-        placeholder={getPlaceholder()}
-        placeholderTextColor={colors.textMuted}
-        multiline
-        style={styles.journalInput}
-        textAlignVertical="top"
-      />
-
-      <View style={styles.privacySection}>
-        <View style={styles.privacyPill}>
-          <Ionicons name="lock-closed" size={14} color={colors.primary} />
-          <Text style={styles.privacyText}>Private & encrypted</Text>
-        </View>
-        <Text style={styles.privacyNote}>
-          Your writing stays on your device. We never read it. Entries from Check in appear in Journal History too.
-        </Text>
+      <View style={styles.tagGrid}>
+        {REASONS.map((reason) => (
+          <TagChip
+            key={reason}
+            label={reason}
+            selected={selectedReasons.includes(reason)}
+            onPress={() => toggleReason(reason)}
+          />
+        ))}
       </View>
     </View>
   );
@@ -518,7 +441,7 @@ export default function ReflectScreen() {
 
       {/* Progress Indicator */}
       <View style={styles.progressContainer}>
-        {[1, 2, 3, 4].map((step) => (
+        {[1, 2, 3].map((step) => (
           <View
             key={step}
             style={[
@@ -539,7 +462,6 @@ export default function ReflectScreen() {
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
-        {currentStep === 4 && renderStep4()}
 
         {/* Navigation Buttons */}
         <View style={styles.navigationContainer}>
@@ -552,7 +474,7 @@ export default function ReflectScreen() {
               fullWidth
             />
           )}
-          {currentStep < 4 ? (
+          {currentStep < 3 ? (
             <Button
               title="Next"
               onPress={handleNext}
@@ -688,60 +610,17 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     gap: Spacing.md,
     marginTop: Spacing.xl,
   },
-  selectedEmotionsContainer: {
+  tagGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  selectedEmotionsTagGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.sm,
     marginBottom: Spacing.xl,
-    justifyContent: 'flex-start',
-  },
-  selectedEmotionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.full,
-    backgroundColor: colors.primary,
-  },
-  selectedEmotionText: {
-    color: colors.primaryForeground,
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.medium,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  emotionSection: {
-    marginBottom: Spacing['2xl'],
-  },
-  emotionSectionTitle: {
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: Spacing.md,
-    fontFamily: Typography.fontFamily.heading,
-  },
-  emotionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  emotionChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.full,
-    backgroundColor: colors.floating,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  emotionChipSelected: {
-    borderColor: colors.primary,
-  },
-  emotionChipText: {
-    fontSize: Typography.fontSize.base,
-    color: colors.textPrimary,
-    fontWeight: Typography.fontWeight.medium,
-    fontFamily: Typography.fontFamily.primary,
   },
   moreEmotionsButton: {
     flexDirection: 'row',
@@ -759,12 +638,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   moreEmotionsContainer: {
     marginTop: Spacing.md,
-  },
-  moreEmotionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
   },
   lessEmotionsButton: {
     flexDirection: 'row',
@@ -789,22 +662,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textSecondary,
     textDecorationLine: 'underline',
     fontFamily: Typography.fontFamily.primary,
-  },
-  journalSection: {
-    marginTop: Spacing.xl,
-    gap: Spacing.lg,
-  },
-  journalInput: {
-    minHeight: 200,
-    fontSize: Typography.fontSize.base,
-    color: colors.textPrimary,
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.primary,
-    padding: Spacing.lg,
-    backgroundColor: colors.floating,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   energyLabel: {
     fontSize: Typography.fontSize.sm,
@@ -848,70 +705,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   energyLabelText: {
     fontSize: Typography.fontSize.xs,
     color: colors.textSecondary,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  reasonSection: {
-    marginTop: Spacing.md,
-  },
-  reasonLabel: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    fontWeight: Typography.fontWeight.medium,
-    marginBottom: Spacing.md,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  reasonGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  reasonChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.floating,
-  },
-  reasonChipSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  reasonChipText: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textPrimary,
-    fontWeight: Typography.fontWeight.medium,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  reasonChipTextSelected: {
-    color: colors.primaryForeground,
-  },
-  privacySection: {
-    marginTop: Spacing['3xl'],
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  privacyPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.full,
-    backgroundColor: colors.surface,
-  },
-  privacyText: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.primary,
-    fontWeight: Typography.fontWeight.semibold,
-    letterSpacing: 0.5,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  privacyNote: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.xs,
-    textAlign: 'center',
     fontFamily: Typography.fontFamily.primary,
   },
   // Success styles

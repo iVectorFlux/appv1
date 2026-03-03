@@ -1,5 +1,5 @@
 /**
- * Breathing Hub Screen
+ * Grounding Hub Screen
  *
  * State machine: 'select' → 'active' → 'complete'
  *
@@ -29,9 +29,10 @@ import type { GroundingMode, StressLevel, EmotionalTone, GroundingSession } from
 // Mode components
 import { QuickReset } from '@/components/grounding/quick-reset';
 import { SensoryAnchor } from '@/components/grounding/sensory-anchor';
-import { PanicInterrupt } from '@/components/grounding/panic-interrupt';
+import { BoxBreathing } from '@/components/grounding/box-breathing';
 import { PreMeeting } from '@/components/grounding/pre-meeting';
 import { PostConflict } from '@/components/grounding/post-conflict';
+import { TagChip } from '@/components/ui/tag-chip';
 
 type ScreenState = 'select' | 'active' | 'complete';
 type BreathingTag =
@@ -62,6 +63,7 @@ export default function GroundingScreen() {
   const [stressAfter, setStressAfter] = useState<StressLevel | null>(null);
   const [completionPct, setCompletionPct] = useState(0);
   const [helpful, setHelpful] = useState<boolean | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -107,21 +109,30 @@ export default function GroundingScreen() {
   const handleModeExit = useCallback(() => transitionTo('select'), [transitionTo]);
 
   const handleDone = useCallback(async () => {
-    if (user?.id && selectedMode) {
-      const session: GroundingSession = {
-        mode: selectedMode,
-        stressBefore: stressLevel,
-        stressAfter,
-        emotionalTone,
-        completionPct,
-        durationMs: Date.now() - new Date(sessionStart).getTime(),
-        startedAt: sessionStart,
-        completedAt: new Date().toISOString(),
-      };
-      try { await saveRecoverySession(user.id, session); } catch (e) { console.error('[Grounding] Save failed:', e); }
+    if (!user?.id || !selectedMode) {
+      router.back();
+      return;
     }
-    router.back();
-  }, [user, selectedMode, stressLevel, stressAfter, emotionalTone, completionPct, sessionStart, router]);
+    const session: GroundingSession = {
+      mode: selectedMode,
+      stressBefore: stressLevel,
+      stressAfter,
+      emotionalTone,
+      completionPct,
+      durationMs: Date.now() - new Date(sessionStart).getTime(),
+      startedAt: sessionStart,
+      completedAt: new Date().toISOString(),
+      helpful,
+    };
+    setSaveError(null);
+    try {
+      await saveRecoverySession(user.id, session);
+      router.back();
+    } catch (e) {
+      console.error('[Grounding] Save failed:', e);
+      setSaveError(e instanceof Error ? e.message : 'Could not save. Check connection and try again.');
+    }
+  }, [user, selectedMode, stressLevel, stressAfter, emotionalTone, completionPct, sessionStart, helpful, router]);
 
   const styles = createStyles(colors);
 
@@ -133,7 +144,7 @@ export default function GroundingScreen() {
     switch (selectedMode) {
       case 'quick_reset': return <QuickReset {...modeProps} />;
       case 'sensory_anchor': return <SensoryAnchor {...modeProps} />;
-      case 'panic_interrupt': return <PanicInterrupt {...modeProps} />;
+      case 'box_breathing': return <BoxBreathing {...modeProps} />;
       case 'pre_meeting': return <PreMeeting {...modeProps} />;
       case 'post_conflict': return <PostConflict {...modeProps} />;
     }
@@ -158,8 +169,8 @@ export default function GroundingScreen() {
       calm: 'sensory_anchor',
       reset: 'quick_reset',
       focus: 'sensory_anchor',
-      panic: 'panic_interrupt',
-      anger: 'quick_reset',
+      panic: 'box_breathing',
+      anger: 'post_conflict',
       conflict: 'post_conflict',
       pre_meeting: 'pre_meeting',
       post_meeting: 'quick_reset',
@@ -167,7 +178,7 @@ export default function GroundingScreen() {
 
     const accentForMode = (mode: GroundingMode) => {
       if (mode === 'quick_reset') return colors.accentWarm;
-      if (mode === 'panic_interrupt') return colors.primary;
+      if (mode === 'box_breathing') return colors.primary;
       if (mode === 'sensory_anchor') return colors.accentCalm;
       if (mode === 'pre_meeting') return colors.accentEnergy;
       return colors.accentSoft;
@@ -205,7 +216,7 @@ export default function GroundingScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.topBar}>
-          <Text style={styles.topTitle}>Breathing</Text>
+          <Text style={styles.topTitle}>Grounding</Text>
           <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()} hitSlop={12}>
             <Ionicons name="close" size={22} color={colors.textMuted} />
           </TouchableOpacity>
@@ -220,21 +231,17 @@ export default function GroundingScreen() {
                 const active = selectedTag === t.id;
                 const accent = accentForMode(recommendedByTag[t.id]);
                 return (
-                  <TouchableOpacity
+                  <TagChip
                     key={t.id}
-                    activeOpacity={0.85}
+                    label={t.label}
+                    selected={active}
+                    selectedColor={accent}
                     onPress={() => {
                       setSelectedTag(active ? null : t.id);
                       setStressLevel(t.defaultStress);
                     }}
-                    style={[
-                      styles.tagPill,
-                      { borderColor: accent + '33' },
-                      active && { backgroundColor: accent, borderColor: accent },
-                    ]}
-                  >
-                    <Text style={[styles.tagPillText, active && { color: colors.primaryForeground }]}>{t.label}</Text>
-                  </TouchableOpacity>
+                    style={!active ? { borderColor: accent + '33' } : undefined}
+                  />
                 );
               })}
             </View>
@@ -328,6 +335,15 @@ export default function GroundingScreen() {
           </View>
         )}
 
+        {saveError ? (
+          <View style={styles.saveErrorWrap}>
+            <Text style={styles.saveErrorText}>{saveError}</Text>
+            <TouchableOpacity onPress={handleDone} style={styles.retrySaveBtn} activeOpacity={0.85}>
+              <Text style={styles.retrySaveBtnText}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <TouchableOpacity
           style={[styles.primaryBtn, { marginTop: Spacing['3xl'], alignSelf: 'stretch', opacity: helpful == null ? 0.6 : 1 }]}
           onPress={handleDone}
@@ -380,22 +396,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     toneTagText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
     toneTagTextActive: { color: colors.primaryForeground },
 
-    /* Breathing hub */
+    /* Grounding hub */
     selectScroll: { padding: Spacing.xl, paddingBottom: Spacing['5xl'] },
     tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm },
-    tagPill: {
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.sm,
-      borderRadius: Radius.full,
-      backgroundColor: colors.floating,
-      borderWidth: 1,
-    },
-    tagPillText: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
-      fontFamily: Typography.fontFamily.primary,
-      fontWeight: Typography.fontWeight.semibold,
-    },
     sectionHeader: {
       marginTop: Spacing['2xl'],
       marginBottom: Spacing.md,
@@ -469,6 +472,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       marginTop: Spacing.xl,
     },
     deltaText: { fontSize: Typography.fontSize.base, color: colors.success, fontWeight: Typography.fontWeight.medium, fontFamily: Typography.fontFamily.primary },
+
+    saveErrorWrap: { marginTop: Spacing.lg, alignSelf: 'stretch', alignItems: 'center' },
+    saveErrorText: { fontSize: Typography.fontSize.sm, color: colors.destructive, textAlign: 'center', marginBottom: Spacing.sm, fontFamily: Typography.fontFamily.primary },
+    retrySaveBtn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg },
+    retrySaveBtnText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.primary, fontFamily: Typography.fontFamily.primary },
 
     primaryBtn: {
       backgroundColor: colors.primary,

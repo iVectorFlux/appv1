@@ -5,23 +5,29 @@
  * Works on all platforms (web and native) via the Supabase HTTP client.
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { GroundingSession } from '@/types/grounding';
 
 /**
  * Save a completed grounding session to Supabase.
  *
+ * Logs: technique, stress before/after, duration, completion %, and whether it helped.
  * Maps GroundingSession fields to recovery_sessions columns:
- *   type        = 'grounding'
- *   technique   = session.mode (e.g. 'quick_reset')
- *   intensity   = stressBefore (1-5)
- *   effectiveness = stressBefore - stressAfter (positive = improved)
- *   duration_ms = session.durationMs
+ *   type           = 'grounding'
+ *   technique      = session.mode (e.g. 'quick_reset')
+ *   intensity      = stressBefore (1-5)
+ *   effectiveness  = stressBefore - stressAfter (positive = improved)
+ *   duration_ms    = session.durationMs
+ *   completion_pct = session.completionPct (0-100)
+ *   helped         = session.helpful (user said Yes/Not really)
  */
 export async function saveRecoverySession(
   userId: string,
   session: GroundingSession
 ): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart.');
+  }
   try {
     const effectiveness =
       session.stressAfter != null
@@ -37,6 +43,8 @@ export async function saveRecoverySession(
       duration_ms: session.durationMs,
       intensity: session.stressBefore,
       effectiveness,
+      completion_pct: session.completionPct,
+      helped: session.helpful,
     });
 
     if (error) {
@@ -58,6 +66,9 @@ export async function getRecoverySessions(
   userId: string,
   limit: number = 20
 ): Promise<GroundingSession[]> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart.');
+  }
   const { data, error } = await supabase
     .from('recovery_sessions')
     .select('technique, intensity, effectiveness, duration_ms, started_at, completed_at')
@@ -71,16 +82,22 @@ export async function getRecoverySessions(
     return [];
   }
 
+  const normalizeMode = (t: string): GroundingSession['mode'] => {
+    if (t === 'panic_interrupt') return 'box_breathing';
+    return t as GroundingSession['mode'];
+  };
+
   return (data || []).map((row: Record<string, unknown>) => ({
-    mode: (row.technique as string) as GroundingSession['mode'],
+    mode: normalizeMode((row.technique as string) ?? 'quick_reset'),
     stressBefore: (row.intensity as number) as GroundingSession['stressBefore'],
     stressAfter: row.effectiveness != null
       ? (((row.intensity as number) - (row.effectiveness as number)) as GroundingSession['stressAfter'])
       : null,
-    emotionalTone: null, // Not stored in current schema
+    emotionalTone: null,
     completionPct: row.completed_at ? 100 : 0,
     durationMs: (row.duration_ms as number) || 0,
     startedAt: row.started_at as string,
     completedAt: (row.completed_at as string) || null,
+    helpful: (row.helped as boolean | null) ?? null,
   }));
 }

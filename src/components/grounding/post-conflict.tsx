@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { POST_CONFLICT_EMOTIONS, POST_CONFLICT_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
+import { TagChip } from '@/components/ui/tag-chip';
 
 type Step = 'label' | 'locate' | 'breathe' | 'reframe';
 
@@ -137,13 +138,13 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
             <Text style={styles.subheading}>Choose the closest match</Text>
             <View style={styles.tagWrap}>
               {POST_CONFLICT_EMOTIONS.map((e) => (
-                <TouchableOpacity
+                <TagChip
                   key={e}
+                  label={e}
+                  selected={selectedEmotion === e}
+                  selectedColor={colors.accentSoft}
                   onPress={() => setSelectedEmotion(selectedEmotion === e ? null : e)}
-                  style={[styles.tag, selectedEmotion === e && { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }]}
-                >
-                  <Text style={[styles.tagText, selectedEmotion === e && { color: colors.primaryForeground }]}>{e}</Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
             <TouchableOpacity
@@ -167,13 +168,13 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
             <Text style={styles.heading}>Where do you feel this{'\n'}in your body?</Text>
             <View style={styles.tagWrap}>
               {BODY_LOCATIONS.map((loc) => (
-                <TouchableOpacity
+                <TagChip
                   key={loc}
+                  label={loc}
+                  selected={selectedBody === loc}
+                  selectedColor={colors.accentSoft}
                   onPress={() => setSelectedBody(selectedBody === loc ? null : loc)}
-                  style={[styles.tag, selectedBody === loc && { backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }]}
-                >
-                  <Text style={[styles.tagText, selectedBody === loc && { color: colors.primaryForeground }]}>{loc}</Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
             <TouchableOpacity
@@ -285,10 +286,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     orbRing2: { position: 'absolute', width: 155, height: 155, borderRadius: 78, backgroundColor: colors.accentSoft },
     orbCore: { width: 110, height: 110, borderRadius: 55, backgroundColor: colors.accentSoft },
 
-    /* ── Tags ──────────────────────────────────────────── */
+    /* ── Tags (same design as app-wide TagChip) ─────────── */
     tagWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing['2xl'], maxWidth: 360 },
-    tag: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 2, borderRadius: Radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-    tagText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
 
     /* ── Input cards ───────────────────────────────────── */
     inputCard: { width: '100%', backgroundColor: colors.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.borderLight, overflow: 'hidden' },

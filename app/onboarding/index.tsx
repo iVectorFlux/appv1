@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TagChip } from '@/components/ui/tag-chip';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { emotionColors } from '@/constants/themes';
 import type { EmotionTag } from '@/types';
@@ -357,26 +358,15 @@ export default function OnboardingScreen() {
             <Text style={styles.screenTitle}>How are you feeling right now?</Text>
             <Text style={styles.screenSubtitle}>Pick one — there's no wrong answer</Text>
             <View style={styles.emotionGrid}>
-              {ONBOARDING_EMOTIONS.map((emotion) => {
-                const isSelected = selectedEmotion === emotion;
-                const emotionColor = getEmotionColor(emotion);
-                return (
-                  <TouchableOpacity
-                    key={emotion}
-                    onPress={() => setSelectedEmotion(emotion)}
-                    style={[
-                      styles.emotionChip,
-                      isSelected && { backgroundColor: emotionColor, borderColor: emotionColor },
-                      !isSelected && { borderLeftWidth: 4, borderLeftColor: emotionColor },
-                    ]}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.emotionChipText, isSelected && { color: '#FFFFFF' }]}>
-                      {emotion}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {ONBOARDING_EMOTIONS.map((emotion) => (
+                <TagChip
+                  key={emotion}
+                  label={emotion}
+                  selected={selectedEmotion === emotion}
+                  selectedColor={getEmotionColor(emotion)}
+                  onPress={() => setSelectedEmotion(emotion)}
+                />
+              ))}
             </View>
           </View>
         )}
@@ -762,20 +752,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flexWrap: 'wrap',
       gap: Spacing.sm,
       marginBottom: Spacing.lg,
-    },
-    emotionChip: {
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.sm,
-      borderRadius: Radius.full,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-    },
-    emotionChipText: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
-      fontWeight: Typography.fontWeight.medium,
-      fontFamily: Typography.fontFamily.primary,
     },
     confirmationWrap: {
       flex: 1,
