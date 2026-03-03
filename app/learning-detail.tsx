@@ -46,6 +46,7 @@ export default function LearningDetailScreen() {
   const videoWidth = Math.min(VIDEO_MAX_WIDTH, Math.max(200, windowWidth - 2 * Spacing.lg));
   const videoHeight = Math.round(videoWidth * VIDEO_ASPECT);
 
+  const [mounted, setMounted] = useState(false);
   const [module, setModule] = useState<LearningModule | null>(null);
   const [mediaMode, setMediaMode] = useState<MediaMode>('video');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -62,6 +63,10 @@ export default function LearningDetailScreen() {
   // Web video container ref (DOM node for appending HTML5 video)
   const webVideoContainerRef = useRef<View>(null);
   const webVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (params.id) {
@@ -236,16 +241,22 @@ export default function LearningDetailScreen() {
         }
       }
     } else if (mediaMode === 'audio') {
-      if (Platform.OS === 'web' && webAudioRef.current) {
-        if (isPlaying) {
-          webAudioRef.current.pause();
-        } else {
-          webAudioRef.current.play().catch((err) => {
-            setError('Unable to play audio. Please try again.');
-            console.error('Audio play error:', err);
-          });
+      if (Platform.OS === 'web') {
+        // On mobile browsers play() must run in the same user gesture; ensure element exists then play immediately
+        if (!webAudioRef.current && module) {
+          setupWebAudio(module.audioUrl);
         }
-      } else if (Platform.OS !== 'web' && audioRef.current) {
+        if (webAudioRef.current) {
+          if (isPlaying) {
+            webAudioRef.current.pause();
+          } else {
+            webAudioRef.current.play().catch((err) => {
+              setError('Audio didn’t start. Tap Play again or try the Video tab.');
+              console.error('Audio play error:', err);
+            });
+          }
+        }
+      } else if (audioRef.current) {
         const status = await audioRef.current.getStatusAsync();
         if (status.isLoaded) {
           if (status.isPlaying) {
@@ -392,9 +403,11 @@ export default function LearningDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Media Player */}
+        {/* Media Player — on web render after mount to avoid hydration mismatch */}
         <View style={styles.mediaContainer}>
-          {mediaMode === 'video' ? (
+          {Platform.OS === 'web' && !mounted ? (
+            <View style={[styles.videoContainer, { minHeight: videoHeight }]} />
+          ) : mediaMode === 'video' ? (
             <View style={styles.videoContainer} ref={webVideoContainerRef} collapsable={false}>
               {Platform.OS === 'web' ? (
                 isLoading ? (

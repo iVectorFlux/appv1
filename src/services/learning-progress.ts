@@ -35,9 +35,15 @@ export async function upsertLearningProgress(
   if (updates.audio_progress_pct !== undefined) payload.audio_progress_pct = updates.audio_progress_pct;
   if (updates.last_accessed_at !== undefined) payload.last_accessed_at = updates.last_accessed_at;
 
-  await supabase.from('learning_progress').upsert(payload, {
+  const { error } = await supabase.from('learning_progress').upsert(payload, {
     onConflict: 'user_id,module_id',
   });
+  // 409 Conflict: unique (23505) or FK (23503) — don't break UI
+  if (error) {
+    const code = (error as { code?: string }).code;
+    if (code === '23505' || code === '23503') return;
+    console.warn('Learning progress update failed:', error.message);
+  }
 }
 
 /** Mark last accessed now for a module (e.g. when user opens the detail screen). */
