@@ -1,7 +1,6 @@
 /**
- * Button Component
- * 
- * Reusable button following design system tokens.
+ * Button — Editorial wellness
+ * Primary: Forest. Secondary: border + body text. Ghost: transparent.
  */
 
 import React from 'react';
@@ -28,17 +27,20 @@ export function Button({
   fullWidth = false,
 }: ButtonProps) {
   const colors = useColors();
-  
+
   const buttonStyle: ViewStyle = {
-    borderRadius: Radius.md,
+    borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.sm,
-    ...(variant === 'primary' && { backgroundColor: colors.primary }),
-    ...(variant === 'secondary' && { backgroundColor: colors.secondary }),
-    ...(variant === 'ghost' && { backgroundColor: 'transparent', shadowOpacity: 0 }),
+    ...(variant === 'primary' && { backgroundColor: colors.primary, ...Shadows.sm }),
+    ...(variant === 'secondary' && {
+      backgroundColor: colors.floating,
+      borderWidth: 1,
+      borderColor: colors.border,
+    }),
+    ...(variant === 'ghost' && { backgroundColor: 'transparent' }),
     ...(size === 'sm' && { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, minHeight: 36 }),
-    ...(size === 'md' && { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, minHeight: 44 }),
+    ...(size === 'md' && { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, minHeight: 48 }),
     ...(size === 'lg' && { paddingVertical: Spacing.lg, paddingHorizontal: Spacing.xl, minHeight: 52 }),
     ...(fullWidth && { width: '100%' }),
     ...(disabled && { opacity: 0.5 }),
@@ -48,11 +50,11 @@ export function Button({
     fontFamily: Typography.fontFamily.primary,
     fontWeight: Typography.fontWeight.semibold,
     ...(variant === 'primary' && { color: colors.primaryForeground }),
-    ...(variant === 'secondary' && { color: colors.secondaryForeground }),
+    ...(variant === 'secondary' && { color: colors.textPrimary }),
     ...(variant === 'ghost' && { color: colors.primary }),
     ...(size === 'sm' && { fontSize: Typography.fontSize.sm }),
     ...(size === 'md' && { fontSize: Typography.fontSize.base }),
-    ...(size === 'lg' && { fontSize: Typography.fontSize.lg }),
+    ...(size === 'lg' && { fontSize: Typography.fontSize.cardTitle }),
     ...(disabled && { opacity: 0.7 }),
   };
 
@@ -61,7 +63,7 @@ export function Button({
       style={buttonStyle}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
+      activeOpacity={0.82}
     >
       {loading ? (
         <ActivityIndicator

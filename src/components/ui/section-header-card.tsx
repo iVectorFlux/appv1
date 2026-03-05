@@ -1,8 +1,7 @@
 /**
- * SectionHeaderCard – Learn-style section header
+ * SectionHeaderCard — Editorial section header
  *
- * Icon left (48×48, tint bg), title + subtitle. Used for "Deep Dive Podcasts"
- * and similar section headers.
+ * Icon left, title (17px semibold) + subtitle (13px). Used for "Learn", "Insights", etc.
  */
 
 import React from 'react';
@@ -27,7 +26,7 @@ export function SectionHeaderCard({
 }: SectionHeaderCardProps) {
   const colors = useColors();
   const styles = createStyles(colors);
-  const bg = iconBackgroundColor ?? colors.primary + '20';
+  const bg = iconBackgroundColor ?? colors.primary + '18';
   const iconC = iconColor ?? colors.primary;
 
   return (
@@ -49,7 +48,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.md,
-      marginBottom: Spacing.xl,
+      marginBottom: Spacing.lg,
     },
     iconWrap: {
       width: 48,
@@ -62,12 +61,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flex: 1,
     },
     title: {
-      fontSize: Typography.fontSize.lg,
+      fontSize: Typography.fontSize.cardTitle,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
     },
     subtitle: {
       fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
+      marginTop: 2,
     },
   });

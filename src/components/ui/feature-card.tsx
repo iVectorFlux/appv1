@@ -1,12 +1,11 @@
 /**
- * FeatureCard – Learn-style featured/hero card
+ * FeatureCard — Bento feature card (6-col)
  *
- * Centralized design: badge (optional), title, subtitle, meta row, icon on right.
- * Use for primary CTAs and featured content.
+ * White/bg-accent, 24px radius, badge + title + subtitle + meta, icon right.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 
@@ -23,8 +22,8 @@ export type FeatureCardProps = {
   meta?: FeatureCardMetaItem[];
   icon: keyof typeof Ionicons.glyphMap;
   iconBackgroundColor: string;
-  iconColor?: string; // default '#fff' for contrast on accent
-  backgroundColor: string; // e.g. color + '15' for tint
+  iconColor?: string;
+  backgroundColor?: string;
 };
 
 export function FeatureCard({
@@ -39,6 +38,7 @@ export function FeatureCard({
   backgroundColor,
 }: FeatureCardProps) {
   const colors = useColors();
+  const bg = backgroundColor ?? colors.surfaceAccent;
   const styles = createStyles(colors);
 
   return (
@@ -46,15 +46,14 @@ export function FeatureCard({
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { backgroundColor },
-        Shadows.sm,
+        { backgroundColor: bg },
+        Shadows.card,
         pressed && styles.pressed,
       ]}
     >
       <View style={styles.content}>
         {badge != null && (
           <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-            <Ionicons name="star" size={12} color="#fff" />
             <Text style={styles.badgeText}>{badge}</Text>
           </View>
         )}
@@ -72,7 +71,7 @@ export function FeatureCard({
         )}
       </View>
       <View style={[styles.iconWrap, { backgroundColor: iconBackgroundColor }]}>
-        <Ionicons name={icon} size={32} color={iconColor} />
+        <Ionicons name={icon} size={28} color={iconColor} />
       </View>
     </Pressable>
   );
@@ -81,12 +80,13 @@ export function FeatureCard({
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     card: {
-      marginHorizontal: Spacing.lg,
       borderRadius: Radius.xl,
-      padding: Spacing.xl,
+      padding: Spacing.lg,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: colors.borderLight,
     },
     pressed: {
       opacity: 0.96,
@@ -95,30 +95,28 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flex: 1,
     },
     badge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.xs,
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: 4,
-      borderRadius: Radius.full,
       alignSelf: 'flex-start',
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.xs,
+      borderRadius: Radius.full,
       marginBottom: Spacing.sm,
     },
     badgeText: {
-      fontSize: Typography.fontSize.xs,
+      fontSize: Typography.fontSize.micro,
       fontWeight: Typography.fontWeight.semibold,
       color: '#fff',
+      letterSpacing: Typography.letterSpacing.wide,
     },
     title: {
-      fontSize: Typography.fontSize.xl,
-      fontWeight: Typography.fontWeight.bold,
+      fontSize: Typography.fontSize.cardTitle,
+      fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
       marginBottom: Spacing.xs,
     },
     subtitle: {
       fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
-      marginBottom: Spacing.md,
+      marginBottom: Spacing.sm,
     },
     meta: {
       flexDirection: 'row',
@@ -134,9 +132,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       color: colors.textSecondary,
     },
     iconWrap: {
-      width: 64,
-      height: 64,
-      borderRadius: 16,
+      width: 56,
+      height: 56,
+      borderRadius: Radius.lg,
       alignItems: 'center',
       justifyContent: 'center',
       marginLeft: Spacing.md,

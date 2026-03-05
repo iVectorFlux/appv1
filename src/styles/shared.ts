@@ -426,8 +426,7 @@ export function createResultStyles(colors: ThemeColors) {
       fontSize: Typography.fontSize.lg,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.primaryForeground,
-      textTransform: 'uppercase',
-      letterSpacing: 2,
+      letterSpacing: 0.5,
     },
     
     // Dimension row

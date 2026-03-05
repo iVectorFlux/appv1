@@ -12,7 +12,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Layout } from '@/constants/design-tokens';
 import { BOX_BREATHING_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
 
@@ -206,35 +206,29 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['4xl'] },
-    stepLabel: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, letterSpacing: 0.5 },
-    closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.paddingHorizontal, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
+    stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+    closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
 
-    /* ── Box breathing trace ───────────────────────────── */
-    boxWrap: { width: 160, height: 160, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
-    boxOutline: { position: 'absolute', width: 140, height: 140, borderWidth: 2, borderColor: colors.primary + '50', borderRadius: Radius.md },
-    boxTrace: { position: 'absolute', width: 140, height: 140, alignItems: 'center', justifyContent: 'flex-start' },
-    boxTraceSegment: { width: 12, height: 12, borderRadius: 6, marginTop: -6 },
-    phaseMain: { fontSize: 26, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', marginBottom: Spacing.xs },
+    boxWrap: { width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
+    boxOutline: { position: 'absolute', width: 120, height: 120, borderWidth: 2, borderColor: colors.primary + '50', borderRadius: Radius.md },
+    boxTrace: { position: 'absolute', width: 120, height: 120, alignItems: 'center', justifyContent: 'flex-start' },
+    boxTraceSegment: { width: 10, height: 10, borderRadius: 5, marginTop: -5 },
+    phaseMain: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', marginBottom: Spacing.xs },
     phaseSub: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.lg },
 
-    /* ── Typography ────────────────────────────────────── */
-    directiveText: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 38, marginBottom: Spacing.sm },
+    directiveText: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 36, marginBottom: Spacing.sm },
     directiveSub: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.lg },
     counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.md },
 
-    /* ── Icon glow ─────────────────────────────────────── */
-    iconGlow: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.primary + '15', borderWidth: 1.5, borderColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
+    iconGlow: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primary + '15', borderWidth: 1.5, borderColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
 
-    /* ── Release circle ────────────────────────────────── */
-    releaseCircle: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
+    releaseCircle: { width: 88, height: 88, borderRadius: 44, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
 
-    /* ── Timer circle ──────────────────────────────────── */
-    timerCircle: { width: 72, height: 72, borderRadius: 36, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.md },
-    timerNumber: { fontSize: 28, fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading },
+    timerCircle: { width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.md },
+    timerNumber: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading },
 
-    /* ── Action button ─────────────────────────────────── */
-    actionBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.primary, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing['2xl'], marginTop: Spacing.lg },
+    actionBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.primary, borderRadius: Radius.sm, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl, marginTop: Spacing.lg },
     actionBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

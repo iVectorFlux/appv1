@@ -22,7 +22,7 @@ import {
   Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Layout } from '@/constants/design-tokens';
 import { PRE_MEETING_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -241,40 +241,36 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     container: { flex: 1, backgroundColor: colors.background },
 
     /* ── Top ───────────────────────────────────────────── */
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['4xl'] },
-    stepLabel: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, letterSpacing: 0.5 },
-    closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.paddingHorizontal, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
+    stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+    closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
 
-    /* ── Progress ─────────────────────────────────────── */
-    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing.xl, marginTop: Spacing.md },
+    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Layout.paddingHorizontal, marginTop: Spacing.sm },
     progressSeg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.surface },
 
-    /* ── Center ───────────────────────────────────────── */
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.paddingHorizontal },
 
-    /* ── Orb ───────────────────────────────────────────── */
-    orbContainer: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
+    orbContainer: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
     orbRing3: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: colors.accentEnergy },
     orbRing2: { position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: colors.accentEnergy },
     orbCore: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.accentEnergy },
 
     /* ── Typography ────────────────────────────────────── */
-    heading: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 38, marginBottom: Spacing.lg },
+    heading: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 36, marginBottom: Spacing.lg },
     counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
 
     /* ── Icon glow ─────────────────────────────────────── */
-    iconGlow: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.accentEnergy + '15', borderWidth: 1.5, borderColor: colors.accentEnergy + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
+    iconGlow: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.accentEnergy + '15', borderWidth: 1.5, borderColor: colors.accentEnergy + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
 
-    /* ── Goal input ───────────────────────────────────── */
-    inputCard: { width: '100%', backgroundColor: colors.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.borderLight, marginBottom: Spacing.xl, overflow: 'hidden' },
-    input: { padding: Spacing.lg, fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, minHeight: 88 },
+    inputCard: { width: '100%', backgroundColor: colors.floating, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border, marginBottom: Spacing.lg, overflow: 'hidden' },
+    input: { padding: Spacing.md, fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, minHeight: 80 },
 
     /* ── Tone tags (same design as app-wide TagChip) ──── */
     toneWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing['2xl'] },
 
     /* ── Anchor ────────────────────────────────────────── */
     anchorInstruction: { fontSize: 24, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 34, marginBottom: Spacing['2xl'] },
-    anchorCard: { backgroundColor: colors.surface, borderRadius: Radius['2xl'], paddingHorizontal: Spacing['2xl'], paddingVertical: Spacing.xl, borderWidth: 1.5, borderColor: colors.accentEnergy + '25', marginBottom: Spacing['2xl'], width: '100%' },
+    anchorCard: { backgroundColor: colors.floating, borderRadius: Radius.xl, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, borderWidth: 1, borderColor: colors.border, marginBottom: Spacing.lg, width: '100%' },
     anchorQuote: { fontSize: 36, color: colors.accentEnergy + '40', fontFamily: Typography.fontFamily.heading, lineHeight: 36 },
     anchorSentence: { fontSize: 22, fontWeight: Typography.fontWeight.medium, color: colors.accentEnergy, fontFamily: Typography.fontFamily.heading, textAlign: 'center', fontStyle: 'italic', paddingVertical: Spacing.sm },
 
@@ -283,6 +279,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     timerNumber: { fontSize: 24, fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading },
 
     /* ── Primary button ────────────────────────────────── */
-    primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.accentEnergy, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing['2xl'] },
+    primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.accentEnergy, borderRadius: Radius.sm, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
     primaryBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

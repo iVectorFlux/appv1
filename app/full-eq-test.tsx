@@ -113,14 +113,24 @@ export default function FullEQTestScreen() {
 
   useEffect(() => {
     let cancelled = false;
+    const DB_TIMEOUT_MS = 5000;
+    const loadPromise = loadFullTestQuestions();
+    const timeoutPromise = new Promise<EQQuestion[] | null>((resolve) =>
+      setTimeout(() => resolve(null), DB_TIMEOUT_MS)
+    );
     (async () => {
-      setQuestionsLoading(true);
-      const fromDb = await loadFullTestQuestions();
-      if (cancelled) return;
-      const useDb = fromDb && fromDb.length > 0;
-      if (__DEV__) console.log('[Full EQ Test] Questions source:', useDb ? `DB (${fromDb.length} selected)` : 'in-code fallback');
-      setQuestions(useDb ? fromDb : selectFullTestQuestions());
-      setQuestionsLoading(false);
+      try {
+        const fromDb = await Promise.race([loadPromise, timeoutPromise]);
+        if (cancelled) return;
+        const useDb = fromDb && fromDb.length > 0;
+        if (__DEV__) console.log('[Full EQ Test] Questions source:', useDb ? `DB (${fromDb.length} selected)` : 'in-code fallback');
+        setQuestions(useDb ? fromDb : selectFullTestQuestions());
+      } catch (e) {
+        if (!cancelled) setQuestions(selectFullTestQuestions());
+        if (__DEV__) console.warn('[Full EQ Test] DB load failed, using in-code questions', e);
+      } finally {
+        if (!cancelled) setQuestionsLoading(false);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -352,6 +362,11 @@ export default function FullEQTestScreen() {
   if (screenState === 'intro') {
     return (
       <View style={styles.container}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.introScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.introContainer}>
           <View style={[styles.introIconCircle, { backgroundColor: colors.primary + '20' }]}>
             <Ionicons name="analytics" size={48} color={colors.primary} />
@@ -407,11 +422,16 @@ export default function FullEQTestScreen() {
             fullWidth
           />
           
-          <TouchableOpacity style={styles.backLink} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={16} color={colors.textSecondary} />
+          <TouchableOpacity
+            style={styles.backLink}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
             <Text style={styles.backLinkText}>Back to Profile</Text>
           </TouchableOpacity>
         </View>
+        </ScrollView>
       </View>
     );
   }
@@ -432,7 +452,7 @@ export default function FullEQTestScreen() {
           <Text style={styles.overallScoreLabel}>Overall EQ Score</Text>
           <Text style={styles.overallScoreValue}>{result.overallScore}</Text>
           <Text style={styles.overallScoreLevel}>
-            {getScoreLevel(result.overallScore).replace('_', ' ').toUpperCase()}
+            {getScoreLevel(result.overallScore).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
           </Text>
         </View>
         
@@ -1236,11 +1256,15 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textSecondary,
   },
   // Intro
+  introScrollContent: {
+    flexGrow: 1,
+    padding: Spacing.xl,
+    paddingBottom: Spacing['2xl'],
+  },
   introContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: Spacing.xl,
+    paddingBottom: Spacing.xl,
   },
   introIconCircle: {
     width: 100,
@@ -1306,13 +1330,22 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   backLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    justifyContent: 'center',
+    gap: Spacing.sm,
     marginTop: Spacing.xl,
-    padding: Spacing.md,
+    marginBottom: Spacing.xl,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    minHeight: 48,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
   },
   backLinkText: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
+    fontSize: Typography.fontSize.base,
+    color: colors.primary,
+    fontWeight: Typography.fontWeight.semibold,
   },
   // Test Header
   testHeader: {

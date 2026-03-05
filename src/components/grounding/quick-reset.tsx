@@ -13,7 +13,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Layout } from '@/constants/design-tokens';
 import type { GroundingModeProps } from '@/types/grounding';
 import { PHYSIOLOGICAL_SIGH_PATTERN } from '@/data/grounding-content';
 
@@ -32,7 +32,7 @@ const TOTAL_DURATION = BREATH_CYCLES * (BREATH.inhale + BREATH.hold + BREATH.exh
 
 const STEP_LABELS: Record<Step, string> = {
   breathe: 'Step 1 of 3 · Breathing',
-  anchor: 'Step 2 of 3 · Visual Anchor',
+  anchor: 'Step 2 of 3 · Visual anchor',
   ground: 'Step 3 of 3 · Grounding',
 };
 
@@ -270,25 +270,21 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     progressTrack: { height: 3, backgroundColor: colors.surface, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
     progressFill: { height: 3, backgroundColor: colors.destructive, borderRadius: 2 },
 
-    /* ── Top bar ──────────────────────────────────────── */
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['4xl'], zIndex: 10 },
-    stepLabel: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, letterSpacing: 0.5 },
-    closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.paddingHorizontal, paddingTop: Spacing.xl, paddingBottom: Spacing.sm, zIndex: 10 },
+    stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+    closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
 
-    /* ── Center ───────────────────────────────────────── */
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.paddingHorizontal },
 
-    /* ── Glowing orb ──────────────────────────────────── */
-    orbContainer: { width: 260, height: 260, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
-    orbRing3: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: colors.destructive },
-    orbRing2: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: colors.destructive },
-    orbCore: { width: 140, height: 140, borderRadius: 70, backgroundColor: colors.destructive },
+    orbContainer: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
+    orbRing3: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: colors.destructive },
+    orbRing2: { position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: colors.destructive },
+    orbCore: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.destructive },
 
-    /* ── Breath text ──────────────────────────────────── */
-    breathTextBlock: { alignItems: 'center', marginTop: Spacing.xl, maxWidth: 320 },
+    breathTextBlock: { alignItems: 'center', marginTop: Spacing.lg, maxWidth: 320 },
     phaseText: {
-      fontSize: 28,
-      fontWeight: Typography.fontWeight.bold,
+      fontSize: Typography.fontSize.heroCard,
+      fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
       fontFamily: Typography.fontFamily.heading,
       textAlign: 'center',
@@ -311,26 +307,24 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: Typography.fontWeight.semibold,
     },
 
-    /* ── Prompt screens ───────────────────────────────── */
     iconGlow: {
-      width: 88, height: 88, borderRadius: 44,
+      width: 72, height: 72, borderRadius: 36,
       backgroundColor: colors.destructive + '18',
       borderWidth: 1.5, borderColor: colors.destructive + '30',
       alignItems: 'center', justifyContent: 'center',
-      marginBottom: Spacing['2xl'],
+      marginBottom: Spacing.lg,
     },
     promptText: {
-      fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary,
+      fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary,
       fontFamily: Typography.fontFamily.heading, textAlign: 'center',
-      lineHeight: 40, marginBottom: Spacing.md,
+      lineHeight: 36, marginBottom: Spacing.md,
     },
-    promptHint: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing['3xl'] },
+    promptHint: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.xl },
 
-    /* ── Timer circle ─────────────────────────────────── */
     timerCircle: {
-      width: 72, height: 72, borderRadius: 36,
+      width: 64, height: 64, borderRadius: 32,
       borderWidth: 2.5, borderColor: colors.destructive + '50',
       alignItems: 'center', justifyContent: 'center',
     },
-    timerNumber: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.destructive, fontFamily: Typography.fontFamily.heading },
+    timerNumber: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.destructive, fontFamily: Typography.fontFamily.heading },
   });

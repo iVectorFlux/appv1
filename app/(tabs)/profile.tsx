@@ -67,7 +67,7 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Appearance</Text>
         
         {/* Dark Mode Toggle */}
-        <View style={[styles.settingItem, Shadows.sm]}>
+        <View style={[styles.settingItem, Shadows.card]}>
           <View style={styles.settingContent}>
             <Ionicons 
               name={colorMode === 'dark' ? 'moon' : 'sunny-outline'} 
@@ -92,23 +92,24 @@ export default function ProfileScreen() {
 
       {/* EQ Assessment Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>EQ ASSESSMENT</Text>
+        <Text style={styles.sectionTitle}>EQ assessment</Text>
         
         <TouchableOpacity 
-          style={[styles.eqTestCard, Shadows.md]}
+          style={[styles.eqTestCard, Shadows.card]}
           onPress={() => router.push('/full-eq-test')}
+          activeOpacity={0.8}
         >
           <View style={styles.eqTestIconContainer}>
-            <Ionicons name="analytics" size={32} color={colors.primary} />
+            <Ionicons name="analytics-outline" size={28} color={colors.primary} />
           </View>
           <View style={styles.eqTestContent}>
             <Text style={styles.eqTestTitle}>Take Full EQ Test</Text>
             <Text style={styles.eqTestDescription}>
               Comprehensive assessment with 60+ questions across 7 dimensions
             </Text>
-            <Text style={styles.eqTestTime}>~25 minutes</Text>
+            <Text style={styles.eqTestMeta}>~25 min</Text>
           </View>
-          <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -116,7 +117,7 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Settings</Text>
         
-        <TouchableOpacity style={[styles.settingItem, Shadows.sm]}>
+        <TouchableOpacity style={[styles.settingItem, Shadows.card]}>
           <View style={styles.settingContent}>
             <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
             <Text style={styles.settingText}>Notifications</Text>
@@ -124,7 +125,7 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.settingItem, Shadows.sm]}>
+        <TouchableOpacity style={[styles.settingItem, Shadows.card]}>
           <View style={styles.settingContent}>
             <Ionicons name="lock-closed-outline" size={24} color={colors.textPrimary} />
             <Text style={styles.settingText}>Privacy & Security</Text>
@@ -132,7 +133,7 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.settingItem, Shadows.sm]}>
+        <TouchableOpacity style={[styles.settingItem, Shadows.card]}>
           <View style={styles.settingContent}>
             <Ionicons name="help-circle-outline" size={24} color={colors.textPrimary} />
             <Text style={styles.settingText}>Help & Support</Text>
@@ -140,7 +141,7 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.settingItem, Shadows.sm]}>
+        <TouchableOpacity style={[styles.settingItem, Shadows.card]}>
           <View style={styles.settingContent}>
             <Ionicons name="information-circle-outline" size={24} color={colors.textPrimary} />
             <Text style={styles.settingText}>About</Text>
@@ -180,7 +181,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.background,
   },
   content: {
-    padding: Spacing.xl,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.xl,
     paddingBottom: Spacing['5xl'],
   },
   header: {
@@ -227,7 +229,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     padding: Spacing.lg,
     marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -253,22 +255,22 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginTop: 2,
     fontFamily: Typography.fontFamily.primary,
   },
-  // EQ Test Card
+  // EQ Test Card — matches setting row style, clear hierarchy
   eqTestCard: {
     backgroundColor: colors.floating,
-    borderRadius: Radius.xl,
-    padding: Spacing.xl,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.lg,
   },
   eqTestIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: Radius.lg,
-    backgroundColor: colors.primary + '15',
+    width: 48,
+    height: 48,
+    borderRadius: Radius.md,
+    backgroundColor: colors.primary + '18',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -287,9 +289,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textSecondary,
     lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.primary,
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
   },
-  eqTestTime: {
+  eqTestMeta: {
     fontSize: Typography.fontSize.xs,
     color: colors.primary,
     fontWeight: Typography.fontWeight.medium,

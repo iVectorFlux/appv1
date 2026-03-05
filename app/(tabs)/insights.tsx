@@ -231,22 +231,6 @@ export default function InsightsScreen() {
 
       {activeTab === 'insights' ? (
         <>
-          {/* When both sections fail, show one-line diagnostic */}
-          {(errorEq || errorWellbeing) && (
-            <View style={[styles.diagnosticCard, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
-              <Text style={styles.diagnosticTitle}>Why am I seeing errors?</Text>
-              <Text style={styles.diagnosticText}>
-                • On web, both sections use Supabase. Check .env has EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY, then restart (expo start --web).
-              </Text>
-              <Text style={styles.diagnosticText}>
-                • In your Supabase project, run migrations so journal_entries and recovery_sessions tables exist with RLS.
-              </Text>
-              <Text style={styles.diagnosticText}>
-                • If you see "Timed out", the request never completed—often missing env, wrong URL, or no network.
-              </Text>
-            </View>
-          )}
-
           {/* Conditional Support Prompt */}
           {showSupportPrompt && (
             <View style={[styles.supportCard, Shadows.md]}>
@@ -280,15 +264,7 @@ export default function InsightsScreen() {
           {/* EQ skills — from Reflect check-ins (emotions, energy) */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>EQ skills</Text>
-            {errorEq ? (
-              <View style={[styles.emptyInsightsCard, styles.errorCard, { borderColor: colors.destructive + '40', backgroundColor: colors.destructive + '08' }]}>
-                <Ionicons name="warning-outline" size={24} color={colors.destructive} />
-                <Text style={[styles.errorText, { color: colors.destructive }]}>{errorEq}</Text>
-                <TouchableOpacity onPress={retry} style={[styles.retryBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
-                  <Text style={styles.retryBtnText}>Retry</Text>
-                </TouchableOpacity>
-              </View>
-            ) : loadingEq ? (
+            {loadingEq ? (
               <View style={[styles.emptyInsightsCard, styles.insightsCardLoading]}>
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.loadingText}>Loading your data…</Text>
@@ -325,16 +301,18 @@ export default function InsightsScreen() {
                 </View>
                 <Text style={styles.emptyInsightsTitle}>Your insights will appear here</Text>
                 <Text style={styles.emptyInsightsDescription}>
-                  Insights here are based on your Reflect check-ins (emotions, energy). Use the heart tab to log how you feel; after a few check-ins we’ll show your patterns here.
+                  Insights are based on your Reflect check-ins (emotions, energy). Use the heart tab to log how you feel; after a few check-ins we’ll show your patterns here.
                 </Text>
-                <TouchableOpacity
-                  style={styles.ctaButton}
-                  onPress={() => router.push('/(tabs)/reflect')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.ctaButtonText}>Go to Reflect</Text>
-                  <Ionicons name="heart-outline" size={18} color={colors.primaryForeground} />
-                </TouchableOpacity>
+                {(errorEq || !eqSummary) && (
+                  <TouchableOpacity
+                    style={styles.ctaButton}
+                    onPress={() => (errorEq ? retry() : router.push('/(tabs)/reflect'))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.ctaButtonText}>{errorEq ? 'Try again' : 'Go to Reflect'}</Text>
+                    <Ionicons name={errorEq ? 'refresh-outline' : 'heart-outline'} size={18} color={colors.primaryForeground} />
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
@@ -342,15 +320,7 @@ export default function InsightsScreen() {
           {/* Wellbeing patterns — from Recover (breathing & grounding) sessions */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Wellbeing patterns</Text>
-            {errorWellbeing ? (
-              <View style={[styles.emptyInsightsCard, styles.errorCard, { borderColor: colors.destructive + '40', backgroundColor: colors.destructive + '08' }]}>
-                <Ionicons name="warning-outline" size={24} color={colors.destructive} />
-                <Text style={[styles.errorText, { color: colors.destructive }]}>{errorWellbeing}</Text>
-                <TouchableOpacity onPress={retry} style={[styles.retryBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
-                  <Text style={styles.retryBtnText}>Retry</Text>
-                </TouchableOpacity>
-              </View>
-            ) : loadingWellbeing ? (
+            {loadingWellbeing ? (
               <View style={[styles.emptyInsightsCard, styles.insightsCardLoading]}>
                 <ActivityIndicator size="small" color={colors.accentCalm} />
                 <Text style={styles.loadingText}>Loading…</Text>
@@ -382,16 +352,18 @@ export default function InsightsScreen() {
                 </View>
                 <Text style={styles.emptyInsightsTitle}>Patterns as you go</Text>
                 <Text style={styles.emptyInsightsDescription}>
-                  Insights here are based on your Recover sessions (breathing & grounding). Use Recover a few times and we’ll show your patterns here.
+                  Insights are based on your Recover sessions (breathing & grounding). Use Recover a few times and we’ll show your patterns here.
                 </Text>
-                <TouchableOpacity
-                  style={styles.ctaButton}
-                  onPress={() => router.push('/(tabs)/recover')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.ctaButtonText}>Go to Recover</Text>
-                  <Ionicons name="fitness-outline" size={18} color={colors.primaryForeground} />
-                </TouchableOpacity>
+                {(errorWellbeing || !recoverySummary) && (
+                  <TouchableOpacity
+                    style={styles.ctaButton}
+                    onPress={() => (errorWellbeing ? retry() : router.push('/(tabs)/recover'))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.ctaButtonText}>{errorWellbeing ? 'Try again' : 'Go to Recover'}</Text>
+                    <Ionicons name={errorWellbeing ? 'refresh-outline' : 'fitness-outline'} size={18} color={colors.primaryForeground} />
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
@@ -464,9 +436,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.background,
   },
   content: {
-    padding: Spacing.xl,
-    paddingTop: Platform.OS === 'ios' ? 60 : Spacing.xl,
-    paddingBottom: Spacing['5xl'],
+    padding: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
+    paddingBottom: Spacing['2xl'],
   },
   header: {
     marginBottom: Spacing.lg,
@@ -551,19 +523,19 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontFamily: Typography.fontFamily.primary,
   },
   section: {
-    marginBottom: Spacing['2xl'],
+    marginBottom: Spacing.lg,
   },
   sectionTitle: {
     fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
     fontWeight: Typography.fontWeight.semibold,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     fontFamily: Typography.fontFamily.primary,
   },
   emptyInsightsCard: {
     backgroundColor: colors.surface,
     borderRadius: Radius.lg,
-    padding: Spacing['2xl'],
+    padding: Spacing.lg,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -571,7 +543,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   insightsCard: {
     backgroundColor: colors.surface,
     borderRadius: Radius.lg,
-    padding: Spacing['2xl'],
+    padding: Spacing.lg,
     alignItems: 'center',
     borderWidth: 1,
   },
@@ -610,11 +582,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
     backgroundColor: colors.primary,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.md,
   },
   ctaButtonText: {
     fontSize: Typography.fontSize.sm,
@@ -623,25 +595,25 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontFamily: Typography.fontFamily.primary,
   },
   emptyInsightsIcon: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   emptyInsightsTitle: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     color: colors.textPrimary,
     fontWeight: Typography.fontWeight.semibold,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
     textAlign: 'center',
     fontFamily: Typography.fontFamily.primary,
   },
   emptyInsightsDescription: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.xs,
     textAlign: 'center',
     fontFamily: Typography.fontFamily.primary,
   },

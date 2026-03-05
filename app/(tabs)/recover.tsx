@@ -275,7 +275,6 @@ export default function RecoverScreen() {
         <Text style={styles.title}>Recover</Text>
       </View>
 
-      {/* Quick Calm Section – Learn-style list cards */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick calm</Text>
         <View style={styles.cardList}>
@@ -285,19 +284,20 @@ export default function RecoverScreen() {
             icon="leaf-outline"
             iconBackgroundColor={colors.accentCalm + '20'}
             iconColor={colors.accentCalm}
+            compact
           />
         </View>
       </View>
 
-      {/* Release & Let Go Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Release & let go</Text>
         <ListCard
           onPress={() => setView('release')}
-          title="Let Go of Heavy Thoughts"
+          title="Let go of heavy thoughts"
           icon="heart-outline"
           iconBackgroundColor={colors.primary + '20'}
           leftBorderColor={colors.primary}
+          compact
         />
       </View>
     </ScrollView>
@@ -310,37 +310,38 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.background,
   },
   content: {
-    padding: Spacing.xl,
-    paddingBottom: Spacing['5xl'],
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing['2xl'],
   },
   header: {
-    marginBottom: Spacing['2xl'],
+    marginBottom: Spacing.lg,
   },
   title: {
-    fontSize: Typography.fontSize['3xl'],
+    fontSize: Typography.fontSize['2xl'],
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: Spacing.xs,
     fontFamily: Typography.fontFamily.heading,
   },
   subtitle: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
+    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.primary,
   },
   section: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   sectionTitle: {
     fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
     fontWeight: Typography.fontWeight.semibold,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
     fontFamily: Typography.fontFamily.primary,
   },
   cardList: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   backButton: {
     flexDirection: 'row',
@@ -400,42 +401,42 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.background,
   },
   releaseContent: {
-    padding: Spacing.xl,
-    paddingTop: Spacing['3xl'],
-    paddingBottom: Spacing['5xl'],
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing['2xl'],
   },
   releaseHeader: {
-    marginBottom: Spacing['2xl'],
+    marginBottom: Spacing.lg,
   },
   releaseTitle: {
-    fontSize: Typography.fontSize['2xl'],
+    fontSize: Typography.fontSize.xl,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
     fontFamily: Typography.fontFamily.heading,
   },
   releaseDescription: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.primary,
   },
   textInputContainer: {
     backgroundColor: colors.floating,
-    borderRadius: Radius.xl,
-    marginBottom: Spacing.xl,
-    minHeight: 200,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.lg,
+    minHeight: 120,
     borderWidth: 1,
     borderColor: colors.borderLight,
     ...Shadows.sm,
   },
   releaseInput: {
-    padding: Spacing.lg,
+    padding: Spacing.md,
     fontSize: Typography.fontSize.base,
     color: colors.textPrimary,
     lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
     fontFamily: Typography.fontFamily.primary,
-    minHeight: 200,
+    minHeight: 120,
   },
   releaseAnimationContainer: {
     flex: 1,

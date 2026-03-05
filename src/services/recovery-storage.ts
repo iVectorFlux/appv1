@@ -11,15 +11,9 @@ import type { GroundingSession } from '@/types/grounding';
 /**
  * Save a completed grounding session to Supabase.
  *
- * Logs: technique, stress before/after, duration, completion %, and whether it helped.
- * Maps GroundingSession fields to recovery_sessions columns:
- *   type           = 'grounding'
- *   technique      = session.mode (e.g. 'quick_reset')
- *   intensity      = stressBefore (1-5)
- *   effectiveness  = stressBefore - stressAfter (positive = improved)
- *   duration_ms    = session.durationMs
- *   completion_pct = session.completionPct (0-100)
- *   helped         = session.helpful (user said Yes/Not really)
+ * Uses only columns from the base recovery_sessions schema (00001) so it works
+ * before migration 00006 (completion_pct, helped) is applied.
+ * Maps: type='grounding', technique=mode, intensity=stressBefore, effectiveness=delta.
  */
 export async function saveRecoverySession(
   userId: string,
@@ -34,7 +28,7 @@ export async function saveRecoverySession(
         ? session.stressBefore - session.stressAfter
         : null;
 
-    const { error } = await supabase.from('recovery_sessions').insert({
+    const row: Record<string, unknown> = {
       user_id: userId,
       type: 'grounding',
       technique: session.mode,
@@ -43,9 +37,9 @@ export async function saveRecoverySession(
       duration_ms: session.durationMs,
       intensity: session.stressBefore,
       effectiveness,
-      completion_pct: session.completionPct,
-      helped: session.helpful,
-    });
+    };
+
+    const { error } = await supabase.from('recovery_sessions').insert(row);
 
     if (error) {
       console.error('[Recovery Storage] Failed to save session:', error);

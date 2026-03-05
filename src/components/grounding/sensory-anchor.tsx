@@ -10,7 +10,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Layout } from '@/constants/design-tokens';
 import { SENSORY_ANCHOR_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
 
@@ -121,30 +121,25 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
 
-    /* ── Top ───────────────────────────────────────────── */
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['4xl'] },
-    stepLabel: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, letterSpacing: 0.5 },
-    closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.paddingHorizontal, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
+    stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+    closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
 
-    /* ── Progress ─────────────────────────────────────── */
-    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing.xl, marginTop: Spacing.md },
+    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Layout.paddingHorizontal, marginTop: Spacing.sm },
     progressSeg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.surface },
 
-    /* ── Center ───────────────────────────────────────── */
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.paddingHorizontal },
 
-    /* ── Icon ──────────────────────────────────────────── */
-    iconOuter: { width: 130, height: 130, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
-    iconGlowRing: { position: 'absolute', width: 130, height: 130, borderRadius: 65 },
-    iconInner: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
+    iconOuter: { width: 110, height: 110, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
+    iconGlowRing: { position: 'absolute', width: 110, height: 110, borderRadius: 55 },
+    iconInner: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
 
-    senseLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textTransform: 'uppercase', letterSpacing: 3, marginBottom: Spacing.sm },
-    countBig: { fontSize: 80, fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.md, lineHeight: 88 },
-    prompt: { fontSize: 26, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 36, marginBottom: Spacing.lg },
+    senseLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.sm },
+    countBig: { fontSize: 64, fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.md, lineHeight: 72 },
+    prompt: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 36, marginBottom: Spacing.lg },
     hint: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textAlign: 'center' },
 
-    /* ── Bottom ────────────────────────────────────────── */
-    bottomBar: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing['3xl'] },
-    nextBtn: { borderRadius: Radius.lg, paddingVertical: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
-    nextBtnText: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
+    bottomBar: { paddingHorizontal: Layout.paddingHorizontal, paddingBottom: Spacing.xl },
+    nextBtn: { borderRadius: Radius.sm, paddingVertical: Spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+    nextBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

@@ -4,7 +4,7 @@
 
 /* EQ App Custom Styles */
 * {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'DM Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* Custom scrollbar for mobile feel */
@@ -33,7 +33,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 20px;
   border-radius: 50%;
   background: #FFFFFF;
-  border: 2px solid #5FA8A3;
+  border: 2px solid #2D4739;
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -43,7 +43,7 @@ input[type="range"]::-moz-range-thumb {
   height: 20px;
   border-radius: 50%;
   background: #FFFFFF;
-  border: 2px solid #5FA8A3;
+  border: 2px solid #2D4739;
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }

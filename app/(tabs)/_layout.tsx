@@ -10,7 +10,7 @@ import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@/constants/design-tokens';
+import { useColors, Spacing } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -19,8 +19,9 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } = useAuthStore();
 
-  const tabBarPaddingBottom = Math.max(insets.bottom, 8);
-  const tabBarHeight = 56 + tabBarPaddingBottom;
+  const tabBarPaddingBottom = Math.max(insets.bottom, 12);
+  const tabBarContentHeight = 52;
+  const tabBarHeight = tabBarContentHeight + tabBarPaddingBottom;
 
   if (isLoading) {
     return (
@@ -43,27 +44,29 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.floating,
-          borderTopColor: colors.borderLight,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
-          paddingTop: 8,
+          paddingTop: 10,
           paddingBottom: tabBarPaddingBottom,
           height: tabBarHeight,
           minHeight: tabBarHeight,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '500',
-          textTransform: 'none',
+          marginTop: 2,
         },
         tabBarIconStyle: {
-          marginTop: 4,
+          marginBottom: 0,
         },
-        // Ensure tab screen content can fill and scroll (fixes Android browser scroll)
+        tabBarItemStyle: {
+          paddingVertical: 4,
+        },
         sceneStyle: { flex: 1 },
       }}
     >
@@ -71,8 +74,8 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="compass-outline" size={22} color={color} />
           ),
         }}
       />
@@ -80,8 +83,8 @@ export default function TabsLayout() {
         name="reflect"
         options={{
           title: 'Reflect',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="heart-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name="heart-outline" size={22} color={focused ? '#C45C5C' : color} />
           ),
         }}
       />
@@ -89,8 +92,8 @@ export default function TabsLayout() {
         name="recover"
         options={{
           title: 'Recover',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="fitness-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name="fitness-outline" size={22} color={focused ? colors.primary : color} />
           ),
         }}
       />
@@ -98,8 +101,8 @@ export default function TabsLayout() {
         name="insights"
         options={{
           title: 'Insights',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bulb-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name="bulb-outline" size={22} color={focused ? '#E8952F' : color} />
           ),
         }}
       />
@@ -107,8 +110,8 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-outline" size={22} color={color} />
           ),
         }}
       />

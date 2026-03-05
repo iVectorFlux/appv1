@@ -19,6 +19,8 @@ export type ListCardProps = {
   iconColor?: string;
   /** Optional left border accent (e.g. primary) */
   leftBorderColor?: string;
+  /** Tighter padding and smaller icon */
+  compact?: boolean;
 };
 
 export function ListCard({
@@ -29,9 +31,10 @@ export function ListCard({
   iconBackgroundColor,
   iconColor,
   leftBorderColor,
+  compact = false,
 }: ListCardProps) {
   const colors = useColors();
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, compact);
   const finalIconColor = iconColor ?? colors.primary;
 
   return (
@@ -45,25 +48,25 @@ export function ListCard({
       ]}
     >
       <View style={[styles.iconWrap, { backgroundColor: iconBackgroundColor }]}>
-        <Ionicons name={icon} size={24} color={finalIconColor} />
+        <Ionicons name={icon} size={compact ? 20 : 24} color={finalIconColor} />
       </View>
       <View style={styles.textWrap}>
-        <Text style={styles.title}>{title}</Text>
-        {subtitle != null && <Text style={styles.subtitle}>{subtitle}</Text>}
+        <Text style={styles.title} numberOfLines={1}>{title}</Text>
+        {subtitle != null && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+      <Ionicons name="chevron-forward" size={compact ? 18 : 20} color={colors.textSecondary} />
     </Pressable>
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useColors>) =>
+const createStyles = (colors: ReturnType<typeof useColors>, compact?: boolean) =>
   StyleSheet.create({
     card: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.floating,
-      borderRadius: Radius.xl,
-      padding: Spacing.lg,
+      borderRadius: compact ? Radius.lg : Radius.xl,
+      padding: compact ? Spacing.md : Spacing.lg,
       borderWidth: 1,
       borderColor: colors.borderLight,
     },
@@ -71,24 +74,26 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       opacity: 0.92,
     },
     iconWrap: {
-      width: 48,
-      height: 48,
+      width: compact ? 40 : 48,
+      height: compact ? 40 : 48,
       borderRadius: Radius.md,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: Spacing.md,
+      marginRight: compact ? Spacing.sm : Spacing.md,
     },
     textWrap: {
       flex: 1,
+      minWidth: 0,
     },
     title: {
-      fontSize: Typography.fontSize.lg,
+      fontSize: compact ? Typography.fontSize.base : Typography.fontSize.lg,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
-      marginBottom: Spacing.xs,
+      marginBottom: compact ? 0 : Spacing.xs,
     },
     subtitle: {
-      fontSize: Typography.fontSize.sm,
+      fontSize: Typography.fontSize.xs,
       color: colors.textSecondary,
+      marginTop: compact ? 2 : 0,
     },
   });

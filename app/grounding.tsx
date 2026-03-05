@@ -43,7 +43,8 @@ type BreathingTag =
   | 'calm'
   | 'reset'
   | 'focus'
-  | 'post_meeting';
+  | 'post_meeting'
+  | 'stress';
 
 /** Stress level color gradient from cool → warm */
 const STRESS_COLORS = ['#60A5FA', '#34D399', '#FBBF24', '#F97316', '#FB923C'];
@@ -64,6 +65,7 @@ export default function GroundingScreen() {
   const [completionPct, setCompletionPct] = useState(0);
   const [helpful, setHelpful] = useState<boolean | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -108,9 +110,14 @@ export default function GroundingScreen() {
 
   const handleModeExit = useCallback(() => transitionTo('select'), [transitionTo]);
 
+  /** Exit grounding and return to Recover tab (avoids "GO_BACK not handled" on web). */
+  const exitToRecover = useCallback(() => {
+    router.replace('/(tabs)/recover');
+  }, [router]);
+
   const handleDone = useCallback(async () => {
     if (!user?.id || !selectedMode) {
-      router.back();
+      exitToRecover();
       return;
     }
     const session: GroundingSession = {
@@ -125,14 +132,22 @@ export default function GroundingScreen() {
       helpful,
     };
     setSaveError(null);
+    setIsSaving(true);
     try {
       await saveRecoverySession(user.id, session);
-      router.back();
+      exitToRecover();
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('not configured') || msg.includes('Supabase')) {
+        exitToRecover();
+        return;
+      }
       console.error('[Grounding] Save failed:', e);
-      setSaveError(e instanceof Error ? e.message : 'Could not save. Check connection and try again.');
+      setSaveError(msg || 'Could not save. Check connection and try again.');
+    } finally {
+      setIsSaving(false);
     }
-  }, [user, selectedMode, stressLevel, stressAfter, emotionalTone, completionPct, sessionStart, helpful, router]);
+  }, [user, selectedMode, stressLevel, stressAfter, emotionalTone, completionPct, sessionStart, helpful, exitToRecover]);
 
   const styles = createStyles(colors);
 
@@ -158,6 +173,7 @@ export default function GroundingScreen() {
       { id: 'calm', label: 'Calm', defaultStress: 2 },
       { id: 'reset', label: 'Reset', defaultStress: 3 },
       { id: 'focus', label: 'Focus', defaultStress: 3 },
+      { id: 'stress', label: 'Stress', defaultStress: 4 },
       { id: 'panic', label: 'Panic', defaultStress: 5 },
       { id: 'anger', label: 'Anger', defaultStress: 5 },
       { id: 'conflict', label: 'Conflict', defaultStress: 4 },
@@ -169,6 +185,7 @@ export default function GroundingScreen() {
       calm: 'sensory_anchor',
       reset: 'quick_reset',
       focus: 'sensory_anchor',
+      stress: 'box_breathing',
       panic: 'box_breathing',
       anger: 'post_conflict',
       conflict: 'post_conflict',
@@ -193,7 +210,7 @@ export default function GroundingScreen() {
           style={[
             styles.techniqueCard,
             Shadows.card,
-            { borderColor: isRecommended ? accent : colors.borderLight },
+            { borderColor: isRecommended ? accent : colors.border },
           ]}
           activeOpacity={0.9}
           onPress={() => {
@@ -217,7 +234,7 @@ export default function GroundingScreen() {
       <View style={styles.container}>
         <View style={styles.topBar}>
           <Text style={styles.topTitle}>Grounding</Text>
-          <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()} hitSlop={12}>
+          <TouchableOpacity style={styles.closeBtn} onPress={exitToRecover} hitSlop={12}>
             <Ionicons name="close" size={22} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
@@ -248,12 +265,12 @@ export default function GroundingScreen() {
 
             {recommendedMode && (
               <>
-                <Text style={styles.sectionHeader}>Recommended</Text>
+                <Text style={styles.sectionLabel}>Recommended</Text>
                 {renderTechniqueCard(recommendedMode, true)}
               </>
             )}
 
-            <Text style={styles.sectionHeader}>All techniques</Text>
+            <Text style={styles.sectionLabel}>All techniques</Text>
             <View style={styles.techniqueList}>
               {GROUNDING_MODES.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
             </View>
@@ -269,90 +286,106 @@ export default function GroundingScreen() {
   const delta = stressAfter != null ? stressLevel - stressAfter : 0;
   const modeLabel = GROUNDING_MODES.find((m) => m.id === selectedMode)?.label ?? '';
 
+  const showStressSection = selectedMode && selectedMode !== 'pre_meeting';
+
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.completeWrap, { opacity: fadeAnim }]}>
-        {/* Success icon with glow */}
-        <View style={styles.successGlow}>
-          <View style={styles.successInner}>
-            <Ionicons name="checkmark" size={36} color={colors.success} />
-          </View>
-        </View>
-
-        <Text style={styles.completeHeading}>Did it help?</Text>
-        {modeLabel ? <Text style={styles.completeModeName}>{modeLabel}</Text> : null}
-
-        <View style={styles.thumbRow}>
-          <TouchableOpacity
-            onPress={() => setHelpful(true)}
-            activeOpacity={0.85}
-            style={[styles.thumbBtn, helpful === true && styles.thumbBtnActive]}
-          >
-            <Ionicons name="thumbs-up-outline" size={22} color={helpful === true ? colors.primaryForeground : colors.textPrimary} />
-            <Text style={[styles.thumbText, helpful === true && styles.thumbTextActive]}>Yes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setHelpful(false)}
-            activeOpacity={0.85}
-            style={[styles.thumbBtn, helpful === false && styles.thumbBtnActive]}
-          >
-            <Ionicons name="thumbs-down-outline" size={22} color={helpful === false ? colors.primaryForeground : colors.textPrimary} />
-            <Text style={[styles.thumbText, helpful === false && styles.thumbTextActive]}>Not really</Text>
-          </TouchableOpacity>
-        </View>
-
-        {stressAfter != null && (
-          <>
-            <Text style={[styles.stressSectionLabel, { marginTop: Spacing['2xl'], textAlign: 'center' }]}>
-              How's your stress now?
-            </Text>
-            <View style={styles.stressRow}>
-              {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
-                const isSelected = stressAfter === level;
-                const accentColor = STRESS_COLORS[level - 1];
-                return (
-                  <TouchableOpacity
-                    key={level}
-                    onPress={() => setStressAfter(level)}
-                    style={[styles.stressPill, isSelected && { backgroundColor: accentColor, borderColor: accentColor }]}
-                  >
-                    <Text style={[styles.stressPillText, isSelected && { color: '#fff' }]}>{level}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+      <ScrollView
+        contentContainerStyle={styles.completeScrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Animated.View style={[styles.completeWrap, { opacity: fadeAnim }]}>
+          {/* Success icon with glow */}
+          <View style={styles.successGlow}>
+            <View style={styles.successInner}>
+              <Ionicons name="checkmark" size={36} color={colors.success} />
             </View>
-            <View style={styles.stressLabelsRow}>
-              <Text style={styles.stressCaption}>Low</Text>
-              <Text style={styles.stressCaption}>High</Text>
-            </View>
-          </>
-        )}
-
-        {stressAfter != null && delta > 0 && (
-          <View style={styles.deltaCard}>
-            <Ionicons name="trending-down" size={20} color={colors.success} />
-            <Text style={styles.deltaText}>Stress dropped by {delta} point{delta > 1 ? 's' : ''}</Text>
           </View>
-        )}
 
-        {saveError ? (
-          <View style={styles.saveErrorWrap}>
-            <Text style={styles.saveErrorText}>{saveError}</Text>
-            <TouchableOpacity onPress={handleDone} style={styles.retrySaveBtn} activeOpacity={0.85}>
-              <Text style={styles.retrySaveBtnText}>Try again</Text>
+          <Text style={styles.completeHeading}>Did it help?</Text>
+          {modeLabel ? <Text style={styles.completeModeName}>{modeLabel}</Text> : null}
+
+          <View style={styles.thumbRow}>
+            <TouchableOpacity
+              onPress={() => setHelpful(true)}
+              activeOpacity={0.85}
+              style={[styles.thumbBtn, helpful === true && styles.thumbBtnActive]}
+            >
+              <Ionicons name="thumbs-up-outline" size={22} color={helpful === true ? colors.primaryForeground : colors.textPrimary} />
+              <Text style={[styles.thumbText, helpful === true && styles.thumbTextActive]}>Yes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setHelpful(false)}
+              activeOpacity={0.85}
+              style={[styles.thumbBtn, helpful === false && styles.thumbBtnActive]}
+            >
+              <Ionicons name="thumbs-down-outline" size={22} color={helpful === false ? colors.primaryForeground : colors.textPrimary} />
+              <Text style={[styles.thumbText, helpful === false && styles.thumbTextActive]}>Not really</Text>
             </TouchableOpacity>
           </View>
-        ) : null}
 
-        <TouchableOpacity
-          style={[styles.primaryBtn, { marginTop: Spacing['3xl'], alignSelf: 'stretch', opacity: helpful == null ? 0.6 : 1 }]}
-          onPress={handleDone}
-          activeOpacity={0.85}
-          disabled={helpful == null}
-        >
-          <Text style={styles.primaryBtnText}>Done</Text>
-        </TouchableOpacity>
-      </Animated.View>
+          {showStressSection && (
+            <View style={styles.stressCard}>
+              <Text style={styles.stressCardTitle}>How&apos;s your stress now?</Text>
+              <Text style={styles.stressCardHint}>Tap a number — 1 is low, 5 is high</Text>
+              <View style={styles.stressRow}>
+                {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
+                  const isSelected = stressAfter === level;
+                  const accentColor = STRESS_COLORS[level - 1];
+                  return (
+                    <TouchableOpacity
+                      key={level}
+                      onPress={() => setStressAfter(level)}
+                      style={[styles.stressPill, isSelected && { backgroundColor: accentColor, borderColor: accentColor }]}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.stressPillText, isSelected && { color: '#fff' }]}>{level}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <View style={styles.stressLabelsRow}>
+                <Text style={styles.stressCaption}>Low</Text>
+                <Text style={styles.stressCaption}>High</Text>
+              </View>
+            </View>
+          )}
+
+          {stressAfter != null && delta > 0 && (
+            <View style={styles.deltaCard}>
+              <Ionicons name="trending-down" size={20} color={colors.success} />
+              <Text style={styles.deltaText}>Stress dropped by {delta} point{delta > 1 ? 's' : ''}</Text>
+            </View>
+          )}
+
+          {saveError ? (
+            <View style={styles.saveErrorWrap}>
+              <Text style={styles.saveErrorText}>{saveError}</Text>
+              <View style={styles.saveErrorButtons}>
+                <TouchableOpacity onPress={handleDone} style={styles.retrySaveBtn} activeOpacity={0.85}>
+                  <Text style={styles.retrySaveBtnText}>Try again</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={exitToRecover} style={styles.leaveAnywayBtn} activeOpacity={0.85}>
+                  <Text style={styles.leaveAnywayBtnText}>Leave anyway</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            style={[
+              styles.primaryBtn,
+              { marginTop: Spacing.xl, alignSelf: 'stretch', opacity: helpful == null || isSaving ? 0.6 : 1 },
+            ]}
+            onPress={handleDone}
+            activeOpacity={0.85}
+            disabled={helpful == null || isSaving}
+          >
+            <Text style={styles.primaryBtnText}>{isSaving ? 'Saving…' : 'Done'}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 }
@@ -367,27 +400,57 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     flexOne: { flex: 1 },
 
     /* ── Top bar ──────────────────────────────────────── */
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['3xl'] },
-    topTitle: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium, letterSpacing: 0.5 },
-    closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
+    topTitle: { fontSize: Typography.fontSize.cardTitle, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading },
+    closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
     backRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
     backText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontWeight: Typography.fontWeight.medium, fontFamily: Typography.fontFamily.primary },
 
-    /* ── Headings & stress scale (used on complete screen) ───────────── */
-    detectScroll: { padding: Spacing.xl, paddingTop: Spacing.xl, paddingBottom: Spacing['5xl'] },
-    heading: { fontSize: 26, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing['2xl'], lineHeight: 34 },
-    sectionLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.md },
+    detectScroll: { paddingHorizontal: Spacing.md, paddingBottom: Spacing['2xl'] },
+    heading: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.medium, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.lg, letterSpacing: Typography.letterSpacing.snug, lineHeight: 36 },
+    sectionLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.lg, marginBottom: Spacing.sm },
 
     stressSectionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.medium, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.sm },
-    stressRow: { flexDirection: 'row', gap: Spacing.xs },
+    stressCard: {
+      marginTop: Spacing.xl,
+      paddingVertical: Spacing.lg,
+      paddingHorizontal: Spacing.lg,
+      backgroundColor: colors.floating,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      width: '100%',
+    },
+    stressCardTitle: {
+      fontSize: Typography.fontSize.base,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.heading,
+      marginBottom: Spacing.xs,
+      textAlign: 'center',
+    },
+    stressCardHint: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textMuted,
+      fontFamily: Typography.fontFamily.primary,
+      marginBottom: Spacing.md,
+      textAlign: 'center',
+    },
+    stressRow: { flexDirection: 'row', gap: Spacing.sm },
     stressPill: {
-      flex: 1, height: 36, borderRadius: Radius.md,
-      alignItems: 'center', justifyContent: 'center',
-      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderLight,
+      flex: 1,
+      minWidth: 44,
+      height: 44,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1.5,
+      borderColor: colors.borderLight,
     },
     stressPillText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary },
-    stressLabelsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
-    stressCaption: { fontSize: 10, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+    stressLabelsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.sm, paddingHorizontal: 2 },
+    stressCaption: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
 
     /* Tone tags (kept for future use if we reintroduce tone selection) */
     toneWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
@@ -396,71 +459,61 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     toneTagText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
     toneTagTextActive: { color: colors.primaryForeground },
 
-    /* Grounding hub */
-    selectScroll: { padding: Spacing.xl, paddingBottom: Spacing['5xl'] },
-    tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm },
-    sectionHeader: {
-      marginTop: Spacing['2xl'],
-      marginBottom: Spacing.md,
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
-      fontFamily: Typography.fontFamily.primary,
-      fontWeight: Typography.fontWeight.semibold,
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-    },
-    techniqueList: { gap: Spacing.md },
+    selectScroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing['2xl'] },
+    tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    techniqueList: { gap: Spacing.sm },
     techniqueCard: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.md,
       backgroundColor: colors.floating,
-      borderRadius: Radius.xl,
+      borderRadius: Radius.lg,
       padding: Spacing.lg,
-      borderWidth: 1.5,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     techniqueIconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 40,
+      height: 40,
+      borderRadius: Radius.md,
       alignItems: 'center',
       justifyContent: 'center',
     },
     techniqueTitle: {
       flex: 1,
-      fontSize: Typography.fontSize.lg,
+      fontSize: Typography.fontSize.cardTitle,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
       fontFamily: Typography.fontFamily.heading,
     },
 
-    /* ── Complete ──────────────────────────────────────── */
-    completeWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
+    completeScrollContent: { flexGrow: 1, padding: Spacing.lg, paddingBottom: Spacing['3xl'] },
+    completeWrap: { alignItems: 'center', paddingVertical: Spacing.md },
     successGlow: {
-      width: 100, height: 100, borderRadius: 50,
-      backgroundColor: colors.success + '12',
+      width: 88, height: 88, borderRadius: 44,
+      backgroundColor: colors.success + '15',
       alignItems: 'center', justifyContent: 'center',
-      marginBottom: Spacing.xl,
+      marginBottom: Spacing.lg,
     },
     successInner: {
-      width: 68, height: 68, borderRadius: 34,
-      backgroundColor: colors.success + '20',
-      borderWidth: 2, borderColor: colors.success + '40',
+      width: 60, height: 60, borderRadius: 30,
+      backgroundColor: colors.success + '25',
+      borderWidth: 2, borderColor: colors.success + '50',
       alignItems: 'center', justifyContent: 'center',
     },
-    completeHeading: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs },
-    completeModeName: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary },
-    thumbRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing['2xl'] },
+    completeHeading: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.medium, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs },
+    completeModeName: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary },
+    thumbRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xl },
     thumbBtn: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.sm,
       paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.md,
-      borderRadius: Radius.full,
-      backgroundColor: colors.surface,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.floating,
       borderWidth: 1,
-      borderColor: colors.borderLight,
+      borderColor: colors.border,
     },
     thumbBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     thumbText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.semibold },
@@ -468,22 +521,26 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     deltaCard: {
       flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
       backgroundColor: colors.success + '12', borderRadius: Radius.lg,
-      paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-      marginTop: Spacing.xl,
+      paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+      marginTop: Spacing.lg,
     },
-    deltaText: { fontSize: Typography.fontSize.base, color: colors.success, fontWeight: Typography.fontWeight.medium, fontFamily: Typography.fontFamily.primary },
+    deltaText: { fontSize: Typography.fontSize.sm, color: colors.success, fontWeight: Typography.fontWeight.medium, fontFamily: Typography.fontFamily.primary },
 
-    saveErrorWrap: { marginTop: Spacing.lg, alignSelf: 'stretch', alignItems: 'center' },
+    saveErrorWrap: { marginTop: Spacing.md, alignSelf: 'stretch', alignItems: 'center' },
     saveErrorText: { fontSize: Typography.fontSize.sm, color: colors.destructive, textAlign: 'center', marginBottom: Spacing.sm, fontFamily: Typography.fontFamily.primary },
+    saveErrorButtons: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xs },
     retrySaveBtn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg },
     retrySaveBtnText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.primary, fontFamily: Typography.fontFamily.primary },
+    leaveAnywayBtn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg },
+    leaveAnywayBtnText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary },
 
     primaryBtn: {
       backgroundColor: colors.primary,
-      borderRadius: Radius.lg,
-      paddingVertical: Spacing.lg,
+      borderRadius: Radius.sm,
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.xl,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    primaryBtnText: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.bold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
+    primaryBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

@@ -163,38 +163,38 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     backgroundColor: colors.background,
   },
   content: {
-    paddingBottom: Spacing['5xl'],
+    paddingBottom: Spacing['2xl'],
   },
   header: {
-    padding: Spacing.xl,
-    paddingTop: Platform.OS === 'ios' ? 60 : Spacing.xl,
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
+    paddingBottom: Spacing.md,
   },
   title: {
-    fontSize: Typography.fontSize['3xl'],
+    fontSize: Typography.fontSize['2xl'],
     fontWeight: Typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: Spacing.xs,
   },
   subtitle: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.base,
+    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
-    marginBottom: Spacing.md,
-    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.md,
   },
   featuredSection: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
   },
-  // Filters
   filterContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
     gap: Spacing.sm,
   },
   filterChip: {
@@ -216,17 +216,17 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   // Modules Grid
   modulesSection: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   modulesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
   },
   audioSection: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },

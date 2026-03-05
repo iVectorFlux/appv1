@@ -23,7 +23,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Layout } from '@/constants/design-tokens';
 import { POST_CONFLICT_EMOTIONS, POST_CONFLICT_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -261,27 +261,24 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     container: { flex: 1, backgroundColor: colors.background },
 
     /* ── Top ───────────────────────────────────────────── */
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.xl, paddingTop: Spacing['4xl'] },
-    stepLabel: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, letterSpacing: 0.5 },
-    closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surface },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.paddingHorizontal, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
+    stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+    closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
 
-    /* ── Progress ─────────────────────────────────────── */
-    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing.xl, marginTop: Spacing.md },
+    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Layout.paddingHorizontal, marginTop: Spacing.sm },
     progressSeg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.surface },
 
-    /* ── Center ───────────────────────────────────────── */
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.paddingHorizontal },
 
     /* ── Typography ────────────────────────────────────── */
-    heading: { fontSize: 28, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 38, marginBottom: Spacing.sm },
-    subheading: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing['2xl'] },
+    heading: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 36, marginBottom: Spacing.sm },
+    subheading: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.lg },
     counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
 
     /* ── Icon glow ─────────────────────────────────────── */
-    iconGlow: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.accentSoft + '18', borderWidth: 1.5, borderColor: colors.accentSoft + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['2xl'] },
+    iconGlow: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.accentSoft + '18', borderWidth: 1.5, borderColor: colors.accentSoft + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
 
-    /* ── Orb ───────────────────────────────────────────── */
-    orbContainer: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing['3xl'] },
+    orbContainer: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
     orbRing3: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: colors.accentSoft },
     orbRing2: { position: 'absolute', width: 155, height: 155, borderRadius: 78, backgroundColor: colors.accentSoft },
     orbCore: { width: 110, height: 110, borderRadius: 55, backgroundColor: colors.accentSoft },
@@ -290,12 +287,12 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     tagWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing['2xl'], maxWidth: 360 },
 
     /* ── Input cards ───────────────────────────────────── */
-    inputCard: { width: '100%', backgroundColor: colors.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.borderLight, overflow: 'hidden' },
+    inputCard: { width: '100%', backgroundColor: colors.floating, borderRadius: Radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
     inputLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
     input: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, paddingTop: Spacing.sm, fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, minHeight: 80 },
     privacyNote: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginTop: Spacing.xl },
 
     /* ── Primary button ────────────────────────────────── */
-    primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.accentSoft, borderRadius: Radius.lg, paddingVertical: Spacing.md, paddingHorizontal: Spacing['2xl'] },
+    primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.accentSoft, borderRadius: Radius.sm, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
     primaryBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

@@ -18,7 +18,9 @@ import {
   Platform,
   Animated,
   TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -85,6 +87,7 @@ type ReflectStep = 1 | 2 | 3 | 4 | 'success';
 
 export default function ReflectScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const colors = useColors();
   const [currentStep, setCurrentStep] = useState<ReflectStep>(1);
@@ -149,8 +152,9 @@ export default function ReflectScreen() {
     setIsSaving(true);
     setError(null);
     let saved = false;
+    const SAVE_TIMEOUT_MS = 20000;
     try {
-      await createJournalEntry({
+      const savePromise = createJournalEntry({
         userId: user.id,
         entrySource: 'reflect',
         pleasantness,
@@ -160,11 +164,15 @@ export default function ReflectScreen() {
         journalTextEncrypted: journalText.trim(),
         encryptionKeyId: undefined,
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Save timed out. Check your connection and try again.')), SAVE_TIMEOUT_MS)
+      );
+      await Promise.race([savePromise, timeoutPromise]);
       saved = true;
       setCurrentStep('success');
     } catch (e) {
       console.error('[Reflect] Journal save failed:', e);
-      setError('Could not save. Try again.');
+      setError(e instanceof Error ? e.message : 'Could not save. Try again.');
     } finally {
       setIsSaving(false);
     }
@@ -445,8 +453,14 @@ export default function ReflectScreen() {
     </View>
   );
 
+  const footerPadding = { paddingBottom: Math.max(insets.bottom, Spacing.md) };
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       {/* Header */}
       <View style={styles.header}>
         {currentStep > 1 && (
@@ -461,7 +475,7 @@ export default function ReflectScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Progress Indicator */}
+      {/* Progress */}
       <View style={styles.progressContainer}>
         {[1, 2, 3, 4].map((step) => (
           <View
@@ -474,54 +488,45 @@ export default function ReflectScreen() {
         ))}
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-
-        {/* Step Content */}
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
         {currentStep === 4 && renderStep4()}
-
-        {/* Navigation Buttons */}
-        <View style={styles.navigationContainer}>
-          {currentStep > 1 && (
-            <Button
-              title="Back"
-              onPress={handleBack}
-              variant="ghost"
-              size="lg"
-              fullWidth
-            />
-          )}
-          {currentStep < 4 ? (
-            <Button
-              title="Next"
-              onPress={handleNext}
-              size="lg"
-              fullWidth
-              disabled={!canProceed()}
-            />
-          ) : (
-            <>
-              {error ? (
-                <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
-              ) : null}
-              <Button
-                title={isSaving ? "Saving..." : "Save Entry"}
-                onPress={handleSave}
-                size="lg"
-                fullWidth
-                loading={isSaving}
-              />
-            </>
-          )}
-        </View>
       </ScrollView>
-    </View>
+
+      {/* Sticky footer – always visible */}
+      <View style={[styles.footer, footerPadding]}>
+        {error ? (
+          <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+        ) : null}
+        {currentStep > 1 && (
+          <Button title="Back" onPress={handleBack} variant="ghost" size="md" fullWidth />
+        )}
+        {currentStep < 4 ? (
+          <Button
+            title="Next"
+            onPress={handleNext}
+            size="md"
+            fullWidth
+            disabled={!canProceed()}
+          />
+        ) : (
+          <Button
+            title={isSaving ? 'Saving…' : 'Save entry'}
+            onPress={handleSave}
+            size="md"
+            fullWidth
+            loading={isSaving}
+          />
+        )}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -535,8 +540,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? Spacing['2xl'] : Spacing.xl,
-    paddingBottom: Spacing.md,
+    paddingTop: Platform.OS === 'ios' ? Spacing.xl : Spacing.lg,
+    paddingBottom: Spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
@@ -549,13 +554,22 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: Spacing.xl,
-    paddingBottom: Spacing['5xl'],
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+  },
+  footer: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    gap: Spacing.sm,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
   },
   errorText: {
     fontSize: Typography.fontSize.sm,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
     fontFamily: Typography.fontFamily.primary,
   },
   progressContainer: {
@@ -563,24 +577,24 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },
   progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.borderLight,
   },
   progressDotActive: {
     backgroundColor: colors.primary,
-    width: 24,
+    width: 18,
   },
   stepContainer: {
-    marginBottom: Spacing['2xl'],
+    marginBottom: Spacing.md,
   },
   stepTitle: {
-    fontSize: Typography.fontSize.xl,
+    fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
     marginBottom: Spacing.xs,
@@ -590,68 +604,64 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
     fontFamily: Typography.fontFamily.primary,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   journalInput: {
     borderWidth: 1,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    minHeight: 120,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    minHeight: 88,
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.primary,
   },
   card: {
     backgroundColor: colors.floating,
-    borderRadius: Radius.xl,
-    padding: Spacing.xl,
-    marginBottom: Spacing.lg,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     ...Shadows.sm,
   },
   cardTitle: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     fontFamily: Typography.fontFamily.heading,
   },
   sliderContainer: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   sliderLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   sliderLabel: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: colors.textSecondary,
     fontFamily: Typography.fontFamily.primary,
   },
   sliderValue: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.primary,
     textAlign: 'center',
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
     fontFamily: Typography.fontFamily.heading,
-  },
-  navigationContainer: {
-    gap: Spacing.md,
-    marginTop: Spacing.xl,
   },
   tagGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   selectedEmotionsTagGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
   },
   moreEmotionsButton: {
     flexDirection: 'row',
@@ -668,7 +678,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontFamily: Typography.fontFamily.primary,
   },
   moreEmotionsContainer: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
   },
   lessEmotionsButton: {
     flexDirection: 'row',
@@ -703,13 +713,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   energyButtons: {
     flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
   },
   energyButton: {
     flex: 1,
     aspectRatio: 1,
-    borderRadius: Radius.md,
+    borderRadius: Radius.sm,
     backgroundColor: colors.floating,
     borderWidth: 2,
     borderColor: colors.border,
@@ -721,7 +731,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     borderColor: colors.primary,
   },
   energyButtonText: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: Typography.fontSize.base,
     color: colors.textPrimary,
     fontWeight: Typography.fontWeight.semibold,
     fontFamily: Typography.fontFamily.primary,
