@@ -66,6 +66,8 @@ export default function JournalHistoryScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
+  const LOAD_TIMEOUT_MS = 15000;
+
   const loadFromDb = useCallback(async () => {
     if (!user?.id) {
       setEntries([]);
@@ -75,7 +77,11 @@ export default function JournalHistoryScreen() {
     }
     setLoadError(null);
     try {
-      const rows = await getJournalEntries(user.id, 100);
+      const loadPromise = getJournalEntries(user.id, 100);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Load timed out. Pull to refresh or try again.')), LOAD_TIMEOUT_MS)
+      );
+      const rows = await Promise.race([loadPromise, timeoutPromise]);
       const decrypted: ListEntry[] = [];
       for (const row of rows) {
         const raw = (row.journalTextEncrypted ?? '').trim();
@@ -142,7 +148,7 @@ export default function JournalHistoryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+        <TouchableOpacity onPress={() => router.replace('/journal')} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Journal history</Text>

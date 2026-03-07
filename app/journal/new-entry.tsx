@@ -36,7 +36,7 @@ export default function NewJournalEntryScreen() {
     setSaving(true);
     setError(null);
     try {
-      const SAVE_TIMEOUT_MS = 25000;
+      const SAVE_TIMEOUT_MS = 35000;
       const savePromise = createJournalEntry({
         userId: user.id,
         entrySource: 'journal_only',
@@ -49,7 +49,7 @@ export default function NewJournalEntryScreen() {
         setTimeout(() => reject(new Error('Save timed out. Check your connection and try again.')), SAVE_TIMEOUT_MS)
       );
       await Promise.race([savePromise, timeoutPromise]);
-      router.back();
+      router.replace('/journal');
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not save. Try again.';
       setError(message);
@@ -63,7 +63,7 @@ export default function NewJournalEntryScreen() {
     if (text.trim()) {
       // Could add "Discard?" confirm
     }
-    router.back();
+    router.replace('/journal');
   };
 
   const styles = createStyles(colors);

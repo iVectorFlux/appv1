@@ -70,7 +70,7 @@ export default function EditJournalEntryScreen() {
         updatedAt: Date.now(),
       });
       setOriginalText(text.trim());
-      router.back();
+      router.replace('/journal/history');
     } catch {
       setError('Could not save.');
     } finally {
@@ -91,7 +91,7 @@ export default function EditJournalEntryScreen() {
             if (!params.id) return;
             try {
               await deleteJournalEntry(params.id);
-              router.back();
+              router.replace('/journal/history');
             } catch {
               setError('Could not delete.');
             }
@@ -118,7 +118,7 @@ export default function EditJournalEntryScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <TouchableOpacity onPress={() => router.replace('/journal/history')} style={styles.iconBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -136,7 +136,7 @@ export default function EditJournalEntryScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => router.replace('/journal/history')} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit entry</Text>

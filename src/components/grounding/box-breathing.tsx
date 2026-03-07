@@ -10,11 +10,13 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors, Spacing, Typography, Radius, Layout } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { BOX_BREATHING_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
+
+const useNativeDriver = Platform.OS !== 'web';
 
 type Step = 'box_breathe' | 'identity' | 'release';
 
@@ -53,10 +55,10 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
 
   const fadeToStep = useCallback(
     (next: Step) => {
-      Animated.timing(textFade, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      Animated.timing(textFade, { toValue: 0, duration: 300, useNativeDriver }).start(() => {
         setStep(next);
         textFade.setValue(0);
-        Animated.timing(textFade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+        Animated.timing(textFade, { toValue: 1, duration: 400, useNativeDriver }).start();
       });
     },
     [textFade],
@@ -78,7 +80,7 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
           toValue: 1,
           duration: BOX_SIDE_MS,
           easing: Easing.linear,
-          useNativeDriver: true,
+          useNativeDriver,
         }).start(() => { phaseIdx++; nextPhase(); });
       };
       nextPhase();
@@ -92,10 +94,10 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
   const advanceIdentity = useCallback(() => {
     const nextIdx = identityIdx + 1;
     if (nextIdx >= IDENTITY_PROMPTS.length) { fadeToStep('release'); return; }
-    Animated.timing(textFade, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+    Animated.timing(textFade, { toValue: 0, duration: 200, useNativeDriver }).start(() => {
       setIdentityIdx(nextIdx);
       textFade.setValue(0);
-      Animated.timing(textFade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(textFade, { toValue: 1, duration: 300, useNativeDriver }).start();
     });
   }, [identityIdx, fadeToStep, textFade]);
 
@@ -141,94 +143,185 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
         </TouchableOpacity>
       </View>
 
-      <Animated.View style={[styles.center, { opacity: textFade }]}>
-        {step === 'box_breathe' && (
-          <>
-            <View style={styles.boxWrap}>
-              <View style={styles.boxOutline} />
-              <Animated.View
-                style={[
-                  styles.boxTrace,
-                  {
-                    transform: [{
-                      rotate: traceProgress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [`${phaseOrder * 90}deg`, `${phaseOrder * 90 + 90}deg`],
-                      }),
-                    }],
-                  },
-                ]}
-              >
-                <View style={[styles.boxTraceSegment, { backgroundColor: colors.primary }]} />
-              </Animated.View>
-            </View>
-            <Text style={styles.phaseMain}>{phaseCopy.main}</Text>
-            <Text style={styles.phaseSub}>{phaseCopy.sub}</Text>
-            <Text style={styles.counterText}>{boxCycle + 1} of {BOX_CYCLES}</Text>
-          </>
-        )}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Animated.View style={[styles.center, { opacity: textFade }]}>
+          {step === 'box_breathe' && (
+            <>
+              <View style={styles.boxWrap}>
+                <View style={[styles.boxOutline, { borderColor: colors.border }]} />
+                <View style={styles.boxSides}>
+                  <View style={[styles.boxSideTop, { backgroundColor: phaseOrder === 0 ? colors.primary : colors.primary + '25' }]} />
+                  <View style={[styles.boxSideRight, { backgroundColor: phaseOrder === 1 ? colors.primary : colors.primary + '25' }]} />
+                  <View style={[styles.boxSideBottom, { backgroundColor: phaseOrder === 2 ? colors.primary : colors.primary + '25' }]} />
+                  <View style={[styles.boxSideLeft, { backgroundColor: phaseOrder === 3 ? colors.primary : colors.primary + '25' }]} />
+                </View>
+              </View>
+              <Text style={styles.phaseMain}>{phaseCopy.main}</Text>
+              <Text style={styles.phaseSub}>{phaseCopy.sub}</Text>
+              <Text style={styles.counterText}>Breath {boxCycle + 1} of {BOX_CYCLES}</Text>
+              <Text style={styles.phaseHint}>4 counts in · 4 hold · 4 out · 4 hold</Text>
+            </>
+          )}
 
-        {/* IDENTITY ANCHOR */}
-        {step === 'identity' && (
-          <>
-            <View style={styles.iconGlow}>
-              <Ionicons name="person-outline" size={40} color={colors.primary} />
-            </View>
-            <Text style={styles.directiveText}>{IDENTITY_PROMPTS[identityIdx]}</Text>
-            <Text style={styles.directiveSub}>Say it out loud</Text>
-            <TouchableOpacity style={styles.actionBtn} onPress={advanceIdentity} activeOpacity={0.8}>
-              <Text style={styles.actionBtnText}>{identityIdx < IDENTITY_PROMPTS.length - 1 ? 'Next' : 'Continue'}</Text>
-              <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
-            </TouchableOpacity>
-          </>
-        )}
+          {step === 'identity' && (
+            <>
+              <View style={styles.iconGlow}>
+                <Ionicons name="person-outline" size={44} color={colors.primary} />
+              </View>
+              <Text style={styles.directiveText}>{IDENTITY_PROMPTS[identityIdx]}</Text>
+              <Text style={styles.directiveSub}>Say it out loud or in your head</Text>
+              <TouchableOpacity style={styles.actionBtn} onPress={advanceIdentity} activeOpacity={0.8}>
+                <Text style={styles.actionBtnText}>{identityIdx < IDENTITY_PROMPTS.length - 1 ? 'Next' : 'Continue'}</Text>
+                <Ionicons name="arrow-forward" size={20} color={colors.primaryForeground} />
+              </TouchableOpacity>
+            </>
+          )}
 
-        {/* TENSION RELEASE */}
-        {step === 'release' && (
-          <>
-            <View style={[styles.releaseCircle, { borderColor: releasePhase === 'clench' ? colors.warning + '60' : colors.success + '60', backgroundColor: releasePhase === 'clench' ? colors.warning + '10' : colors.success + '10' }]}>
-              <Ionicons name={releasePhase === 'clench' ? 'hand-left' : 'hand-left-outline'} size={48} color={releasePhase === 'clench' ? colors.warning : colors.success} />
-            </View>
-            <Text style={styles.directiveText}>
-              {releasePhase === 'clench' ? 'Clench your fists — tight' : 'Release. Let it go.'}
-            </Text>
-            <View style={[styles.timerCircle, { borderColor: releasePhase === 'clench' ? colors.warning + '50' : colors.success + '50' }]}>
-              <Text style={[styles.timerNumber, { color: releasePhase === 'clench' ? colors.warning : colors.success }]}>{countdown}</Text>
-            </View>
-            <Text style={styles.counterText}>Round {releaseCycle + 1} of {RELEASE_CYCLES}</Text>
-          </>
-        )}
-      </Animated.View>
+          {step === 'release' && (
+            <>
+              <View style={[styles.releaseCircle, { borderColor: releasePhase === 'clench' ? colors.warning + '60' : colors.success + '60', backgroundColor: releasePhase === 'clench' ? colors.warning + '12' : colors.success + '12' }]}>
+                <Ionicons name={releasePhase === 'clench' ? 'hand-left' : 'hand-left-outline'} size={52} color={releasePhase === 'clench' ? colors.warning : colors.success} />
+              </View>
+              <Text style={styles.directiveText}>
+                {releasePhase === 'clench' ? 'Clench your fists tight' : 'Release. Let it go.'}
+              </Text>
+              <Text style={styles.directiveSub}>
+                {releasePhase === 'clench' ? 'Hold for 5 seconds' : 'Rest for 5 seconds'}
+              </Text>
+              <View style={[styles.timerCircle, { borderColor: releasePhase === 'clench' ? colors.warning + '50' : colors.success + '50' }]}>
+                <Text style={[styles.timerNumber, { color: releasePhase === 'clench' ? colors.warning : colors.success }]}>{countdown}</Text>
+              </View>
+              <Text style={styles.counterText}>Round {releaseCycle + 1} of {RELEASE_CYCLES}</Text>
+            </>
+          )}
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 }
 
+const BOX_SIZE = 160;
+const BOX_SIDE_THICK = 6;
+
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.paddingHorizontal, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
-    stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
-    closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.md,
+      paddingTop: Spacing.xl,
+      paddingBottom: Spacing.sm,
+    },
+    stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
+    closeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
+    scrollContent: { flexGrow: 1, paddingBottom: Spacing['3xl'] },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, minHeight: 320 },
 
-    boxWrap: { width: 140, height: 140, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
-    boxOutline: { position: 'absolute', width: 120, height: 120, borderWidth: 2, borderColor: colors.primary + '50', borderRadius: Radius.md },
-    boxTrace: { position: 'absolute', width: 120, height: 120, alignItems: 'center', justifyContent: 'flex-start' },
-    boxTraceSegment: { width: 10, height: 10, borderRadius: 5, marginTop: -5 },
-    phaseMain: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', marginBottom: Spacing.xs },
-    phaseSub: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.lg },
-
-    directiveText: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 36, marginBottom: Spacing.sm },
-    directiveSub: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.lg },
+    boxWrap: { width: BOX_SIZE + 24, height: BOX_SIZE + 24, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
+    boxOutline: {
+      position: 'absolute',
+      width: BOX_SIZE,
+      height: BOX_SIZE,
+      borderWidth: 2,
+      borderRadius: Radius.md,
+    },
+    boxSides: {
+      position: 'absolute',
+      width: BOX_SIZE,
+      height: BOX_SIZE,
+    },
+    boxSideTop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: BOX_SIZE,
+      height: BOX_SIDE_THICK,
+      borderRadius: BOX_SIDE_THICK / 2,
+    },
+    boxSideRight: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: BOX_SIDE_THICK,
+      height: BOX_SIZE,
+      borderRadius: BOX_SIDE_THICK / 2,
+    },
+    boxSideBottom: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      width: BOX_SIZE,
+      height: BOX_SIDE_THICK,
+      borderRadius: BOX_SIDE_THICK / 2,
+    },
+    boxSideLeft: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: BOX_SIDE_THICK,
+      height: BOX_SIZE,
+      borderRadius: BOX_SIDE_THICK / 2,
+    },
+    phaseMain: {
+      fontSize: Typography.fontSize['2xl'],
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.heading,
+      textAlign: 'center',
+      marginBottom: Spacing.xs,
+    },
+    phaseSub: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.sm },
+    phaseHint: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginTop: Spacing.xs },
     counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.md },
 
-    iconGlow: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primary + '15', borderWidth: 1.5, borderColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
-
-    releaseCircle: { width: 88, height: 88, borderRadius: 44, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
-
-    timerCircle: { width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.md },
+    directiveText: {
+      fontSize: Typography.fontSize.xl,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      fontFamily: Typography.fontFamily.heading,
+      textAlign: 'center',
+      lineHeight: 32,
+      marginBottom: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+    },
+    directiveSub: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.lg },
+    iconGlow: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.primary + '18',
+      borderWidth: 1.5,
+      borderColor: colors.primary + '35',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.lg,
+    },
+    releaseCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.lg,
+    },
+    timerCircle: { width: 72, height: 72, borderRadius: 36, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.md },
     timerNumber: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading },
-
-    actionBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.primary, borderRadius: Radius.sm, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl, marginTop: Spacing.lg },
+    actionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      backgroundColor: colors.primary,
+      borderRadius: Radius.md,
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.xl,
+      marginTop: Spacing.lg,
+    },
     actionBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

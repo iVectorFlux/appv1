@@ -20,7 +20,7 @@ export default function JournalIndexScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn} hitSlop={12}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/home')} style={styles.iconBtn} hitSlop={12}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Journal</Text>

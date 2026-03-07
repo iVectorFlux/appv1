@@ -44,7 +44,8 @@ type BreathingTag =
   | 'reset'
   | 'focus'
   | 'post_meeting'
-  | 'stress';
+  | 'stress'
+  | 'anxiety';
 
 /** Stress level color gradient from cool → warm */
 const STRESS_COLORS = ['#60A5FA', '#34D399', '#FBBF24', '#F97316', '#FB923C'];
@@ -173,6 +174,7 @@ export default function GroundingScreen() {
       { id: 'calm', label: 'Calm', defaultStress: 2 },
       { id: 'reset', label: 'Reset', defaultStress: 3 },
       { id: 'focus', label: 'Focus', defaultStress: 3 },
+      { id: 'anxiety', label: 'Anxiety', defaultStress: 4 },
       { id: 'stress', label: 'Stress', defaultStress: 4 },
       { id: 'panic', label: 'Panic', defaultStress: 5 },
       { id: 'anger', label: 'Anger', defaultStress: 5 },
@@ -185,6 +187,7 @@ export default function GroundingScreen() {
       calm: 'sensory_anchor',
       reset: 'quick_reset',
       focus: 'sensory_anchor',
+      anxiety: 'sensory_anchor',
       stress: 'box_breathing',
       panic: 'box_breathing',
       anger: 'post_conflict',

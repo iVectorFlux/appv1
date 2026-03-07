@@ -152,7 +152,7 @@ export default function ReflectScreen() {
     setIsSaving(true);
     setError(null);
     let saved = false;
-    const SAVE_TIMEOUT_MS = 20000;
+    const SAVE_TIMEOUT_MS = 35000;
     try {
       const savePromise = createJournalEntry({
         userId: user.id,
@@ -178,17 +178,18 @@ export default function ReflectScreen() {
     }
     if (!saved) return;
 
+    const useNativeDriver = Platform.OS !== 'web';
     Animated.parallel([
       Animated.spring(successScale, {
         toValue: 1,
         friction: 5,
         tension: 80,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       Animated.timing(successOpacity, {
         toValue: 1,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
     ]).start();
 

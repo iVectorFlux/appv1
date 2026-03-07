@@ -226,46 +226,51 @@ export default function EQCheckInScreen() {
   if (isComplete && result) {
     return (
       <View style={styles.container}>
-        <View style={styles.completeContainer}>
-          <View style={[styles.completeIconCircle, { backgroundColor: colors.primary + '20' }]}>
-            <Ionicons name="checkmark-circle" size={64} color={colors.primary} />
-          </View>
-          <Text style={styles.completeTitle}>Check-In Complete</Text>
-          <Text style={styles.completeDescription}>
-            Your responses help track your emotional skill development over time.
-          </Text>
-          
-          {/* Quick score summary */}
-          <View style={styles.scoreSummary}>
-            <View style={styles.scoreItem}>
-              <Text style={styles.scoreLabel}>Overall</Text>
-              <Text style={styles.scoreValue}>{result.overallScore}</Text>
+        <ScrollView
+          contentContainerStyle={styles.completeScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.completeContainer}>
+            <View style={[styles.completeIconCircle, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="checkmark-circle" size={64} color={colors.primary} />
             </View>
-            {result.strengths.length > 0 && (
-              <View style={styles.strengthsContainer}>
-                <Text style={styles.strengthsLabel}>Strengths today:</Text>
-                <Text style={styles.strengthsText}>
-                  {result.strengths.map((s: string) => s.replace('_', ' ')).join(', ')}
-                </Text>
+            <Text style={styles.completeTitle}>Check-In Complete</Text>
+            <Text style={styles.completeDescription}>
+              Your responses help track your emotional skill development over time.
+            </Text>
+
+            <View style={styles.scoreSummary}>
+              <View style={styles.scoreItem}>
+                <Text style={styles.scoreLabel}>Overall</Text>
+                <Text style={styles.scoreValue}>{result.overallScore}</Text>
               </View>
-            )}
+              {result.strengths.length > 0 && (
+                <View style={styles.strengthsContainer}>
+                  <Text style={styles.strengthsLabel}>Strengths today:</Text>
+                  <Text style={styles.strengthsText}>
+                    {result.strengths.map((s: string) => s.replace('_', ' ')).join(', ')}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <Button
+              title="Done"
+              onPress={handleComplete}
+              size="lg"
+              fullWidth
+            />
+
+            <TouchableOpacity
+              style={styles.fullTestLink}
+              onPress={() => router.push('/full-eq-test')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.fullTestLinkText}>Take the full EQ assessment</Text>
+              <Ionicons name="arrow-forward" size={18} color={colors.primary} />
+            </TouchableOpacity>
           </View>
-          
-          <Button
-            title="Done"
-            onPress={handleComplete}
-            size="lg"
-            fullWidth
-          />
-          
-          <TouchableOpacity 
-            style={styles.fullTestLink}
-            onPress={() => router.push('/(tabs)/profile')}
-          >
-            <Text style={styles.fullTestLinkText}>Take the full EQ assessment</Text>
-            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -804,11 +809,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     fontFamily: Typography.fontFamily.primary,
   },
   // Complete screen
-  completeContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  completeScrollContent: {
+    flexGrow: 1,
     padding: Spacing.xl,
+    paddingBottom: Spacing['3xl'],
+  },
+  completeContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
   },
   completeIconCircle: {
     width: 100,
@@ -878,14 +886,22 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   fullTestLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    marginTop: Spacing.xl,
-    padding: Spacing.md,
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    minHeight: 48,
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   fullTestLinkText: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.base,
     color: colors.primary,
-    fontWeight: Typography.fontWeight.medium,
+    fontWeight: Typography.fontWeight.semibold,
     fontFamily: Typography.fontFamily.primary,
   },
 });
