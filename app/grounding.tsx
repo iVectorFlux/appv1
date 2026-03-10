@@ -171,10 +171,10 @@ export default function GroundingScreen() {
   // ═══════════════════════════════════════════════════════════════════
   if (screen === 'select') {
     const tags: Array<{ id: BreathingTag; label: string; defaultStress: StressLevel }> = [
+      { id: 'anxiety', label: 'Anxiety', defaultStress: 4 },
       { id: 'calm', label: 'Calm', defaultStress: 2 },
       { id: 'reset', label: 'Reset', defaultStress: 3 },
       { id: 'focus', label: 'Focus', defaultStress: 3 },
-      { id: 'anxiety', label: 'Anxiety', defaultStress: 4 },
       { id: 'stress', label: 'Stress', defaultStress: 4 },
       { id: 'panic', label: 'Panic', defaultStress: 5 },
       { id: 'anger', label: 'Anger', defaultStress: 5 },
@@ -184,10 +184,10 @@ export default function GroundingScreen() {
     ];
 
     const recommendedByTag: Record<BreathingTag, GroundingMode> = {
+      anxiety: 'quick_reset',
       calm: 'sensory_anchor',
       reset: 'quick_reset',
       focus: 'sensory_anchor',
-      anxiety: 'sensory_anchor',
       stress: 'box_breathing',
       panic: 'box_breathing',
       anger: 'post_conflict',

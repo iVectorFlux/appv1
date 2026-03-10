@@ -9,20 +9,23 @@ function encryptedToStorage(encrypted: string): string {
   return encrypted || '';
 }
 
-function encryptedFromRow(value: unknown): string {
+/** Read journal text from DB: store and display as plain text (no encryption). */
+function journalTextFromRow(value: unknown): string {
   if (value == null) return '';
   if (typeof value === 'string') return value;
   if (value instanceof ArrayBuffer) {
-    const arr = new Uint8Array(value);
-    const chunks: string[] = [];
-    for (let i = 0; i < arr.length; i += 8192) chunks.push(String.fromCharCode(...arr.subarray(i, i + 8192)));
-    return btoa(chunks.join(''));
+    try {
+      return new TextDecoder('utf-8').decode(new Uint8Array(value));
+    } catch {
+      return '';
+    }
   }
   if (typeof value === 'object' && value !== null && 'byteLength' in value) {
-    const arr = new Uint8Array(value as ArrayBuffer);
-    const chunks: string[] = [];
-    for (let i = 0; i < arr.length; i += 8192) chunks.push(String.fromCharCode(...arr.subarray(i, i + 8192)));
-    return btoa(chunks.join(''));
+    try {
+      return new TextDecoder('utf-8').decode(new Uint8Array(value as ArrayBuffer));
+    } catch {
+      return '';
+    }
   }
   return '';
 }
@@ -54,7 +57,7 @@ function mapSupabaseRowToEntry(row: Record<string, unknown>): JournalEntry {
     emotions: normalizeEmotions(row.emotions),
     energyLevel: (row.energy_level as JournalEntry['energyLevel']) ?? 1,
     reasons: row.reasons as string[] | undefined,
-    journalTextEncrypted: encryptedFromRow(row.journal_text_encrypted),
+    journalTextEncrypted: journalTextFromRow(row.journal_text_encrypted),
     encryptionKeyId: row.encryption_key_id as string | undefined,
   };
 }

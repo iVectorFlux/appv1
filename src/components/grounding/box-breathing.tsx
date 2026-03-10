@@ -151,19 +151,26 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
         <Animated.View style={[styles.center, { opacity: textFade }]}>
           {step === 'box_breathe' && (
             <>
-              <View style={styles.boxWrap}>
-                <View style={[styles.boxOutline, { borderColor: colors.border }]} />
-                <View style={styles.boxSides}>
-                  <View style={[styles.boxSideTop, { backgroundColor: phaseOrder === 0 ? colors.primary : colors.primary + '25' }]} />
-                  <View style={[styles.boxSideRight, { backgroundColor: phaseOrder === 1 ? colors.primary : colors.primary + '25' }]} />
-                  <View style={[styles.boxSideBottom, { backgroundColor: phaseOrder === 2 ? colors.primary : colors.primary + '25' }]} />
-                  <View style={[styles.boxSideLeft, { backgroundColor: phaseOrder === 3 ? colors.primary : colors.primary + '25' }]} />
-                </View>
+              <View style={[styles.phaseCard, { borderColor: colors.primary + '40' }]}>
+                <Text style={[styles.phaseMain, { color: colors.primary }]}>{phaseCopy.main}</Text>
+                <Text style={styles.phaseSub}>{phaseCopy.sub}</Text>
               </View>
-              <Text style={styles.phaseMain}>{phaseCopy.main}</Text>
-              <Text style={styles.phaseSub}>{phaseCopy.sub}</Text>
+              <View style={styles.progressBarWrap}>
+                <Animated.View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      width: traceProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                      }),
+                      backgroundColor: colors.primary,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.phaseHint}>4 in · 4 hold · 4 out · 4 hold</Text>
               <Text style={styles.counterText}>Breath {boxCycle + 1} of {BOX_CYCLES}</Text>
-              <Text style={styles.phaseHint}>4 counts in · 4 hold · 4 out · 4 hold</Text>
             </>
           )}
 
@@ -204,9 +211,6 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
   );
 }
 
-const BOX_SIZE = 160;
-const BOX_SIDE_THICK = 6;
-
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -223,50 +227,30 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     scrollContent: { flexGrow: 1, paddingBottom: Spacing['3xl'] },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, minHeight: 320 },
 
-    boxWrap: { width: BOX_SIZE + 24, height: BOX_SIZE + 24, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
-    boxOutline: {
-      position: 'absolute',
-      width: BOX_SIZE,
-      height: BOX_SIZE,
+    phaseCard: {
+      width: '100%',
+      maxWidth: 280,
+      paddingVertical: Spacing.xl,
+      paddingHorizontal: Spacing.xl,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: Radius.xl,
       borderWidth: 2,
-      borderRadius: Radius.md,
+      marginBottom: Spacing.xl,
     },
-    boxSides: {
-      position: 'absolute',
-      width: BOX_SIZE,
-      height: BOX_SIZE,
+    progressBarWrap: {
+      width: '100%',
+      maxWidth: 280,
+      height: 8,
+      backgroundColor: colors.border,
+      borderRadius: 4,
+      overflow: 'hidden',
+      marginBottom: Spacing.md,
     },
-    boxSideTop: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: BOX_SIZE,
-      height: BOX_SIDE_THICK,
-      borderRadius: BOX_SIDE_THICK / 2,
-    },
-    boxSideRight: {
-      position: 'absolute',
-      top: 0,
-      right: 0,
-      width: BOX_SIDE_THICK,
-      height: BOX_SIZE,
-      borderRadius: BOX_SIDE_THICK / 2,
-    },
-    boxSideBottom: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      width: BOX_SIZE,
-      height: BOX_SIDE_THICK,
-      borderRadius: BOX_SIDE_THICK / 2,
-    },
-    boxSideLeft: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: BOX_SIDE_THICK,
-      height: BOX_SIZE,
-      borderRadius: BOX_SIDE_THICK / 2,
+    progressBarFill: {
+      height: '100%',
+      borderRadius: 4,
     },
     phaseMain: {
       fontSize: Typography.fontSize['2xl'],
