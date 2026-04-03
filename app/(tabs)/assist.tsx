@@ -35,6 +35,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { saveChatMessage, getChatHistory } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
+import { LEARNING_MODULES } from '@/data/learning-content';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types & constants
@@ -379,10 +380,27 @@ export default function AssistScreen() {
 
   const modeColor = MODE_CONFIG[mode].color;
 
+  const openGroundingFromAssist = (technique: string) => {
+    router.push(`/grounding?mode=${encodeURIComponent(technique)}&returnTo=assist`);
+  };
+
+  const openLearnFromAssist = (skillId?: string | null) => {
+    if (skillId) {
+      router.push(`/future-skills/${skillId}?returnTo=assist`);
+      return;
+    }
+    const first = LEARNING_MODULES[0];
+    if (first) {
+      router.push(`/learning-detail?id=${encodeURIComponent(first.id)}&returnTo=assist`);
+      return;
+    }
+    router.push('/(tabs)/learn');
+  };
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* ── Header ── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -435,10 +453,11 @@ export default function AssistScreen() {
       ) : (
         <ScrollView
           ref={scrollRef}
-          style={{ flex: 1 }}
+          style={styles.scrollMessages}
           contentContainerStyle={styles.messagesList}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {messages.map((msg) => (
             <MessageBubble
@@ -446,8 +465,8 @@ export default function AssistScreen() {
               message={msg}
               modeColor={modeColor}
               colors={colors}
-              onGroundingPress={() => router.push('/grounding')}
-              onLearnPress={(skillId) => skillId ? router.push(`/future-skills/${skillId}`) : router.push('/(tabs)/learn')}
+              onGroundingPress={openGroundingFromAssist}
+              onLearnPress={openLearnFromAssist}
             />
           ))}
           {isSending && (
@@ -473,6 +492,11 @@ export default function AssistScreen() {
           returnKeyType="send"
           blurOnSubmit={false}
           onSubmitEditing={handleSend}
+          underlineColorAndroid="transparent"
+          selectionColor={modeColor}
+          {...(Platform.OS === 'web'
+            ? ({ outlineStyle: 'none', outlineWidth: 0 } as object)
+            : {})}
         />
         <TouchableOpacity
           onPress={handleSend}
@@ -494,7 +518,11 @@ export default function AssistScreen() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: {
+    flex: 1,
+    ...(Platform.OS === 'web' ? ({ height: '100%', maxHeight: '100vh' } as object) : {}),
+  },
+  scrollMessages: { flex: 1, minHeight: 0 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -18,13 +18,14 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import { saveRecoverySession } from '@/services/recovery-storage';
 import { GROUNDING_MODES } from '@/data/grounding-content';
 import type { GroundingMode, StressLevel, EmotionalTone, GroundingSession } from '@/types/grounding';
+import { aiTechniqueToGroundingMode, type ChatReturnTarget } from '@/utils/chat-suggestion-navigation';
 
 // Mode components
 import { QuickReset } from '@/components/grounding/quick-reset';
@@ -50,10 +51,19 @@ type BreathingTag =
 /** Stress level color gradient from cool → warm */
 const STRESS_COLORS = ['#60A5FA', '#34D399', '#FBBF24', '#F97316', '#FB923C'];
 
+function parseReturnTo(raw: string | string[] | undefined): ChatReturnTarget | null {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  if (v === 'chat' || v === 'assist') return v;
+  return null;
+}
+
 export default function GroundingScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string | string[]; returnTo?: string | string[] }>();
   const colors = useColors();
   const { user } = useAuthStore();
+
+  const returnTarget = parseReturnTo(params.returnTo);
 
   const [screen, setScreen] = useState<ScreenState>('select');
   const [stressLevel, setStressLevel] = useState<StressLevel>(3);
@@ -70,6 +80,21 @@ export default function GroundingScreen() {
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const deepLinkedRef = useRef(false);
+
+  /** Jump straight into a technique when opened from chat (mode = AI technique id). */
+  useEffect(() => {
+    if (deepLinkedRef.current) return;
+    const raw = params.mode;
+    const modeParam = Array.isArray(raw) ? raw[0] : raw;
+    if (!modeParam) return;
+    const resolved = aiTechniqueToGroundingMode(modeParam);
+    if (!resolved) return;
+    deepLinkedRef.current = true;
+    setSelectedMode(resolved);
+    setSessionStart(new Date().toISOString());
+    setScreen('active');
+  }, [params.mode]);
 
   const transitionTo = useCallback(
     (next: ScreenState) => {
@@ -109,16 +134,30 @@ export default function GroundingScreen() {
     [selectedMode, stressLevel, transitionTo],
   );
 
-  const handleModeExit = useCallback(() => transitionTo('select'), [transitionTo]);
-
-  /** Exit grounding and return to Recover tab (avoids "GO_BACK not handled" on web). */
-  const exitToRecover = useCallback(() => {
+  /** Exit grounding — return to chat/assist if opened from there, else Recover tab. */
+  const exitGrounding = useCallback(() => {
+    if (returnTarget === 'chat') {
+      router.replace('/chat');
+      return;
+    }
+    if (returnTarget === 'assist') {
+      router.replace('/(tabs)/assist');
+      return;
+    }
     router.replace('/(tabs)/recover');
-  }, [router]);
+  }, [router, returnTarget]);
+
+  const handleModeExit = useCallback(() => {
+    if (returnTarget) {
+      exitGrounding();
+      return;
+    }
+    transitionTo('select');
+  }, [returnTarget, exitGrounding, transitionTo]);
 
   const handleDone = useCallback(async () => {
     if (!user?.id || !selectedMode) {
-      exitToRecover();
+      exitGrounding();
       return;
     }
     const session: GroundingSession = {
@@ -136,11 +175,11 @@ export default function GroundingScreen() {
     setIsSaving(true);
     try {
       await saveRecoverySession(user.id, session);
-      exitToRecover();
+      exitGrounding();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('not configured') || msg.includes('Supabase')) {
-        exitToRecover();
+        exitGrounding();
         return;
       }
       console.error('[Grounding] Save failed:', e);
@@ -148,7 +187,7 @@ export default function GroundingScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [user, selectedMode, stressLevel, stressAfter, emotionalTone, completionPct, sessionStart, helpful, exitToRecover]);
+  }, [user, selectedMode, stressLevel, stressAfter, emotionalTone, completionPct, sessionStart, helpful, exitGrounding]);
 
   const styles = createStyles(colors);
 
@@ -237,7 +276,7 @@ export default function GroundingScreen() {
       <View style={styles.container}>
         <View style={styles.topBar}>
           <Text style={styles.topTitle}>Grounding</Text>
-          <TouchableOpacity style={styles.closeBtn} onPress={exitToRecover} hitSlop={12}>
+          <TouchableOpacity style={styles.closeBtn} onPress={exitGrounding} hitSlop={12}>
             <Ionicons name="close" size={22} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
@@ -369,7 +408,7 @@ export default function GroundingScreen() {
                 <TouchableOpacity onPress={handleDone} style={styles.retrySaveBtn} activeOpacity={0.85}>
                   <Text style={styles.retrySaveBtnText}>Try again</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={exitToRecover} style={styles.leaveAnywayBtn} activeOpacity={0.85}>
+                <TouchableOpacity onPress={exitGrounding} style={styles.leaveAnywayBtn} activeOpacity={0.85}>
                   <Text style={styles.leaveAnywayBtnText}>Leave anyway</Text>
                 </TouchableOpacity>
               </View>

@@ -32,6 +32,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { saveChatMessage, getChatHistory } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
+import { LEARNING_MODULES } from '@/data/learning-content';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -546,10 +547,20 @@ export default function ChatScreen() {
     }
   };
 
-  const handleGroundingPress = (_technique: string) => router.push('/grounding');
+  const handleGroundingPress = (technique: string) => {
+    router.push(`/grounding?mode=${encodeURIComponent(technique)}&returnTo=chat`);
+  };
   const handleLearnPress = (skillId?: string | null) => {
-    if (skillId) router.push(`/future-skills/${skillId}`);
-    else router.push('/(tabs)/learn');
+    if (skillId) {
+      router.push(`/future-skills/${skillId}?returnTo=chat`);
+      return;
+    }
+    const first = LEARNING_MODULES[0];
+    if (first) {
+      router.push(`/learning-detail?id=${encodeURIComponent(first.id)}&returnTo=chat`);
+      return;
+    }
+    router.push('/(tabs)/learn');
   };
 
   const handleModeSwitch = (newMode: ChatMode) => {
@@ -563,7 +574,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -608,6 +620,7 @@ export default function ChatScreen() {
           ref={scrollRef}
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
+          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -638,6 +651,15 @@ export default function ChatScreen() {
             maxLength={1000}
             returnKeyType="default"
             textAlignVertical="center"
+            underlineColorAndroid="transparent"
+            selectionColor={modeColor}
+            {...(Platform.OS === 'web'
+              ? ({
+                  // Remove default browser focus ring (blue rectangle)
+                  outlineStyle: 'none',
+                  outlineWidth: 0,
+                } as object)
+              : {})}
           />
           <TouchableOpacity
             onPress={handleSend}
@@ -664,6 +686,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    ...(Platform.OS === 'web' ? ({ height: '100%', maxHeight: '100vh' } as object) : {}),
   },
   header: {
     flexDirection: 'row',
@@ -705,6 +728,7 @@ const styles = StyleSheet.create({
   },
   messagesList: {
     flex: 1,
+    minHeight: 0,
   },
   messagesContent: {
     paddingHorizontal: Spacing.md,
@@ -733,10 +757,11 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     lineHeight: Typography.fontSize.base * 1.45,
     maxHeight: 140,
-    // minHeight matches the send button so single-line looks vertically centred
     minHeight: 36,
     paddingTop: Platform.OS === 'ios' ? 8 : 4,
     paddingBottom: Platform.OS === 'ios' ? 8 : 4,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
   },
   sendBtn: {
     width: 36,

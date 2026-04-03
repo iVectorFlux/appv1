@@ -38,7 +38,7 @@ const VIDEO_ASPECT = 9 / 16;
 
 export default function LearningDetailScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; returnTo?: string | string[] }>();
   const colors = useColors();
   const { width: windowWidth } = useWindowDimensions();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
@@ -156,6 +156,16 @@ export default function LearningDetailScreen() {
       }
     }
     
+    const ret = params.returnTo;
+    const r = Array.isArray(ret) ? ret[0] : ret;
+    if (r === 'chat') {
+      router.replace('/chat');
+      return;
+    }
+    if (r === 'assist') {
+      router.replace('/(tabs)/assist');
+      return;
+    }
     if (router.canGoBack()) {
       router.back();
     } else {

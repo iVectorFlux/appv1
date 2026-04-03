@@ -226,10 +226,25 @@ const fbStyles = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SkillDetailScreen() {
-  const { skillId } = useLocalSearchParams<{ skillId: string }>();
+  const params = useLocalSearchParams<{ skillId: string; returnTo?: string | string[] }>();
+  const { skillId } = params;
   const router = useRouter();
   const colors = useColors();
   const { user } = useAuthStore();
+
+  const navigateBackFromSkill = useCallback(() => {
+    const ret = params.returnTo;
+    const r = Array.isArray(ret) ? ret[0] : ret;
+    if (r === 'chat') {
+      router.replace('/chat');
+      return;
+    }
+    if (r === 'assist') {
+      router.replace('/(tabs)/assist');
+      return;
+    }
+    router.back();
+  }, [params.returnTo, router]);
 
   const skill = getSkillById(skillId ?? '');
 
@@ -249,7 +264,7 @@ export default function SkillDetailScreen() {
     return (
       <View style={styles.errorContainer}>
         <Text style={{ color: colors.textPrimary }}>Skill not found.</Text>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={navigateBackFromSkill}>
           <Text style={{ color: colors.primary, marginTop: 8 }}>Go back</Text>
         </TouchableOpacity>
       </View>
@@ -379,7 +394,7 @@ export default function SkillDetailScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+          <TouchableOpacity onPress={navigateBackFromSkill} style={styles.backBtn} hitSlop={8}>
             <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.iconCircle, { backgroundColor: skill.color + '18' }]}>
