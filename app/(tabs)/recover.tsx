@@ -311,7 +311,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   content: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
     paddingBottom: Spacing['2xl'],
   },
   header: {
@@ -319,7 +319,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   title: {
     fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.semibold,
+    fontWeight: Typography.fontWeight.bold,
     color: colors.textPrimary,
     marginBottom: Spacing.xs,
     fontFamily: Typography.fontFamily.heading,
@@ -334,11 +334,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
     fontWeight: Typography.fontWeight.semibold,
     marginBottom: Spacing.sm,
     fontFamily: Typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   cardList: {
     gap: Spacing.sm,

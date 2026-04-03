@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 
 export type HeroCardProps = {
@@ -33,7 +34,9 @@ export function HeroCard({
         {meta != null && meta.length > 0 && (
           <View style={styles.metaRow}>
             {meta.map((m, i) => (
-              <Text key={i} style={styles.metaText}>{m}</Text>
+              <View key={i} style={styles.metaPill}>
+                <Text style={styles.metaText}>{m}</Text>
+              </View>
             ))}
           </View>
         )}
@@ -42,7 +45,7 @@ export function HeroCard({
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
           <Text style={styles.buttonText}>{buttonLabel}</Text>
-          <Text style={styles.buttonArrow}>→</Text>
+          <Ionicons name="arrow-forward" size={16} color={colors.primary} />
         </Pressable>
       </View>
     </View>
@@ -65,6 +68,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       color: 'rgba(255, 255, 255, 0.95)',
       marginBottom: Spacing.md,
       lineHeight: Typography.fontSize.lg * Typography.lineHeight.relaxed,
+      fontWeight: Typography.fontWeight.normal,
     },
     metaRow: {
       flexDirection: 'row',
@@ -72,9 +76,16 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       gap: Spacing.sm,
       marginBottom: Spacing.lg,
     },
+    metaPill: {
+      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+      borderRadius: Radius.full,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 3,
+    },
     metaText: {
-      fontSize: Typography.fontSize.sm,
-      color: 'rgba(255, 255, 255, 0.85)',
+      fontSize: Typography.fontSize.xs,
+      color: 'rgba(255, 255, 255, 0.9)',
+      fontWeight: Typography.fontWeight.medium,
     },
     button: {
       flexDirection: 'row',
@@ -82,24 +93,18 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: 'center',
       gap: Spacing.sm,
       backgroundColor: '#FFFFFF',
-      paddingVertical: Spacing.md,
+      paddingVertical: Spacing.sm + 4,
       paddingHorizontal: Spacing.lg,
-      borderRadius: Radius.sm,
+      borderRadius: Radius.md,
       alignSelf: 'flex-start',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.3)',
     },
     buttonPressed: {
-      opacity: 0.92,
+      opacity: 0.9,
+      transform: [{ scale: 0.98 }],
     },
     buttonText: {
       fontSize: Typography.fontSize.base,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.primary,
-    },
-    buttonArrow: {
-      fontSize: Typography.fontSize.base,
-      color: colors.primary,
-      fontWeight: Typography.fontWeight.medium,
     },
   });

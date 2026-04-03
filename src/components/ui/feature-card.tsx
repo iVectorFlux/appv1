@@ -80,13 +80,13 @@ export function FeatureCard({
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     card: {
-      borderRadius: Radius.xl,
+      borderRadius: Radius.lg,
       padding: Spacing.lg,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       borderWidth: 1,
-      borderColor: colors.borderLight,
+      borderColor: colors.border,
     },
     pressed: {
       opacity: 0.96,

@@ -526,11 +526,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
     fontWeight: Typography.fontWeight.semibold,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
     fontFamily: Typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   emptyInsightsCard: {
     backgroundColor: colors.surface,

@@ -29,7 +29,7 @@ export function Button({
   const colors = useColors();
 
   const buttonStyle: ViewStyle = {
-    borderRadius: Radius.sm,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     ...(variant === 'primary' && { backgroundColor: colors.primary, ...Shadows.sm }),
@@ -40,10 +40,10 @@ export function Button({
     }),
     ...(variant === 'ghost' && { backgroundColor: 'transparent' }),
     ...(size === 'sm' && { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, minHeight: 36 }),
-    ...(size === 'md' && { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, minHeight: 48 }),
-    ...(size === 'lg' && { paddingVertical: Spacing.lg, paddingHorizontal: Spacing.xl, minHeight: 52 }),
+    ...(size === 'md' && { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, minHeight: 50 }),
+    ...(size === 'lg' && { paddingVertical: Spacing.md + 4, paddingHorizontal: Spacing.xl, minHeight: 54 }),
     ...(fullWidth && { width: '100%' }),
-    ...(disabled && { opacity: 0.5 }),
+    ...(disabled && { opacity: 0.45 }),
   };
 
   const textStyle: TextStyle = {
@@ -63,7 +63,7 @@ export function Button({
       style={buttonStyle}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.82}
+      activeOpacity={0.8}
     >
       {loading ? (
         <ActivityIndicator

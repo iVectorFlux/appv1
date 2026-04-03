@@ -12,6 +12,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
@@ -182,7 +183,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   content: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.xl,
+    paddingTop: Platform.OS === 'ios' ? 52 : Spacing.xl,
     paddingBottom: Spacing['5xl'],
   },
   header: {
@@ -217,27 +218,31 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     marginBottom: Spacing['2xl'],
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
     fontWeight: Typography.fontWeight.semibold,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
     fontFamily: Typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   settingItem: {
     backgroundColor: colors.floating,
     borderRadius: Radius.lg,
-    padding: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
     marginBottom: Spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 56,
   },
   settingContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: Spacing.sm,
     flex: 1,
   },
   settingTextContainer: {

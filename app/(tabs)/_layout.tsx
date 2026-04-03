@@ -119,13 +119,19 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="eq"
         options={{
-          href: null, // Hide from tab bar
+          href: null,
         }}
       />
       <Tabs.Screen
         name="learn"
         options={{
-          href: null, // Hide from tab bar
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="assist"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

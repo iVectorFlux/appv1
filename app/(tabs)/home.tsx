@@ -53,11 +53,12 @@ export default function HomeScreen() {
   const colors = useColors();
   const [mounted, setMounted] = useState(false);
 
-  const opacityHero = useRef(new Animated.Value(0)).current;
+  const opacityHero    = useRef(new Animated.Value(0)).current;
   const opacityJournal = useRef(new Animated.Value(0)).current;
-  const opacityDaily = useRef(new Animated.Value(0)).current;
-  const opacityQuick = useRef(new Animated.Value(0)).current;
-  const opacityFooter = useRef(new Animated.Value(0)).current;
+  const opacityAI      = useRef(new Animated.Value(0)).current;
+  const opacityDaily   = useRef(new Animated.Value(0)).current;
+  const opacityQuick   = useRef(new Animated.Value(0)).current;
+  const opacityFooter  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     setMounted(true);
@@ -65,11 +66,12 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const anims = [
-      { val: opacityHero, delay: 0 },
+      { val: opacityHero,    delay: 0 },
       { val: opacityJournal, delay: STAGGER_DELAY },
-      { val: opacityDaily, delay: STAGGER_DELAY * 2 },
-      { val: opacityQuick, delay: STAGGER_DELAY * 3 },
-      { val: opacityFooter, delay: STAGGER_DELAY * 4 },
+      { val: opacityAI,      delay: STAGGER_DELAY * 2 },
+      { val: opacityDaily,   delay: STAGGER_DELAY * 3 },
+      { val: opacityQuick,   delay: STAGGER_DELAY * 4 },
+      { val: opacityFooter,  delay: STAGGER_DELAY * 5 },
     ];
     Animated.parallel(
       anims.map(({ val, delay }) =>
@@ -104,6 +106,7 @@ export default function HomeScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      {/* Hero */}
       <Animated.View style={[styles.heroSection, { opacity: opacityHero }]}>
         <Text style={styles.greeting}>{getGreeting()}</Text>
         <Text style={styles.heroTitle}>Ready to check in</Text>
@@ -115,6 +118,7 @@ export default function HomeScreen() {
         />
       </Animated.View>
 
+      {/* Journal */}
       <Animated.View style={[styles.section, { opacity: opacityJournal }]}>
         <View style={styles.journalRow}>
           <AudioRowCard
@@ -129,6 +133,34 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
 
+      {/* AI Tools */}
+      <Animated.View style={[styles.section, { opacity: opacityAI }]}>
+        <Text style={styles.sectionLabel}>AI Tools</Text>
+        <View style={styles.quickColumn}>
+          <ModuleCard
+            onPress={() => router.push('/chat')}
+            title="AI Companion"
+            subtitle="Inner Ally · Coach"
+            icon="chatbubble-ellipses-outline"
+            iconColor={colors.accentTerracotta}
+            iconBackgroundColor={colors.accentTerracotta + '18'}
+            horizontal
+            width="full"
+          />
+          <ModuleCard
+            onPress={() => router.push('/future-skills')}
+            title="Future Skills"
+            subtitle="AI-powered skill practice"
+            icon="rocket-outline"
+            iconColor={colors.accentIndigo}
+            iconBackgroundColor={colors.accentIndigo + '18'}
+            horizontal
+            width="full"
+          />
+        </View>
+      </Animated.View>
+
+      {/* Daily Insight */}
       <Animated.View style={[styles.section, { opacity: opacityDaily }]}>
         <View style={[styles.tipCard, Shadows.card]}>
           <View style={styles.tipAccent} />
@@ -144,6 +176,7 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
 
+      {/* Quick Actions */}
       <Animated.View style={[styles.section, { opacity: opacityQuick }]}>
         <Text style={styles.sectionLabel}>Quick actions</Text>
         <View style={styles.quickColumn}>
@@ -186,6 +219,7 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
 
+      {/* Footer */}
       <Animated.View style={[styles.footer, { opacity: opacityFooter }]}>
         <View style={styles.privacyNote}>
           <Ionicons name="shield-checkmark-outline" size={14} color={colors.textMuted} />
@@ -206,7 +240,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     },
     content: {
       paddingHorizontal: Spacing.md,
-      paddingTop: Spacing.lg,
+      paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
       paddingBottom: Spacing['2xl'],
       maxWidth: Layout.maxWidth,
       alignSelf: 'center',
@@ -231,9 +265,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: Spacing.lg,
     },
     sectionLabel: {
-      fontSize: Typography.fontSize.micro,
+      fontSize: Typography.fontSize.xs,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
       marginBottom: Spacing.sm,
     },
     journalRow: {

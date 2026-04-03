@@ -182,11 +182,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.semibold,
-    color: colors.textPrimary,
+    color: colors.textMuted,
     marginBottom: Spacing.sm,
     paddingHorizontal: Spacing.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   featuredSection: {
     marginBottom: Spacing.lg,

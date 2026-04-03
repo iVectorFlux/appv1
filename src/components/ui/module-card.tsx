@@ -2,6 +2,7 @@
  * ModuleCard — Bento grid card (stats / competency / course)
  *
  * White bg, 24px radius, 24px padding. Icon, label, large number or title, subtitle.
+ * Horizontal variant: icon + title + subtitle + trailing chevron for list rows.
  */
 
 import React from 'react';
@@ -24,7 +25,7 @@ export type ModuleCardProps = {
   iconBackgroundColor: string;
   width?: 'full' | 'half';
   compact?: boolean;
-  /** Horizontal wide card for one row of quick actions (icon + title only) */
+  /** Horizontal wide card for one row of quick actions (icon + title + chevron) */
   horizontal?: boolean;
   /** Optional large number (e.g. streak) */
   value?: string | number;
@@ -59,9 +60,15 @@ export function ModuleCard({
         ]}
       >
         <View style={[styles.iconWrapHorizontal, { backgroundColor: iconBackgroundColor }]}>
-          <Ionicons name={icon} size={20} color={iconColor} />
+          <Ionicons name={icon} size={22} color={iconColor} />
         </View>
-        <Text style={styles.titleHorizontal} numberOfLines={1}>{title}</Text>
+        <View style={styles.horizontalContent}>
+          <Text style={styles.titleHorizontal} numberOfLines={1}>{title}</Text>
+          {subtitle != null && (
+            <Text style={styles.subtitleHorizontal} numberOfLines={1}>{subtitle}</Text>
+          )}
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.textLight} />
       </Pressable>
     );
   }
@@ -105,7 +112,7 @@ const createStyles = (colors: ReturnType<typeof useColors>, compact?: boolean, h
     card: {
       backgroundColor: colors.floating,
       borderRadius: Radius.lg,
-      padding: horizontal ? Spacing.sm : (compact ? Spacing.lg : Spacing.lg),
+      padding: horizontal ? Spacing.md : (compact ? Spacing.lg : Spacing.lg),
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -113,21 +120,31 @@ const createStyles = (colors: ReturnType<typeof useColors>, compact?: boolean, h
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: Spacing.sm,
+      gap: Spacing.md,
+      minWidth: 0,
+    },
+    horizontalContent: {
+      flex: 1,
       minWidth: 0,
     },
     iconWrapHorizontal: {
-      width: 36,
-      height: 36,
-      borderRadius: Radius.sm,
+      width: 42,
+      height: 42,
+      borderRadius: Radius.md,
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
     titleHorizontal: {
-      flex: 1,
-      fontSize: Typography.fontSize.sm,
+      fontSize: Typography.fontSize.base,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
+      lineHeight: Typography.fontSize.base * 1.3,
+    },
+    subtitleHorizontal: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
     },
     cardHalf: {
       flex: 1,
@@ -137,7 +154,7 @@ const createStyles = (colors: ReturnType<typeof useColors>, compact?: boolean, h
       width: '100%',
     },
     pressed: {
-      opacity: 0.92,
+      opacity: 0.88,
     },
     topRow: {
       flexDirection: 'row',
