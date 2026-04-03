@@ -20,6 +20,18 @@ export default function Root({ children }: PropsWithChildren) {
         />
         <link rel="icon" href={FAVICON_SVG} type="image/svg+xml" />
         <ScrollViewStyleReset />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+/* RN Web chat inputs: remove default focus ring (blue rectangle) */
+textarea:focus, textarea:focus-visible,
+input:focus, input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+`,
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

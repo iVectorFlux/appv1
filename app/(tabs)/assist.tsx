@@ -23,6 +23,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -93,6 +94,15 @@ const STORAGE_KEYS = {
   lastMode: 'eq_chat_lastMode',
   lastTime: 'eq_chat_lastTime',
 } as const;
+
+function introMessageForMode(selectedMode: ChatMode): Message {
+  return {
+    id: 'intro',
+    role: 'assistant',
+    content: MODE_CONFIG[selectedMode].intro,
+    createdAt: new Date().toISOString(),
+  };
+}
 
 function getApiBase(): string {
   const appUrl = Constants.expoConfig?.extra?.appUrl ?? '';
@@ -239,10 +249,11 @@ const bStyles = StyleSheet.create({
 export default function AssistScreen() {
   const router = useRouter();
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
 
   const [mode, setMode]         = useState<ChatMode>('inner_ally');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => [introMessageForMode('inner_ally')]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -251,25 +262,26 @@ export default function AssistScreen() {
 
   // ── Load history + check pending mode from home nudge ────────────────────
   const loadForMode = useCallback(async (selectedMode: ChatMode) => {
-    setIsLoadingHistory(true);
-    const history = user?.id ? await getChatHistory(user.id, selectedMode, 30) : [];
-    if (history.length > 0) {
-      setMessages(history.map((m) => ({
-        id: m.id ?? Math.random().toString(),
-        role: m.role,
-        content: m.content,
-        suggestion: (m.metadata?.suggestion as ChatSuggestion) ?? null,
-        createdAt: m.createdAt ?? new Date().toISOString(),
-      })));
-    } else {
-      setMessages([{
-        id: 'intro',
-        role: 'assistant',
-        content: MODE_CONFIG[selectedMode].intro,
-        createdAt: new Date().toISOString(),
-      }]);
+    setMessages([introMessageForMode(selectedMode)]);
+    if (!user?.id) {
+      setIsLoadingHistory(false);
+      return;
     }
-    setIsLoadingHistory(false);
+    setIsLoadingHistory(true);
+    try {
+      const history = await getChatHistory(user.id, selectedMode, 30);
+      if (history.length > 0) {
+        setMessages(history.map((m) => ({
+          id: m.id ?? Math.random().toString(),
+          role: m.role,
+          content: m.content,
+          suggestion: (m.metadata?.suggestion as ChatSuggestion) ?? null,
+          createdAt: m.createdAt ?? new Date().toISOString(),
+        })));
+      }
+    } finally {
+      setIsLoadingHistory(false);
+    }
   }, [user?.id]);
 
   // Check for pending mode on mount (set by home screen nudge)
@@ -285,8 +297,8 @@ export default function AssistScreen() {
   // Reload when mode switches
   const handleModeSwitch = useCallback((newMode: ChatMode) => {
     if (newMode === mode) return;
-    setMessages([]);
     setMode(newMode);
+    setMessages([introMessageForMode(newMode)]);
     loadForMode(newMode);
   }, [mode, loadForMode]);
 
@@ -400,7 +412,8 @@ export default function AssistScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      keyboardVerticalOffset={0}
     >
       {/* ── Header ── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -445,42 +458,50 @@ export default function AssistScreen() {
         </TouchableOpacity>
       )}
 
-      {/* ── Messages ── */}
-      {isLoadingHistory ? (
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          style={styles.scrollMessages}
-          contentContainerStyle={styles.messagesList}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-        >
-          {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              modeColor={modeColor}
-              colors={colors}
-              onGroundingPress={openGroundingFromAssist}
-              onLearnPress={openLearnFromAssist}
-            />
-          ))}
-          {isSending && (
-            <View style={styles.typing}>
-              {[0, 1, 2].map((i) => (
-                <View key={i} style={[styles.typingDot, { backgroundColor: colors.textMuted, opacity: 0.4 + i * 0.2 }]} />
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      )}
+      {/* ── Messages (welcome visible immediately; optional row while history loads) ── */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scrollMessages}
+        contentContainerStyle={styles.messagesList}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        {isLoadingHistory && (
+          <View style={styles.historyLoadingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
+        {messages.map((msg) => (
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            modeColor={modeColor}
+            colors={colors}
+            onGroundingPress={openGroundingFromAssist}
+            onLearnPress={openLearnFromAssist}
+          />
+        ))}
+        {isSending && (
+          <View style={styles.typing}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={[styles.typingDot, { backgroundColor: colors.textMuted, opacity: 0.4 + i * 0.2 }]} />
+            ))}
+          </View>
+        )}
+      </ScrollView>
 
       {/* ── Input bar ── */}
-      <View style={[styles.inputBar, { borderTopColor: colors.border, backgroundColor: colors.floating }]}>
+      <View
+        style={[
+          styles.inputBar,
+          {
+            borderTopColor: colors.border,
+            backgroundColor: colors.floating,
+            paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? Spacing.md : Spacing.sm),
+          },
+        ]}
+      >
         <TextInput
           style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
           value={inputText}
@@ -494,8 +515,15 @@ export default function AssistScreen() {
           onSubmitEditing={handleSend}
           underlineColorAndroid="transparent"
           selectionColor={modeColor}
+          cursorColor={modeColor}
           {...(Platform.OS === 'web'
-            ? ({ outlineStyle: 'none', outlineWidth: 0 } as object)
+            ? ({
+                outlineStyle: 'none',
+                outlineWidth: 0,
+                outlineColor: 'transparent',
+                boxShadow: 'none',
+                caretColor: colors.textPrimary,
+              } as object)
             : {})}
         />
         <TouchableOpacity
@@ -577,7 +605,7 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     fontWeight: Typography.fontWeight.medium,
   },
-  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  historyLoadingRow: { alignItems: 'center', paddingBottom: Spacing.sm },
   messagesList: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
@@ -600,7 +628,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: Spacing.sm,
     padding: Spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? Spacing.xl : Spacing.sm,
     borderTopWidth: 1,
   },
   input: {

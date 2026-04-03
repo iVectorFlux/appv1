@@ -21,6 +21,7 @@ import {
   Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import {
@@ -405,13 +406,24 @@ const msgStyles = StyleSheet.create({
 // Main screen
 // ─────────────────────────────────────────────────────────────────────────────
 
+function introMessageForMode(selectedMode: ChatMode): Message {
+  return {
+    id: 'intro',
+    role: 'assistant',
+    content: MODE_CONFIG[selectedMode].intro,
+    suggestion: null,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export default function ChatScreen() {
   const router = useRouter();
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
 
   const [mode, setMode] = useState<ChatMode>('inner_ally');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => [introMessageForMode('inner_ally')]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
@@ -423,29 +435,28 @@ export default function ChatScreen() {
   // ── Load history ────────────────────────────────────────────────────────────
   const loadHistory = useCallback(
     async (selectedMode: ChatMode) => {
-      if (!user?.id) return;
-      setIsHistoryLoading(true);
-      const history = await getChatHistory(user.id, selectedMode, 30);
-      if (history.length > 0) {
-        setMessages(
-          history.map((m) => ({
-            id: m.id ?? Math.random().toString(),
-            role: m.role,
-            content: m.content,
-            suggestion: (m.metadata?.suggestion as ChatSuggestion) ?? null,
-            createdAt: m.createdAt ?? new Date().toISOString(),
-          }))
-        );
-      } else {
-        setMessages([{
-          id: 'intro',
-          role: 'assistant',
-          content: MODE_CONFIG[selectedMode].intro,
-          suggestion: null,
-          createdAt: new Date().toISOString(),
-        }]);
+      setMessages([introMessageForMode(selectedMode)]);
+      if (!user?.id) {
+        setIsHistoryLoading(false);
+        return;
       }
-      setIsHistoryLoading(false);
+      setIsHistoryLoading(true);
+      try {
+        const history = await getChatHistory(user.id, selectedMode, 30);
+        if (history.length > 0) {
+          setMessages(
+            history.map((m) => ({
+              id: m.id ?? Math.random().toString(),
+              role: m.role,
+              content: m.content,
+              suggestion: (m.metadata?.suggestion as ChatSuggestion) ?? null,
+              createdAt: m.createdAt ?? new Date().toISOString(),
+            }))
+          );
+        }
+      } finally {
+        setIsHistoryLoading(false);
+      }
     },
     [user?.id]
   );
@@ -565,17 +576,19 @@ export default function ChatScreen() {
 
   const handleModeSwitch = (newMode: ChatMode) => {
     if (newMode === mode) return;
-    setMessages([]);
     setMode(newMode);
+    setMessages([introMessageForMode(newMode)]);
   };
 
   const canSend = inputText.trim().length > 0 && !isLoading;
 
+  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'padding';
+
   return (
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      behavior={keyboardBehavior}
+      keyboardVerticalOffset={0}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -610,36 +623,44 @@ export default function ChatScreen() {
         <View style={styles.backBtn} />
       </View>
 
-      {/* ── Messages ───────────────────────────────────────────────────────── */}
-      {isHistoryLoading ? (
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          style={styles.messagesList}
-          contentContainerStyle={styles.messagesContent}
-          keyboardDismissMode="interactive"
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {messages.map((msg) => (
-            <MessageRow
-              key={msg.id}
-              message={msg}
-              modeColor={modeColor}
-              colors={colors}
-              onGroundingPress={handleGroundingPress}
-              onLearnPress={handleLearnPress}
-            />
-          ))}
-          {isLoading && <TypingIndicator color={modeColor} />}
-        </ScrollView>
-      )}
+      {/* ── Messages (always show list so welcome / history is never hidden by load) ── */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.messagesList}
+        contentContainerStyle={styles.messagesContent}
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {isHistoryLoading && (
+          <View style={styles.historyLoadingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
+        {messages.map((msg) => (
+          <MessageRow
+            key={msg.id}
+            message={msg}
+            modeColor={modeColor}
+            colors={colors}
+            onGroundingPress={handleGroundingPress}
+            onLearnPress={handleLearnPress}
+          />
+        ))}
+        {isLoading && <TypingIndicator color={modeColor} />}
+      </ScrollView>
 
       {/* ── Input bar ──────────────────────────────────────────────────────── */}
-      <View style={[styles.inputBar, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.inputBar,
+          {
+            borderTopColor: colors.border,
+            backgroundColor: colors.background,
+            paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : Spacing.md),
+          },
+        ]}
+      >
         <View style={[styles.inputWrap, { backgroundColor: colors.floating, borderColor: canSend ? modeColor + '70' : colors.border }]}>
           <TextInput
             style={[styles.input, { color: colors.textPrimary }]}
@@ -653,11 +674,14 @@ export default function ChatScreen() {
             textAlignVertical="center"
             underlineColorAndroid="transparent"
             selectionColor={modeColor}
+            cursorColor={modeColor}
             {...(Platform.OS === 'web'
               ? ({
-                  // Remove default browser focus ring (blue rectangle)
                   outlineStyle: 'none',
                   outlineWidth: 0,
+                  outlineColor: 'transparent',
+                  boxShadow: 'none',
+                  caretColor: colors.textPrimary,
                 } as object)
               : {})}
           />
@@ -721,10 +745,9 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
   },
-  loadingCenter: {
-    flex: 1,
-    justifyContent: 'center',
+  historyLoadingRow: {
     alignItems: 'center',
+    paddingBottom: Spacing.sm,
   },
   messagesList: {
     flex: 1,
@@ -738,7 +761,6 @@ const styles = StyleSheet.create({
   inputBar: {
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? 32 : Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   inputWrap: {
