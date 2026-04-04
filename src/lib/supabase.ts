@@ -42,5 +42,10 @@ export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    // Bypass Web Locks: AsyncStorage is the session layer, not cookies/SSR.
+    // The default navigator.locks path can produce "signal is aborted without
+    // reason" when the lock is orphaned (React Strict Mode double-mount, etc.).
+    // Passing a passthrough function disables the lock mechanism safely.
+    lock: (_name, _acquireTimeout, fn) => fn(),
   },
 });

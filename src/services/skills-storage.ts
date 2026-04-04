@@ -7,6 +7,7 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 export interface SkillSessionMetadata {
+  practiceMode?: string;
   decisionOptions?: { id: string; label: string }[];
   selectedDecisionId?: string;
   selectedDecisionLabel?: string;

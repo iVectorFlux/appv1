@@ -1,9 +1,23 @@
 /**
  * Skill Lab data (routes remain /future-skills/*)
  *
- * Ten core skills for an AI-shaped workplace, each with atomic sub-skills.
- * First principles thinking is an atomic under Critical Thinking (not an 11th pillar).
+ * Eight core skills for an AI-shaped workplace.
+ * Each skill declares its practiceMode, which drives which AI workflow is used.
+ *
+ * Practice modes:
+ *  - decision_simulator  → scenario → forced A–D choice → reasoning → feedback
+ *  - output_audit        → flawed AI output → learner evaluates/critiques it → feedback
+ *  - open_reflection     → interpersonal/systemic situation → open-ended response → coaching
+ *  - generative_brainstorm → creative constraint → generate 4+ ideas → originality feedback
+ *  - draft_and_refine    → communication brief → learner drafts a message → audience-fit feedback
  */
+
+export type PracticeMode =
+  | 'decision_simulator'
+  | 'output_audit'
+  | 'open_reflection'
+  | 'generative_brainstorm'
+  | 'draft_and_refine';
 
 export interface AtomicSkill {
   id: string;
@@ -19,6 +33,7 @@ export interface FutureSkill {
   why: string;
   icon: string;
   color: string;
+  practiceMode: PracticeMode;
   atomicSkills: AtomicSkill[];
 }
 
@@ -29,9 +44,10 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     tagline: 'Work with AI, not against it',
     description:
       'Understand how AI systems work, when to trust them, and how to get the most out of them — without being replaced by them.',
-    why: 'AI is reshaping every industry. People who can direct, question, and collaborate with AI tools will outperform those who can\'t.',
+    why: 'AI is reshaping every industry. People who can direct, question, and evaluate AI tools will consistently outperform those who can\'t.',
     icon: 'hardware-chip-outline',
     color: '#6366F1',
+    practiceMode: 'output_audit',
     atomicSkills: [
       {
         id: 'prompt_craft',
@@ -64,6 +80,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'With AI generating content at scale, the ability to distinguish good reasoning from plausible-sounding nonsense is a superpower.',
     icon: 'bulb-outline',
     color: '#F59E0B',
+    practiceMode: 'decision_simulator',
     atomicSkills: [
       {
         id: 'bias_detection',
@@ -102,6 +119,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'Complex, novel problems are exactly what humans are still uniquely positioned to solve — if they have a structured approach.',
     icon: 'construct-outline',
     color: '#10B981',
+    practiceMode: 'decision_simulator',
     atomicSkills: [
       {
         id: 'root_cause',
@@ -134,6 +152,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'EQ is increasingly cited as the differentiator between average and exceptional leaders — and it can\'t be automated.',
     icon: 'heart-outline',
     color: '#EC4899',
+    practiceMode: 'open_reflection',
     atomicSkills: [
       {
         id: 'self_awareness_eq',
@@ -166,6 +185,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'The pace of change is accelerating. Adaptability is what separates people who grow through disruption from those who freeze.',
     icon: 'refresh-outline',
     color: '#14B8A6',
+    practiceMode: 'decision_simulator',
     atomicSkills: [
       {
         id: 'cognitive_flexibility',
@@ -190,70 +210,6 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     ],
   },
   {
-    id: 'digital_collaboration',
-    name: 'Digital Collaboration',
-    tagline: 'Make remote work, work',
-    description:
-      'Communicate, coordinate, and build trust with teammates across tools, time zones, and remote or hybrid environments.',
-    why: 'The majority of knowledge work now happens digitally. The ability to collaborate asynchronously and across cultures is essential.',
-    icon: 'people-outline',
-    color: '#3B82F6',
-    atomicSkills: [
-      {
-        id: 'async_communication',
-        name: 'Async Communication',
-        description: 'Write clearly and set context so others can act without needing you live.',
-      },
-      {
-        id: 'virtual_facilitation',
-        name: 'Virtual Facilitation',
-        description: 'Lead engaging and productive meetings and workshops in digital spaces.',
-      },
-      {
-        id: 'tool_literacy_collab',
-        name: 'Tool Literacy',
-        description: 'Use collaboration platforms effectively (e.g. Notion, Slack, Figma, Miro).',
-      },
-      {
-        id: 'digital_presence',
-        name: 'Digital Presence',
-        description: 'Build rapport and trust through screens with intentional communication.',
-      },
-    ],
-  },
-  {
-    id: 'data_literacy',
-    name: 'Data Literacy',
-    tagline: 'Read numbers like a story',
-    description:
-      'Understand, interpret, and communicate data — without needing to be a data scientist.',
-    why: 'Every role now involves data in some form. Those who can read, question, and use it effectively make better decisions.',
-    icon: 'bar-chart-outline',
-    color: '#8B5CF6',
-    atomicSkills: [
-      {
-        id: 'chart_reading',
-        name: 'Chart & Graph Reading',
-        description: 'Extract the right insights from visualisations quickly and accurately.',
-      },
-      {
-        id: 'stats_interpretation',
-        name: 'Statistical Interpretation',
-        description: 'Understand averages, trends, correlations, and what they do (and don\'t) mean.',
-      },
-      {
-        id: 'misinformation_spotting',
-        name: 'Misinformation Spotting',
-        description: 'Identify misleading or manipulated data presentations.',
-      },
-      {
-        id: 'data_questions',
-        name: 'Asking Data Questions',
-        description: 'Frame the right questions before diving into analysis.',
-      },
-    ],
-  },
-  {
     id: 'creative_thinking',
     name: 'Creative Thinking',
     tagline: 'Make new connections',
@@ -262,6 +218,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'Creativity is cited repeatedly as a top skill by future-of-work researchers — and it\'s something AI augments but can\'t replace.',
     icon: 'color-wand-outline',
     color: '#F97316',
+    practiceMode: 'generative_brainstorm',
     atomicSkills: [
       {
         id: 'lateral_thinking',
@@ -294,6 +251,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'Today\'s challenges — organisational, social, technological — are complex systems. Reductionist thinking alone won\'t solve them.',
     icon: 'git-network-outline',
     color: '#06B6D4',
+    practiceMode: 'open_reflection',
     atomicSkills: [
       {
         id: 'feedback_loops',
@@ -326,6 +284,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'The best ideas fail without effective communication. This skill amplifies everything else you do.',
     icon: 'chatbubbles-outline',
     color: '#EF4444',
+    practiceMode: 'draft_and_refine',
     atomicSkills: [
       {
         id: 'storytelling',
