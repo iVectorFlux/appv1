@@ -44,7 +44,7 @@ export interface AuthState {
  * for pattern detection and insights.
  */
 /** Source of the entry: Reflect flow (check-in + optional journal) or standalone Journal write. */
-export type JournalEntrySource = 'reflect' | 'journal_only';
+export type JournalEntrySource = 'reflect' | 'journal_only' | 'inner_ally';
 
 export interface JournalEntry {
   id: string;

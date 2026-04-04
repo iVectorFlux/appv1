@@ -1,7 +1,16 @@
 /**
  * Skills Storage — Skill Lab sessions and progress
  *
- * Works with skills_sessions and skills_progress tables (migration 00007).
+ * Works with skills_sessions and skills_progress tables (migrations 00007–00009).
+ *
+ * Per-session data saved:
+ *   skill_id, atomic_skill_id, scenario, ai_question, user_answer, ai_feedback,
+ *   strengths, growth_areas, attempt_number, duration_ms, practice_mode,
+ *   session_metadata (JSONB — decision options, chosen path, consequences, etc.)
+ *
+ * Aggregated per-skill analytics updated on every save:
+ *   sessions_completed, scenarios_attempted, total_time_ms,
+ *   last_practiced_at, top_strengths, top_growth_areas, atomic_skill_breakdown
  */
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
@@ -26,18 +35,28 @@ export interface SkillSession {
   strengths?: string[];
   growthAreas?: string[];
   attemptNumber: number;
+  /** Time in ms from scenario load to feedback received. */
+  durationMs?: number;
+  /** Which practice workflow was used. */
+  practiceMode?: string;
   sessionMetadata?: SkillSessionMetadata | null;
 }
 
 export interface SkillProgress {
   skillId: string;
   sessionsCompleted: number;
+  scenariosAttempted: number;
+  totalTimeMs: number;
   lastPracticedAt: string | null;
+  topStrengths: string[];
+  topGrowthAreas: string[];
+  atomicSkillBreakdown: Record<string, number>;
 }
 
-/**
- * Save a completed practice round (question + answer + feedback).
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Save a completed practice round
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function saveSkillSession(session: SkillSession): Promise<void> {
   if (!isSupabaseConfigured()) return;
 
@@ -52,6 +71,8 @@ export async function saveSkillSession(session: SkillSession): Promise<void> {
     strengths: session.strengths ?? null,
     growth_areas: session.growthAreas ?? null,
     attempt_number: session.attemptNumber,
+    duration_ms: session.durationMs ?? null,
+    practice_mode: session.practiceMode ?? null,
     session_metadata: session.sessionMetadata ?? null,
   });
 
@@ -60,30 +81,52 @@ export async function saveSkillSession(session: SkillSession): Promise<void> {
     return;
   }
 
-  await upsertSkillProgress(session.userId, session.skillId);
+  await upsertSkillProgress(session);
 }
 
-/**
- * Increment sessions_completed and update last_practiced_at for the skill.
- */
-async function upsertSkillProgress(userId: string, skillId: string): Promise<void> {
+// ─────────────────────────────────────────────────────────────────────────────
+// Upsert aggregated progress after each session
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function upsertSkillProgress(session: SkillSession): Promise<void> {
   if (!isSupabaseConfigured()) return;
 
   const { data: existing } = await supabase
     .from('skills_progress')
-    .select('sessions_completed')
-    .eq('user_id', userId)
-    .eq('skill_id', skillId)
+    .select('sessions_completed, scenarios_attempted, total_time_ms, top_strengths, top_growth_areas, atomic_skill_breakdown')
+    .eq('user_id', session.userId)
+    .eq('skill_id', session.skillId)
     .maybeSingle();
 
-  const currentCount = (existing as { sessions_completed: number } | null)?.sessions_completed ?? 0;
+  const prev = (existing as Record<string, unknown> | null) ?? {};
+  const prevCompleted = (prev.sessions_completed as number) ?? 0;
+  const prevAttempted = (prev.scenarios_attempted as number) ?? 0;
+  const prevTimeMs = (prev.total_time_ms as number) ?? 0;
+
+  // Merge strength/growth-area frequency maps
+  const prevStrengths = (prev.top_strengths as string[]) ?? [];
+  const prevGrowth = (prev.top_growth_areas as string[]) ?? [];
+  const newStrengths = mergeTagFrequency(prevStrengths, session.strengths ?? [], 10);
+  const newGrowth = mergeTagFrequency(prevGrowth, session.growthAreas ?? [], 10);
+
+  // Merge atomic skill breakdown: { atomicSkillId: count }
+  const prevBreakdown = (prev.atomic_skill_breakdown as Record<string, number>) ?? {};
+  const newBreakdown = { ...prevBreakdown };
+  if (session.atomicSkillId) {
+    newBreakdown[session.atomicSkillId] = (newBreakdown[session.atomicSkillId] ?? 0) + 1;
+  }
 
   const { error } = await supabase.from('skills_progress').upsert(
     {
-      user_id: userId,
-      skill_id: skillId,
-      sessions_completed: currentCount + 1,
+      user_id: session.userId,
+      skill_id: session.skillId,
+      sessions_completed: prevCompleted + 1,
+      scenarios_attempted: prevAttempted + 1,
+      total_time_ms: prevTimeMs + (session.durationMs ?? 0),
       last_practiced_at: new Date().toISOString(),
+      top_strengths: newStrengths,
+      top_growth_areas: newGrowth,
+      atomic_skill_breakdown: newBreakdown,
     },
     { onConflict: 'user_id,skill_id' }
   );
@@ -94,15 +137,69 @@ async function upsertSkillProgress(userId: string, skillId: string): Promise<voi
 }
 
 /**
- * Get all skill progress records for a user.
- * Returns a map of skillId → SkillProgress for easy lookup.
+ * Merge new tags into an existing frequency list (most frequent first).
+ * Deduplicates, increments counts for repeated tags, and caps at maxKeep.
+ *
+ * Stored format: flat string array ordered by frequency (index 0 = most common).
+ * Simple approach — no separate count map needed for display purposes.
  */
+function mergeTagFrequency(existing: string[], incoming: string[], maxKeep: number): string[] {
+  const countMap: Record<string, number> = {};
+  for (let i = 0; i < existing.length; i++) {
+    countMap[existing[i]] = (existing.length - i); // rough frequency weight
+  }
+  for (const tag of incoming) {
+    const key = tag.toLowerCase().trim();
+    if (key) countMap[key] = (countMap[key] ?? 0) + 1;
+  }
+  return Object.entries(countMap)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, maxKeep)
+    .map(([tag]) => tag);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Record a scenario start (for scenarios_attempted before feedback is received)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Call when a scenario is generated (before the user answers).
+ * Increments scenarios_attempted so we can track completion rates.
+ */
+export async function recordScenarioAttempt(userId: string, skillId: string): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+
+  const { data: existing } = await supabase
+    .from('skills_progress')
+    .select('scenarios_attempted, sessions_completed, total_time_ms')
+    .eq('user_id', userId)
+    .eq('skill_id', skillId)
+    .maybeSingle();
+
+  const prev = (existing as Record<string, unknown> | null) ?? {};
+
+  await supabase.from('skills_progress').upsert(
+    {
+      user_id: userId,
+      skill_id: skillId,
+      sessions_completed: (prev.sessions_completed as number) ?? 0,
+      scenarios_attempted: ((prev.scenarios_attempted as number) ?? 0) + 1,
+      total_time_ms: (prev.total_time_ms as number) ?? 0,
+    },
+    { onConflict: 'user_id,skill_id' }
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Read progress
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function getSkillsProgress(userId: string): Promise<Record<string, SkillProgress>> {
   if (!isSupabaseConfigured()) return {};
 
   const { data, error } = await supabase
     .from('skills_progress')
-    .select('skill_id, sessions_completed, last_practiced_at')
+    .select('skill_id, sessions_completed, scenarios_attempted, total_time_ms, last_practiced_at, top_strengths, top_growth_areas, atomic_skill_breakdown')
     .eq('user_id', userId);
 
   if (error) {
@@ -115,15 +212,21 @@ export async function getSkillsProgress(userId: string): Promise<Record<string, 
     result[row.skill_id as string] = {
       skillId: row.skill_id as string,
       sessionsCompleted: (row.sessions_completed as number) ?? 0,
+      scenariosAttempted: (row.scenarios_attempted as number) ?? 0,
+      totalTimeMs: (row.total_time_ms as number) ?? 0,
       lastPracticedAt: (row.last_practiced_at as string) ?? null,
+      topStrengths: (row.top_strengths as string[]) ?? [],
+      topGrowthAreas: (row.top_growth_areas as string[]) ?? [],
+      atomicSkillBreakdown: (row.atomic_skill_breakdown as Record<string, number>) ?? {},
     };
   }
   return result;
 }
 
-/**
- * Get recent practice sessions for a specific skill.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Read sessions
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function getSkillSessions(
   userId: string,
   skillId: string,
@@ -155,5 +258,7 @@ export async function getSkillSessions(
     strengths: (row.strengths as string[]) ?? [],
     growthAreas: (row.growth_areas as string[]) ?? [],
     attemptNumber: (row.attempt_number as number) ?? 1,
+    durationMs: (row.duration_ms as number) ?? undefined,
+    practiceMode: (row.practice_mode as string) ?? undefined,
   }));
 }

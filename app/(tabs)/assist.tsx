@@ -33,7 +33,8 @@ import {
   Radius,
 } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
-import { saveChatMessage, getChatHistory } from '@/services/chat-storage';
+import { supabase } from '@/lib/supabase';
+import { saveChatMessage, getChatHistory, autoJournalFromChat } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
 import { LEARNING_MODULES } from '@/data/learning-content';
 import { requestChatCompletion } from '@/utils/vercel-api';
@@ -354,7 +355,24 @@ export default function AssistScreen() {
       setMessages((prev) => [...prev, assistantMsg]);
 
       if (user?.id) {
-        saveChatMessage({ userId: user.id, mode, role: 'assistant', content: data.reply, metadata: { suggestion } });
+        // Save assistant turn — capture the row id so the auto-journal can link back
+        const savedAssistant = await supabase
+          .from('ai_chat_messages')
+          .insert({ user_id: user.id, mode, role: 'assistant', content: data.reply, metadata: { suggestion } })
+          .select('id')
+          .single();
+        const assistantMsgId = (savedAssistant.data as { id?: string } | null)?.id;
+
+        // Auto-journal: when Inner Ally detects emotions, silently record the
+        // user's message + tagged emotions as a journal entry for analytics.
+        if (mode === 'inner_ally' && suggestion.emotions?.length) {
+          autoJournalFromChat({
+            userId: user.id,
+            userMessage: text,
+            emotions: suggestion.emotions,
+            chatMessageId: assistantMsgId,
+          });
+        }
       }
     } catch (e) {
       const detail = e instanceof Error ? e.message : 'Something went wrong.';

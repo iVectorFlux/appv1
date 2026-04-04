@@ -77,6 +77,43 @@ export async function getChatHistory(
 }
 
 /**
+ * Auto-save an emotional moment from Inner Ally chat as a journal entry.
+ *
+ * Called silently in the background after the AI returns detected emotions.
+ * Stores the user's raw message as plain text (no encryption — encryption_key_id
+ * is NULL, which the journal reader uses to decide how to display it).
+ * entry_source = 'inner_ally' distinguishes these from manual journal entries.
+ */
+export async function autoJournalFromChat({
+  userId,
+  userMessage,
+  emotions,
+  chatMessageId,
+}: {
+  userId: string;
+  userMessage: string;
+  emotions: string[];
+  chatMessageId?: string;
+}): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  if (!emotions.length) return;
+
+  const { error } = await supabase.from('journal_entries').insert({
+    user_id: userId,
+    entry_source: 'inner_ally',
+    emotions: emotions,
+    journal_text_encrypted: userMessage,
+    encryption_key_id: null,
+    word_count: userMessage.trim().split(/\s+/).filter(Boolean).length,
+    chat_message_id: chatMessageId ?? null,
+  });
+
+  if (error) {
+    console.error('[ChatStorage] Failed to auto-journal emotional moment:', error);
+  }
+}
+
+/**
  * Delete all chat messages for a user in a given mode (clear conversation).
  */
 export async function clearChatHistory(userId: string, mode: ChatMode): Promise<void> {

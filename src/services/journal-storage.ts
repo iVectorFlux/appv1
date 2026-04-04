@@ -52,7 +52,9 @@ function mapSupabaseRowToEntry(row: Record<string, unknown>): JournalEntry {
     userId: row.user_id as string,
     createdAt,
     updatedAt,
-    entrySource: (row.entry_source === 'reflect' ? 'reflect' : 'journal_only') as JournalEntry['entrySource'],
+    entrySource: (['reflect', 'journal_only', 'inner_ally'].includes(row.entry_source as string)
+      ? row.entry_source
+      : 'journal_only') as JournalEntry['entrySource'],
     pleasantness: row.pleasantness as number | undefined,
     emotions: normalizeEmotions(row.emotions),
     energyLevel: (row.energy_level as JournalEntry['energyLevel']) ?? 1,

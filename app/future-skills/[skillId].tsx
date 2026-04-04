@@ -36,7 +36,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { getSkillById } from '@/data/future-skills';
 import type { AtomicSkill, FutureSkill, PracticeMode } from '@/data/future-skills';
-import { saveSkillSession } from '@/services/skills-storage';
+import { saveSkillSession, recordScenarioAttempt } from '@/services/skills-storage';
 import { buildVercelApiUrl } from '@/utils/vercel-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -322,6 +322,8 @@ export default function SkillDetailScreen() {
   const [roundsSaved, setRoundsSaved] = useState(0);
 
   const scrollRef = useRef<ScrollView>(null);
+  /** Timestamp when the current scenario started loading — used for duration_ms. */
+  const scenarioStartedAt = useRef<number>(0);
   const styles = createStyles(colors);
 
   if (!skill) {
@@ -349,6 +351,12 @@ export default function SkillDetailScreen() {
     setDecisionOptions([]);
     setSelectedDecisionId(null);
     setPracticeQuestion('');
+    scenarioStartedAt.current = Date.now();
+
+    // Record scenario attempt (increments scenarios_attempted for analytics)
+    if (user?.id) {
+      recordScenarioAttempt(user.id, skill.id);
+    }
 
     try {
       const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
@@ -442,6 +450,9 @@ export default function SkillDetailScreen() {
         const chosen = isDecisionMode
           ? decisionOptions.find((o) => o.id === selectedDecisionId)
           : undefined;
+        const durationMs = scenarioStartedAt.current > 0
+          ? Date.now() - scenarioStartedAt.current
+          : undefined;
 
         saveSkillSession({
           userId: user.id,
@@ -454,6 +465,8 @@ export default function SkillDetailScreen() {
           strengths: data.strengths ?? [],
           growthAreas: data.growthAreas ?? [],
           attemptNumber,
+          durationMs,
+          practiceMode,
           sessionMetadata: {
             practiceMode,
             decisionOptions: isDecisionMode ? decisionOptions : undefined,
