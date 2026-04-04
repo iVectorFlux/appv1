@@ -65,19 +65,90 @@ JSON only, no markdown:
 Use ids exactly a, b, c, d in order.`;
 }
 
-function buildOutputAuditPrompt(skillName: string, atomicSkillName?: string): string {
-  const focus = atomicSkillName ? `${skillName} — specifically "${atomicSkillName}"` : skillName;
-  return `You are designing an AI output evaluation exercise for the skill: "${focus}".
+/**
+ * output_audit: each atomic under AI Literacy must be a DIFFERENT exercise shape.
+ * Do NOT copy example "question" text from this file — the model must invent a fresh,
+ * short (1–2 sentence) task line each time, matched to the sub-skill.
+ */
+function buildOutputAuditPrompt(
+  skillId: string | undefined,
+  skillName: string,
+  atomicSkillId?: string,
+  atomicSkillName?: string
+): string {
+  const focus = atomicSkillName ? `${skillName} — "${atomicSkillName}"` : skillName;
 
-Generate a short piece of plausible-but-flawed AI-generated content for a realistic workplace context (a summary, recommendation, analysis, or explanation — 3-6 sentences). The content should have 2-4 subtle issues: factual overconfidence, missing caveats, implicit bias, irrelevant detail, misleading framing, or logical gaps. Do NOT make the flaws obvious — they should require careful reading.
-
-Then write a question asking the learner to audit this AI output. The question should prompt them to identify specific issues, explain what's wrong or missing, and state what they'd verify or change before using it.
-
-JSON only, no markdown:
+  const jsonShape = `JSON only, no markdown, exactly two keys "scenario" and "question":
 {
-  "scenario": "[The AI-generated content to evaluate]",
-  "question": "Audit this AI output: what issues do you spot? What's wrong, missing, or misleading — and what would you fix or verify before using it?"
-}`;
+  "scenario": "...",
+  "question": "..."
+}
+
+CRITICAL for "question": write ONE or TWO short sentences unique to THIS exercise. Do NOT reuse generic boilerplate like "Audit this AI output" every time. Tie the ask directly to the sub-skill below.`;
+
+  if (skillId === 'ai_literacy' && atomicSkillId === 'prompt_craft') {
+    return `You are designing a PROMPT CRAFTING exercise for "${focus}".
+
+The "scenario" field must contain TWO labeled parts in plain text:
+(1) A weak or vague USER PROMPT someone might send to an AI (1-3 sentences).
+(2) A MEDIOCRE AI REPLY that follows from that bad prompt (2-4 sentences) — shallow, generic, or guessing.
+
+Flaws should mainly be fixable by improving the USER PROMPT (missing context, unclear goal, no constraints, wrong format request).
+
+The "question" must ask ONLY about improving the prompt: what is wrong with how the user asked, and how would they rewrite the prompt (not a full essay — concise).
+
+${jsonShape}`;
+  }
+
+  if (skillId === 'ai_literacy' && atomicSkillId === 'output_evaluation') {
+    return `You are designing an OUTPUT EVALUATION exercise for "${focus}".
+
+The "scenario" is ONLY the AI-generated block (no meta commentary): 3-6 sentences of plausible workplace text (summary, analysis, or recommendation) with 2-4 subtle issues: overconfidence, missing caveats, weak sourcing, logical gaps, or misleading framing.
+
+The "question" must ask them to critique the OUTPUT only: accuracy, what's overstated, what's missing, and what they would verify before trusting or sharing it.
+
+${jsonShape}`;
+  }
+
+  if (skillId === 'ai_literacy' && atomicSkillId === 'ai_ethics') {
+    return `You are designing an AI ETHICS exercise for "${focus}".
+
+The "scenario" is AI-generated or policy-style workplace text (3-6 sentences) that embeds 2-3 ethical risks among: demographic bias, privacy/PII mishandling, surveillance, intellectual property, misinformation, automation harm, or dual-use / misuse. Keep flaws plausible, not cartoonish.
+
+The "question" must ask specifically about ETHICAL risks and safeguards — not generic "is it accurate".
+
+${jsonShape}`;
+  }
+
+  if (skillId === 'ai_literacy' && atomicSkillId === 'tool_fluency') {
+    return `You are designing a TOOL FLUENCY exercise for "${focus}".
+
+The "scenario" describes a real task and how someone plans to use AI tools (3-5 sentences). Include a poor fit: wrong tool for the job, redundant tools, missing human step, API/data leakage risk, or workflow that won't scale. Do not name real vendors as villains; keep it generic ("a chat assistant", "an image model", "a code copilot").
+
+The "question" must ask which tool choice or workflow they'd change and why — trade-offs included.
+
+${jsonShape}`;
+  }
+
+  // AI Literacy — full skill (no sub-skill): rotate emphasis each generation
+  if (skillId === 'ai_literacy' && !atomicSkillId) {
+    return `You are designing an AI LITERACY practice for the FULL skill "${skillName}" (no single sub-skill).
+
+Pick ONE emphasis at random for THIS JSON only: (A) weak user prompt + mediocre reply — ask how to fix the prompt, OR (B) flawed AI output only — ask for output critique, OR (C) ethical risk in AI use — ask for ethics/guardrails, OR (D) wrong tool/workflow — ask what they'd use instead.
+
+State the emphasis in the "question" in one short phrase so the learner knows what lens to use.
+
+${jsonShape}`;
+  }
+
+  // Any other skill using output_audit (fallback)
+  return `You are designing an AI output evaluation exercise for: "${focus}".
+
+"scenario": plausible-but-flawed AI-style workplace content (3-6 sentences) with subtle issues.
+
+"question": ONE or TWO sentences, unique, asking what is wrong and what they would verify or change. Do NOT copy canned audit wording.
+
+${jsonShape}`;
 }
 
 function buildOpenReflectionPrompt(skillName: string, atomicSkillName?: string): string {
@@ -450,7 +521,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   const {
+    skillId,
     skillName,
+    atomicSkillId,
     atomicSkillName,
     scenario,
     userAnswer,
@@ -470,7 +543,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       let promptText: string;
       switch (practiceMode) {
         case 'output_audit':
-          promptText = buildOutputAuditPrompt(skillName, atomicSkillName);
+          promptText = buildOutputAuditPrompt(skillId, skillName, atomicSkillId, atomicSkillName);
           break;
         case 'open_reflection':
           promptText = buildOpenReflectionPrompt(skillName, atomicSkillName);

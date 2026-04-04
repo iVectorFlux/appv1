@@ -74,15 +74,44 @@ interface ModeConfig {
   loadingText: string;
 }
 
-function getModeConfig(mode: PracticeMode): ModeConfig {
+function getModeConfig(
+  mode: PracticeMode,
+  opts?: { skillId?: string; atomicSkillId?: string | null }
+): ModeConfig {
+  const { skillId, atomicSkillId } = opts ?? {};
+
   switch (mode) {
-    case 'output_audit':
+    case 'output_audit': {
+      // Scenario title reflects the exercise shape (API text differs per atomic for AI Literacy).
+      let scenarioLabel = 'Exercise';
+      if (skillId === 'ai_literacy') {
+        switch (atomicSkillId) {
+          case 'prompt_craft':
+            scenarioLabel = 'Weak prompt + AI reply';
+            break;
+          case 'output_evaluation':
+            scenarioLabel = 'AI output to evaluate';
+            break;
+          case 'ai_ethics':
+            scenarioLabel = 'AI / policy scenario';
+            break;
+          case 'tool_fluency':
+            scenarioLabel = 'Tool & workflow';
+            break;
+          default:
+            scenarioLabel = 'AI literacy exercise';
+        }
+      } else {
+        scenarioLabel = 'AI output to evaluate';
+      }
       return {
-        scenarioLabel: 'AI Output to Evaluate',
-        inputPlaceholder: 'List the issues you spotted — accuracy, bias, missing caveats, misleading framing...',
-        hint: "Read the AI output → spot the issues → explain what you'd fix or verify before using it.",
-        loadingText: 'Generating AI output to evaluate...',
+        scenarioLabel,
+        // Placeholder stays short — the task lives in the "question" line only (no duplicate audit essay).
+        inputPlaceholder: 'Be specific — what you noticed, why it matters, what you’d change or verify.',
+        hint: 'Each sub-skill uses a different exercise. Pick a sub-skill, then start practice.',
+        loadingText: 'Generating your exercise...',
       };
+    }
     case 'open_reflection':
       return {
         scenarioLabel: 'Situation',
@@ -121,6 +150,25 @@ const FALLBACK_DECISION_OPTIONS: DecisionOption[] = [
   { id: 'c', label: 'Delay the call until you have more data or input' },
   { id: 'd', label: 'Align stakeholders first, then decide together' },
 ];
+
+/** Client fallback if the model omits "question" — matches API branches per atomic. */
+function fallbackOutputAuditQuestion(skillId: string, atomicSkillId: string | null): string {
+  if (skillId !== 'ai_literacy') {
+    return 'What issues do you notice, and what would you change or verify before using this?';
+  }
+  switch (atomicSkillId) {
+    case 'prompt_craft':
+      return 'What is weak about how the user asked, and how would you rewrite the prompt for a clearer, safer answer?';
+    case 'output_evaluation':
+      return 'What is wrong or overstated in the AI output, and what would you check before trusting or sharing it?';
+    case 'ai_ethics':
+      return 'What ethical risks do you see (bias, privacy, IP, misuse), and what guardrails would you add?';
+    case 'tool_fluency':
+      return 'Is this the right tool and workflow for the task? What would you use instead or add, and why?';
+    default:
+      return 'Using prompt quality, output accuracy, ethics, or tool fit — explain what needs fixing and how.';
+  }
+}
 
 function parseDecisionOptionsFromApi(data: Record<string, unknown>): DecisionOption[] {
   const raw =
@@ -338,7 +386,10 @@ export default function SkillDetailScreen() {
   }
 
   const practiceMode = skill.practiceMode;
-  const modeConfig = getModeConfig(practiceMode);
+  const modeConfig = getModeConfig(practiceMode, {
+    skillId: skill.id,
+    atomicSkillId: selectedAtomicId,
+  });
   const selectedAtomic = skill.atomicSkills.find((a) => a.id === selectedAtomicId) ?? null;
   const isDecisionMode = practiceMode === 'decision_simulator';
 
@@ -392,9 +443,14 @@ export default function SkillDetailScreen() {
         setPracticeQuestion(reasoning);
         setPhase('choosing_decision');
       } else {
-        const question = String(
+        const rawQ = String(
           data.question ?? data.auditPrompt ?? data.ideaPrompt ?? data.draftPrompt ?? ''
-        ).trim() || 'Respond to the situation above using the skill you are practising.';
+        ).trim();
+        const question =
+          rawQ ||
+          (practiceMode === 'output_audit'
+            ? fallbackOutputAuditQuestion(skill.id, selectedAtomicId)
+            : 'Respond to the situation above using the skill you are practising.');
 
         setPracticeQuestion(question);
         setPhase('answering');
@@ -404,7 +460,7 @@ export default function SkillDetailScreen() {
     } catch {
       setPhase('idle');
     }
-  }, [skill, selectedAtomicId, selectedAtomic, practiceMode, isDecisionMode]);
+  }, [skill, selectedAtomicId, selectedAtomic, practiceMode, isDecisionMode, user?.id]);
 
   // ── Submit answer: get feedback ─────────────────────────────────────────────
   const submitAnswer = useCallback(async () => {
@@ -687,7 +743,9 @@ export default function SkillDetailScreen() {
                       <Text style={[styles.questionLabel, { color: colors.textSecondary }]}>
                         {isDecisionMode
                           ? `Reasoning${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`
-                          : `Your response${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`}
+                          : practiceMode === 'output_audit'
+                            ? `Task${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`
+                            : `Your response${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`}
                       </Text>
                       <Text style={[styles.questionText, { color: colors.textPrimary }]}>
                         {practiceQuestion}
