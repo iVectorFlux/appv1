@@ -1,8 +1,5 @@
 /**
- * Future Skills — Landing Page
- *
- * Displays a grid of the top 10 future skills.
- * Each card shows progress (sessions completed) and links to the skill detail.
+ * Skill Lab — landing (route: /future-skills)
  */
 
 import React, { useEffect, useState } from 'react';
@@ -55,7 +52,7 @@ export default function FutureSkillsScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Future Skills</Text>
+          <Text style={styles.title}>Skill Lab</Text>
           <Text style={styles.subtitle}>
             The 10 skills that matter most in an AI-powered world — practice with AI coaching
           </Text>
@@ -80,7 +77,7 @@ export default function FutureSkillsScreen() {
 
       {/* Skills grid */}
       <View style={styles.grid}>
-        {FUTURE_SKILLS.map((skill, index) => {
+        {FUTURE_SKILLS.map((skill) => {
           const p = progress[skill.id];
           const hasPracticed = (p?.sessionsCompleted ?? 0) > 0;
 
@@ -91,11 +88,6 @@ export default function FutureSkillsScreen() {
               onPress={() => router.push(`/future-skills/${skill.id}`)}
               activeOpacity={0.75}
             >
-              {/* Number badge */}
-              <View style={[styles.numberBadge, { backgroundColor: skill.color + '18' }]}>
-                <Text style={[styles.numberText, { color: skill.color }]}>{index + 1}</Text>
-              </View>
-
               {/* Icon */}
               <View style={[styles.iconCircle, { backgroundColor: skill.color + '18' }]}>
                 <Ionicons name={skill.icon as any} size={22} color={skill.color} />
@@ -129,7 +121,6 @@ export default function FutureSkillsScreen() {
                     <Text style={[styles.startText, { color: skill.color }]}>Start</Text>
                   </View>
                 )}
-                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </View>
             </TouchableOpacity>
           );
@@ -214,21 +205,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.sm,
-      position: 'relative',
-    },
-    numberBadge: {
-      position: 'absolute',
-      top: Spacing.sm,
-      right: Spacing.sm + 24,
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    numberText: {
-      fontSize: Typography.fontSize.xs - 1,
-      fontWeight: Typography.fontWeight.bold,
     },
     iconCircle: {
       width: 44,

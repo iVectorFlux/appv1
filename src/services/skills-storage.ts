@@ -1,5 +1,5 @@
 /**
- * Skills Storage — save sessions and track progress for Future Skills
+ * Skills Storage — Skill Lab sessions and progress
  *
  * Works with skills_sessions and skills_progress tables (migration 00007).
  */

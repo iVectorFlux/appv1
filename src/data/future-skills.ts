@@ -1,8 +1,8 @@
 /**
- * Future Skills Data
+ * Skill Lab data (routes remain /future-skills/*)
  *
- * Top 10 future-of-work skills, each with atomic sub-skills.
- * Used in the Future Skills section for browsing and AI-powered practice.
+ * Ten core skills for an AI-shaped workplace, each with atomic sub-skills.
+ * First principles thinking is an atomic under Critical Thinking (not an 11th pillar).
  */
 
 export interface AtomicSkill {
@@ -69,6 +69,12 @@ export const FUTURE_SKILLS: FutureSkill[] = [
         id: 'bias_detection',
         name: 'Bias Detection',
         description: 'Spot cognitive biases in yourself and others that distort judgement.',
+      },
+      {
+        id: 'first_principles_thinking',
+        name: 'First Principles Thinking',
+        description:
+          'Strip away analogy and convention; break problems down to fundamental truths, then reason up from there.',
       },
       {
         id: 'argument_analysis',

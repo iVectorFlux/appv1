@@ -1,7 +1,5 @@
 /**
- * Future Skills Layout
- *
- * Protects future-skills routes: requires sign-in and completed onboarding.
+ * Skill Lab stack (path: /future-skills). Auth + onboarding gate.
  */
 
 import { Redirect, Stack } from 'expo-router';

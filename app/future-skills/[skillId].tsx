@@ -1,5 +1,5 @@
 /**
- * Future Skill Detail + AI Practice
+ * Skill Lab — skill detail + AI practice
  *
  * Shows skill info, atomic sub-skills, and an interactive AI practice session:
  *   1. AI generates a scenario + question
