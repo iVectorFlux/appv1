@@ -6,6 +6,14 @@
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
+export interface SkillSessionMetadata {
+  decisionOptions?: { id: string; label: string }[];
+  selectedDecisionId?: string;
+  selectedDecisionLabel?: string;
+  consequences?: string;
+  reflectionQuestion?: string;
+}
+
 export interface SkillSession {
   userId: string;
   skillId: string;
@@ -17,6 +25,7 @@ export interface SkillSession {
   strengths?: string[];
   growthAreas?: string[];
   attemptNumber: number;
+  sessionMetadata?: SkillSessionMetadata | null;
 }
 
 export interface SkillProgress {
@@ -42,6 +51,7 @@ export async function saveSkillSession(session: SkillSession): Promise<void> {
     strengths: session.strengths ?? null,
     growth_areas: session.growthAreas ?? null,
     attempt_number: session.attemptNumber,
+    session_metadata: session.sessionMetadata ?? null,
   });
 
   if (error) {

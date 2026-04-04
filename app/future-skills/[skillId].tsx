@@ -2,10 +2,8 @@
  * Skill Lab — skill detail + AI practice
  *
  * Shows skill info, atomic sub-skills, and an interactive AI practice session:
- *   1. AI generates a scenario + question
- *   2. User types their answer
- *   3. AI gives structured feedback (strengths, growth areas, refinement prompt)
- *   4. User can refine and try again, or request a new scenario
+ *   Decision simulator: scenario → forced A–D choice → reasoning (skill-based) →
+ *   feedback + consequence simulation + meta reflection question → refine or new scenario.
  *
  * Uses /api/skills-coach for AI calls.
  * Saves completed rounds to Supabase via skills-storage.ts.
@@ -42,7 +40,18 @@ import { buildVercelApiUrl } from '@/utils/vercel-api';
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type PracticePhase = 'idle' | 'loading_scenario' | 'answering' | 'loading_feedback' | 'feedback';
+type PracticePhase =
+  | 'idle'
+  | 'loading_scenario'
+  | 'choosing_decision'
+  | 'answering'
+  | 'loading_feedback'
+  | 'feedback';
+
+interface DecisionOption {
+  id: string;
+  label: string;
+}
 
 interface Feedback {
   feedback: string;
@@ -50,6 +59,8 @@ interface Feedback {
   growthAreas: string[];
   refinementPrompt: string;
   nextScenarioAvailable: boolean;
+  consequences: string;
+  reflectionQuestion: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,10 +126,8 @@ function FeedbackCard({
 }) {
   return (
     <View style={[fbStyles.card, { backgroundColor: colors.floating, borderColor: colors.border }]}>
-      {/* Overall feedback */}
       <Text style={[fbStyles.feedbackText, { color: colors.textPrimary }]}>{fb.feedback}</Text>
 
-      {/* Strengths */}
       {fb.strengths.length > 0 && (
         <View style={fbStyles.section}>
           <View style={fbStyles.sectionHeader}>
@@ -133,7 +142,6 @@ function FeedbackCard({
         </View>
       )}
 
-      {/* Growth areas */}
       {fb.growthAreas.length > 0 && (
         <View style={fbStyles.section}>
           <View style={fbStyles.sectionHeader}>
@@ -150,15 +158,40 @@ function FeedbackCard({
         </View>
       )}
 
-      {/* Refinement prompt */}
-      {fb.refinementPrompt && (
+      {fb.consequences?.trim() ? (
+        <View style={[fbStyles.consequenceBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={fbStyles.sectionHeader}>
+            <Ionicons name="git-branch-outline" size={14} color={colors.accentIndigo} />
+            <Text style={[fbStyles.sectionTitle, { color: colors.accentIndigo }]}>
+              If you chose this path
+            </Text>
+          </View>
+          <Text style={[fbStyles.consequenceText, { color: colors.textPrimary }]}>
+            {fb.consequences.split('\n').filter(Boolean).join('\n')}
+          </Text>
+        </View>
+      ) : null}
+
+      {fb.reflectionQuestion?.trim() ? (
+        <View style={[fbStyles.reflectionBox, { borderColor: skill.color + '40', backgroundColor: skill.color + '10' }]}>
+          <Ionicons name="sparkles-outline" size={16} color={skill.color} />
+          <View style={{ flex: 1 }}>
+            <Text style={[fbStyles.reflectionLabel, { color: skill.color }]}>Reflect</Text>
+            <Text style={[fbStyles.reflectionQ, { color: colors.textPrimary }]}>
+              {fb.reflectionQuestion}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {fb.refinementPrompt?.trim() ? (
         <View style={[fbStyles.refinementBox, { backgroundColor: skill.color + '12', borderColor: skill.color + '30' }]}>
           <Ionicons name="arrow-forward-circle-outline" size={16} color={skill.color} />
           <Text style={[fbStyles.refinementText, { color: colors.textPrimary }]}>
             {fb.refinementPrompt}
           </Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -207,6 +240,36 @@ const fbStyles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     lineHeight: Typography.fontSize.sm * 1.5,
   },
+  consequenceBox: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  consequenceText: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: Typography.fontSize.sm * 1.55,
+  },
+  reflectionBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+  },
+  reflectionLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  reflectionQ: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+    lineHeight: Typography.fontSize.sm * 1.5,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -239,7 +302,9 @@ export default function SkillDetailScreen() {
   const [selectedAtomicId, setSelectedAtomicId] = useState<string | null>(null);
   const [phase, setPhase] = useState<PracticePhase>('idle');
   const [scenario, setScenario] = useState('');
-  const [aiQuestion, setAiQuestion] = useState('');
+  const [decisionOptions, setDecisionOptions] = useState<DecisionOption[]>([]);
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  const [reasoningPrompt, setReasoningPrompt] = useState('');
   const [userAnswer, setUserAnswer] = useState('');
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [attemptNumber, setAttemptNumber] = useState(1);
@@ -267,6 +332,9 @@ export default function SkillDetailScreen() {
     setFeedback(null);
     setUserAnswer('');
     setAttemptNumber(1);
+    setDecisionOptions([]);
+    setSelectedDecisionId(null);
+    setReasoningPrompt('');
 
     try {
       const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
@@ -283,10 +351,15 @@ export default function SkillDetailScreen() {
 
       if (!res.ok) throw new Error('API error');
 
-      const data = (await res.json()) as { scenario: string; question: string };
+      const data = (await res.json()) as {
+        scenario: string;
+        decisionOptions: DecisionOption[];
+        reasoningPrompt: string;
+      };
       setScenario(data.scenario ?? '');
-      setAiQuestion(data.question ?? '');
-      setPhase('answering');
+      setDecisionOptions(Array.isArray(data.decisionOptions) ? data.decisionOptions : []);
+      setReasoningPrompt(data.reasoningPrompt ?? '');
+      setPhase('choosing_decision');
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
     } catch {
@@ -297,7 +370,7 @@ export default function SkillDetailScreen() {
   // ── Submit answer: get feedback ───────────────────────────────────────────
   const submitAnswer = useCallback(async () => {
     const answer = userAnswer.trim();
-    if (!answer || phase !== 'answering') return;
+    if (!answer || phase !== 'answering' || !selectedDecisionId) return;
 
     setPhase('loading_feedback');
 
@@ -311,7 +384,9 @@ export default function SkillDetailScreen() {
           atomicSkillId: selectedAtomicId ?? null,
           atomicSkillName: selectedAtomic?.name ?? null,
           scenario,
-          question: aiQuestion,
+          reasoningPrompt,
+          decisionOptions,
+          selectedDecisionId,
           userAnswer: answer,
           attemptNumber,
         }),
@@ -323,19 +398,26 @@ export default function SkillDetailScreen() {
       setFeedback(data);
       setPhase('feedback');
 
-      // Save to Supabase
+      const chosen = decisionOptions.find((o) => o.id === selectedDecisionId);
       if (user?.id) {
         saveSkillSession({
           userId: user.id,
           skillId: skill.id,
           atomicSkillId: selectedAtomicId,
           scenario,
-          aiQuestion,
+          aiQuestion: reasoningPrompt,
           userAnswer: answer,
           aiFeedback: data.feedback ?? '',
           strengths: data.strengths ?? [],
           growthAreas: data.growthAreas ?? [],
           attemptNumber,
+          sessionMetadata: {
+            decisionOptions,
+            selectedDecisionId,
+            selectedDecisionLabel: chosen?.label,
+            consequences: data.consequences,
+            reflectionQuestion: data.reflectionQuestion,
+          },
         });
         setRoundsSaved((n) => n + 1);
       }
@@ -344,7 +426,19 @@ export default function SkillDetailScreen() {
     } catch {
       setPhase('answering');
     }
-  }, [userAnswer, phase, skill, selectedAtomicId, selectedAtomic, scenario, aiQuestion, attemptNumber, user?.id]);
+  }, [
+    userAnswer,
+    phase,
+    skill,
+    selectedAtomicId,
+    selectedAtomic,
+    scenario,
+    reasoningPrompt,
+    decisionOptions,
+    selectedDecisionId,
+    attemptNumber,
+    user?.id,
+  ]);
 
   // ── Refine answer: keep scenario, increment attempt ───────────────────────
   const refineAnswer = () => {
@@ -358,7 +452,9 @@ export default function SkillDetailScreen() {
   // ── New scenario ──────────────────────────────────────────────────────────
   const newScenario = () => {
     setScenario('');
-    setAiQuestion('');
+    setReasoningPrompt('');
+    setDecisionOptions([]);
+    setSelectedDecisionId(null);
     setUserAnswer('');
     setFeedback(null);
     startPractice();
@@ -448,7 +544,7 @@ export default function SkillDetailScreen() {
               </Text>
             </TouchableOpacity>
             <Text style={styles.practiceHint}>
-              AI will give you a scenario, you answer, then get structured feedback.
+              Scenario → pick a move → explain your reasoning → feedback, trade-offs, and a reflection prompt.
             </Text>
           </View>
         )}
@@ -481,116 +577,174 @@ export default function SkillDetailScreen() {
               </View>
             )}
 
-            {/* Scenario + question */}
-            {(phase === 'answering' || phase === 'loading_feedback' || phase === 'feedback') && (
+            {/* Scenario → decision → reasoning → feedback */}
+            {(phase === 'choosing_decision' ||
+              phase === 'answering' ||
+              phase === 'loading_feedback' ||
+              phase === 'feedback') && (
               <>
                 <View style={[styles.scenarioBox, { backgroundColor: skill.color + '0D', borderColor: skill.color + '30' }]}>
                   <Text style={[styles.scenarioLabel, { color: skill.color }]}>Scenario</Text>
                   <Text style={[styles.scenarioText, { color: colors.textPrimary }]}>{scenario}</Text>
                 </View>
 
-                <View style={styles.questionBox}>
-                  <Text style={[styles.questionLabel, { color: colors.textSecondary }]}>
-                    Question {attemptNumber > 1 ? `(attempt ${attemptNumber})` : ''}
-                  </Text>
-                  <Text style={[styles.questionText, { color: colors.textPrimary }]}>
-                    {aiQuestion}
-                  </Text>
-                </View>
-
-                {/* Answer input */}
-                {(phase === 'answering' || phase === 'loading_feedback') && (
-                  <View style={styles.answerArea}>
-                    <TextInput
-                      style={[
-                        styles.answerInput,
-                        {
-                          backgroundColor: colors.surface,
-                          borderColor: colors.border,
-                          color: colors.textPrimary,
-                        },
-                      ]}
-                      value={userAnswer}
-                      onChangeText={setUserAnswer}
-                      placeholder="Type your answer here..."
-                      placeholderTextColor={colors.textMuted}
-                      multiline
-                      textAlignVertical="top"
-                      editable={phase === 'answering'}
-                    />
-                    <TouchableOpacity
-                      style={[
-                        styles.submitBtn,
-                        {
-                          backgroundColor:
-                            userAnswer.trim() && phase === 'answering'
-                              ? skill.color
-                              : colors.surface,
-                        },
-                      ]}
-                      onPress={submitAnswer}
-                      disabled={!userAnswer.trim() || phase === 'loading_feedback'}
-                    >
-                      {phase === 'loading_feedback' ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <>
-                          <Ionicons
-                            name="send-outline"
-                            size={16}
-                            color={userAnswer.trim() ? '#fff' : colors.textMuted}
-                          />
-                          <Text
-                            style={[
-                              styles.submitBtnText,
-                              { color: userAnswer.trim() ? '#fff' : colors.textMuted },
-                            ]}
-                          >
-                            Get feedback
+                {phase === 'choosing_decision' && (
+                  <>
+                    <Text style={[styles.decisionStepTitle, { color: colors.textPrimary }]}>
+                      Your move — pick one
+                    </Text>
+                    <Text style={[styles.decisionHint, { color: colors.textSecondary }]}>
+                      You’ll explain your reasoning next. Choose the path you’d actually take.
+                    </Text>
+                    {decisionOptions.map((opt, i) => {
+                      const letter = ['A', 'B', 'C', 'D', 'E', 'F'][i] ?? '•';
+                      return (
+                        <TouchableOpacity
+                          key={opt.id}
+                          style={[
+                            styles.decisionRow,
+                            { borderColor: colors.border, backgroundColor: colors.surface },
+                          ]}
+                          onPress={() => {
+                            setSelectedDecisionId(opt.id);
+                            setPhase('answering');
+                            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+                          }}
+                          activeOpacity={0.75}
+                        >
+                          <View style={[styles.decisionLetterBadge, { backgroundColor: skill.color + '22' }]}>
+                            <Text style={[styles.decisionLetter, { color: skill.color }]}>{letter}</Text>
+                          </View>
+                          <Text style={[styles.decisionLabelText, { color: colors.textPrimary }]}>
+                            {opt.label}
                           </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </>
                 )}
 
-                {/* Feedback */}
-                {phase === 'feedback' && feedback && (
-                  <View style={styles.feedbackArea}>
-                    <FeedbackCard fb={feedback} colors={colors} skill={skill} />
-
-                    {/* Actions */}
-                    <View style={styles.feedbackActions}>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, styles.refineBtn, { borderColor: skill.color }]}
-                        onPress={refineAnswer}
-                      >
-                        <Ionicons name="pencil-outline" size={16} color={skill.color} />
-                        <Text style={[styles.actionBtnText, { color: skill.color }]}>
-                          Refine my answer
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: skill.color }]}
-                        onPress={newScenario}
-                      >
-                        <Ionicons name="shuffle-outline" size={16} color="#fff" />
-                        <Text style={[styles.actionBtnText, { color: '#fff' }]}>
-                          New scenario
-                        </Text>
-                      </TouchableOpacity>
+                {(phase === 'answering' || phase === 'loading_feedback' || phase === 'feedback') &&
+                  selectedDecisionId && (
+                  <>
+                    <View
+                      style={[
+                        styles.choiceSummary,
+                        { borderColor: skill.color + '35', backgroundColor: skill.color + '08' },
+                      ]}
+                    >
+                      <Text style={[styles.questionLabel, { color: skill.color }]}>Your choice</Text>
+                      <Text style={[styles.choiceSummaryText, { color: colors.textPrimary }]}>
+                        {(() => {
+                          const idx = decisionOptions.findIndex((o) => o.id === selectedDecisionId);
+                          const L = idx >= 0 ? ['A', 'B', 'C', 'D', 'E', 'F'][idx] ?? '•' : '•';
+                          const lab = decisionOptions.find((o) => o.id === selectedDecisionId)?.label ?? '';
+                          return `${L} · ${lab}`;
+                        })()}
+                      </Text>
                     </View>
 
-                    <TouchableOpacity
-                      onPress={() => setPhase('idle')}
-                      style={styles.doneLink}
-                    >
-                      <Text style={[styles.doneLinkText, { color: colors.textMuted }]}>
-                        Done for now
+                    <View style={styles.questionBox}>
+                      <Text style={[styles.questionLabel, { color: colors.textSecondary }]}>
+                        Reasoning {attemptNumber > 1 ? `(attempt ${attemptNumber})` : ''}
                       </Text>
-                    </TouchableOpacity>
-                  </View>
+                      <Text style={[styles.questionText, { color: colors.textPrimary }]}>
+                        {reasoningPrompt}
+                      </Text>
+                    </View>
+
+                    {(phase === 'answering' || phase === 'loading_feedback') && (
+                      <View style={styles.answerArea}>
+                        <TextInput
+                          style={[
+                            styles.answerInput,
+                            {
+                              backgroundColor: colors.surface,
+                              borderColor: colors.border,
+                              color: colors.textPrimary,
+                            },
+                          ]}
+                          value={userAnswer}
+                          onChangeText={setUserAnswer}
+                          placeholder="Short answer is fine — focus on your logic and trade-offs."
+                          placeholderTextColor={colors.textMuted}
+                          multiline
+                          textAlignVertical="top"
+                          editable={phase === 'answering'}
+                        />
+                        <TouchableOpacity
+                          style={[
+                            styles.submitBtn,
+                            {
+                              backgroundColor:
+                                userAnswer.trim() && phase === 'answering'
+                                  ? skill.color
+                                  : colors.surface,
+                            },
+                          ]}
+                          onPress={submitAnswer}
+                          disabled={!userAnswer.trim() || phase === 'loading_feedback'}
+                        >
+                          {phase === 'loading_feedback' ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <>
+                              <Ionicons
+                                name="send-outline"
+                                size={16}
+                                color={userAnswer.trim() ? '#fff' : colors.textMuted}
+                              />
+                              <Text
+                                style={[
+                                  styles.submitBtnText,
+                                  { color: userAnswer.trim() ? '#fff' : colors.textMuted },
+                                ]}
+                              >
+                                Get feedback
+                              </Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {phase === 'feedback' && feedback && (
+                      <View style={styles.feedbackArea}>
+                        <FeedbackCard fb={feedback} colors={colors} skill={skill} />
+
+                        <View style={styles.feedbackActions}>
+                          <TouchableOpacity
+                            style={[styles.actionBtn, styles.refineBtn, { borderColor: skill.color }]}
+                            onPress={refineAnswer}
+                          >
+                            <Ionicons name="pencil-outline" size={16} color={skill.color} />
+                            <Text style={[styles.actionBtnText, { color: skill.color }]}>
+                              Refine my reasoning
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: skill.color }]}
+                            onPress={newScenario}
+                          >
+                            <Ionicons name="shuffle-outline" size={16} color="#fff" />
+                            <Text style={[styles.actionBtnText, { color: '#fff' }]}>
+                              New scenario
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity
+                          onPress={() => setPhase('idle')}
+                          style={styles.doneLink}
+                        >
+                          <Text style={[styles.doneLinkText, { color: colors.textMuted }]}>
+                            Done for now
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -781,6 +935,53 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.base,
       fontWeight: Typography.fontWeight.medium,
       lineHeight: Typography.fontSize.base * 1.5,
+    },
+    decisionStepTitle: {
+      fontSize: Typography.fontSize.base,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.xs,
+    },
+    decisionHint: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.fontSize.sm * 1.45,
+      marginBottom: Spacing.md,
+    },
+    decisionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderRadius: Radius.md,
+      padding: Spacing.sm + 2,
+      marginBottom: Spacing.sm,
+    },
+    decisionLetterBadge: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    decisionLetter: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.bold,
+    },
+    decisionLabelText: {
+      flex: 1,
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.fontSize.sm * 1.45,
+    },
+    choiceSummary: {
+      borderWidth: 1,
+      borderRadius: Radius.md,
+      padding: Spacing.sm,
+      marginBottom: Spacing.md,
+    },
+    choiceSummaryText: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.medium,
+      lineHeight: Typography.fontSize.sm * 1.45,
     },
     answerArea: {
       gap: Spacing.sm,

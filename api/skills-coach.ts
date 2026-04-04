@@ -1,66 +1,111 @@
 /**
  * Skills Coach API — POST /api/skills-coach
- * Default export for @vercel/node.
+ *
+ * Decision-simulator flow (all skills):
+ * 1) generateScenario → scenario + forced decisionOptions (A–D) + reasoningPrompt
+ * 2) feedback → requires selectedDecisionId + decisionOptions + user reasoning →
+ *    feedback + consequences + reflectionQuestion (+ strengths, growthAreas, refinementPrompt)
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, handleCorsPreflight } from './_lib/cors';
 import { GROQ_CHAT_COMPLETIONS_URL, getGroqEnv } from './_lib/groq-config';
 
+interface DecisionOption {
+  id: string;
+  label: string;
+}
+
 function buildScenarioPrompt(skillName: string, atomicSkillName?: string): string {
   const focus = atomicSkillName ? `${skillName} — specifically "${atomicSkillName}"` : skillName;
-  return `You are an expert practice coach for the skill: "${focus}".
+  return `You are designing a SHORT practice session for the skill: "${focus}".
 
-Generate a short, realistic workplace scenario (2-4 sentences) and ask the learner one focused, open-ended question about how they would handle it.
+This is a decision simulator, not an essay test. The learner must COMMIT to a choice before explaining reasoning.
 
-The scenario should feel real and specific — not generic. Use everyday professional contexts (a team meeting, a difficult email, a leadership decision, a data interpretation task, etc.).
+Output a realistic workplace scenario (2-4 sentences, specific not generic).
 
-Respond in this exact JSON format (no markdown, no code fences):
+Then output EXACTLY 4 mutually exclusive strategic or tactical options the learner might choose in that situation. Each option is a different plausible path (trade-offs differ). Labels must be concrete actions or stances, not vague.
+
+Then output a reasoningPrompt: ONE sentence instructing them to explain their reasoning using this skill (e.g. "Explain why you chose that path, using first principles / systems thinking / etc." — match the skill "${focus}").
+
+Do NOT ask them to choose in the reasoningPrompt — they already chose. Ask only for reasoning tied to the skill.
+
+JSON only, no markdown:
 {
   "scenario": "...",
-  "question": "..."
-}`;
+  "decisionOptions": [
+    { "id": "a", "label": "Short label for option A" },
+    { "id": "b", "label": "..." },
+    { "id": "c", "label": "..." },
+    { "id": "d", "label": "..." }
+  ],
+  "reasoningPrompt": "Explain your reasoning using …"
+}
+
+Use ids exactly a, b, c, d in order.`;
 }
 
 function buildFeedbackPrompt(
   skillName: string,
   atomicSkillName: string | undefined,
   scenario: string,
-  question: string,
+  reasoningPrompt: string,
+  decisionOptions: DecisionOption[],
+  selectedDecisionId: string,
+  selectedLabel: string,
   userAnswer: string,
   attemptNumber: number
 ): string {
   const focus = atomicSkillName ? `${skillName} — "${atomicSkillName}"` : skillName;
   const isRetry = attemptNumber > 1;
+  const optionsBlock = decisionOptions.map((o) => `- ${o.id}: ${o.label}`).join('\n');
 
-  return `You are an expert practice coach evaluating a learner's response on the skill: "${focus}".
+  return `You are an expert coach evaluating a DECISION + REASONING practice for: "${focus}".
+
+The learner was forced to pick ONE option before writing. Evaluate whether their reasoning shows real use of the skill — NOT polished writing, NOT sounding smart without decision logic.
 
 Scenario:
 ${scenario}
 
-Question asked:
-${question}
+Options they could choose:
+${optionsBlock}
 
-Learner's answer (attempt ${attemptNumber}):
+They CHOSE: ${selectedDecisionId} — "${selectedLabel}"
+
+Reasoning prompt they answered:
+${reasoningPrompt}
+
+Their written reasoning (attempt ${attemptNumber}):
 ${userAnswer}
 
-${isRetry ? 'This is a retry — acknowledge their improvement or persistence. Be encouraging.' : ''}
+${isRetry ? 'This is a retry — acknowledge persistence; focus on reasoning quality.' : ''}
 
-Provide structured feedback. Be specific, encouraging, and direct. Reference what they actually said.
+Rules:
+- Reward clear decision logic, trade-off awareness, and skill-specific thinking — not verbosity or tone.
+- strengths must reference what they actually did well in their reasoning (or honesty about uncertainty).
+- growthAreas: where their reasoning skipped steps, ignored trade-offs, or missed the skill.
+- consequences: 2-4 short lines (use \\n between lines). Describe plausible downstream effects of THEIR chosen option (upsides, risks, second-order effects). Frame as simulation ("Often…", "One risk is…") not as declaring them wrong.
+- reflectionQuestion: ONE sharp meta question (e.g. "What assumption in your reasoning is most likely wrong?" or equivalent for this skill). No fluff.
+- refinementPrompt: one actionable micro-prompt for next time (optional depth).
 
-Respond in this exact JSON format (no markdown, no code fences):
+JSON only:
 {
-  "feedback": "A 2-3 sentence overall response that validates effort and gives honest assessment.",
-  "strengths": ["Specific strength 1 from their answer", "Specific strength 2"],
-  "growthAreas": ["One specific area to develop"],
-  "refinementPrompt": "A single targeted question or prompt to help them go deeper or improve one thing.",
+  "feedback": "2-3 sentences on their reasoning and choice.",
+  "strengths": ["...", "..."],
+  "growthAreas": ["..."],
+  "consequences": "line1\\nline2\\nline3",
+  "reflectionQuestion": "One sentence question.",
+  "refinementPrompt": "Short actionable prompt.",
   "nextScenarioAvailable": true
+}`;
 }
 
-Keep strengths to 2 items. Keep growthAreas to 1-2 items. refinementPrompt should be actionable.`;
-}
-
-async function callGroqJson(prompt: string, apiKey: string, model: string): Promise<string> {
+async function callGroqJson(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  maxTokens: number
+): Promise<string> {
   const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
     method: 'POST',
     headers: {
@@ -70,8 +115,8 @@ async function callGroqJson(prompt: string, apiKey: string, model: string): Prom
     body: JSON.stringify({
       model,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 500,
-      temperature: 0.75,
+      max_tokens: maxTokens,
+      temperature: 0.72,
       response_format: { type: 'json_object' },
     }),
   });
@@ -88,6 +133,42 @@ async function callGroqJson(prompt: string, apiKey: string, model: string): Prom
   return data.choices?.[0]?.message?.content ?? '{}';
 }
 
+function normalizeScenarioPayload(parsed: Record<string, unknown>): {
+  scenario: string;
+  decisionOptions: DecisionOption[];
+  reasoningPrompt: string;
+} {
+  const scenario = String(parsed.scenario ?? '').trim();
+  const rawOpts = parsed.decisionOptions;
+  let decisionOptions: DecisionOption[] = [];
+  if (Array.isArray(rawOpts)) {
+    decisionOptions = rawOpts
+      .map((o, i) => {
+        const row = o as Record<string, unknown>;
+        const id = String(row.id ?? ['a', 'b', 'c', 'd'][i] ?? `o${i}`).toLowerCase();
+        const label = String(row.label ?? '').trim();
+        return { id, label };
+      })
+      .filter((o) => o.label.length > 0);
+  }
+  const reasoningPrompt = String(parsed.reasoningPrompt ?? parsed.question ?? '').trim();
+
+  if (decisionOptions.length < 2) {
+    decisionOptions = [
+      { id: 'a', label: 'Move fast with a small, reversible experiment' },
+      { id: 'b', label: 'Commit to a bolder stance and accept higher risk' },
+      { id: 'c', label: 'Delay the call until you have more data or input' },
+      { id: 'd', label: 'Align stakeholders first, then decide together' },
+    ];
+  }
+
+  if (!scenario || !reasoningPrompt) {
+    throw new Error('Invalid scenario payload from model');
+  }
+
+  return { scenario, decisionOptions: decisionOptions.slice(0, 6), reasoningPrompt };
+}
+
 type SkillsBody = {
   skillId?: string;
   skillName?: string;
@@ -95,6 +176,9 @@ type SkillsBody = {
   atomicSkillName?: string;
   scenario?: string;
   question?: string;
+  reasoningPrompt?: string;
+  decisionOptions?: DecisionOption[];
+  selectedDecisionId?: string;
   userAnswer?: string;
   attemptNumber?: number;
   generateScenario?: boolean;
@@ -136,7 +220,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const { skillName, atomicSkillName, scenario, question, userAnswer, attemptNumber = 1, generateScenario } = body;
+  const { skillName, atomicSkillName, scenario, userAnswer, attemptNumber = 1, generateScenario } = body;
 
   if (!skillName) {
     res.status(400).json({ error: 'skillName is required.' });
@@ -146,28 +230,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   try {
     if (generateScenario || !userAnswer) {
       const prompt = buildScenarioPrompt(skillName, atomicSkillName);
-      const raw = await callGroqJson(prompt, apiKey, model);
-      const parsed = JSON.parse(raw);
-      res.status(200).json(parsed);
+      const raw = await callGroqJson(prompt, apiKey, model, 900);
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const normalized = normalizeScenarioPayload(parsed);
+      res.status(200).json(normalized);
       return;
     }
 
-    if (!scenario || !question) {
-      res.status(400).json({ error: 'scenario and question are required for feedback.' });
+    const reasoningPrompt = (body.reasoningPrompt ?? body.question ?? '').trim();
+    const decisionOptions = Array.isArray(body.decisionOptions) ? body.decisionOptions : [];
+    const selectedDecisionId = (body.selectedDecisionId ?? '').trim().toLowerCase();
+
+    if (!scenario || !reasoningPrompt) {
+      res.status(400).json({ error: 'scenario and reasoningPrompt (or question) are required for feedback.' });
       return;
     }
+    if (!selectedDecisionId || decisionOptions.length === 0) {
+      res
+        .status(400)
+        .json({ error: 'selectedDecisionId and decisionOptions are required for feedback.' });
+      return;
+    }
+
+    const selected = decisionOptions.find(
+      (o) => o.id.toLowerCase() === selectedDecisionId
+    );
+    const selectedLabel = selected?.label ?? selectedDecisionId;
 
     const prompt = buildFeedbackPrompt(
       skillName,
       atomicSkillName,
       scenario,
-      question,
+      reasoningPrompt,
+      decisionOptions,
+      selectedDecisionId,
+      selectedLabel,
       userAnswer,
       attemptNumber
     );
-    const raw = await callGroqJson(prompt, apiKey, model);
-    const parsed = JSON.parse(raw);
-    res.status(200).json(parsed);
+    const raw = await callGroqJson(prompt, apiKey, model, 900);
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    res.status(200).json({
+      feedback: String(parsed.feedback ?? ''),
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+      growthAreas: Array.isArray(parsed.growthAreas) ? parsed.growthAreas : [],
+      consequences: String(parsed.consequences ?? ''),
+      reflectionQuestion: String(parsed.reflectionQuestion ?? ''),
+      refinementPrompt: String(parsed.refinementPrompt ?? ''),
+      nextScenarioAvailable: parsed.nextScenarioAvailable !== false,
+    });
   } catch (err) {
     console.error('[skills-coach] Error:', err);
     res.status(500).json({ error: 'Internal server error.' });
