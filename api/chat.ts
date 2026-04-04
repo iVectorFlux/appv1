@@ -6,10 +6,13 @@
  * Returns: { reply, emotions?, groundingOptions?, learningPathway? }
  *
  * Deployed as a Vercel serverless function.
- * Uses the OPENAI_API_KEY env var (server-side only, never exposed to the client).
+ * Uses Groq (OpenAI-compatible API). Env: GROQ_API_KEY, optional GROQ_MODEL.
  */
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+import {
+  GROQ_CHAT_COMPLETIONS_URL,
+  getGroqEnv,
+} from '../src/lib/groq-config';
 
 const INNER_ALLY_SYSTEM_PROMPT = `You are Inner Ally — a warm, grounding companion inside a wellbeing app.
 
@@ -75,15 +78,14 @@ function extractSuggestion(content: string): {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL ?? 'gpt-4o';
-
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'OpenAI API key not configured.' }), {
+  const groq = getGroqEnv();
+  if (!groq) {
+    return new Response(JSON.stringify({ error: 'Groq API key not configured.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
+  const { apiKey, model } = groq;
 
   let body: { mode?: string; messages?: { role: string; content: string }[] };
   try {
@@ -107,13 +109,13 @@ export async function POST(request: Request): Promise<Response> {
 
   const systemPrompt = mode === 'inner_ally' ? INNER_ALLY_SYSTEM_PROMPT : COACH_SYSTEM_PROMPT;
 
-  const openAIMessages = [
+  const chatMessages = [
     { role: 'system', content: systemPrompt },
     ...userMessages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
+    const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -121,7 +123,7 @@ export async function POST(request: Request): Promise<Response> {
       },
       body: JSON.stringify({
         model,
-        messages: openAIMessages,
+        messages: chatMessages,
         max_tokens: 600,
         temperature: 0.7,
       }),
@@ -129,8 +131,8 @@ export async function POST(request: Request): Promise<Response> {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('[chat] OpenAI error:', errText);
-      return new Response(JSON.stringify({ error: 'OpenAI request failed.' }), {
+      console.error('[chat] Groq error:', errText);
+      return new Response(JSON.stringify({ error: 'AI request failed.' }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });

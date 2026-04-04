@@ -7,7 +7,7 @@
  * nudge links from the Home screen.
  *
  * Chat messages are persisted to Supabase via chat-storage.ts.
- * AI responses come from /api/chat (OpenAI GPT-4o).
+ * AI responses come from /api/chat (Groq).
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';

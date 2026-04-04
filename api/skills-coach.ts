@@ -10,10 +10,13 @@
  *
  * Returns: { question?, scenario?, feedback?, strengths?, growthAreas?, refinementPrompt?, nextScenarioAvailable? }
  *
- * Deployed as a Vercel serverless function.
+ * Deployed as a Vercel serverless function. Uses Groq (GROQ_API_KEY).
  */
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+import {
+  GROQ_CHAT_COMPLETIONS_URL,
+  getGroqEnv,
+} from '../src/lib/groq-config';
 
 function buildScenarioPrompt(
   skillName: string,
@@ -71,12 +74,12 @@ Respond in this exact JSON format (no markdown, no code fences):
 Keep strengths to 2 items. Keep growthAreas to 1-2 items. refinementPrompt should be actionable.`;
 }
 
-async function callOpenAI(
+async function callGroqJson(
   prompt: string,
   apiKey: string,
   model: string
 ): Promise<string> {
-  const response = await fetch(OPENAI_API_URL, {
+  const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -93,7 +96,7 @@ async function callOpenAI(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`OpenAI error: ${errText}`);
+    throw new Error(`Groq error: ${errText}`);
   }
 
   const data = (await response.json()) as {
@@ -104,15 +107,14 @@ async function callOpenAI(
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL ?? 'gpt-4o';
-
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'OpenAI API key not configured.' }), {
+  const groq = getGroqEnv();
+  if (!groq) {
+    return new Response(JSON.stringify({ error: 'Groq API key not configured.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
+  const { apiKey, model } = groq;
 
   let body: {
     skillId?: string;
@@ -148,7 +150,7 @@ export async function POST(request: Request): Promise<Response> {
     if (generateScenario || !userAnswer) {
       // Mode 1: generate scenario + opening question
       const prompt = buildScenarioPrompt(skillName, atomicSkillName);
-      const raw = await callOpenAI(prompt, apiKey, model);
+      const raw = await callGroqJson(prompt, apiKey, model);
       const parsed = JSON.parse(raw);
 
       return new Response(JSON.stringify(parsed), {
@@ -172,7 +174,7 @@ export async function POST(request: Request): Promise<Response> {
         userAnswer,
         attemptNumber
       );
-      const raw = await callOpenAI(prompt, apiKey, model);
+      const raw = await callGroqJson(prompt, apiKey, model);
       const parsed = JSON.parse(raw);
 
       return new Response(JSON.stringify(parsed), {
