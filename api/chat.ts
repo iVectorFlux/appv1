@@ -2,17 +2,13 @@
  * AI Chat API — Inner Ally & Coach modes
  *
  * POST /api/chat
- * Body: { mode: 'inner_ally' | 'coach', messages: {role, content}[], userId?: string }
- * Returns: { reply, emotions?, groundingOptions?, learningPathway? }
- *
- * Deployed as a Vercel serverless function.
- * Uses Groq (OpenAI-compatible API). Env: GROQ_API_KEY, optional GROQ_MODEL.
+ * Default export uses @vercel/node so Vercel always registers this route (Fetch API handlers
+ * can be skipped for static + api hybrid projects).
  */
 
-import {
-  GROQ_CHAT_COMPLETIONS_URL,
-  getGroqEnv,
-} from '../src/lib/groq-config';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applyCors, handleCorsPreflight } from './_lib/cors';
+import { GROQ_CHAT_COMPLETIONS_URL, getGroqEnv } from './_lib/groq-config';
 
 const INNER_ALLY_SYSTEM_PROMPT = `You are Inner Ally — a warm, grounding companion inside a wellbeing app.
 
@@ -77,40 +73,55 @@ function extractSuggestion(content: string): {
   }
 }
 
-export async function POST(request: Request): Promise<Response> {
+function readJsonBody(req: VercelRequest): { mode?: string; messages?: { role: string; content: string }[] } | null {
+  const raw = req.body;
+  if (raw == null) return null;
+  if (typeof raw === 'object' && !Buffer.isBuffer(raw)) {
+    return raw as { mode?: string; messages?: { role: string; content: string }[] };
+  }
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as { mode?: string; messages?: { role: string; content: string }[] };
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  applyCors(res);
+  if (handleCorsPreflight(req, res)) return;
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
   const groq = getGroqEnv();
   if (!groq) {
-    return new Response(JSON.stringify({ error: 'Groq API key not configured.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(500).json({ error: 'Groq API key not configured.' });
+    return;
   }
   const { apiKey, model } = groq;
 
-  let body: { mode?: string; messages?: { role: string; content: string }[] };
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  const body = readJsonBody(req);
+  if (!body) {
+    res.status(400).json({ error: 'Invalid JSON body.' });
+    return;
   }
 
   const mode = parseMode(body.mode ?? 'inner_ally');
   const userMessages = Array.isArray(body.messages) ? body.messages : [];
 
   if (userMessages.length === 0) {
-    return new Response(JSON.stringify({ error: 'No messages provided.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(400).json({ error: 'No messages provided.' });
+    return;
   }
 
   const systemPrompt = mode === 'inner_ally' ? INNER_ALLY_SYSTEM_PROMPT : COACH_SYSTEM_PROMPT;
-
   const chatMessages = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system' as const, content: systemPrompt },
     ...userMessages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
@@ -139,10 +150,8 @@ export async function POST(request: Request): Promise<Response> {
       } catch {
         if (errText.length > 0 && errText.length < 400) message = errText;
       }
-      return new Response(JSON.stringify({ error: message }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      res.status(502).json({ error: message });
+      return;
     }
 
     const data = (await response.json()) as {
@@ -152,22 +161,13 @@ export async function POST(request: Request): Promise<Response> {
     const rawContent = data.choices?.[0]?.message?.content ?? '';
     const { cleanContent, suggestion } = extractSuggestion(rawContent);
 
-    return new Response(
-      JSON.stringify({
-        reply: cleanContent,
-        mode,
-        ...(suggestion ?? {}),
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    res.status(200).json({
+      reply: cleanContent,
+      mode,
+      ...(suggestion ?? {}),
+    });
   } catch (err) {
     console.error('[chat] Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 }

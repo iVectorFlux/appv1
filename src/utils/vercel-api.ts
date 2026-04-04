@@ -59,7 +59,9 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
     throw new Error(
       needsAppUrl
         ? `Chat server returned non-JSON (${res.status}). Set EXPO_PUBLIC_APP_URL to your Vercel URL in .env and rebuild the app.`
-        : `Chat server returned an unexpected response (${res.status}). Try again or check the deployment.`
+        : res.status === 404
+          ? `Chat API returned 404. Open your-site.vercel.app/api/health in a browser — if that 404s too, the Vercel project Root Directory must be the repo root (not "dist"), then redeploy.`
+          : `Chat server returned an unexpected response (${res.status}). Try again or check the deployment.`
     );
   }
 

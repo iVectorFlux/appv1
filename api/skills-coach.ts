@@ -1,27 +1,13 @@
 /**
- * Skills Coach API — AI-powered practice for Future Skills
- *
- * POST /api/skills-coach
- * Body: { skillId, skillName, atomicSkillId?, atomicSkillName?, userAnswer?, attemptNumber?, generateScenario? }
- *
- * Two modes:
- *  1. generateScenario: true  → AI returns a scenario + opening question
- *  2. userAnswer provided     → AI evaluates the answer and returns feedback
- *
- * Returns: { question?, scenario?, feedback?, strengths?, growthAreas?, refinementPrompt?, nextScenarioAvailable? }
- *
- * Deployed as a Vercel serverless function. Uses Groq (GROQ_API_KEY).
+ * Skills Coach API — POST /api/skills-coach
+ * Default export for @vercel/node.
  */
 
-import {
-  GROQ_CHAT_COMPLETIONS_URL,
-  getGroqEnv,
-} from '../src/lib/groq-config';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applyCors, handleCorsPreflight } from './_lib/cors';
+import { GROQ_CHAT_COMPLETIONS_URL, getGroqEnv } from './_lib/groq-config';
 
-function buildScenarioPrompt(
-  skillName: string,
-  atomicSkillName?: string
-): string {
+function buildScenarioPrompt(skillName: string, atomicSkillName?: string): string {
   const focus = atomicSkillName ? `${skillName} — specifically "${atomicSkillName}"` : skillName;
   return `You are an expert practice coach for the skill: "${focus}".
 
@@ -74,11 +60,7 @@ Respond in this exact JSON format (no markdown, no code fences):
 Keep strengths to 2 items. Keep growthAreas to 1-2 items. refinementPrompt should be actionable.`;
 }
 
-async function callGroqJson(
-  prompt: string,
-  apiKey: string,
-  model: string
-): Promise<string> {
+async function callGroqJson(prompt: string, apiKey: string, model: string): Promise<string> {
   const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
     method: 'POST',
     headers: {
@@ -106,87 +88,88 @@ async function callGroqJson(
   return data.choices?.[0]?.message?.content ?? '{}';
 }
 
-export async function POST(request: Request): Promise<Response> {
+type SkillsBody = {
+  skillId?: string;
+  skillName?: string;
+  atomicSkillId?: string;
+  atomicSkillName?: string;
+  scenario?: string;
+  question?: string;
+  userAnswer?: string;
+  attemptNumber?: number;
+  generateScenario?: boolean;
+};
+
+function readJsonBody(req: VercelRequest): SkillsBody | null {
+  const raw = req.body;
+  if (raw == null) return null;
+  if (typeof raw === 'object' && !Buffer.isBuffer(raw)) return raw as SkillsBody;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as SkillsBody;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  applyCors(res);
+  if (handleCorsPreflight(req, res)) return;
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
   const groq = getGroqEnv();
   if (!groq) {
-    return new Response(JSON.stringify({ error: 'Groq API key not configured.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(500).json({ error: 'Groq API key not configured.' });
+    return;
   }
   const { apiKey, model } = groq;
 
-  let body: {
-    skillId?: string;
-    skillName?: string;
-    atomicSkillId?: string;
-    atomicSkillName?: string;
-    scenario?: string;
-    question?: string;
-    userAnswer?: string;
-    attemptNumber?: number;
-    generateScenario?: boolean;
-  };
-
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  const body = readJsonBody(req);
+  if (!body) {
+    res.status(400).json({ error: 'Invalid JSON body.' });
+    return;
   }
 
   const { skillName, atomicSkillName, scenario, question, userAnswer, attemptNumber = 1, generateScenario } = body;
 
   if (!skillName) {
-    return new Response(JSON.stringify({ error: 'skillName is required.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(400).json({ error: 'skillName is required.' });
+    return;
   }
 
   try {
     if (generateScenario || !userAnswer) {
-      // Mode 1: generate scenario + opening question
       const prompt = buildScenarioPrompt(skillName, atomicSkillName);
       const raw = await callGroqJson(prompt, apiKey, model);
       const parsed = JSON.parse(raw);
-
-      return new Response(JSON.stringify(parsed), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } else {
-      // Mode 2: evaluate user's answer
-      if (!scenario || !question) {
-        return new Response(JSON.stringify({ error: 'scenario and question are required for feedback.' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
-      const prompt = buildFeedbackPrompt(
-        skillName,
-        atomicSkillName,
-        scenario,
-        question,
-        userAnswer,
-        attemptNumber
-      );
-      const raw = await callGroqJson(prompt, apiKey, model);
-      const parsed = JSON.parse(raw);
-
-      return new Response(JSON.stringify(parsed), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      res.status(200).json(parsed);
+      return;
     }
+
+    if (!scenario || !question) {
+      res.status(400).json({ error: 'scenario and question are required for feedback.' });
+      return;
+    }
+
+    const prompt = buildFeedbackPrompt(
+      skillName,
+      atomicSkillName,
+      scenario,
+      question,
+      userAnswer,
+      attemptNumber
+    );
+    const raw = await callGroqJson(prompt, apiKey, model);
+    const parsed = JSON.parse(raw);
+    res.status(200).json(parsed);
   } catch (err) {
     console.error('[skills-coach] Error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 }
