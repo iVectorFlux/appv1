@@ -63,6 +63,33 @@ interface Feedback {
   reflectionQuestion: string;
 }
 
+/** If API is older or the model omits fields, we still show four choices. */
+const FALLBACK_DECISION_OPTIONS: DecisionOption[] = [
+  { id: 'a', label: 'Move fast with a small, reversible experiment' },
+  { id: 'b', label: 'Commit to a bolder stance and accept higher risk' },
+  { id: 'c', label: 'Delay the call until you have more data or input' },
+  { id: 'd', label: 'Align stakeholders first, then decide together' },
+];
+
+function parseDecisionOptionsFromApi(data: Record<string, unknown>): DecisionOption[] {
+  const raw =
+    data.decisionOptions ??
+    data.decision_options ??
+    data.options ??
+    data.choices;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((o, i) => {
+      const row = (o && typeof o === 'object' ? o : {}) as Record<string, unknown>;
+      const id = String(row.id ?? row.key ?? ['a', 'b', 'c', 'd'][i] ?? `o${i}`).toLowerCase();
+      const label = String(
+        row.label ?? row.text ?? row.title ?? row.option ?? row.description ?? ''
+      ).trim();
+      return { id, label };
+    })
+    .filter((x) => x.label.length > 0);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
@@ -351,14 +378,26 @@ export default function SkillDetailScreen() {
 
       if (!res.ok) throw new Error('API error');
 
-      const data = (await res.json()) as {
-        scenario: string;
-        decisionOptions: DecisionOption[];
-        reasoningPrompt: string;
-      };
-      setScenario(data.scenario ?? '');
-      setDecisionOptions(Array.isArray(data.decisionOptions) ? data.decisionOptions : []);
-      setReasoningPrompt(data.reasoningPrompt ?? '');
+      const data = (await res.json()) as Record<string, unknown>;
+      const scenarioText = String(data.scenario ?? '').trim();
+      if (!scenarioText) throw new Error('No scenario in response');
+
+      let options = parseDecisionOptionsFromApi(data);
+      if (options.length < 2) {
+        options = [...FALLBACK_DECISION_OPTIONS];
+      }
+
+      let reasoning = String(
+        data.reasoningPrompt ?? data.reasoning_prompt ?? data.question ?? ''
+      ).trim();
+      if (!reasoning) {
+        reasoning =
+          'Explain your reasoning for the path you chose, using the skill you are practicing (be concise).';
+      }
+
+      setScenario(scenarioText);
+      setDecisionOptions(options);
+      setReasoningPrompt(reasoning);
       setPhase('choosing_decision');
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);

@@ -133,36 +133,53 @@ async function callGroqJson(
   return data.choices?.[0]?.message?.content ?? '{}';
 }
 
+const DEFAULT_DECISION_OPTIONS: DecisionOption[] = [
+  { id: 'a', label: 'Move fast with a small, reversible experiment' },
+  { id: 'b', label: 'Commit to a bolder stance and accept higher risk' },
+  { id: 'c', label: 'Delay the call until you have more data or input' },
+  { id: 'd', label: 'Align stakeholders first, then decide together' },
+];
+
 function normalizeScenarioPayload(parsed: Record<string, unknown>): {
   scenario: string;
   decisionOptions: DecisionOption[];
   reasoningPrompt: string;
 } {
   const scenario = String(parsed.scenario ?? '').trim();
-  const rawOpts = parsed.decisionOptions;
+  const rawOpts =
+    parsed.decisionOptions ??
+    parsed.decision_options ??
+    parsed.options ??
+    parsed.choices;
+
   let decisionOptions: DecisionOption[] = [];
   if (Array.isArray(rawOpts)) {
     decisionOptions = rawOpts
       .map((o, i) => {
-        const row = o as Record<string, unknown>;
-        const id = String(row.id ?? ['a', 'b', 'c', 'd'][i] ?? `o${i}`).toLowerCase();
-        const label = String(row.label ?? '').trim();
+        const row = (o && typeof o === 'object' ? o : {}) as Record<string, unknown>;
+        const id = String(row.id ?? row.key ?? ['a', 'b', 'c', 'd'][i] ?? `o${i}`).toLowerCase();
+        const label = String(
+          row.label ?? row.text ?? row.title ?? row.option ?? row.description ?? ''
+        ).trim();
         return { id, label };
       })
       .filter((o) => o.label.length > 0);
   }
-  const reasoningPrompt = String(parsed.reasoningPrompt ?? parsed.question ?? '').trim();
+
+  let reasoningPrompt = String(
+    parsed.reasoningPrompt ?? parsed.reasoning_prompt ?? parsed.question ?? ''
+  ).trim();
 
   if (decisionOptions.length < 2) {
-    decisionOptions = [
-      { id: 'a', label: 'Move fast with a small, reversible experiment' },
-      { id: 'b', label: 'Commit to a bolder stance and accept higher risk' },
-      { id: 'c', label: 'Delay the call until you have more data or input' },
-      { id: 'd', label: 'Align stakeholders first, then decide together' },
-    ];
+    decisionOptions = [...DEFAULT_DECISION_OPTIONS];
   }
 
-  if (!scenario || !reasoningPrompt) {
+  if (!reasoningPrompt && scenario) {
+    reasoningPrompt =
+      'Explain your reasoning for the path you chose, using the skill you are practicing (be concise).';
+  }
+
+  if (!scenario) {
     throw new Error('Invalid scenario payload from model');
   }
 
