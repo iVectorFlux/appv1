@@ -26,7 +26,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import {
   useColors,
   Spacing,
@@ -37,6 +36,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { saveChatMessage, getChatHistory } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
 import { LEARNING_MODULES } from '@/data/learning-content';
+import { requestChatCompletion } from '@/utils/vercel-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types & constants
@@ -104,13 +104,6 @@ function introMessageForMode(selectedMode: ChatMode): Message {
   };
 }
 
-function getApiBase(): string {
-  const appUrl = Constants.expoConfig?.extra?.appUrl ?? '';
-  if (appUrl) return appUrl;
-  if (Platform.OS === 'web') return '';
-  const host = (Constants.expoConfig as any)?.hostUri ?? 'localhost:8081';
-  return `http://${host}`;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Inline suggestion cards
@@ -336,26 +329,11 @@ export default function AssistScreen() {
       .map((m) => ({ role: m.role, content: m.content }));
 
     try {
-      const res = await fetch(`${getApiBase()}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode,
-          messages: [...history, { role: 'user', content: text }],
-          userId: user?.id,
-        }),
+      const data = await requestChatCompletion({
+        mode,
+        messages: [...history, { role: 'user', content: text }],
+        userId: user?.id,
       });
-
-      if (!res.ok) throw new Error('API error');
-
-      const data = await res.json() as {
-        reply: string;
-        emotions?: string[];
-        groundingOptions?: string[];
-        learningPathway?: string | null;
-        suggestSaveAsReflection?: boolean;
-        skillId?: string | null;
-      };
 
       const suggestion: ChatSuggestion = {
         emotions: data.emotions,
@@ -378,11 +356,12 @@ export default function AssistScreen() {
       if (user?.id) {
         saveChatMessage({ userId: user.id, mode, role: 'assistant', content: data.reply, metadata: { suggestion } });
       }
-    } catch {
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : 'Something went wrong.';
       setMessages((prev) => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm having trouble connecting right now. Please check your connection and try again.",
+        content: `I could not reach the assistant just now.\n\n${detail}`,
         createdAt: new Date().toISOString(),
       }]);
     } finally {

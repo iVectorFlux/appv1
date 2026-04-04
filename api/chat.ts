@@ -132,7 +132,14 @@ export async function POST(request: Request): Promise<Response> {
     if (!response.ok) {
       const errText = await response.text();
       console.error('[chat] Groq error:', errText);
-      return new Response(JSON.stringify({ error: 'AI request failed.' }), {
+      let message = 'AI request failed.';
+      try {
+        const j = JSON.parse(errText) as { error?: { message?: string } };
+        if (typeof j?.error?.message === 'string') message = j.error.message;
+      } catch {
+        if (errText.length > 0 && errText.length < 400) message = errText;
+      }
+      return new Response(JSON.stringify({ error: message }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
