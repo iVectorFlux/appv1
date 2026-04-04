@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HeroCard } from '@/components/ui/hero-card';
 import { AudioRowCard } from '@/components/ui/audio-row-card';
 import { ModuleCard } from '@/components/ui/module-card';
+import { FUTURE_SKILLS } from '@/data/future-skills';
 
 const STAGGER_DELAY = 50;
 const FADE_DURATION = 350;
@@ -150,7 +151,7 @@ export default function HomeScreen() {
           <ModuleCard
             onPress={() => router.push('/future-skills')}
             title="Skill Lab"
-            subtitle="The 10 skills for an AI-powered world — practice with coaching"
+            subtitle={`The ${FUTURE_SKILLS.length} skills for an AI-powered world — practice with coaching`}
             icon="rocket-outline"
             iconColor={colors.accentIndigo}
             iconBackgroundColor={colors.accentIndigo + '18'}

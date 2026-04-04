@@ -54,7 +54,7 @@ export default function FutureSkillsScreen() {
         <View style={styles.headerText}>
           <Text style={styles.title}>Skill Lab</Text>
           <Text style={styles.subtitle}>
-            The 10 skills that matter most in an AI-powered world — practice with AI coaching
+            {`The ${FUTURE_SKILLS.length} skills that matter most in an AI-powered world — practice with AI coaching`}
           </Text>
         </View>
       </View>
