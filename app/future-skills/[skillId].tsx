@@ -25,7 +25,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import {
   useColors,
   Spacing,
@@ -37,6 +36,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { getSkillById } from '@/data/future-skills';
 import type { AtomicSkill, FutureSkill } from '@/data/future-skills';
 import { saveSkillSession } from '@/services/skills-storage';
+import { buildVercelApiUrl } from '@/utils/vercel-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -50,18 +50,6 @@ interface Feedback {
   growthAreas: string[];
   refinementPrompt: string;
   nextScenarioAvailable: boolean;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function getApiBase(): string {
-  const appUrl = Constants.expoConfig?.extra?.appUrl ?? '';
-  if (appUrl) return appUrl;
-  if (Platform.OS === 'web') return '';
-  const host = (Constants.expoConfig as any)?.hostUri ?? 'localhost:8081';
-  return `http://${host}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -281,8 +269,7 @@ export default function SkillDetailScreen() {
     setAttemptNumber(1);
 
     try {
-      const apiBase = getApiBase();
-      const res = await fetch(`${apiBase}/api/skills-coach`, {
+      const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -315,8 +302,7 @@ export default function SkillDetailScreen() {
     setPhase('loading_feedback');
 
     try {
-      const apiBase = getApiBase();
-      const res = await fetch(`${apiBase}/api/skills-coach`, {
+      const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

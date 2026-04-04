@@ -1,25 +1,73 @@
 /**
- * Base URL for Vercel-hosted `/api/*` routes from native apps and web.
- * Web: relative '' (same origin). Native: requires EXPO_PUBLIC_APP_URL at build time.
+ * Base URL for Vercel-hosted `/api/*` routes.
+ *
+ * - Deployed web (e.g. *.vercel.app): uses same origin automatically.
+ * - Local Expo web (localhost): Metro has NO /api — set EXPO_PUBLIC_APP_URL to your Vercel URL.
+ * - Native: set EXPO_PUBLIC_APP_URL and rebuild, or dev points at Metro (no API).
  */
 
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+function readConfiguredAppUrl(): string {
+  const extra = Constants.expoConfig?.extra?.appUrl;
+  if (typeof extra === 'string' && extra.trim()) {
+    return extra.trim().replace(/\/$/, '');
+  }
+  try {
+    const fromEnv = typeof process !== 'undefined' ? process.env.EXPO_PUBLIC_APP_URL : undefined;
+    if (typeof fromEnv === 'string' && fromEnv.trim()) {
+      return fromEnv.trim().replace(/\/$/, '');
+    }
+  } catch {
+    /* ignore */
+  }
+  return '';
+}
+
+/**
+ * Origin for API calls (no trailing slash). Empty string means "same origin" (relative URLs).
+ */
 export function getVercelApiBase(): string {
-  const raw = Constants.expoConfig?.extra?.appUrl ?? '';
-  const appUrl = typeof raw === 'string' ? raw.trim().replace(/\/$/, '') : '';
-  if (appUrl) return appUrl;
+  const configured = readConfiguredAppUrl();
+  if (configured) return configured;
+
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1';
+    if (!isLocal) {
+      return `${window.location.protocol}//${window.location.host}`.replace(/\/$/, '');
+    }
+  }
+
   if (Platform.OS === 'web') return '';
+
   const host = (Constants.expoConfig as { hostUri?: string })?.hostUri ?? 'localhost:8081';
   return `http://${host}`;
 }
 
-function apiUrl(path: string): string {
+/** Local Expo web cannot hit /api on Metro — fail fast with setup instructions. */
+function assertLocalWebCanReachApi(): void {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  const h = window.location.hostname;
+  if (h !== 'localhost' && h !== '127.0.0.1') return;
+  if (readConfiguredAppUrl()) return;
+  throw new Error(
+    'You are on Expo web at localhost — Metro does not serve /api/chat. Add this to your .env file (use your real Vercel URL):\n\nEXPO_PUBLIC_APP_URL=https://YOUR_PROJECT.vercel.app\n\nThen restart Expo with a clean cache: npx expo start -c\n\nOr test chat on the deployed site in the browser (same-origin /api works there).'
+  );
+}
+
+function joinApiUrl(path: string): string {
   const base = getVercelApiBase();
   const p = path.startsWith('/') ? path : `/${path}`;
   if (!base) return p;
   return `${base}${p}`;
+}
+
+/** Full URL for a Vercel API path; throws on localhost web without EXPO_PUBLIC_APP_URL. */
+export function buildVercelApiUrl(path: string): string {
+  assertLocalWebCanReachApi();
+  return joinApiUrl(path);
 }
 
 export type ChatApiSuccess = {
@@ -35,7 +83,8 @@ export type ChatApiSuccess = {
  * POST /api/chat — throws Error with a user-visible message on failure.
  */
 export async function requestChatCompletion(body: object): Promise<ChatApiSuccess> {
-  const url = apiUrl('/api/chat');
+  assertLocalWebCanReachApi();
+  const url = joinApiUrl('/api/chat');
   let res: Response;
   try {
     res = await fetch(url, {
@@ -45,7 +94,7 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
     });
   } catch {
     throw new Error(
-      'Could not reach the chat server. If you are on the Expo app on a device or simulator, set EXPO_PUBLIC_APP_URL in .env to your live site (https://….vercel.app), then rebuild — otherwise requests go to the dev server, which has no /api/chat.'
+      'Could not reach the chat server. If you use the app on a phone or simulator, set EXPO_PUBLIC_APP_URL in .env to your live site (https://….vercel.app), then rebuild.'
     );
   }
 
@@ -55,12 +104,12 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
     parsed = JSON.parse(text) as Record<string, unknown>;
   } catch {
     const needsAppUrl =
-      Platform.OS !== 'web' && !(Constants.expoConfig?.extra?.appUrl as string | undefined)?.trim();
+      Platform.OS !== 'web' && !readConfiguredAppUrl();
     throw new Error(
       needsAppUrl
         ? `Chat server returned non-JSON (${res.status}). Set EXPO_PUBLIC_APP_URL to your Vercel URL in .env and rebuild the app.`
         : res.status === 404
-          ? `Chat API returned 404. Open your-site.vercel.app/api/health in a browser — if that 404s too, the Vercel project Root Directory must be the repo root (not "dist"), then redeploy.`
+          ? `Chat API returned 404 at ${url}. If you are on the deployed site, check Vercel: Root Directory = repo root (not "dist"), then redeploy. If you are on localhost, set EXPO_PUBLIC_APP_URL in .env.`
           : `Chat server returned an unexpected response (${res.status}). Try again or check the deployment.`
     );
   }
