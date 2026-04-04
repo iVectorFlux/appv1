@@ -149,7 +149,7 @@ export default function HomeScreen() {
             width="full"
           />
           <ModuleCard
-            onPress={() => router.push('/future-skills')}
+            onPress={() => router.push('/skill-lab')}
             title="Skill Lab"
             subtitle={`The ${FUTURE_SKILLS.length} skills for an AI-powered world — practice with coaching`}
             icon="rocket-outline"
@@ -192,7 +192,7 @@ export default function HomeScreen() {
           />
           <ModuleCard
             onPress={() => router.push('/(tabs)/learn')}
-            title="Start your learning journey"
+            title="Learn EQ"
             icon="library-outline"
             iconColor={colors.accentIndigo}
             iconBackgroundColor={colors.accentIndigo + '18'}

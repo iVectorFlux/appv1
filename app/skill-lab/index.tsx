@@ -1,5 +1,5 @@
 /**
- * Skill Lab — landing (route: /future-skills)
+ * Skill Lab — landing (route: /skill-lab)
  */
 
 import React, { useEffect, useState } from 'react';
@@ -26,7 +26,7 @@ import { FUTURE_SKILLS } from '@/data/future-skills';
 import { getSkillsProgress } from '@/services/skills-storage';
 import type { SkillProgress } from '@/services/skills-storage';
 
-export default function FutureSkillsScreen() {
+export default function SkillLabScreen() {
   const router = useRouter();
   const colors = useColors();
   const { user } = useAuthStore();
@@ -85,7 +85,7 @@ export default function FutureSkillsScreen() {
             <TouchableOpacity
               key={skill.id}
               style={[styles.card, Shadows.card]}
-              onPress={() => router.push(`/future-skills/${skill.id}`)}
+              onPress={() => router.push(`/skill-lab/${skill.id}`)}
               activeOpacity={0.75}
             >
               {/* Icon */}

@@ -542,7 +542,7 @@ export default function ChatScreen() {
   };
   const handleLearnPress = (skillId?: string | null) => {
     if (skillId) {
-      router.push(`/future-skills/${skillId}?returnTo=chat`);
+      router.push(`/skill-lab/${skillId}?returnTo=chat`);
       return;
     }
     const first = LEARNING_MODULES[0];

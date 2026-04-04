@@ -2,7 +2,7 @@
  * Assist Tab — Inner Ally + Coach
  *
  * Persistent chat tab. Mode toggle at the top: Inner Ally | Coach.
- * Coach mode shows a link to Skill Lab (/future-skills).
+ * Coach mode shows a link to Skill Lab (/skill-lab).
  * Reads `eq_assist_pendingMode` from AsyncStorage on focus to honour
  * nudge links from the Home screen.
  *
@@ -395,7 +395,7 @@ export default function AssistScreen() {
 
   const openLearnFromAssist = (skillId?: string | null) => {
     if (skillId) {
-      router.push(`/future-skills/${skillId}?returnTo=assist`);
+      router.push(`/skill-lab/${skillId}?returnTo=assist`);
       return;
     }
     const first = LEARNING_MODULES[0];
@@ -447,7 +447,7 @@ export default function AssistScreen() {
       {mode === 'coach' && (
         <TouchableOpacity
           style={[styles.skillsBanner, { backgroundColor: '#6366F110', borderBottomColor: colors.border }]}
-          onPress={() => router.push('/future-skills')}
+          onPress={() => router.push('/skill-lab')}
         >
           <Ionicons name="rocket-outline" size={15} color="#6366F1" />
           <Text style={styles.skillsBannerText}>Practice in Skill Lab — AI scenarios & feedback</Text>

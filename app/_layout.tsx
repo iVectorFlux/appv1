@@ -86,7 +86,7 @@ export default function RootLayout() {
           options={{ presentation: 'card', animation: 'slide_from_right' }} 
         />
         <Stack.Screen 
-          name="future-skills" 
+          name="skill-lab" 
           options={{ presentation: 'card', animation: 'slide_from_right' }} 
         />
   </Stack>
@@ -156,7 +156,7 @@ export default function RootLayout() {
         }} 
       />
       <Stack.Screen 
-        name="future-skills" 
+        name="skill-lab" 
         options={{ 
           presentation: 'card',
           animation: 'slide_from_right',

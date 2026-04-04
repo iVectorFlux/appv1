@@ -1,5 +1,5 @@
 /**
- * Skill Lab stack (path: /future-skills). Auth + onboarding gate.
+ * Skill Lab stack (path: /skill-lab). Auth + onboarding gate.
  */
 
 import { Redirect, Stack } from 'expo-router';
@@ -7,7 +7,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useColors } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 
-export default function FutureSkillsLayout() {
+export default function SkillLabLayout() {
   const colors = useColors();
   const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } =
     useAuthStore();

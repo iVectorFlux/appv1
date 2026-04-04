@@ -1,5 +1,5 @@
 /**
- * Skill Lab data (routes remain /future-skills/*)
+ * Skill Lab data (routes: /skill-lab/*)
  *
  * Eight core skills for an AI-shaped workplace.
  * Each skill declares its practiceMode, which drives which AI workflow is used.
