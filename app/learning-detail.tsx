@@ -516,6 +516,7 @@ export default function LearningDetailScreen() {
                     src: videoSrc,
                     controls: true,
                     playsInline: true,
+                    controlsList: 'nodownload',
                     preload: 'metadata',
                     style: {
                       width: '100%',
