@@ -1,5 +1,5 @@
 /**
- * Learn Screen — catalog from Supabase learning_content (B2C personal / B2B professional).
+ * Learn Screen — catalog from Supabase learning_content (personal / B2C only).
  */
 
 import React, { useMemo, useState } from 'react';
@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
-import { Ionicons } from '@expo/vector-icons';
 import { FeatureCard } from '@/components/ui/feature-card';
 import { ModuleCard } from '@/components/ui/module-card';
 import { SectionHeaderCard } from '@/components/ui/section-header-card';
@@ -22,7 +21,7 @@ import { AudioRowCard } from '@/components/ui/audio-row-card';
 import { DIMENSION_INFO } from '@/data/learning-content';
 import type { EQDimension } from '@/types/eq-assessment';
 import { useLearningCatalog } from '@/hooks/useLearningCatalog';
-import type { LearningAudience } from '@/services/learning-content-catalog';
+import { isIntroEpisodeTitle } from '@/services/learning-content-catalog';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 const DIMENSION_FILTERS: (EQDimension | 'all')[] = [
@@ -35,40 +34,23 @@ const DIMENSION_FILTERS: (EQDimension | 'all')[] = [
   'resilience',
 ];
 
-const AUDIENCE_OPTIONS: { key: LearningAudience | 'all'; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'B2C', label: 'Personal' },
-  { key: 'B2B', label: 'Professional' },
-];
-
 export default function LearnScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { episodes, b2b, loading, error, reload, hasRemote, emptyRemote } = useLearningCatalog();
+  const { episodes, loading, error, reload, emptyRemote } = useLearningCatalog();
   const [selectedDimension, setSelectedDimension] = useState<EQDimension | 'all'>('all');
-  const [audience, setAudience] = useState<LearningAudience | 'all'>('all');
 
   const baseEpisodes = useMemo(() => {
     if (loading) return [];
-    // DB-only: if remote has nothing, show empty state instead of falling back silently.
     return episodes;
   }, [loading, episodes]);
 
-  const audienceFiltered = useMemo(() => {
-    if (audience === 'all') return baseEpisodes;
-    return baseEpisodes.filter((e) => e.eqType === audience);
-  }, [baseEpisodes, audience]);
-
   const filteredEpisodes = useMemo(() => {
-    if (selectedDimension === 'all') return audienceFiltered;
-    return audienceFiltered.filter((e) => e.dimension === selectedDimension);
-  }, [audienceFiltered, selectedDimension]);
+    if (selectedDimension === 'all') return baseEpisodes;
+    return baseEpisodes.filter((e) => e.dimension === selectedDimension);
+  }, [baseEpisodes, selectedDimension]);
 
-  const featured =
-    audience === 'all'
-      ? filteredEpisodes.find((e) => e.eqType === 'B2C') ?? filteredEpisodes[0]
-      : filteredEpisodes[0];
-  const showProfessionalAudience = hasRemote ? b2b.length > 0 : false;
+  const featured = filteredEpisodes[0];
 
   const handleOpenEpisode = (routeId: string) => {
     router.push(`/learning-detail?id=${encodeURIComponent(routeId)}`);
@@ -78,8 +60,8 @@ export default function LearnScreen() {
     if (dim === 'all') return 'All skills';
     return DIMENSION_INFO[dim].name;
   };
-  const getEpisodeSubtitle = (domain: string, dimension: EQDimension) =>
-    domain === 'INTRO_DOMAIN' ? 'Introduction' : DIMENSION_INFO[dimension].name;
+  const getEpisodeSubtitle = (title: string, dimension: EQDimension) =>
+    isIntroEpisodeTitle(title) ? 'Introduction' : DIMENSION_INFO[dimension].name;
 
   const styles = createStyles(colors);
 
@@ -120,33 +102,6 @@ export default function LearnScreen() {
         </View>
       ) : null}
 
-      {/* Audience: hide Professional if catalog has no B2B rows (static fallback is B2C-only) */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterContainer}
-      >
-        {AUDIENCE_OPTIONS.filter((o) => o.key !== 'B2B' || showProfessionalAudience).map((opt) => (
-          <TouchableOpacity
-            key={opt.key}
-            onPress={() => setAudience(opt.key)}
-            style={[
-              styles.filterChip,
-              audience === opt.key && styles.filterChipSelected,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                audience === opt.key && styles.filterChipTextSelected,
-              ]}
-            >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       {loading ? (
         <View style={styles.loadingBlock}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -160,20 +115,8 @@ export default function LearnScreen() {
               <FeatureCard
                 onPress={() => handleOpenEpisode(featured.routeId)}
                 title={featured.title}
-                subtitle={
-                  audience === 'all' || audience === 'B2B'
-                    ? featured.eqType === 'B2B'
-                      ? 'For professionals'
-                      : 'For personal growth'
-                    : DIMENSION_INFO[featured.dimension].name
-                }
-                badge={
-                  featured.sortOrder === 1
-                    ? 'Start here'
-                    : featured.eqType === 'B2B'
-                      ? 'Workplace'
-                      : 'Most popular'
-                }
+                subtitle={getEpisodeSubtitle(featured.title, featured.dimension)}
+                badge={featured.sortOrder === 1 ? 'Start here' : 'Featured'}
                 meta={[
                   ...(featured.videoUrl
                     ? [{ icon: 'videocam-outline' as const, text: 'Video lesson' }]
@@ -217,16 +160,11 @@ export default function LearnScreen() {
 
           <View style={styles.modulesSection}>
             <Text style={styles.sectionTitle}>
-              {audience === 'B2B'
-                ? 'Professional'
-                : audience === 'B2C'
-                  ? 'Personal'
-                  : 'All lessons'}{' '}
-              · {selectedDimension === 'all' ? 'All skills' : getDimensionName(selectedDimension)}
+              Lessons · {selectedDimension === 'all' ? 'All skills' : getDimensionName(selectedDimension)}
             </Text>
             {filteredEpisodes.length === 0 ? (
               <Text style={styles.emptyText}>
-                No lessons match these filters. Try another skill or audience.
+                No lessons match this filter. Try another skill.
               </Text>
             ) : (
               <View style={styles.modulesGrid}>
@@ -235,7 +173,7 @@ export default function LearnScreen() {
                     key={ep.episodeKey}
                     onPress={() => handleOpenEpisode(ep.routeId)}
                     title={ep.title}
-                    subtitle={getEpisodeSubtitle(ep.domain, ep.dimension)}
+                    subtitle={getEpisodeSubtitle(ep.title, ep.dimension)}
                     meta={[
                       ...(ep.videoUrl
                         ? [{ icon: 'videocam' as const, text: 'Video' }]
@@ -264,9 +202,7 @@ export default function LearnScreen() {
                 key={`audio-${ep.episodeKey}`}
                 onPress={() => handleOpenEpisode(ep.routeId)}
                 title={ep.title}
-                subtitle={`${getEpisodeSubtitle(ep.domain, ep.dimension)}${
-                  ep.eqType === 'B2B' ? ' · Workplace' : ''
-                }`}
+                subtitle={getEpisodeSubtitle(ep.title, ep.dimension)}
                 icon={ep.icon as any}
                 iconBackgroundColor={ep.color + '20'}
                 iconColor={ep.color}

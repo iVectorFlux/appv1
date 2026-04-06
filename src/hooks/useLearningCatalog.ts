@@ -15,8 +15,9 @@ export function useLearningCatalog() {
     setEmptyRemote(false);
     try {
       const e = await fetchLearningEpisodes('en');
-      setEpisodes(e);
-      setEmptyRemote(isSupabaseConfigured() && e.length === 0);
+      const personalOnly = e.filter((ep) => ep.eqType === 'B2C');
+      setEpisodes(personalOnly);
+      setEmptyRemote(isSupabaseConfigured() && personalOnly.length === 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load catalog');
       setEpisodes([]);
@@ -30,24 +31,17 @@ export function useLearningCatalog() {
     load();
   }, [load]);
 
-  const b2c = useMemo(() => episodes.filter((x) => x.eqType === 'B2C'), [episodes]);
-  const b2b = useMemo(() => episodes.filter((x) => x.eqType === 'B2B'), [episodes]);
-
   const hasRemote = episodes.length > 0;
 
-  const firstPersonalRouteId = b2c[0]?.routeId ?? LEARNING_MODULES[0]?.id;
-  const firstProfessionalRouteId = b2b[0]?.routeId;
+  const firstPersonalRouteId = episodes[0]?.routeId ?? LEARNING_MODULES[0]?.id;
 
   return {
     episodes,
-    b2c,
-    b2b,
     loading,
     error,
     reload: load,
     hasRemote,
     emptyRemote,
     firstPersonalRouteId,
-    firstProfessionalRouteId,
   };
 }

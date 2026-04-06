@@ -177,7 +177,7 @@ export default function InsightsScreen() {
   } = useInsightsData();
 
   const learnPreview = useLearningCatalog();
-  const learnPreviewList = learnPreview.hasRemote ? learnPreview.b2c : staticModulesAsEpisodes();
+  const learnPreviewList = learnPreview.hasRemote ? learnPreview.episodes : staticModulesAsEpisodes();
   const recommendedPreview = learnPreviewList.slice(0, 3);
   const podcastPreview = learnPreviewList.slice(0, 2);
 
