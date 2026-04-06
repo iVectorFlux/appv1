@@ -71,14 +71,14 @@ UPDATE public.learning_content SET sort_order = 330
   WHERE eq_type = 'B2B' AND episode_title = 'Borrow My Belief';
 
 -- ─── New B2C rows (upload media to these paths or update s3_link in SQL Editor) ───
--- Intro content uses INTRO_DOMAIN / INTRO so app can label it as introduction.
+-- Intro rows use SELF_AWARENESS_DOMAIN so EqDomain enum stays valid; app detects intro by episode_title.
 INSERT INTO public.learning_content (
   id, content_for, eq_type, domain, competency, episode_title, episode_description,
   industry, level, content_type, s3_link, created_at, updated_at, language, sort_order
 ) VALUES
 (
   'lceqfnd01vid0001en',
-  'EQ', 'B2C', 'INTRO_DOMAIN', 'INTRO', 'What is EQ?',
+  'EQ', 'B2C', 'SELF_AWARENESS_DOMAIN', 'SELF_AWARENESS', 'What is EQ?',
   'A short introduction to emotional intelligence and why it matters in daily life.',
   'GENERAL', 'All', 'video',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/What_Is_EQ.mp4',
@@ -86,7 +86,7 @@ INSERT INTO public.learning_content (
 ),
 (
   'lceqfnd02aud0002en',
-  'EQ', 'B2C', 'INTRO_DOMAIN', 'INTRO', 'Emotional intelligence importance',
+  'EQ', 'B2C', 'SELF_AWARENESS_DOMAIN', 'SELF_AWARENESS', 'Emotional intelligence importance',
   'Why emotional intelligence shapes relationships, wellbeing, and effectiveness.',
   'GENERAL', 'All', 'audio',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/Emotional_Intelligence_Importance.m4a',
@@ -94,7 +94,7 @@ INSERT INTO public.learning_content (
 ),
 (
   'lceqfnd02vid0002en',
-  'EQ', 'B2C', 'INTRO_DOMAIN', 'INTRO', 'Emotional intelligence importance',
+  'EQ', 'B2C', 'SELF_AWARENESS_DOMAIN', 'SELF_AWARENESS', 'Emotional intelligence importance',
   'Why emotional intelligence shapes relationships, wellbeing, and effectiveness.',
   'GENERAL', 'All', 'video',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/Emotional_Intelligence_Importance.mp4',

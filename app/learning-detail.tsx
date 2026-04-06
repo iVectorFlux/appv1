@@ -19,6 +19,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Redirect, useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, Audio, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +31,7 @@ import {
   recordVideoCompleted,
   recordAudioCompleted,
 } from '@/services/learning-progress';
-import { resolveDetailModuleFromCatalogId } from '@/services/learning-content-catalog';
+import { isIntroEpisodeTitle, resolveDetailModuleFromCatalogId } from '@/services/learning-content-catalog';
 import {
   recordEpisodeLastAccessed,
   recordEpisodeVideoCompleted,
@@ -39,18 +40,53 @@ import {
 
 type MediaMode = 'video' | 'audio';
 
-/** Use full scroll width (minus horizontal padding) so Learn EQ matches list/detail layout */
-const VIDEO_ASPECT = 9 / 16;
+/** 16:9 landscape player; size derived from screen + safe area (see computeVideoPlayerLayout). */
+const VIDEO_ASPECT_W = 16;
+const VIDEO_ASPECT_H = 9;
+
+function computeVideoPlayerLayout(
+  windowWidth: number,
+  windowHeight: number,
+  horizontalPaddingTotal: number,
+  safeTop: number,
+  safeBottom: number
+): { width: number; height: number } {
+  const innerMaxW = Math.max(200, windowWidth - horizontalPaddingTotal);
+  /** Cap width on tablets / desktop web so the player does not dominate the viewport */
+  const availW = Math.min(innerMaxW, 720);
+  const viewportH = Math.max(320, windowHeight - safeTop - safeBottom);
+  /** Leave room for header, tabs, and scroll content below the player */
+  const maxH = Math.min(viewportH * 0.5, viewportH - 140);
+
+  let w = availW;
+  let h = (w * VIDEO_ASPECT_H) / VIDEO_ASPECT_W;
+  if (h > maxH) {
+    h = maxH;
+    w = (h * VIDEO_ASPECT_W) / VIDEO_ASPECT_H;
+  }
+  if (w > innerMaxW) {
+    w = innerMaxW;
+    h = (w * VIDEO_ASPECT_H) / VIDEO_ASPECT_W;
+  }
+  return { width: Math.round(w), height: Math.round(Math.max(160, h)) };
+}
 
 export default function LearningDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; returnTo?: string | string[] }>();
   const colors = useColors();
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
 
-  const videoWidth = Math.max(200, windowWidth - 2 * Spacing.lg);
-  const videoHeight = Math.round(videoWidth * VIDEO_ASPECT);
+  const mediaHorizontalPaddingTotal = Spacing.lg * 2;
+  const { width: videoWidth, height: videoHeight } = computeVideoPlayerLayout(
+    windowWidth,
+    windowHeight,
+    mediaHorizontalPaddingTotal,
+    insets.top,
+    insets.bottom
+  );
 
   const [mounted, setMounted] = useState(false);
   const [module, setModule] = useState<LearningModule | null>(null);
@@ -137,7 +173,8 @@ export default function LearningDetailScreen() {
 
   // Web: mount HTML5 video when module and mediaMode are set
   useEffect(() => {
-    if (Platform.OS !== 'web' || !module || mediaMode !== 'video' || !module.videoUrl) return;
+    const uri = module?.videoUrl?.trim();
+    if (Platform.OS !== 'web' || !module || mediaMode !== 'video' || !uri) return;
     const container = (webVideoContainerRef.current as unknown as HTMLElement) ?? null;
     if (!container || !container.appendChild) return;
 
@@ -148,8 +185,8 @@ export default function LearningDetailScreen() {
     video.style.height = '100%';
     video.style.display = 'block';
     video.style.objectFit = 'contain';
-    video.src = module.videoUrl;
-    video.preload = 'metadata';
+    video.src = uri;
+    video.preload = 'auto';
     video.onloadedmetadata = () => setIsLoading(false);
     video.onerror = () => setError('Unable to load video');
     video.oncanplay = () => setIsLoading(false);
@@ -173,7 +210,8 @@ export default function LearningDetailScreen() {
       } catch (_) {}
       webVideoRef.current = null;
     };
-  }, [module?.id, module?.videoUrl, mediaMode, user?.id, catalogEpisodeKey]);
+    // `mounted` gates the ref-bearing View on web; without it the first effect run sees null ref and never retries.
+  }, [mounted, module?.id, module?.videoUrl, mediaMode, user?.id, catalogEpisodeKey]);
 
   const handleBack = async () => {
     // Stop media before navigating back
@@ -298,8 +336,8 @@ export default function LearningDetailScreen() {
     } else if (mediaMode === 'audio') {
       if (Platform.OS === 'web') {
         // On mobile browsers play() must run in the same user gesture; ensure element exists then play immediately
-        if (!webAudioRef.current && module) {
-          setupWebAudio(module.audioUrl);
+        if (!webAudioRef.current && module?.audioUrl?.trim()) {
+          setupWebAudio(module.audioUrl.trim());
         }
         if (webAudioRef.current) {
           if (isPlaying) {
@@ -326,7 +364,7 @@ export default function LearningDetailScreen() {
 
   const switchToAudio = async () => {
     if (!module) return;
-    if (!module.audioUrl) {
+    if (!module.audioUrl?.trim()) {
       setError('No podcast is available for this lesson.');
       return;
     }
@@ -346,7 +384,7 @@ export default function LearningDetailScreen() {
     
     try {
       if (Platform.OS === 'web') {
-        setupWebAudio(module.audioUrl);
+        setupWebAudio(module.audioUrl.trim());
       } else {
         // Use expo-av Audio for native platforms
         // Unload previous audio if exists
@@ -355,7 +393,7 @@ export default function LearningDetailScreen() {
         }
         
         const { sound } = await Audio.Sound.createAsync(
-          { uri: module.audioUrl },
+          { uri: module.audioUrl.trim() },
           { shouldPlay: false },
           handlePlaybackStatusUpdate
         );
@@ -370,7 +408,7 @@ export default function LearningDetailScreen() {
   };
 
   const switchToVideo = async () => {
-    if (!module?.videoUrl) {
+    if (!module?.videoUrl?.trim()) {
       setError('No video is available for this lesson.');
       return;
     }
@@ -395,7 +433,13 @@ export default function LearningDetailScreen() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const styles = createStyles(colors, module?.color ?? colors.primary, videoWidth, videoHeight);
+  const styles = createStyles(
+    colors,
+    module?.color ?? colors.primary,
+    videoWidth,
+    videoHeight,
+    mediaHorizontalPaddingTotal
+  );
 
   if (!authLoading && !isAuthenticated) {
     return <Redirect href="/(auth)/sign-in" />;
@@ -424,12 +468,15 @@ export default function LearningDetailScreen() {
     );
   }
 
-  const hasVideo = Boolean(module.videoUrl);
-  const hasAudio = Boolean(module.audioUrl);
+  const videoSrc = module.videoUrl?.trim() ?? '';
+  const audioSrc = module.audioUrl?.trim() ?? '';
+  const hasVideo = Boolean(videoSrc);
+  const hasAudio = Boolean(audioSrc);
   const showVideoPlayer = hasVideo && mediaMode === 'video';
   const showAudioPlayer = hasAudio && !showVideoPlayer;
 
   const dimensionInfo = DIMENSION_INFO[module.dimension];
+  const headerDimensionLabel = isIntroEpisodeTitle(module.title) ? module.subtitle : dimensionInfo.name;
 
   return (
     <View style={styles.container}>
@@ -443,7 +490,7 @@ export default function LearningDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitle}>
-          <Text style={styles.dimensionLabel}>{dimensionInfo.name}</Text>
+          <Text style={styles.dimensionLabel}>{headerDimensionLabel}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
@@ -501,7 +548,7 @@ export default function LearningDetailScreen() {
                 <>
                   <Video
                     ref={videoRef}
-                    source={{ uri: module.videoUrl }}
+                    source={{ uri: videoSrc }}
                     style={styles.video}
                     useNativeControls
                     resizeMode={ResizeMode.CONTAIN}
@@ -636,7 +683,8 @@ const createStyles = (
   colors: ReturnType<typeof useColors>,
   accentColor: string,
   videoWidth: number,
-  videoHeight: number
+  videoHeight: number,
+  mediaHorizontalPaddingTotal: number
 ) => StyleSheet.create({
   container: {
     flex: 1,
@@ -710,13 +758,15 @@ const createStyles = (
   mediaTabTextActive: {
     color: colors.primaryForeground,
   },
-  // Media Container
+  // Media Container — horizontal padding must match `mediaHorizontalPaddingTotal` passed into layout math
   mediaContainer: {
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: mediaHorizontalPaddingTotal / 2,
     marginBottom: Spacing.xl,
+    alignItems: 'center',
   },
   videoContainer: {
     width: videoWidth,
+    maxWidth: '100%' as const,
     height: videoHeight,
     borderRadius: Radius.xl,
     overflow: 'hidden',

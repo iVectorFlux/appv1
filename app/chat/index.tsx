@@ -30,7 +30,7 @@ import {
   Radius,
 } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
-import { saveChatMessage, getChatHistory } from '@/services/chat-storage';
+import { saveChatMessage, getChatHistoryWithTimeout } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
 import { useLearningCatalog } from '@/hooks/useLearningCatalog';
 import { staticFallbackDetailId } from '@/services/learning-content-catalog';
@@ -437,7 +437,7 @@ export default function ChatScreen() {
       }
       setIsHistoryLoading(true);
       try {
-        const history = await getChatHistory(user.id, selectedMode, 30);
+        const history = await getChatHistoryWithTimeout(user.id, selectedMode, 30);
         if (history.length > 0) {
           setMessages(
             history.map((m) => ({
@@ -613,11 +613,6 @@ export default function ChatScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {isHistoryLoading && (
-          <View style={styles.historyLoadingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        )}
         {messages.map((msg) => (
           <MessageRow
             key={msg.id}
@@ -628,6 +623,11 @@ export default function ChatScreen() {
             onLearnPress={handleLearnPress}
           />
         ))}
+        {isHistoryLoading && (
+          <View style={styles.historyLoadingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
         {isLoading && <TypingIndicator color={modeColor} />}
       </ScrollView>
 

@@ -76,6 +76,23 @@ export async function getChatHistory(
     }));
 }
 
+const CHAT_HISTORY_TIMEOUT_MS = 12_000;
+
+/** Same as getChatHistory but never hangs indefinitely (UI can clear loading state). */
+export async function getChatHistoryWithTimeout(
+  userId: string,
+  mode: ChatMode,
+  limit = 50,
+  timeoutMs = CHAT_HISTORY_TIMEOUT_MS
+): Promise<ChatMessage[]> {
+  return Promise.race([
+    getChatHistory(userId, mode, limit),
+    new Promise<ChatMessage[]>((resolve) => {
+      setTimeout(() => resolve([]), timeoutMs);
+    }),
+  ]);
+}
+
 /**
  * Auto-save an emotional moment from Inner Ally chat as a journal entry.
  *

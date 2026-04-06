@@ -52,9 +52,15 @@ export function episodeKeyFromRow(row: Pick<LearningContentRow, 'eq_type' | 'dom
   return groupKey(row);
 }
 
+/** B2C intro curriculum rows share a real EqDomain in DB; label them in UI by title. */
+const INTRO_EPISODE_TITLES = new Set(['What is EQ?', 'Emotional intelligence importance']);
+
+export function isIntroEpisodeTitle(title: string): boolean {
+  return INTRO_EPISODE_TITLES.has(title.trim());
+}
+
 /** Map DB domain/competency to in-app EQ dimension filters */
 export function mapLearningRowToDimension(domain: string, competency: string): EQDimension {
-  if (domain === 'INTRO_DOMAIN') return 'self_awareness';
   if (domain === 'SELF_AWARENESS_DOMAIN') return 'self_awareness';
   if (domain === 'SELF_MANAGEMENT_DOMAIN' && competency === 'RESILIENCE') return 'resilience';
   if (domain === 'SELF_MANAGEMENT_DOMAIN') return 'self_regulation';
@@ -86,6 +92,11 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
     const dimension = mapLearningRowToDimension(anchor.domain, anchor.competency);
     const info = DIMENSION_INFO[dimension];
     const sortOrder = Math.min(...group.map((r) => r.sort_order ?? 100));
+    const title = anchor.episode_title.trim();
+    let videoUrl = video?.s3_link?.trim() || null;
+    let audioUrl = audio?.s3_link?.trim() || null;
+    // Curriculum: "What is EQ?" is video-only; ignore stale audio rows in DB.
+    if (title === 'What is EQ?') audioUrl = null;
     out.push({
       episodeKey: groupKey(anchor),
       eqType,
@@ -94,8 +105,8 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
       domain: anchor.domain,
       competency: anchor.competency,
       dimension,
-      videoUrl: video?.s3_link ?? null,
-      audioUrl: audio?.s3_link ?? null,
+      videoUrl,
+      audioUrl,
       routeId: (video ?? audio)!.id,
       icon: info.icon,
       color: info.color,
@@ -153,7 +164,7 @@ export async function fetchLearningContentRowById(id: string): Promise<LearningC
 /** Build LearningModule shape for the detail screen (static + DB). */
 export function episodeToDetailModule(ep: LearningEpisode): LearningModule {
   const dimInfo = DIMENSION_INFO[ep.dimension];
-  const subtitle = ep.domain === 'INTRO_DOMAIN' ? 'Introduction' : dimInfo.name;
+  const subtitle = isIntroEpisodeTitle(ep.title) ? 'Introduction' : dimInfo.name;
   return {
     id: ep.routeId,
     dimension: ep.dimension,

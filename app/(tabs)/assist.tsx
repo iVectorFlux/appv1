@@ -34,7 +34,7 @@ import {
 } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import { supabase } from '@/lib/supabase';
-import { saveChatMessage, getChatHistory, autoJournalFromChat } from '@/services/chat-storage';
+import { saveChatMessage, getChatHistoryWithTimeout, autoJournalFromChat } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
 import { useLearningCatalog } from '@/hooks/useLearningCatalog';
 import { staticFallbackDetailId } from '@/services/learning-content-catalog';
@@ -265,7 +265,7 @@ export default function AssistScreen() {
     }
     setIsLoadingHistory(true);
     try {
-      const history = await getChatHistory(user.id, selectedMode, 30);
+      const history = await getChatHistoryWithTimeout(user.id, selectedMode, 30);
       if (history.length > 0) {
         setMessages(history.map((m) => ({
           id: m.id ?? Math.random().toString(),
@@ -466,11 +466,6 @@ export default function AssistScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        {isLoadingHistory && (
-          <View style={styles.historyLoadingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        )}
         {messages.map((msg) => (
           <MessageBubble
             key={msg.id}
@@ -481,6 +476,11 @@ export default function AssistScreen() {
             onLearnPress={openLearnFromAssist}
           />
         ))}
+        {isLoadingHistory && (
+          <View style={styles.historyLoadingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
         {isSending && (
           <View style={styles.typing}>
             {[0, 1, 2].map((i) => (
