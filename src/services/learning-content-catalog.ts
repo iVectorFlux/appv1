@@ -54,7 +54,6 @@ export function episodeKeyFromRow(row: Pick<LearningContentRow, 'eq_type' | 'dom
 
 /** Map DB domain/competency to in-app EQ dimension filters */
 export function mapLearningRowToDimension(domain: string, competency: string): EQDimension {
-  if (domain === 'EQ_FOUNDATIONS_DOMAIN') return 'self_awareness';
   if (domain === 'SELF_AWARENESS_DOMAIN') return 'self_awareness';
   if (domain === 'SELF_MANAGEMENT_DOMAIN' && competency === 'RESILIENCE') return 'resilience';
   if (domain === 'SELF_MANAGEMENT_DOMAIN') return 'self_regulation';

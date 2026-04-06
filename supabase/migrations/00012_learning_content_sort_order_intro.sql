@@ -71,13 +71,15 @@ UPDATE public.learning_content SET sort_order = 330
   WHERE eq_type = 'B2B' AND episode_title = 'Borrow My Belief';
 
 -- ─── New B2C rows (upload media to these paths or update s3_link in SQL Editor) ───
+-- domain/competency must match your DB enums (e.g. EqDomain / EqCompetency). We use
+-- SELF_AWARENESS_DOMAIN + SELF_AWARENESS so episodes are distinct from others by episode_title only.
 INSERT INTO public.learning_content (
   id, content_for, eq_type, domain, competency, episode_title, episode_description,
   industry, level, content_type, s3_link, created_at, updated_at, language, sort_order
 ) VALUES
 (
   'lceqfnd01aud0001en',
-  'EQ', 'B2C', 'EQ_FOUNDATIONS_DOMAIN', 'INTRO', 'What is EQ?',
+  'EQ', 'B2C', 'SELF_AWARENESS_DOMAIN', 'SELF_AWARENESS', 'What is EQ?',
   'A short introduction to emotional intelligence and why it matters in daily life.',
   'GENERAL', 'All', 'audio',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/What_Is_EQ.m4a',
@@ -85,7 +87,7 @@ INSERT INTO public.learning_content (
 ),
 (
   'lceqfnd01vid0001en',
-  'EQ', 'B2C', 'EQ_FOUNDATIONS_DOMAIN', 'INTRO', 'What is EQ?',
+  'EQ', 'B2C', 'SELF_AWARENESS_DOMAIN', 'SELF_AWARENESS', 'What is EQ?',
   'A short introduction to emotional intelligence and why it matters in daily life.',
   'GENERAL', 'All', 'video',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/What_Is_EQ.mp4',
@@ -93,7 +95,7 @@ INSERT INTO public.learning_content (
 ),
 (
   'lceqfnd02aud0002en',
-  'EQ', 'B2C', 'EQ_FOUNDATIONS_DOMAIN', 'INTRO', 'Emotional intelligence importance',
+  'EQ', 'B2C', 'SELF_AWARENESS_DOMAIN', 'SELF_AWARENESS', 'Emotional intelligence importance',
   'Why emotional intelligence shapes relationships, wellbeing, and effectiveness.',
   'GENERAL', 'All', 'audio',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/Emotional_Intelligence_Importance.m4a',
@@ -101,12 +103,14 @@ INSERT INTO public.learning_content (
 ),
 (
   'lceqfnd02vid0002en',
-  'EQ', 'B2C', 'EQ_FOUNDATIONS_DOMAIN', 'INTRO', 'Emotional intelligence importance',
+  'EQ', 'B2C', 'SELF_AWARENESS_DOMAIN', 'SELF_AWARENESS', 'Emotional intelligence importance',
   'Why emotional intelligence shapes relationships, wellbeing, and effectiveness.',
   'GENERAL', 'All', 'video',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/Emotional_Intelligence_Importance.mp4',
   now(), now(), 'en', 2
 ),
+-- If this fails with invalid EqCompetency: run once:
+--   ALTER TYPE public."EqCompetency" ADD VALUE IF NOT EXISTS 'RESILIENCE';
 (
   'lceqb2c08audbounce1',
   'EQ', 'B2C', 'SELF_MANAGEMENT_DOMAIN', 'RESILIENCE', 'The Bounce Back Muscle',
