@@ -314,9 +314,3 @@ export function getSkillById(id: string): FutureSkill | undefined {
   return FUTURE_SKILLS.find((s) => s.id === id);
 }
 
-export function getAtomicSkillById(
-  skillId: string,
-  atomicId: string
-): AtomicSkill | undefined {
-  return getSkillById(skillId)?.atomicSkills.find((a) => a.id === atomicId);
-}

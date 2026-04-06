@@ -18,8 +18,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { Button } from '@/components/ui/button';
-import { Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
-import { useColors } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 

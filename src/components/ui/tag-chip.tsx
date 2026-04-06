@@ -74,9 +74,3 @@ const styles = StyleSheet.create({
   },
 });
 
-/** Container for a row of tag chips. Use same gap/layout everywhere. */
-export const tagGridStyle = (colors: ReturnType<typeof useColors>) => ({
-  flexDirection: 'row' as const,
-  flexWrap: 'wrap' as const,
-  gap: Spacing.sm,
-});

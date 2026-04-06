@@ -15,7 +15,6 @@
 import type {
   GroundingMode,
   GroundingModeConfig,
-  StressLevel,
   EmotionalTone,
 } from '@/types/grounding';
 
@@ -112,36 +111,6 @@ export const EMOTIONAL_TONES: { id: EmotionalTone; label: string }[] = [
  * | Emotional processing   | Post-conflict reset  | —                |
  * | Freeze/dissociation    | Box breathing        | —                |
  *
- * recommendMode() uses stress level + emotional tone to pick the primary tool.
- */
-export function recommendMode(
-  stressLevel: StressLevel,
-  emotionalTone: EmotionalTone | null
-): GroundingMode {
-  // Acute spike — directive intervention
-  if (emotionalTone === 'panicked' || stressLevel === 5) {
-    return 'box_breathing';
-  }
-
-  // High stress + rumination-type emotions → sensory interrupt
-  if (stressLevel >= 4 && (emotionalTone === 'anxious' || emotionalTone === 'overwhelmed' || emotionalTone === 'restless')) {
-    return 'sensory_anchor';
-  }
-
-  // Performance / cognitive load → structured reset
-  if (emotionalTone === 'tense' || emotionalTone === 'scattered') {
-    return 'pre_meeting';
-  }
-
-  // Aftermath / processing emotions
-  if (emotionalTone === 'angry' || emotionalTone === 'sad' || emotionalTone === 'numb') {
-    return 'post_conflict';
-  }
-
-  // Default: quickest path to calm
-  return 'quick_reset';
-}
-
 // ============================================================================
 // QUICK RESET STEPS
 // ============================================================================

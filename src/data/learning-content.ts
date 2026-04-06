@@ -142,11 +142,6 @@ export const LEARNING_MODULES: LearningModule[] = [
   },
 ];
 
-// Get modules by dimension
-export function getModulesByDimension(dimension: EQDimension): LearningModule[] {
-  return LEARNING_MODULES.filter(m => m.dimension === dimension);
-}
-
 // Get a single module by ID
 export function getModuleById(id: string): LearningModule | undefined {
   return LEARNING_MODULES.find(m => m.id === id);

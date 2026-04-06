@@ -46,7 +46,6 @@ export async function saveRecoverySession(
       throw error;
     }
 
-    console.log('[Recovery Storage] Saved grounding session:', session.mode);
   } catch (error) {
     console.error('[Recovery Storage] Error:', error);
     throw error;

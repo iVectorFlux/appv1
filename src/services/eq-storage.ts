@@ -131,7 +131,6 @@ export async function completeEQAssessmentSession(
     console.error('[EQ Storage] Failed to save score:', scoreError);
     throw scoreError;
   }
-  console.log('[EQ Storage] Session completed:', sessionId);
 }
 
 /**
@@ -201,7 +200,6 @@ export async function saveEQAssessmentResult(
     });
 
     if (scoreError) throw scoreError;
-    console.log('[EQ Storage] Successfully saved assessment result:', sessionId);
   } catch (error) {
     console.error('[EQ Storage] Error saving assessment:', error);
     throw error;
