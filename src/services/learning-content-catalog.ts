@@ -52,8 +52,8 @@ export function episodeKeyFromRow(row: Pick<LearningContentRow, 'eq_type' | 'dom
   return groupKey(row);
 }
 
-/** B2C intro curriculum rows share a real EqDomain in DB; label them in UI by title. */
-const INTRO_EPISODE_TITLES = new Set(['What is EQ?', 'Emotional intelligence importance']);
+/** B2C intro lesson shown as "Introduction" in Learn / detail (video + audio). */
+const INTRO_EPISODE_TITLES = new Set(['Emotional intelligence importance']);
 
 export function isIntroEpisodeTitle(title: string): boolean {
   return INTRO_EPISODE_TITLES.has(title.trim());
@@ -125,11 +125,8 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
     const dimension = mapLearningRowToDimension(anchor.domain, anchor.competency);
     const info = DIMENSION_INFO[dimension];
     const sortOrder = Math.min(...group.map((r) => r.sort_order ?? 100));
-    const title = anchor.episode_title.trim();
-    let videoUrl = video?.s3_link?.trim() || null;
-    let audioUrl = audio?.s3_link?.trim() || null;
-    // Curriculum: "What is EQ?" is video-only; ignore stale audio rows in DB.
-    if (title === 'What is EQ?') audioUrl = null;
+    const videoUrl = video?.s3_link?.trim() || null;
+    const audioUrl = audio?.s3_link?.trim() || null;
     out.push({
       episodeKey: groupKey(anchor),
       eqType,

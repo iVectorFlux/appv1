@@ -82,7 +82,7 @@ INSERT INTO public.learning_content (
   'Why emotional intelligence shapes relationships, wellbeing, and effectiveness.',
   'GENERAL', 'All', 'audio',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/Emotional_Intelligence_Importance.m4a',
-  now(), now(), 'en', 2
+  now(), now(), 'en', 1
 ),
 (
   'lceqfnd02vid0002en',
@@ -90,7 +90,7 @@ INSERT INTO public.learning_content (
   'Why emotional intelligence shapes relationships, wellbeing, and effectiveness.',
   'GENERAL', 'All', 'video',
   'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/Emotional_Intelligence_Importance.mp4',
-  now(), now(), 'en', 2
+  now(), now(), 'en', 1
 ),
 (
   'lceqb2c08audbounce1',
