@@ -157,6 +157,20 @@ export default function LearningDetailScreen() {
     };
   }, [params.id]);
 
+  // Dev-only: verify the video URL is reachable and log headers for diagnosis
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !module?.videoUrl) return;
+    const url = module.videoUrl.trim();
+    if (!url) return;
+    console.log('[Video] Checking URL:', url);
+    fetch(url, { method: 'HEAD' })
+      .then((res) => {
+        console.log('[Video] HEAD response:', res.status, res.headers.get('content-type'), res.headers.get('content-length'));
+        if (!res.ok) console.warn('[Video] URL returned non-200:', res.status);
+      })
+      .catch((err) => console.error('[Video] fetch HEAD failed (possible CORS on preflight):', err));
+  }, [module?.videoUrl]);
+
   // Track last accessed when module is loaded (authenticated user)
   useEffect(() => {
     if (!module || !user?.id) return;
@@ -502,7 +516,7 @@ export default function LearningDetailScreen() {
                     src: videoSrc,
                     controls: true,
                     playsInline: true,
-                    preload: 'auto',
+                    preload: 'metadata',
                     style: {
                       width: '100%',
                       height: '100%',
@@ -516,7 +530,20 @@ export default function LearningDetailScreen() {
                     onPlay: () => setIsPlaying(true),
                     onPause: () => setIsPlaying(false),
                     onEnded: handleVideoEnded,
-                    onError: () => { setError('Unable to load video. Check the S3 URL and bucket permissions.'); setIsLoading(false); },
+                    onError: (e: React.SyntheticEvent<HTMLVideoElement>) => {
+                      const el = e.currentTarget as HTMLVideoElement;
+                      const mediaErr = el.error;
+                      const codeLabels: Record<number, string> = {
+                        1: 'ABORTED',
+                        2: 'NETWORK_ERROR',
+                        3: 'DECODE_ERROR',
+                        4: 'FORMAT_NOT_SUPPORTED',
+                      };
+                      const label = mediaErr ? (codeLabels[mediaErr.code] ?? `ERR_${mediaErr.code}`) : 'UNKNOWN';
+                      console.error('[Video] load failed:', { url: el.src, code: mediaErr?.code, label, message: mediaErr?.message });
+                      setError(`Video failed (${label}). URL: ${el.src.slice(0, 80)}...`);
+                      setIsLoading(false);
+                    },
                     onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement>) => {
                       const el = e.currentTarget;
                       if (!isNaN(el.duration)) setDuration(el.duration * 1000);
