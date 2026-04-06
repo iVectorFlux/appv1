@@ -27,7 +27,9 @@ import { SectionHeaderCard } from '@/components/ui/section-header-card';
 import { AudioRowCard } from '@/components/ui/audio-row-card';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
-import { LEARNING_MODULES, DIMENSION_INFO } from '@/data/learning-content';
+import { DIMENSION_INFO } from '@/data/learning-content';
+import { useLearningCatalog } from '@/hooks/useLearningCatalog';
+import { staticModulesAsEpisodes } from '@/services/learning-content-catalog';
 import { GROUNDING_MODES } from '@/data/grounding-content';
 import { useAuthStore } from '@/stores/auth-store';
 import { getJournalEntries } from '@/services/journal-storage';
@@ -173,6 +175,11 @@ export default function InsightsScreen() {
     errorWellbeing,
     retry,
   } = useInsightsData();
+
+  const learnPreview = useLearningCatalog();
+  const learnPreviewList = learnPreview.hasRemote ? learnPreview.b2c : staticModulesAsEpisodes();
+  const recommendedPreview = learnPreviewList.slice(0, 3);
+  const podcastPreview = learnPreviewList.slice(0, 2);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -377,15 +384,17 @@ export default function InsightsScreen() {
               subtitle="Video lessons and podcasts for your EQ journey"
               icon="book-outline"
             />
-            {LEARNING_MODULES.slice(0, 3).map((module) => (
+            {recommendedPreview.map((ep) => (
               <AudioRowCard
-                key={module.id}
-                onPress={() => router.push(`/learning-detail?id=${module.id}`)}
-                title={module.title}
-                subtitle={`${DIMENSION_INFO[module.dimension].name} • ${module.videoDuration}`}
-                icon={module.icon as any}
-                iconBackgroundColor={module.color + '20'}
-                iconColor={module.color}
+                key={ep.episodeKey}
+                onPress={() =>
+                  router.push(`/learning-detail?id=${encodeURIComponent(ep.routeId)}`)
+                }
+                title={ep.title}
+                subtitle={`${DIMENSION_INFO[ep.dimension].name} • Video lesson`}
+                icon={ep.icon as any}
+                iconBackgroundColor={ep.color + '20'}
+                iconColor={ep.color}
               />
             ))}
           </View>
@@ -396,15 +405,17 @@ export default function InsightsScreen() {
               subtitle="Extended audio sessions for deeper learning"
               icon="headset"
             />
-            {LEARNING_MODULES.slice(0, 2).map((module) => (
+            {podcastPreview.map((ep) => (
               <AudioRowCard
-                key={`podcast-${module.id}`}
-                onPress={() => router.push(`/learning-detail?id=${module.id}`)}
-                title={module.title}
-                subtitle={`${DIMENSION_INFO[module.dimension].name} • ${module.audioDuration}`}
-                icon={module.icon as any}
-                iconBackgroundColor={module.color + '20'}
-                iconColor={module.color}
+                key={`podcast-${ep.episodeKey}`}
+                onPress={() =>
+                  router.push(`/learning-detail?id=${encodeURIComponent(ep.routeId)}`)
+                }
+                title={ep.title}
+                subtitle={`${DIMENSION_INFO[ep.dimension].name} • Podcast`}
+                icon={ep.icon as any}
+                iconBackgroundColor={ep.color + '20'}
+                iconColor={ep.color}
               />
             ))}
           </View>

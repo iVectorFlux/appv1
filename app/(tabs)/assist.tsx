@@ -36,7 +36,8 @@ import { useAuthStore } from '@/stores/auth-store';
 import { supabase } from '@/lib/supabase';
 import { saveChatMessage, getChatHistory, autoJournalFromChat } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
-import { LEARNING_MODULES } from '@/data/learning-content';
+import { useLearningCatalog } from '@/hooks/useLearningCatalog';
+import { staticFallbackDetailId } from '@/services/learning-content-catalog';
 import { requestChatCompletion } from '@/utils/vercel-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -245,6 +246,7 @@ export default function AssistScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const { firstPersonalRouteId } = useLearningCatalog();
 
   const [mode, setMode]         = useState<ChatMode>('inner_ally');
   const [messages, setMessages] = useState<Message[]>(() => [introMessageForMode('inner_ally')]);
@@ -398,9 +400,9 @@ export default function AssistScreen() {
       router.push(`/skill-lab/${skillId}?returnTo=assist`);
       return;
     }
-    const first = LEARNING_MODULES[0];
-    if (first) {
-      router.push(`/learning-detail?id=${encodeURIComponent(first.id)}&returnTo=assist`);
+    const id = firstPersonalRouteId ?? staticFallbackDetailId();
+    if (id) {
+      router.push(`/learning-detail?id=${encodeURIComponent(id)}&returnTo=assist`);
       return;
     }
     router.push('/(tabs)/learn');

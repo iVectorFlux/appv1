@@ -30,6 +30,12 @@ import {
   recordVideoCompleted,
   recordAudioCompleted,
 } from '@/services/learning-progress';
+import { resolveDetailModuleFromCatalogId } from '@/services/learning-content-catalog';
+import {
+  recordEpisodeLastAccessed,
+  recordEpisodeVideoCompleted,
+  recordEpisodeAudioCompleted,
+} from '@/services/learning-content-progress';
 
 type MediaMode = 'video' | 'audio';
 
@@ -48,6 +54,9 @@ export default function LearningDetailScreen() {
 
   const [mounted, setMounted] = useState(false);
   const [module, setModule] = useState<LearningModule | null>(null);
+  /** When set, progress is stored in learning_content_progress (DB catalog). */
+  const [catalogEpisodeKey, setCatalogEpisodeKey] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState(true);
   const [mediaMode, setMediaMode] = useState<MediaMode>('video');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,12 +78,31 @@ export default function LearningDetailScreen() {
   }, []);
 
   useEffect(() => {
-    if (params.id) {
-      const foundModule = getModuleById(params.id);
-      if (foundModule) {
-        setModule(foundModule);
-      }
+    const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
+    if (!id) {
+      setDetailLoading(false);
+      setModule(null);
+      setCatalogEpisodeKey(null);
+      return;
     }
+    let cancelled = false;
+    setDetailLoading(true);
+    setCatalogEpisodeKey(null);
+    (async () => {
+      const fromCatalog = await resolveDetailModuleFromCatalogId(id);
+      if (cancelled) return;
+      if (fromCatalog) {
+        setModule(fromCatalog.module);
+        setCatalogEpisodeKey(fromCatalog.episodeKey);
+        setMediaMode(fromCatalog.module.videoUrl ? 'video' : 'audio');
+      } else {
+        const found = getModuleById(id);
+        setModule(found ?? null);
+        setCatalogEpisodeKey(null);
+        setMediaMode(found?.videoUrl ? 'video' : 'audio');
+      }
+      setDetailLoading(false);
+    })();
     return () => {
       if (Platform.OS === 'web') {
         if (webAudioRef.current) {
@@ -100,12 +128,16 @@ export default function LearningDetailScreen() {
   // Track last accessed when module is loaded (authenticated user)
   useEffect(() => {
     if (!module || !user?.id) return;
-    recordLastAccessed(user.id, module.id).catch(() => {});
-  }, [module?.id, user?.id]);
+    if (catalogEpisodeKey) {
+      recordEpisodeLastAccessed(user.id, catalogEpisodeKey).catch(() => {});
+    } else {
+      recordLastAccessed(user.id, module.id).catch(() => {});
+    }
+  }, [module?.id, user?.id, catalogEpisodeKey]);
 
   // Web: mount HTML5 video when module and mediaMode are set
   useEffect(() => {
-    if (Platform.OS !== 'web' || !module || mediaMode !== 'video') return;
+    if (Platform.OS !== 'web' || !module || mediaMode !== 'video' || !module.videoUrl) return;
     const container = (webVideoContainerRef.current as unknown as HTMLElement) ?? null;
     if (!container || !container.appendChild) return;
 
@@ -126,7 +158,10 @@ export default function LearningDetailScreen() {
     video.onended = () => {
       setIsPlaying(false);
       setProgress(0);
-      if (user?.id) recordVideoCompleted(user.id, module.id).catch(() => {});
+      if (user?.id) {
+        if (catalogEpisodeKey) recordEpisodeVideoCompleted(user.id, catalogEpisodeKey).catch(() => {});
+        else recordVideoCompleted(user.id, module.id).catch(() => {});
+      }
     };
     container.appendChild(video);
     webVideoRef.current = video;
@@ -138,7 +173,7 @@ export default function LearningDetailScreen() {
       } catch (_) {}
       webVideoRef.current = null;
     };
-  }, [module?.id, module?.videoUrl, mediaMode, user?.id]);
+  }, [module?.id, module?.videoUrl, mediaMode, user?.id, catalogEpisodeKey]);
 
   const handleBack = async () => {
     // Stop media before navigating back
@@ -185,8 +220,13 @@ export default function LearningDetailScreen() {
         setIsPlaying(false);
         setProgress(0);
         if (module?.id && user?.id) {
-          if (mediaMode === 'video') recordVideoCompleted(user.id, module.id).catch(() => {});
-          else recordAudioCompleted(user.id, module.id).catch(() => {});
+          if (mediaMode === 'video') {
+            if (catalogEpisodeKey) recordEpisodeVideoCompleted(user.id, catalogEpisodeKey).catch(() => {});
+            else recordVideoCompleted(user.id, module.id).catch(() => {});
+          } else {
+            if (catalogEpisodeKey) recordEpisodeAudioCompleted(user.id, catalogEpisodeKey).catch(() => {});
+            else recordAudioCompleted(user.id, module.id).catch(() => {});
+          }
         }
       }
     } else if (status.error) {
@@ -222,7 +262,10 @@ export default function LearningDetailScreen() {
     audio.onended = () => {
       setIsPlaying(false);
       setProgress(0);
-      if (module?.id && user?.id) recordAudioCompleted(user.id, module.id).catch(() => {});
+      if (module?.id && user?.id) {
+        if (catalogEpisodeKey) recordEpisodeAudioCompleted(user.id, catalogEpisodeKey).catch(() => {});
+        else recordAudioCompleted(user.id, module.id).catch(() => {});
+      }
     };
     audio.onerror = () => {
       setError('Unable to load audio. Please try again.');
@@ -283,7 +326,11 @@ export default function LearningDetailScreen() {
 
   const switchToAudio = async () => {
     if (!module) return;
-    
+    if (!module.audioUrl) {
+      setError('No podcast is available for this lesson.');
+      return;
+    }
+
     // Pause video
     if (Platform.OS === 'web' && webVideoRef.current) {
       webVideoRef.current.pause();
@@ -323,6 +370,10 @@ export default function LearningDetailScreen() {
   };
 
   const switchToVideo = async () => {
+    if (!module?.videoUrl) {
+      setError('No video is available for this lesson.');
+      return;
+    }
     setMediaMode('video');
     setIsLoading(true);
     setIsPlaying(false);
@@ -346,20 +397,37 @@ export default function LearningDetailScreen() {
 
   const styles = createStyles(colors, module?.color ?? colors.primary, videoWidth, videoHeight);
 
+  if (!authLoading && !isAuthenticated) {
+    return <Redirect href="/(auth)/sign-in" />;
+  }
+
   if (!module) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading content...</Text>
+          {detailLoading ? (
+            <>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Loading content...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="alert-circle-outline" size={48} color={colors.textMuted} />
+              <Text style={styles.loadingText}>This lesson could not be found.</Text>
+              <TouchableOpacity onPress={handleBack} style={styles.retryButton}>
+                <Text style={styles.retryText}>Go back</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     );
   }
 
-  if (!authLoading && !isAuthenticated) {
-    return <Redirect href="/(auth)/sign-in" />;
-  }
+  const hasVideo = Boolean(module.videoUrl);
+  const hasAudio = Boolean(module.audioUrl);
+  const showVideoPlayer = hasVideo && mediaMode === 'video';
+  const showAudioPlayer = hasAudio && !showVideoPlayer;
 
   const dimensionInfo = DIMENSION_INFO[module.dimension];
 
@@ -385,41 +453,43 @@ export default function LearningDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Media Tabs */}
-        <View style={styles.mediaTabs}>
-          <TouchableOpacity
-            style={[styles.mediaTab, mediaMode === 'video' && styles.mediaTabActive]}
-            onPress={switchToVideo}
-          >
-            <Ionicons 
-              name="videocam" 
-              size={20} 
-              color={mediaMode === 'video' ? colors.primaryForeground : colors.textSecondary} 
-            />
-            <Text style={[styles.mediaTabText, mediaMode === 'video' && styles.mediaTabTextActive]}>
-              Video Lesson
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mediaTab, mediaMode === 'audio' && styles.mediaTabActive]}
-            onPress={switchToAudio}
-          >
-            <Ionicons 
-              name="headset" 
-              size={20} 
-              color={mediaMode === 'audio' ? colors.primaryForeground : colors.textSecondary} 
-            />
-            <Text style={[styles.mediaTabText, mediaMode === 'audio' && styles.mediaTabTextActive]}>
-              Deep Dive Podcast
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Media Tabs — only when both video and podcast exist */}
+        {hasVideo && hasAudio ? (
+          <View style={styles.mediaTabs}>
+            <TouchableOpacity
+              style={[styles.mediaTab, mediaMode === 'video' && styles.mediaTabActive]}
+              onPress={switchToVideo}
+            >
+              <Ionicons
+                name="videocam"
+                size={20}
+                color={mediaMode === 'video' ? colors.primaryForeground : colors.textSecondary}
+              />
+              <Text style={[styles.mediaTabText, mediaMode === 'video' && styles.mediaTabTextActive]}>
+                Video Lesson
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.mediaTab, mediaMode === 'audio' && styles.mediaTabActive]}
+              onPress={switchToAudio}
+            >
+              <Ionicons
+                name="headset"
+                size={20}
+                color={mediaMode === 'audio' ? colors.primaryForeground : colors.textSecondary}
+              />
+              <Text style={[styles.mediaTabText, mediaMode === 'audio' && styles.mediaTabTextActive]}>
+                Deep Dive Podcast
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Media Player — on web render after mount to avoid hydration mismatch */}
         <View style={styles.mediaContainer}>
           {Platform.OS === 'web' && !mounted ? (
             <View style={[styles.videoContainer, { minHeight: videoHeight }]} />
-          ) : mediaMode === 'video' ? (
+          ) : showVideoPlayer ? (
             <View style={styles.videoContainer} ref={webVideoContainerRef} collapsable={false}>
               {Platform.OS === 'web' ? (
                 isLoading ? (
@@ -447,7 +517,7 @@ export default function LearningDetailScreen() {
                 </>
               )}
             </View>
-          ) : (
+          ) : showAudioPlayer ? (
             <View style={styles.audioContainer}>
               <View style={[styles.audioArt, { backgroundColor: module.color + '20' }]}>
                 <Ionicons name={module.icon as any} size={64} color={module.color} />
@@ -495,6 +565,10 @@ export default function LearningDetailScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+          ) : (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>No playable media for this lesson.</Text>
+            </View>
           )}
           
           {error && (
@@ -525,29 +599,34 @@ export default function LearningDetailScreen() {
           <Text style={styles.moduleSubtitle}>{module.subtitle}</Text>
           
           <View style={styles.durationBadges}>
-            <View style={styles.durationBadge}>
-              <Ionicons name="videocam-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.durationText}>{module.videoDuration}</Text>
-            </View>
-            <View style={styles.durationBadge}>
-              <Ionicons name="headset-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.durationText}>{module.audioDuration}</Text>
-            </View>
+            {hasVideo ? (
+              <View style={styles.durationBadge}>
+                <Ionicons name="videocam-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.durationText}>{module.videoDuration}</Text>
+              </View>
+            ) : null}
+            {hasAudio ? (
+              <View style={styles.durationBadge}>
+                <Ionicons name="headset-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.durationText}>{module.audioDuration}</Text>
+              </View>
+            ) : null}
           </View>
           
           <Text style={styles.description}>{module.description}</Text>
         </View>
 
-        {/* Key Takeaways */}
-        <View style={styles.takeawaysCard}>
-          <Text style={styles.takeawaysTitle}>Key Takeaways</Text>
-          {module.keyTakeaways.map((takeaway, index) => (
-            <View key={index} style={styles.takeawayItem}>
-              <View style={[styles.takeawayBullet, { backgroundColor: module.color }]} />
-              <Text style={styles.takeawayText}>{takeaway}</Text>
-            </View>
-          ))}
-        </View>
+        {module.keyTakeaways.length > 0 ? (
+          <View style={styles.takeawaysCard}>
+            <Text style={styles.takeawaysTitle}>Key Takeaways</Text>
+            {module.keyTakeaways.map((takeaway, index) => (
+              <View key={index} style={styles.takeawayItem}>
+                <View style={[styles.takeawayBullet, { backgroundColor: module.color }]} />
+                <Text style={styles.takeawayText}>{takeaway}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );

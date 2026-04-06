@@ -1,0 +1,205 @@
+/**
+ * Loads EQ learning episodes from public.learning_content (pairs audio + video rows).
+ */
+
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import type { EQDimension } from '@/types/eq-assessment';
+import { DIMENSION_INFO, LEARNING_MODULES, type LearningModule } from '@/data/learning-content';
+
+export type LearningAudience = 'B2C' | 'B2B';
+
+export type LearningContentRow = {
+  id: string;
+  content_for: string;
+  eq_type: string;
+  domain: string;
+  competency: string;
+  episode_title: string;
+  episode_description: string | null;
+  industry: string | null;
+  level: string | null;
+  content_type: string;
+  s3_link: string;
+  created_at: string;
+  updated_at: string;
+  language: string;
+};
+
+export type LearningEpisode = {
+  episodeKey: string;
+  eqType: LearningAudience;
+  title: string;
+  description: string;
+  domain: string;
+  competency: string;
+  dimension: EQDimension;
+  videoUrl: string | null;
+  audioUrl: string | null;
+  /** Prefer video row id for URLs so progress and deep links stay stable */
+  routeId: string;
+  icon: string;
+  color: string;
+};
+
+function groupKey(row: Pick<LearningContentRow, 'eq_type' | 'domain' | 'competency' | 'episode_title'>): string {
+  return `${row.eq_type}|${row.domain}|${row.competency}|${row.episode_title}`;
+}
+
+export function episodeKeyFromRow(row: Pick<LearningContentRow, 'eq_type' | 'domain' | 'competency' | 'episode_title'>): string {
+  return groupKey(row);
+}
+
+/** Map DB domain/competency to in-app EQ dimension filters */
+export function mapLearningRowToDimension(domain: string, competency: string): EQDimension {
+  if (domain === 'SELF_AWARENESS_DOMAIN') return 'self_awareness';
+  if (domain === 'SELF_MANAGEMENT_DOMAIN') return 'self_regulation';
+  if (domain === 'SOCIAL_AWARENESS_DOMAIN') {
+    if (competency === 'EMPATHY') return 'empathy';
+    if (competency === 'ACHIEVEMENT_ORIENTATION') return 'motivation';
+    return 'social_skills';
+  }
+  if (domain === 'RELATIONSHIP_MANAGEMENT_DOMAIN') return 'social_skills';
+  return 'self_awareness';
+}
+
+function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
+  const map = new Map<string, LearningContentRow[]>();
+  for (const r of rows) {
+    const k = groupKey(r);
+    const list = map.get(k) ?? [];
+    list.push(r);
+    map.set(k, list);
+  }
+
+  const out: LearningEpisode[] = [];
+  for (const [, group] of map) {
+    const video = group.find((x) => x.content_type === 'video');
+    const audio = group.find((x) => x.content_type === 'audio');
+    const anchor = video ?? audio;
+    if (!anchor) continue;
+    const eqType = anchor.eq_type === 'B2B' ? 'B2B' : 'B2C';
+    const dimension = mapLearningRowToDimension(anchor.domain, anchor.competency);
+    const info = DIMENSION_INFO[dimension];
+    out.push({
+      episodeKey: groupKey(anchor),
+      eqType,
+      title: anchor.episode_title,
+      description: anchor.episode_description?.trim() || '',
+      domain: anchor.domain,
+      competency: anchor.competency,
+      dimension,
+      videoUrl: video?.s3_link ?? null,
+      audioUrl: audio?.s3_link ?? null,
+      routeId: (video ?? audio)!.id,
+      icon: info.icon,
+      color: info.color,
+    });
+  }
+
+  out.sort((a, b) => a.title.localeCompare(b.title));
+  return out;
+}
+
+export async function fetchLearningContentRows(language = 'en'): Promise<LearningContentRow[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await supabase
+    .from('learning_content')
+    .select('*')
+    .eq('language', language)
+    .eq('content_for', 'EQ')
+    .order('episode_title', { ascending: true });
+  if (error) {
+    console.warn('[learning_content] fetch failed:', error.message);
+    return [];
+  }
+  return (data ?? []) as LearningContentRow[];
+}
+
+export async function fetchLearningEpisodes(language = 'en'): Promise<LearningEpisode[]> {
+  const rows = await fetchLearningContentRows(language);
+  return rowsToEpisodes(rows);
+}
+
+export async function fetchLearningEpisodeSiblings(row: LearningContentRow): Promise<LearningContentRow[]> {
+  if (!isSupabaseConfigured()) return [row];
+  const { data, error } = await supabase
+    .from('learning_content')
+    .select('*')
+    .eq('content_for', row.content_for)
+    .eq('eq_type', row.eq_type)
+    .eq('domain', row.domain)
+    .eq('competency', row.competency)
+    .eq('episode_title', row.episode_title)
+    .eq('language', row.language);
+  if (error || !data?.length) return [row];
+  return data as LearningContentRow[];
+}
+
+export async function fetchLearningContentRowById(id: string): Promise<LearningContentRow | null> {
+  if (!isSupabaseConfigured()) return null;
+  const { data, error } = await supabase.from('learning_content').select('*').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  return data as LearningContentRow;
+}
+
+/** Build LearningModule shape for the detail screen (static + DB). */
+export function episodeToDetailModule(ep: LearningEpisode): LearningModule {
+  const dimInfo = DIMENSION_INFO[ep.dimension];
+  return {
+    id: ep.routeId,
+    dimension: ep.dimension,
+    title: ep.title,
+    subtitle: dimInfo.name,
+    description: ep.description || dimInfo.description,
+    audioUrl: ep.audioUrl ?? '',
+    videoUrl: ep.videoUrl ?? '',
+    audioDuration: ep.audioUrl ? 'Podcast' : '—',
+    videoDuration: ep.videoUrl ? 'Video' : '—',
+    icon: ep.icon,
+    color: ep.color,
+    keyTakeaways: ep.description
+      ? ep.description.split(/(?<=[.!?])\s+/).slice(0, 4).filter(Boolean)
+      : [],
+  };
+}
+
+export async function resolveDetailModuleFromCatalogId(id: string): Promise<{
+  module: LearningModule;
+  episodeKey: string;
+} | null> {
+  const row = await fetchLearningContentRowById(id);
+  if (!row) return null;
+  const siblings = await fetchLearningEpisodeSiblings(row);
+  const episodes = rowsToEpisodes(siblings);
+  const ep = episodes[0];
+  if (!ep) return null;
+  const key = episodeKeyFromRow(row);
+  return { module: episodeToDetailModule(ep), episodeKey: key };
+}
+
+export function staticFallbackDetailModule(): LearningModule | null {
+  const m = LEARNING_MODULES[0];
+  return m ?? null;
+}
+
+export function staticFallbackDetailId(): string | undefined {
+  return LEARNING_MODULES[0]?.id;
+}
+
+/** When the DB catalog is empty, drive the same UI from bundled modules (all treated as personal). */
+export function staticModulesAsEpisodes(): LearningEpisode[] {
+  return LEARNING_MODULES.map((m) => ({
+    episodeKey: `static|${m.id}`,
+    eqType: 'B2C' as LearningAudience,
+    title: m.title,
+    description: m.description,
+    domain: '',
+    competency: '',
+    dimension: m.dimension,
+    videoUrl: m.videoUrl,
+    audioUrl: m.audioUrl,
+    routeId: m.id,
+    icon: m.icon,
+    color: m.color,
+  }));
+}
