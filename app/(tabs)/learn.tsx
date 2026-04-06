@@ -146,7 +146,13 @@ export default function LearnScreen() {
                       : 'For personal growth'
                     : DIMENSION_INFO[featured.dimension].name
                 }
-                badge={featured.eqType === 'B2B' ? 'Workplace' : 'Most popular'}
+                badge={
+                  featured.sortOrder === 1
+                    ? 'Start here'
+                    : featured.eqType === 'B2B'
+                      ? 'Workplace'
+                      : 'Most popular'
+                }
                 meta={[
                   ...(featured.videoUrl
                     ? [{ icon: 'videocam-outline' as const, text: 'Video lesson' }]

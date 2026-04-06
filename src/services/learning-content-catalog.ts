@@ -23,6 +23,8 @@ export type LearningContentRow = {
   created_at: string;
   updated_at: string;
   language: string;
+  /** Curriculum order (lower = earlier). Same value for audio+video of one episode. */
+  sort_order?: number;
 };
 
 export type LearningEpisode = {
@@ -39,6 +41,7 @@ export type LearningEpisode = {
   routeId: string;
   icon: string;
   color: string;
+  sortOrder: number;
 };
 
 function groupKey(row: Pick<LearningContentRow, 'eq_type' | 'domain' | 'competency' | 'episode_title'>): string {
@@ -51,7 +54,9 @@ export function episodeKeyFromRow(row: Pick<LearningContentRow, 'eq_type' | 'dom
 
 /** Map DB domain/competency to in-app EQ dimension filters */
 export function mapLearningRowToDimension(domain: string, competency: string): EQDimension {
+  if (domain === 'EQ_FOUNDATIONS_DOMAIN') return 'self_awareness';
   if (domain === 'SELF_AWARENESS_DOMAIN') return 'self_awareness';
+  if (domain === 'SELF_MANAGEMENT_DOMAIN' && competency === 'RESILIENCE') return 'resilience';
   if (domain === 'SELF_MANAGEMENT_DOMAIN') return 'self_regulation';
   if (domain === 'SOCIAL_AWARENESS_DOMAIN') {
     if (competency === 'EMPATHY') return 'empathy';
@@ -80,6 +85,7 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
     const eqType = anchor.eq_type === 'B2B' ? 'B2B' : 'B2C';
     const dimension = mapLearningRowToDimension(anchor.domain, anchor.competency);
     const info = DIMENSION_INFO[dimension];
+    const sortOrder = Math.min(...group.map((r) => r.sort_order ?? 100));
     out.push({
       episodeKey: groupKey(anchor),
       eqType,
@@ -93,10 +99,11 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
       routeId: (video ?? audio)!.id,
       icon: info.icon,
       color: info.color,
+      sortOrder,
     });
   }
 
-  out.sort((a, b) => a.title.localeCompare(b.title));
+  out.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
   return out;
 }
 
@@ -107,6 +114,7 @@ export async function fetchLearningContentRows(language = 'en'): Promise<Learnin
     .select('*')
     .eq('language', language)
     .eq('content_for', 'EQ')
+    .order('sort_order', { ascending: true })
     .order('episode_title', { ascending: true });
   if (error) {
     console.warn('[learning_content] fetch failed:', error.message);
@@ -188,7 +196,7 @@ export function staticFallbackDetailId(): string | undefined {
 
 /** When the DB catalog is empty, drive the same UI from bundled modules (all treated as personal). */
 export function staticModulesAsEpisodes(): LearningEpisode[] {
-  return LEARNING_MODULES.map((m) => ({
+  return LEARNING_MODULES.map((m, i) => ({
     episodeKey: `static|${m.id}`,
     eqType: 'B2C' as LearningAudience,
     title: m.title,
@@ -201,5 +209,6 @@ export function staticModulesAsEpisodes(): LearningEpisode[] {
     routeId: m.id,
     icon: m.icon,
     color: m.color,
+    sortOrder: 100 + i * 10,
   }));
 }
