@@ -92,26 +92,6 @@ export const EMOTIONAL_TONES: { id: EmotionalTone; label: string }[] = [
 ];
 
 // ============================================================================
-// MODE RECOMMENDATION
-// ============================================================================
-
-/**
- * State → Primary tool (secondary in parentheses).
- * Technique labels match GROUNDING_MODES (Box breathing = full protocol, not "Panic interrupt").
- *
- * | State                  | Primary              | Secondary        |
- * |------------------------|----------------------|------------------|
- * | Stress spike           | Physiological sigh   | 5-4-3-2-1        |
- * | Rumination             | 5-4-3-2-1            | Physiological sigh |
- * | Panic                  | Box breathing        | —                |
- * | Anger                  | Post-conflict reset  | Physiological sigh |
- * | Pre-meeting            | Pre-meeting reset    | Physiological sigh |
- * | Post-meeting (conflict)| Post-conflict reset  | —                |
- * | Performance anxiety   | Pre-meeting reset    | Physiological sigh |
- * | Emotional processing   | Post-conflict reset  | —                |
- * | Freeze/dissociation    | Box breathing        | —                |
- *
-// ============================================================================
 // QUICK RESET STEPS
 // ============================================================================
 
