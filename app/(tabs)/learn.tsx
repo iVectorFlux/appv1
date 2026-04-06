@@ -22,8 +22,8 @@ import { AudioRowCard } from '@/components/ui/audio-row-card';
 import { DIMENSION_INFO } from '@/data/learning-content';
 import type { EQDimension } from '@/types/eq-assessment';
 import { useLearningCatalog } from '@/hooks/useLearningCatalog';
-import { staticModulesAsEpisodes } from '@/services/learning-content-catalog';
 import type { LearningAudience } from '@/services/learning-content-catalog';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 const DIMENSION_FILTERS: (EQDimension | 'all')[] = [
   'all',
@@ -44,15 +44,15 @@ const AUDIENCE_OPTIONS: { key: LearningAudience | 'all'; label: string }[] = [
 export default function LearnScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { episodes, b2b, loading, error, reload, hasRemote } = useLearningCatalog();
+  const { episodes, b2b, loading, error, reload, hasRemote, emptyRemote } = useLearningCatalog();
   const [selectedDimension, setSelectedDimension] = useState<EQDimension | 'all'>('all');
   const [audience, setAudience] = useState<LearningAudience | 'all'>('all');
 
   const baseEpisodes = useMemo(() => {
     if (loading) return [];
-    if (hasRemote) return episodes;
-    return staticModulesAsEpisodes();
-  }, [loading, hasRemote, episodes]);
+    // DB-only: if remote has nothing, show empty state instead of falling back silently.
+    return episodes;
+  }, [loading, episodes]);
 
   const audienceFiltered = useMemo(() => {
     if (audience === 'all') return baseEpisodes;
@@ -96,6 +96,25 @@ export default function LearnScreen() {
           <TouchableOpacity onPress={reload} style={styles.bannerBtn}>
             <Text style={styles.bannerBtnText}>Retry</Text>
           </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {!loading && !error && emptyRemote ? (
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>
+            No learning content found in the database. Run migrations `00010`, `00011`, `00012` in Supabase SQL Editor.
+          </Text>
+          <TouchableOpacity onPress={reload} style={styles.bannerBtn}>
+            <Text style={styles.bannerBtnText}>Reload</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {!loading && !error && !isSupabaseConfigured() ? (
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>
+            Supabase is not configured. Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` in `.env`, then restart.
+          </Text>
         </View>
       ) : null}
 
