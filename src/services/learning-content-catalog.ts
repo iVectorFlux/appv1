@@ -54,6 +54,7 @@ export function episodeKeyFromRow(row: Pick<LearningContentRow, 'eq_type' | 'dom
 
 /** Map DB domain/competency to in-app EQ dimension filters */
 export function mapLearningRowToDimension(domain: string, competency: string): EQDimension {
+  if (domain === 'INTRO_DOMAIN') return 'self_awareness';
   if (domain === 'SELF_AWARENESS_DOMAIN') return 'self_awareness';
   if (domain === 'SELF_MANAGEMENT_DOMAIN' && competency === 'RESILIENCE') return 'resilience';
   if (domain === 'SELF_MANAGEMENT_DOMAIN') return 'self_regulation';
@@ -152,11 +153,12 @@ export async function fetchLearningContentRowById(id: string): Promise<LearningC
 /** Build LearningModule shape for the detail screen (static + DB). */
 export function episodeToDetailModule(ep: LearningEpisode): LearningModule {
   const dimInfo = DIMENSION_INFO[ep.dimension];
+  const subtitle = ep.domain === 'INTRO_DOMAIN' ? 'Introduction' : dimInfo.name;
   return {
     id: ep.routeId,
     dimension: ep.dimension,
     title: ep.title,
-    subtitle: dimInfo.name,
+    subtitle,
     description: ep.description || dimInfo.description,
     audioUrl: ep.audioUrl ?? '',
     videoUrl: ep.videoUrl ?? '',

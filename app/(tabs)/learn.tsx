@@ -78,6 +78,8 @@ export default function LearnScreen() {
     if (dim === 'all') return 'All skills';
     return DIMENSION_INFO[dim].name;
   };
+  const getEpisodeSubtitle = (domain: string, dimension: EQDimension) =>
+    domain === 'INTRO_DOMAIN' ? 'Introduction' : DIMENSION_INFO[dimension].name;
 
   const styles = createStyles(colors);
 
@@ -233,7 +235,7 @@ export default function LearnScreen() {
                     key={ep.episodeKey}
                     onPress={() => handleOpenEpisode(ep.routeId)}
                     title={ep.title}
-                    subtitle={DIMENSION_INFO[ep.dimension].name}
+                    subtitle={getEpisodeSubtitle(ep.domain, ep.dimension)}
                     meta={[
                       ...(ep.videoUrl
                         ? [{ icon: 'videocam' as const, text: 'Video' }]
@@ -257,12 +259,12 @@ export default function LearnScreen() {
               subtitle="Extended audio sessions for deeper learning"
               icon="headset"
             />
-            {filteredEpisodes.map((ep) => (
+            {filteredEpisodes.filter((ep) => Boolean(ep.audioUrl)).map((ep) => (
               <AudioRowCard
                 key={`audio-${ep.episodeKey}`}
                 onPress={() => handleOpenEpisode(ep.routeId)}
                 title={ep.title}
-                subtitle={`${DIMENSION_INFO[ep.dimension].name}${
+                subtitle={`${getEpisodeSubtitle(ep.domain, ep.dimension)}${
                   ep.eqType === 'B2B' ? ' · Workplace' : ''
                 }`}
                 icon={ep.icon as any}
