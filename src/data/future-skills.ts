@@ -39,6 +39,49 @@ export interface FutureSkill {
 
 export const FUTURE_SKILLS: FutureSkill[] = [
   {
+    id: 'emotional_intelligence',
+    name: 'Emotional Intelligence',
+    tagline: 'Lead with awareness',
+    description:
+      'Recognise your own emotions and those of others, and use that awareness to navigate relationships and decisions effectively.',
+    why: 'EQ is increasingly cited as the differentiator between average and exceptional leaders — and it can\'t be automated.',
+    icon: 'heart-outline',
+    color: '#EC4899',
+    practiceMode: 'open_reflection',
+    atomicSkills: [
+      {
+        id: 'eq_self_awareness',
+        name: 'Self Awareness',
+        description: 'Notice your emotions, triggers, and patterns in real time.',
+      },
+      {
+        id: 'eq_self_regulation',
+        name: 'Self Regulation',
+        description: 'Manage your emotional responses so they serve rather than undermine you.',
+      },
+      {
+        id: 'eq_empathy',
+        name: 'Empathy',
+        description: 'Understand others\' perspectives and emotional experiences without judgment.',
+      },
+      {
+        id: 'eq_social_skills',
+        name: 'Social Skills',
+        description: 'Build rapport, communicate clearly, and navigate group dynamics effectively.',
+      },
+      {
+        id: 'eq_motivation',
+        name: 'Motivation',
+        description: 'Harness intrinsic drive to pursue goals with energy and persistence.',
+      },
+      {
+        id: 'eq_resilience',
+        name: 'Resilience',
+        description: 'Bounce back from setbacks and adapt constructively under pressure.',
+      },
+    ],
+  },
+  {
     id: 'ai_literacy',
     name: 'AI Literacy',
     tagline: 'Work with AI, not against it',
@@ -140,39 +183,6 @@ export const FUTURE_SKILLS: FutureSkill[] = [
         id: 'iteration',
         name: 'Iteration & Testing',
         description: 'Test small, learn fast, and refine your solution in cycles.',
-      },
-    ],
-  },
-  {
-    id: 'emotional_intelligence',
-    name: 'Emotional Intelligence',
-    tagline: 'Lead with awareness',
-    description:
-      'Recognise your own emotions and those of others, and use that awareness to navigate relationships and decisions effectively.',
-    why: 'EQ is increasingly cited as the differentiator between average and exceptional leaders — and it can\'t be automated.',
-    icon: 'heart-outline',
-    color: '#EC4899',
-    practiceMode: 'open_reflection',
-    atomicSkills: [
-      {
-        id: 'self_awareness_eq',
-        name: 'Self-Awareness',
-        description: 'Notice your emotions, triggers, and patterns in real time.',
-      },
-      {
-        id: 'empathy_eq',
-        name: 'Empathy',
-        description: 'Understand others\' perspectives and emotional experiences without judgment.',
-      },
-      {
-        id: 'conflict_navigation',
-        name: 'Conflict Navigation',
-        description: 'Handle disagreements constructively while maintaining relationships.',
-      },
-      {
-        id: 'influence',
-        name: 'Positive Influence',
-        description: 'Motivate and inspire others through authentic connection.',
       },
     ],
   },

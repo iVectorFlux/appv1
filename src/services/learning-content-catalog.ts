@@ -59,17 +59,50 @@ export function isIntroEpisodeTitle(title: string): boolean {
   return INTRO_EPISODE_TITLES.has(title.trim());
 }
 
-/** Map DB domain/competency to in-app EQ dimension filters */
+/** Normalise DB domain/competency strings (handles "Self Awareness", SELF_AWARENESS, SELF_AWARENESS_DOMAIN). */
+function normalizeDbKey(value: string): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+    .replace(/_+/g, '_');
+}
+
+/**
+ * Map DB domain/competency to in-app EQ dimension filters.
+ * Supports B2C pillar domains (SELF_AWARENESS, SELF_REGULATION, …) and legacy four-domain rows.
+ */
 export function mapLearningRowToDimension(domain: string, competency: string): EQDimension {
-  if (domain === 'SELF_AWARENESS_DOMAIN') return 'self_awareness';
-  if (domain === 'SELF_MANAGEMENT_DOMAIN' && competency === 'RESILIENCE') return 'resilience';
-  if (domain === 'SELF_MANAGEMENT_DOMAIN') return 'self_regulation';
-  if (domain === 'SOCIAL_AWARENESS_DOMAIN') {
-    if (competency === 'EMPATHY') return 'empathy';
-    if (competency === 'ACHIEVEMENT_ORIENTATION') return 'motivation';
+  const d = normalizeDbKey(domain);
+  const c = normalizeDbKey(competency);
+
+  // B2C pillar naming (matches six dimensions in Learn / Skill Lab)
+  if (d === 'RESILIENCE' || d === 'RESILIENCE_DOMAIN') return 'resilience';
+  if (d === 'MOTIVATION' || d === 'MOTIVATION_DOMAIN') return 'motivation';
+  if (
+    d === 'SOCIAL_SKILLS' ||
+    d === 'SOCIAL_SKILLS_DOMAIN' ||
+    d === 'SOCIAL_SKILL' ||
+    d === 'SOCIAL_SKILL_DOMAIN'
+  ) {
     return 'social_skills';
   }
-  if (domain === 'RELATIONSHIP_MANAGEMENT_DOMAIN') return 'social_skills';
+  if (d === 'EMPATHY' || d === 'EMPATHY_DOMAIN') return 'empathy';
+  if (d === 'SELF_REGULATION' || d === 'SELF_REGULATION_DOMAIN') return 'self_regulation';
+  if (d === 'SELF_AWARENESS' || d === 'SELF_AWARENESS_DOMAIN') return 'self_awareness';
+
+  // Legacy four-domain model (older seeds / B2B)
+  if (d === 'SELF_MANAGEMENT_DOMAIN') {
+    if (c === 'RESILIENCE') return 'resilience';
+    return 'self_regulation';
+  }
+  if (d === 'SOCIAL_AWARENESS_DOMAIN') {
+    if (c === 'EMPATHY') return 'empathy';
+    if (c === 'ACHIEVEMENT_ORIENTATION') return 'motivation';
+    return 'social_skills';
+  }
+  if (d === 'RELATIONSHIP_MANAGEMENT_DOMAIN') return 'social_skills';
+
   return 'self_awareness';
 }
 
