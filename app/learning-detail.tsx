@@ -4,7 +4,8 @@
  * Play audio podcasts or video lessons for EQ skills.
  * Deep dive content for each dimension.
  * 
- * Uses native HTML5 audio/video on web for better compatibility.
+ * Video uses expo-av on all platforms (renders HTML5 video on web).
+ * Web audio still uses a hidden HTML audio element for reliable playback.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -88,30 +89,24 @@ export default function LearningDetailScreen() {
     insets.bottom
   );
 
-  const [mounted, setMounted] = useState(false);
   const [module, setModule] = useState<LearningModule | null>(null);
   /** When set, progress is stored in learning_content_progress (DB catalog). */
   const [catalogEpisodeKey, setCatalogEpisodeKey] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [mediaMode, setMediaMode] = useState<MediaMode>('video');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  
-  const videoRef = useRef<Video>(null);
-  // Native audio ref
-  const audioRef = useRef<Audio.Sound | null>(null);
-  // Web audio element ref
-  const webAudioRef = useRef<HTMLAudioElement | null>(null);
-  // Web video container ref (DOM node for appending HTML5 video)
-  const webVideoContainerRef = useRef<View>(null);
-  const webVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // expo-av ref for native platforms
+  const videoRef = useRef<Video>(null);
+  // native audio ref
+  const audioRef = useRef<Audio.Sound | null>(null);
+  // Web: direct HTML element refs — bypassing expo-av shim which has broken web wiring
+  const webVideoRef = useRef<HTMLVideoElement | null>(null);
+  const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
@@ -137,6 +132,12 @@ export default function LearningDetailScreen() {
         setCatalogEpisodeKey(null);
         setMediaMode(found?.videoUrl ? 'video' : 'audio');
       }
+      // Reset media state for the new episode
+      setIsLoading(true);
+      setError(null);
+      setProgress(0);
+      setDuration(0);
+      setIsPlaying(false);
       setDetailLoading(false);
     })();
     return () => {
@@ -147,11 +148,6 @@ export default function LearningDetailScreen() {
             webAudioRef.current.parentNode.removeChild(webAudioRef.current);
           }
           webAudioRef.current = null;
-        }
-        if (webVideoRef.current && webVideoRef.current.parentNode) {
-          webVideoRef.current.pause();
-          webVideoRef.current.parentNode.removeChild(webVideoRef.current);
-          webVideoRef.current = null;
         }
       }
       if (Platform.OS !== 'web' && audioRef.current) {
@@ -171,64 +167,22 @@ export default function LearningDetailScreen() {
     }
   }, [module?.id, user?.id, catalogEpisodeKey]);
 
-  // Web: mount HTML5 video when module and mediaMode are set
-  useEffect(() => {
-    const uri = module?.videoUrl?.trim();
-    if (Platform.OS !== 'web' || !module || mediaMode !== 'video' || !uri) return;
-    const container = (webVideoContainerRef.current as unknown as HTMLElement) ?? null;
-    if (!container || !container.appendChild) return;
-
-    const video = document.createElement('video');
-    video.controls = true;
-    video.playsInline = true;
-    video.style.width = '100%';
-    video.style.height = '100%';
-    video.style.display = 'block';
-    video.style.objectFit = 'contain';
-    video.src = uri;
-    video.preload = 'auto';
-    video.onloadedmetadata = () => setIsLoading(false);
-    video.onerror = () => setError('Unable to load video');
-    video.oncanplay = () => setIsLoading(false);
-    video.onplay = () => setIsPlaying(true);
-    video.onpause = () => setIsPlaying(false);
-    video.onended = () => {
-      setIsPlaying(false);
-      setProgress(0);
-      if (user?.id) {
-        if (catalogEpisodeKey) recordEpisodeVideoCompleted(user.id, catalogEpisodeKey).catch(() => {});
-        else recordVideoCompleted(user.id, module.id).catch(() => {});
-      }
-    };
-    container.appendChild(video);
-    webVideoRef.current = video;
-
-    return () => {
-      try {
-        video.pause();
-        if (video.parentNode) video.parentNode.removeChild(video);
-      } catch (_) {}
-      webVideoRef.current = null;
-    };
-    // `mounted` gates the ref-bearing View on web; without it the first effect run sees null ref and never retries.
-  }, [mounted, module?.id, module?.videoUrl, mediaMode, user?.id, catalogEpisodeKey]);
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
+    setProgress(0);
+    if (module?.id && user?.id) {
+      if (catalogEpisodeKey) recordEpisodeVideoCompleted(user.id, catalogEpisodeKey).catch(() => {});
+      else recordVideoCompleted(user.id, module.id).catch(() => {});
+    }
+  };
 
   const handleBack = async () => {
-    // Stop media before navigating back
     if (Platform.OS === 'web') {
-      if (webAudioRef.current) {
-        webAudioRef.current.pause();
-      }
-      if (webVideoRef.current) {
-        webVideoRef.current.pause();
-      }
+      webVideoRef.current?.pause();
+      webAudioRef.current?.pause();
     } else {
-      if (videoRef.current) {
-        await videoRef.current.pauseAsync();
-      }
-      if (audioRef.current) {
-        await audioRef.current.pauseAsync();
-      }
+      await videoRef.current?.pauseAsync().catch(() => {});
+      await audioRef.current?.pauseAsync().catch(() => {});
     }
     
     const ret = params.returnTo;
@@ -318,19 +272,26 @@ export default function LearningDetailScreen() {
   const togglePlayPause = async () => {
     if (mediaMode === 'video') {
       if (Platform.OS === 'web' && webVideoRef.current) {
-        if (isPlaying) {
-          webVideoRef.current.pause();
-        } else {
-          webVideoRef.current.play().catch((err) => {
-            setError('Unable to play video.');
-            console.error('Video play error:', err);
-          });
+        try {
+          if (isPlaying) {
+            webVideoRef.current.pause();
+          } else {
+            await webVideoRef.current.play();
+          }
+        } catch (err) {
+          setError('Unable to play video. Try again.');
+          console.error('Video play error:', err);
         }
       } else if (videoRef.current) {
-        if (isPlaying) {
-          await videoRef.current.pauseAsync();
-        } else {
-          await videoRef.current.playAsync();
+        try {
+          if (isPlaying) {
+            await videoRef.current.pauseAsync();
+          } else {
+            await videoRef.current.playAsync();
+          }
+        } catch (err) {
+          setError('Unable to play video.');
+          console.error('Video play error:', err);
         }
       }
     } else if (mediaMode === 'audio') {
@@ -369,13 +330,12 @@ export default function LearningDetailScreen() {
       return;
     }
 
-    // Pause video
-    if (Platform.OS === 'web' && webVideoRef.current) {
-      webVideoRef.current.pause();
-    } else if (videoRef.current) {
-      await videoRef.current.pauseAsync();
+    if (Platform.OS === 'web') {
+      webVideoRef.current?.pause();
+    } else {
+      await videoRef.current?.pauseAsync().catch(() => {});
     }
-    
+
     setMediaMode('audio');
     setIsLoading(true);
     setIsPlaying(false);
@@ -418,11 +378,10 @@ export default function LearningDetailScreen() {
     setProgress(0);
     setError(null);
     
-    // Pause audio
-    if (Platform.OS === 'web' && webAudioRef.current) {
-      webAudioRef.current.pause();
-    } else if (Platform.OS !== 'web' && audioRef.current) {
-      await audioRef.current.pauseAsync();
+    if (Platform.OS === 'web') {
+      webAudioRef.current?.pause();
+    } else {
+      await audioRef.current?.pauseAsync().catch(() => {});
     }
   };
 
@@ -532,20 +491,39 @@ export default function LearningDetailScreen() {
           </View>
         ) : null}
 
-        {/* Media Player — on web render after mount to avoid hydration mismatch */}
+        {/* Media Player */}
         <View style={styles.mediaContainer}>
-          {Platform.OS === 'web' && !mounted ? (
-            <View style={[styles.videoContainer, { minHeight: videoHeight }]} />
-          ) : showVideoPlayer ? (
-            <View style={styles.videoContainer} ref={webVideoContainerRef} collapsable={false}>
-              {Platform.OS === 'web' ? (
-                isLoading ? (
-                  <View style={styles.mediaOverlay}>
-                    <ActivityIndicator size="large" color="#fff" />
-                  </View>
-                ) : null
-              ) : (
-                <>
+          {showVideoPlayer ? (
+            <View style={styles.videoContainer}>
+              {Platform.OS === 'web'
+                ? React.createElement('video', {
+                    key: videoSrc,
+                    ref: (el: HTMLVideoElement | null) => { webVideoRef.current = el; },
+                    src: videoSrc,
+                    controls: true,
+                    playsInline: true,
+                    preload: 'auto',
+                    style: {
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      display: 'block',
+                      backgroundColor: '#000',
+                    } as React.CSSProperties,
+                    onLoadStart: () => { setIsLoading(true); setError(null); },
+                    onCanPlay: () => setIsLoading(false),
+                    onLoadedMetadata: () => setIsLoading(false),
+                    onPlay: () => setIsPlaying(true),
+                    onPause: () => setIsPlaying(false),
+                    onEnded: handleVideoEnded,
+                    onError: () => { setError('Unable to load video. Check the S3 URL and bucket permissions.'); setIsLoading(false); },
+                    onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement>) => {
+                      const el = e.currentTarget;
+                      if (!isNaN(el.duration)) setDuration(el.duration * 1000);
+                      setProgress(el.currentTime * 1000);
+                    },
+                  })
+                : (
                   <Video
                     ref={videoRef}
                     source={{ uri: videoSrc }}
@@ -554,15 +532,15 @@ export default function LearningDetailScreen() {
                     resizeMode={ResizeMode.CONTAIN}
                     onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
                     onLoadStart={() => setIsLoading(true)}
-                    onError={() => setError('Unable to load video')}
+                    onError={() => { setError('Unable to load video'); setIsLoading(false); }}
                   />
-                  {isLoading && (
-                    <View style={styles.mediaOverlay}>
-                      <ActivityIndicator size="large" color="#fff" />
-                    </View>
-                  )}
-                </>
-              )}
+                )
+              }
+              {isLoading ? (
+                <View style={styles.mediaOverlay}>
+                  <ActivityIndicator size="large" color="#fff" />
+                </View>
+              ) : null}
             </View>
           ) : showAudioPlayer ? (
             <View style={styles.audioContainer}>
@@ -628,7 +606,11 @@ export default function LearningDetailScreen() {
                   setError(null);
                   setIsLoading(true);
                   if (mediaMode === 'video') {
-                    videoRef.current?.playAsync();
+                    if (Platform.OS === 'web' && webVideoRef.current) {
+                      webVideoRef.current.load();
+                    } else {
+                      videoRef.current?.playAsync().catch(() => {});
+                    }
                   } else {
                     switchToAudio();
                   }
@@ -765,6 +747,7 @@ const createStyles = (
     alignItems: 'center',
   },
   videoContainer: {
+    position: 'relative',
     width: videoWidth,
     maxWidth: '100%' as const,
     height: videoHeight,
