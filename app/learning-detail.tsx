@@ -33,7 +33,7 @@ import {
 
 type MediaMode = 'video' | 'audio';
 
-const VIDEO_MAX_WIDTH = 320;
+/** Use full scroll width (minus horizontal padding) so Learn EQ matches list/detail layout */
 const VIDEO_ASPECT = 9 / 16;
 
 export default function LearningDetailScreen() {
@@ -43,7 +43,7 @@ export default function LearningDetailScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
 
-  const videoWidth = Math.min(VIDEO_MAX_WIDTH, Math.max(200, windowWidth - 2 * Spacing.lg));
+  const videoWidth = Math.max(200, windowWidth - 2 * Spacing.lg);
   const videoHeight = Math.round(videoWidth * VIDEO_ASPECT);
 
   const [mounted, setMounted] = useState(false);
@@ -121,6 +121,8 @@ export default function LearningDetailScreen() {
     video.onloadedmetadata = () => setIsLoading(false);
     video.onerror = () => setError('Unable to load video');
     video.oncanplay = () => setIsLoading(false);
+    video.onplay = () => setIsPlaying(true);
+    video.onpause = () => setIsPlaying(false);
     video.onended = () => {
       setIsPlaying(false);
       setProgress(0);

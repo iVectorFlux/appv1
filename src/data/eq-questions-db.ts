@@ -2,7 +2,7 @@
  * EQ Questions → Database row shape
  *
  * Builds rows for the eq_questions table from the in-code question bank.
- * Used by seed script to sync questions to the database.
+ * Use to generate INSERT statements or tooling; the app loads questions via eq-questions-loader.
  *
  * Columns: id, type, domain, facet, difficulty, version, reverse_keyed,
  * negative_marking, scoring_config, payload

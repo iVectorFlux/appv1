@@ -635,11 +635,9 @@ src/
 │   └── eq-assessment.ts     # Type definitions for all question/response types
 ├── data/
 │   ├── eq-questions.ts      # Question bank (in-code)
-│   └── eq-questions-db.ts   # Build DB rows from questions for seeding
+│   └── eq-questions-db.ts   # Build DB rows from questions for seeding / tooling
 ├── services/
 │   └── eq-scoring.ts        # Scoring algorithms
-scripts/
-└── seed-eq-questions.ts     # Outputs SQL to seed eq_questions table
 app/
 ├── (tabs)/
 │   └── eq.tsx               # Check-in screen
@@ -663,7 +661,7 @@ All questions can be stored in the **eq_questions** table (migration `00005_eq_q
 | **scoring_config** | Type-specific: scale, ideal_delta, paired_with_id, effectiveness/partial_credit per option, etc. |
 | **payload** | Full question content (statement, scenario, options) for rendering. |
 
-**Seed from code:** Run `npx tsx scripts/seed-eq-questions.ts` (after applying the migration). Redirect output to a file and run in Supabase SQL Editor, or use the generated SQL in a one-off migration. The app continues to use the in-code question bank by default; you can add a loader that fetches from `eq_questions` and falls back to code when the table is empty or offline.
+**Seed from code:** Use `eq-questions-db.ts` to build rows, or maintain SQL in `supabase/migrations/` (e.g. `00005_eq_questions.sql`) and run in the Supabase SQL Editor. The app uses the in-code question bank by default and loads from `eq_questions` when available (`eq-questions-loader`).
 
 ### Key Types
 

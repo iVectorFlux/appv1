@@ -22,8 +22,8 @@ export interface LearningModule {
   keyTakeaways: string[];
 }
 
-// S3 bucket base URL - update this to your CloudFront distribution URL for production
-const S3_BASE = 'https://lumi6eq.s3.amazonaws.com/applearningfiles';
+// S3 bucket (us-west-1) — same host as DB-seeded assets
+const S3_BASE = 'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles';
 
 export const LEARNING_MODULES: LearningModule[] = [
   {
@@ -127,8 +127,8 @@ export const LEARNING_MODULES: LearningModule[] = [
     title: 'The Bounce Back Muscle',
     subtitle: 'Building Stress Resilience',
     description: 'Learn how to recover from setbacks, manage stress, and sustain performance under pressure.',
-    audioUrl: 'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/Resilience+The+Bounce+Back+Muscle.m4a',
-    videoUrl: 'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles/Resilience+The+Bounce+Back+Muscle.mp4',
+    audioUrl: `${S3_BASE}/Resilience+The+Bounce+Back+Muscle.m4a`,
+    videoUrl: `${S3_BASE}/Resilience+The+Bounce+Back+Muscle.mp4`,
     audioDuration: '9 min',
     videoDuration: '6 min',
     icon: 'shield-checkmark-outline',
