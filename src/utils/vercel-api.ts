@@ -73,6 +73,8 @@ export function buildVercelApiUrl(path: string): string {
 export type ChatApiSuccess = {
   reply: string;
   emotions?: string[];
+  /** Life areas inferred from the user message (matches Reflect reason labels). */
+  lifeContexts?: string[];
   groundingOptions?: string[];
   learningPathway?: string | null;
   suggestSaveAsReflection?: boolean;

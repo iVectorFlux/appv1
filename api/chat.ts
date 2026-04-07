@@ -37,18 +37,23 @@ GROUNDING TECHNIQUES — only use IDs from this list:
 
 ALWAYS:
 - Be warm, present, and human. 2–3 short paragraphs maximum.
-- Identify 1–3 emotions the user seems to be experiencing.
+- From the USER'S latest message: infer 1–3 emotions whenever they express feelings (sad, stressed, happy, numb, etc.). Include these in JSON on every turn where emotional content is present — including the first reply.
+- Infer what life areas might be involved (work, family, relationships, health, money, etc.) and include 0–3 labels in "lifeContexts" using ONLY exact strings from the allowed list below.
 - Never diagnose, prescribe, or make clinical claims.
 - If you detect crisis language (self-harm, suicidal ideation), respond with compassion and gently encourage them to contact a crisis line (e.g. 988 in the US, or a local hotline).
 
+Allowed lifeContexts values (exact spelling, pick at most 3):
+"Work / School", "Family", "Relationships", "Health & Body", "Self", "Money", "Environment", "Life changes", "World", "Other", "Sleep & Rest", "Identity & Purpose", "Conflict & Boundaries", "Loss & Grief", "Creativity & Hobbies", "News & Society"
+
 At the end of every response, include this JSON block on its own line (no code fence):
-SUGGESTION_JSON: {"emotions":["emotion1"],"groundingOptions":[],"learningPathway":null,"suggestSaveAsReflection":false}
+SUGGESTION_JSON: {"emotions":["sad"],"lifeContexts":["Work / School"],"groundingOptions":[],"learningPathway":null,"suggestSaveAsReflection":false}
 
 Rules for the JSON:
-- "emotions": 1–3 emotion words (e.g. "anxious", "overwhelmed", "sad").
+- "emotions": 1–3 lowercase or short emotion words inferred from the user (e.g. "anxious", "overwhelmed", "sad"). Use [] only if the user's message has no emotional content at all.
+- "lifeContexts": 0–3 strings from the allowed list only; infer from cues (boss→Work / School, partner→Relationships, etc.). Use [] if unclear.
 - "groundingOptions": array with AT MOST ONE technique ID, or empty []. NEVER include this on the first response.
 - "learningPathway": null or a short topic string. Only include if genuinely relevant.
-- "suggestSaveAsReflection": true only if the user is clearly describing a moment worth capturing.`;
+- "suggestSaveAsReflection": true when the user shares a meaningful personal moment worth capturing (even if emotions are subtle).`;
 
 const COACH_SYSTEM_PROMPT = `You are an expert leadership and professional growth coach inside a learning app.
 
@@ -89,6 +94,51 @@ function extractSuggestion(content: string): {
   } catch {
     return { cleanContent, suggestion: null };
   }
+}
+
+/** Must match Reflect check-in reason strings for consistent analytics. */
+const ALLOWED_LIFE_CONTEXTS = new Set([
+  'Work / School',
+  'Family',
+  'Relationships',
+  'Health & Body',
+  'Self',
+  'Money',
+  'Environment',
+  'Life changes',
+  'World',
+  'Other',
+  'Sleep & Rest',
+  'Identity & Purpose',
+  'Conflict & Boundaries',
+  'Loss & Grief',
+  'Creativity & Hobbies',
+  'News & Society',
+]);
+
+function normalizeInnerAllyPayload(
+  suggestion: Record<string, unknown> | null
+): Record<string, unknown> {
+  if (!suggestion || typeof suggestion !== 'object') return {};
+  const out: Record<string, unknown> = { ...suggestion };
+
+  const rawEmotions = out.emotions;
+  const emotions = Array.isArray(rawEmotions)
+    ? rawEmotions.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((s) => s.trim()).slice(0, 4)
+    : [];
+  out.emotions = emotions;
+
+  const rawLc = out.lifeContexts ?? out.contexts;
+  const lifeContexts = Array.isArray(rawLc)
+    ? rawLc
+        .filter((x): x is string => typeof x === 'string' && ALLOWED_LIFE_CONTEXTS.has(x.trim()))
+        .map((s) => s.trim())
+        .slice(0, 3)
+    : [];
+  out.lifeContexts = lifeContexts;
+  delete out.contexts;
+
+  return out;
 }
 
 function readJsonBody(req: VercelRequest): { mode?: string; messages?: { role: string; content: string }[] } | null {
@@ -179,10 +229,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const rawContent = data.choices?.[0]?.message?.content ?? '';
     const { cleanContent, suggestion } = extractSuggestion(rawContent);
 
+    const payload =
+      mode === 'inner_ally' ? normalizeInnerAllyPayload(suggestion) : suggestion ?? {};
+
     res.status(200).json({
       reply: cleanContent,
       mode,
-      ...(suggestion ?? {}),
+      ...payload,
     });
   } catch (err) {
     console.error('[chat] Unexpected error:', err);

@@ -54,6 +54,7 @@ interface Message {
 
 interface ChatSuggestion {
   emotions?: string[];
+  lifeContexts?: string[];
   groundingOptions?: string[];
   learningPathway?: string | null;
   suggestSaveAsReflection?: boolean;
@@ -340,6 +341,7 @@ export default function AssistScreen() {
 
       const suggestion: ChatSuggestion = {
         emotions: data.emotions,
+        lifeContexts: data.lifeContexts,
         groundingOptions: data.groundingOptions,
         learningPathway: data.learningPathway,
         suggestSaveAsReflection: data.suggestSaveAsReflection,
@@ -367,11 +369,13 @@ export default function AssistScreen() {
 
         // Auto-journal: when Inner Ally detects emotions, silently record the
         // user's message + tagged emotions as a journal entry for analytics.
-        if (mode === 'inner_ally' && suggestion.emotions?.length) {
+        if (mode === 'inner_ally') {
           autoJournalFromChat({
             userId: user.id,
             userMessage: text,
             emotions: suggestion.emotions,
+            lifeContexts: suggestion.lifeContexts,
+            suggestSaveAsReflection: suggestion.suggestSaveAsReflection,
             chatMessageId: assistantMsgId,
           });
         }

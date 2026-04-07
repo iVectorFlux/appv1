@@ -94,39 +94,47 @@ export async function getChatHistoryWithTimeout(
 }
 
 /**
- * Auto-save an emotional moment from Inner Ally chat as a journal entry.
+ * Auto-save Inner Ally turns as journal metadata (same table as Reflect).
  *
- * Called silently in the background after the AI returns detected emotions.
- * Stores the user's raw message as plain text (no encryption — encryption_key_id
- * is NULL, which the journal reader uses to decide how to display it).
- * entry_source = 'inner_ally' distinguishes these from manual journal entries.
+ * Saves when the model infers emotions, life contexts (work/family/etc.), or flags
+ * the message as reflection-worthy. User text is stored as plain text with
+ * encryption_key_id NULL (inner_ally source). Not written to onboarding_emotional_check
+ * or eq_check_ins — those are separate flows.
  */
 export async function autoJournalFromChat({
   userId,
   userMessage,
   emotions,
+  lifeContexts,
+  suggestSaveAsReflection,
   chatMessageId,
 }: {
   userId: string;
   userMessage: string;
-  emotions: string[];
+  emotions?: string[];
+  lifeContexts?: string[];
+  suggestSaveAsReflection?: boolean;
   chatMessageId?: string;
 }): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  if (!emotions.length) return;
+  const em = (emotions ?? []).filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim());
+  const ctx = (lifeContexts ?? []).filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim());
+  const saveReflection = Boolean(suggestSaveAsReflection);
+  if (em.length === 0 && ctx.length === 0 && !saveReflection) return;
 
   const { error } = await supabase.from('journal_entries').insert({
     user_id: userId,
     entry_source: 'inner_ally',
-    emotions: emotions,
-    journal_text_encrypted: userMessage,
+    emotions: em.length > 0 ? em : null,
+    reasons: ctx.length > 0 ? ctx : null,
+    journal_text_encrypted: userMessage.trim() || '(Inner Ally check-in)',
     encryption_key_id: null,
     word_count: userMessage.trim().split(/\s+/).filter(Boolean).length,
     chat_message_id: chatMessageId ?? null,
   });
 
   if (error) {
-    console.error('[ChatStorage] Failed to auto-journal emotional moment:', error);
+    console.error('[ChatStorage] Failed to auto-journal from chat:', error);
   }
 }
 

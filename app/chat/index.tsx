@@ -30,7 +30,8 @@ import {
   Radius,
 } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
-import { saveChatMessage, getChatHistoryWithTimeout } from '@/services/chat-storage';
+import { supabase } from '@/lib/supabase';
+import { saveChatMessage, getChatHistoryWithTimeout, autoJournalFromChat } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
 import { useLearningCatalog } from '@/hooks/useLearningCatalog';
 import { staticFallbackDetailId } from '@/services/learning-content-catalog';
@@ -50,6 +51,7 @@ interface Message {
 
 interface ChatSuggestion {
   emotions?: string[];
+  lifeContexts?: string[];
   groundingOptions?: string[];
   learningPathway?: string | null;
   suggestSaveAsReflection?: boolean;
@@ -498,6 +500,7 @@ export default function ChatScreen() {
 
       const suggestion: ChatSuggestion = {
         emotions: data.emotions,
+        lifeContexts: data.lifeContexts,
         groundingOptions: data.groundingOptions,
         learningPathway: data.learningPathway,
         suggestSaveAsReflection: data.suggestSaveAsReflection,
@@ -515,13 +518,29 @@ export default function ChatScreen() {
       setMessages((prev) => [...prev, assistantMsg]);
 
       if (user?.id) {
-        saveChatMessage({
-          userId: user.id,
-          mode,
-          role: 'assistant',
-          content: data.reply,
-          metadata: { suggestion },
-        });
+        const savedAssistant = await supabase
+          .from('ai_chat_messages')
+          .insert({
+            user_id: user.id,
+            mode,
+            role: 'assistant',
+            content: data.reply,
+            metadata: { suggestion },
+          })
+          .select('id')
+          .single();
+        const assistantMsgId = (savedAssistant.data as { id?: string } | null)?.id;
+
+        if (mode === 'inner_ally') {
+          autoJournalFromChat({
+            userId: user.id,
+            userMessage: text,
+            emotions: suggestion.emotions,
+            lifeContexts: suggestion.lifeContexts,
+            suggestSaveAsReflection: suggestion.suggestSaveAsReflection,
+            chatMessageId: assistantMsgId,
+          });
+        }
       }
     } catch (e) {
       const detail = e instanceof Error ? e.message : 'Something went wrong.';
