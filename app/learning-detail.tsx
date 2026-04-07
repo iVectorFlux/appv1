@@ -122,18 +122,23 @@ export default function LearningDetailScreen() {
     (async () => {
       const fromCatalog = await resolveDetailModuleFromCatalogId(id);
       if (cancelled) return;
+      let startMode: MediaMode = 'video';
       if (fromCatalog) {
+        startMode = fromCatalog.module.videoUrl ? 'video' : 'audio';
         setModule(fromCatalog.module);
         setCatalogEpisodeKey(fromCatalog.episodeKey);
-        setMediaMode(fromCatalog.module.videoUrl ? 'video' : 'audio');
+        setMediaMode(startMode);
       } else {
         const found = getModuleById(id);
+        startMode = found?.videoUrl ? 'video' : 'audio';
         setModule(found ?? null);
         setCatalogEpisodeKey(null);
-        setMediaMode(found?.videoUrl ? 'video' : 'audio');
+        setMediaMode(startMode);
       }
-      // Reset media state for the new episode
-      setIsLoading(true);
+      // Video starts loading immediately via the player element.
+      // Audio on web is lazy-initialized on first play (no initial spinner needed).
+      // Audio on native is initialized below via a dedicated effect.
+      setIsLoading(startMode === 'video');
       setError(null);
       setProgress(0);
       setDuration(0);
@@ -156,6 +161,40 @@ export default function LearningDetailScreen() {
       }
     };
   }, [params.id]);
+
+  // Native: eagerly load audio when the lesson starts in audio mode
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (mediaMode !== 'audio' || !module?.audioUrl?.trim()) return;
+    if (audioRef.current) return; // already loaded from a previous switchToAudio
+
+    let cancelled = false;
+    const url = module.audioUrl.trim();
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: url },
+          { shouldPlay: false },
+          handlePlaybackStatusUpdate
+        );
+        if (cancelled) {
+          sound.unloadAsync().catch(() => {});
+        } else {
+          audioRef.current = sound;
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Unable to load audio. Please try again.');
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [module?.audioUrl, mediaMode]);
 
   // Track last accessed when module is loaded (authenticated user)
   useEffect(() => {
@@ -319,6 +358,9 @@ export default function LearningDetailScreen() {
             await audioRef.current.playAsync();
           }
         }
+      } else if (module?.audioUrl?.trim()) {
+        // Still initializing — show loading so the user knows it's working
+        setIsLoading(true);
       }
     }
   };

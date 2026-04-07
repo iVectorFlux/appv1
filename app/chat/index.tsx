@@ -623,11 +623,6 @@ export default function ChatScreen() {
             onLearnPress={handleLearnPress}
           />
         ))}
-        {isHistoryLoading && (
-          <View style={styles.historyLoadingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        )}
         {isLoading && <TypingIndicator color={modeColor} />}
       </ScrollView>
 
@@ -725,10 +720,6 @@ const styles = StyleSheet.create({
   modePillText: {
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
-  },
-  historyLoadingRow: {
-    alignItems: 'center',
-    paddingBottom: Spacing.sm,
   },
   messagesList: {
     flex: 1,
