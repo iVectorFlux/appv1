@@ -59,6 +59,7 @@ interface ChatSuggestion {
   learningPathway?: string | null;
   suggestSaveAsReflection?: boolean;
   skillId?: string | null;
+  reframe?: string | null;
 }
 
 const GROUNDING_LABELS: Record<string, string> = {
@@ -137,6 +138,31 @@ function GroundingCard({
   );
 }
 
+function ReframeCard({
+  text,
+  colors,
+  modeColor,
+}: {
+  text: string;
+  colors: ReturnType<typeof useColors>;
+  modeColor: string;
+}) {
+  return (
+    <View
+      style={[
+        sgStyles.reframeCard,
+        {
+          borderColor: modeColor + '4D',
+          backgroundColor: modeColor + '12',
+        },
+      ]}
+    >
+      <Text style={[sgStyles.reframeLabel, { color: colors.textSecondary }]}>Another way to see it</Text>
+      <Text style={[sgStyles.reframeBody, { color: colors.textPrimary }]}>{text}</Text>
+    </View>
+  );
+}
+
 function LearnCard({
   pathway,
   skillId,
@@ -170,6 +196,18 @@ const sgStyles = StyleSheet.create({
     padding: Spacing.sm,
     marginTop: Spacing.xs,
   },
+  reframeCard: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    padding: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  reframeLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    marginBottom: 4,
+  },
+  reframeBody: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45 },
   learnCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   title: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, marginBottom: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 4 },
@@ -195,6 +233,9 @@ function MessageBubble({
   onLearnPress: (skillId?: string | null) => void;
 }) {
   const isUser = message.role === 'user';
+  const reframeText =
+    typeof message.suggestion?.reframe === 'string' ? message.suggestion.reframe.trim() : '';
+  const hasReframe = !isUser && reframeText.length > 0;
   return (
     <View style={[bStyles.wrap, isUser ? bStyles.wrapUser : bStyles.wrapAssistant]}>
       <View
@@ -212,6 +253,7 @@ function MessageBubble({
       </View>
       {!isUser && message.suggestion && (
         <View style={bStyles.cards}>
+          {hasReframe && <ReframeCard text={reframeText} colors={colors} modeColor={modeColor} />}
           {(message.suggestion.groundingOptions?.length ?? 0) > 0 && (
             <GroundingCard options={message.suggestion.groundingOptions!} colors={colors} onPress={onGroundingPress} />
           )}
@@ -346,6 +388,7 @@ export default function AssistScreen() {
         learningPathway: data.learningPathway,
         suggestSaveAsReflection: data.suggestSaveAsReflection,
         skillId: data.skillId,
+        reframe: data.reframe ?? null,
       };
 
       const assistantMsg: Message = {

@@ -90,7 +90,7 @@ function useInsightsData() {
         }
       })
       .finally(() => {
-        if (!cancelledRef.current) setLoadingEq(false);
+        setLoadingEq(false);
       });
 
     // Load Recover (Wellbeing) data independently — recovery_sessions / Supabase
@@ -106,7 +106,7 @@ function useInsightsData() {
         }
       })
       .finally(() => {
-        if (!cancelledRef.current) setLoadingWellbeing(false);
+        setLoadingWellbeing(false);
       });
 
     return () => { cancelledRef.current = true; };

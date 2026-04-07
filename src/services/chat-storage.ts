@@ -5,7 +5,10 @@
  * Requires the user to be authenticated.
  */
 
+import { Platform } from 'react-native';
+import type { JournalEntry } from '@/types';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createJournalEntry } from '@/services/journal-storage';
 
 export type ChatMode = 'inner_ally' | 'coach';
 export type ChatRole = 'user' | 'assistant';
@@ -116,25 +119,26 @@ export async function autoJournalFromChat({
   suggestSaveAsReflection?: boolean;
   chatMessageId?: string;
 }): Promise<void> {
-  if (!isSupabaseConfigured()) return;
   const em = (emotions ?? []).filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim());
   const ctx = (lifeContexts ?? []).filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim());
   const saveReflection = Boolean(suggestSaveAsReflection);
   if (em.length === 0 && ctx.length === 0 && !saveReflection) return;
 
-  const { error } = await supabase.from('journal_entries').insert({
-    user_id: userId,
-    entry_source: 'inner_ally',
-    emotions: em.length > 0 ? em : null,
-    reasons: ctx.length > 0 ? ctx : null,
-    journal_text_encrypted: userMessage.trim() || '(Inner Ally check-in)',
-    encryption_key_id: null,
-    word_count: userMessage.trim().split(/\s+/).filter(Boolean).length,
-    chat_message_id: chatMessageId ?? null,
-  });
+  if (Platform.OS === 'web' && !isSupabaseConfigured()) return;
 
-  if (error) {
-    console.error('[ChatStorage] Failed to auto-journal from chat:', error);
+  try {
+    await createJournalEntry({
+      userId,
+      entrySource: 'inner_ally',
+      emotions: em.length > 0 ? (em as JournalEntry['emotions']) : [],
+      reasons: ctx.length > 0 ? ctx : undefined,
+      energyLevel: 3,
+      journalTextEncrypted: userMessage.trim() || '(Inner Ally check-in)',
+      encryptionKeyId: undefined,
+      chatMessageId: chatMessageId ?? null,
+    });
+  } catch (e) {
+    console.error('[ChatStorage] Failed to auto-journal from chat:', e);
   }
 }
 

@@ -79,25 +79,37 @@ export type ChatApiSuccess = {
   learningPathway?: string | null;
   suggestSaveAsReflection?: boolean;
   skillId?: string | null;
+  /** Inner Ally: gentle alternative perspective when the user expressed something difficult (shown in its own card). */
+  reframe?: string | null;
 };
 
 /**
  * POST /api/chat — throws Error with a user-visible message on failure.
  */
+const CHAT_FETCH_TIMEOUT_MS = 55_000;
+
 export async function requestChatCompletion(body: object): Promise<ChatApiSuccess> {
   assertLocalWebCanReachApi();
   const url = joinApiUrl('/api/chat');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CHAT_FETCH_TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error('The assistant took too long to respond. Please try again.');
+    }
     throw new Error(
       'Could not reach the chat server. If you use the app on a phone or simulator, set EXPO_PUBLIC_APP_URL in .env to your live site (https://….vercel.app), then rebuild.'
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   const text = await res.text();

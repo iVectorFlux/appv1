@@ -56,6 +56,7 @@ interface ChatSuggestion {
   learningPathway?: string | null;
   suggestSaveAsReflection?: boolean;
   skillId?: string | null;
+  reframe?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -212,11 +213,39 @@ const typingStyles = StyleSheet.create({
 function EmotionTags({ emotions, colors }: { emotions: string[]; colors: ReturnType<typeof useColors> }) {
   return (
     <View style={sgStyles.emotionRow}>
-      {emotions.slice(0, 3).map((e) => (
-        <View key={e} style={[sgStyles.emotionTag, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      {emotions.slice(0, 3).map((e, i) => (
+        <View
+          key={`${e}-${i}`}
+          style={[sgStyles.emotionTag, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
           <Text style={[sgStyles.emotionText, { color: colors.textSecondary }]}>{e}</Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+function ReframeCard({
+  text,
+  colors,
+  modeColor,
+}: {
+  text: string;
+  colors: ReturnType<typeof useColors>;
+  modeColor: string;
+}) {
+  return (
+    <View
+      style={[
+        sgStyles.reframeCard,
+        {
+          borderColor: modeColor + '4D',
+          backgroundColor: modeColor + '12',
+        },
+      ]}
+    >
+      <Text style={[sgStyles.reframeLabel, { color: colors.textMuted }]}>Another way to see it</Text>
+      <Text style={[sgStyles.reframeBody, { color: colors.textPrimary }]}>{text}</Text>
     </View>
   );
 }
@@ -267,7 +296,19 @@ function LearnCard({ pathway, colors, onPress }: {
 }
 
 const sgStyles = StyleSheet.create({
-  emotionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: Spacing.xs },
+  emotionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: Spacing.sm },
+  reframeCard: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    padding: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  reframeLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    marginBottom: 4,
+  },
+  reframeBody: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45 },
   emotionTag: { borderRadius: Radius.full, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3 },
   emotionText: { fontSize: Typography.fontSize.xs, textTransform: 'capitalize' },
   card: {
@@ -313,6 +354,7 @@ function MessageRow({
 
   const sg = message.suggestion;
   const hasEmotions = (sg?.emotions?.length ?? 0) > 0;
+  const hasReframe = typeof sg?.reframe === 'string' && sg.reframe.trim().length > 0;
   const hasGrounding = (sg?.groundingOptions?.length ?? 0) > 0;
   const hasLearn = !!sg?.learningPathway;
 
@@ -336,6 +378,7 @@ function MessageRow({
       <View style={msgStyles.aiContent}>
         {hasEmotions && <EmotionTags emotions={sg!.emotions!} colors={colors} />}
         <MarkdownText content={message.content} style={[msgStyles.aiText, { color: colors.textPrimary }]} />
+        {hasReframe && <ReframeCard text={sg!.reframe!.trim()} colors={colors} modeColor={modeColor} />}
         {hasGrounding && (
           <GroundingCard options={sg!.groundingOptions!} colors={colors} onPress={onGroundingPress} />
         )}
@@ -505,6 +548,7 @@ export default function ChatScreen() {
         learningPathway: data.learningPathway,
         suggestSaveAsReflection: data.suggestSaveAsReflection,
         skillId: data.skillId,
+        reframe: data.reframe ?? null,
       };
 
       const assistantMsg: Message = {
@@ -529,10 +573,13 @@ export default function ChatScreen() {
           })
           .select('id')
           .single();
+        if (savedAssistant.error) {
+          console.error('[Chat] Failed to save assistant message:', savedAssistant.error);
+        }
         const assistantMsgId = (savedAssistant.data as { id?: string } | null)?.id;
 
         if (mode === 'inner_ally') {
-          autoJournalFromChat({
+          void autoJournalFromChat({
             userId: user.id,
             userMessage: text,
             emotions: suggestion.emotions,
@@ -581,6 +628,14 @@ export default function ChatScreen() {
   };
 
   const canSend = inputText.trim().length > 0 && !isLoading;
+  const isEmptyComposer = inputText.length === 0;
+
+  /** Single-line placeholder vertically centered in the pill (multiline uses normal padding). */
+  const composerMinRow = 48;
+  const composerEmptyPad = Math.max(
+    8,
+    Math.round((composerMinRow - Typography.fontSize.base * 1.45) / 2)
+  );
 
   const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'padding';
 
@@ -656,9 +711,26 @@ export default function ChatScreen() {
           },
         ]}
       >
-        <View style={[styles.inputWrap, { backgroundColor: colors.floating, borderColor: canSend ? modeColor + '70' : colors.border }]}>
+        <View
+          style={[
+            styles.inputWrap,
+            { backgroundColor: colors.floating, borderColor: canSend ? modeColor + '70' : colors.border },
+            isEmptyComposer && styles.inputWrapEmpty,
+          ]}
+        >
           <TextInput
-            style={[styles.input, { color: colors.textPrimary }]}
+            style={[
+              styles.input,
+              { color: colors.textPrimary },
+              isEmptyComposer
+                ? {
+                    minHeight: composerMinRow,
+                    paddingTop: composerEmptyPad,
+                    paddingBottom: composerEmptyPad,
+                  }
+                : styles.inputFilled,
+              Platform.OS === 'android' && styles.inputAndroid,
+            ]}
             value={inputText}
             onChangeText={setInputText}
             placeholder={MODE_CONFIG[mode].placeholder}
@@ -670,6 +742,7 @@ export default function ChatScreen() {
             underlineColorAndroid="transparent"
             selectionColor={modeColor}
             cursorColor={modeColor}
+            selectTextOnFocus={false}
             {...(Platform.OS === 'web'
               ? ({
                   outlineStyle: 'none',
@@ -761,20 +834,29 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     paddingLeft: Spacing.md,
     paddingRight: 5,
-    paddingTop: 5,
-    paddingBottom: 5,
+    paddingTop: 6,
+    paddingBottom: 6,
     gap: 8,
+  },
+  inputWrapEmpty: {
+    alignItems: 'center',
   },
   input: {
     flex: 1,
     fontSize: Typography.fontSize.base,
     lineHeight: Typography.fontSize.base * 1.45,
     maxHeight: 140,
-    minHeight: 36,
-    paddingTop: Platform.OS === 'ios' ? 8 : 4,
-    paddingBottom: Platform.OS === 'ios' ? 8 : 4,
     borderWidth: 0,
     backgroundColor: 'transparent',
+  },
+  inputFilled: {
+    minHeight: 36,
+    paddingTop: Platform.OS === 'ios' ? 8 : 6,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
+  },
+  inputAndroid: {
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   sendBtn: {
     width: 36,

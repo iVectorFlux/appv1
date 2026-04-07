@@ -21,7 +21,7 @@ export async function initializeDatabase(): Promise<void> {
         user_id TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
-        entry_source TEXT NOT NULL DEFAULT 'journal_only' CHECK (entry_source IN ('reflect', 'journal_only')),
+        entry_source TEXT NOT NULL DEFAULT 'journal_only' CHECK (entry_source IN ('reflect', 'journal_only', 'inner_ally')),
         emotions TEXT NOT NULL,
         energy_level INTEGER NOT NULL CHECK(energy_level >= 1 AND energy_level <= 5),
         pleasantness INTEGER,
@@ -45,9 +45,48 @@ export async function initializeDatabase(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_journal_user_created 
       ON journal_entries(user_id, created_at DESC);
     `);
+
+    await migrateJournalEntriesAllowInnerAlly(db);
   } catch (error) {
     console.error('Database initialization failed:', error);
     throw error;
+  }
+}
+
+/** Expand entry_source CHECK so Inner Ally auto-journal can use SQLite (existing DBs). */
+async function migrateJournalEntriesAllowInnerAlly(database: SQLite.SQLiteDatabase): Promise<void> {
+  try {
+    const rows = await database.getAllAsync<{ sql: string }>(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='journal_entries'"
+    );
+    const sql = rows[0]?.sql ?? '';
+    if (!sql || sql.includes("'inner_ally'")) return;
+
+    await database.execAsync(`
+      CREATE TABLE journal_entries__inner_ally (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        entry_source TEXT NOT NULL DEFAULT 'journal_only' CHECK (entry_source IN ('reflect', 'journal_only', 'inner_ally')),
+        emotions TEXT NOT NULL,
+        energy_level INTEGER NOT NULL CHECK(energy_level >= 1 AND energy_level <= 5),
+        pleasantness INTEGER,
+        reason TEXT,
+        reasons TEXT,
+        journal_text_encrypted TEXT NOT NULL,
+        encryption_key_id TEXT NOT NULL
+      );
+      INSERT INTO journal_entries__inner_ally
+        SELECT id, user_id, created_at, updated_at, entry_source, emotions, energy_level, pleasantness, reason, reasons, journal_text_encrypted, encryption_key_id
+        FROM journal_entries;
+      DROP TABLE journal_entries;
+      ALTER TABLE journal_entries__inner_ally RENAME TO journal_entries;
+      CREATE INDEX IF NOT EXISTS idx_journal_user_created
+        ON journal_entries(user_id, created_at DESC);
+    `);
+  } catch (e) {
+    console.error('[database] migrateJournalEntriesAllowInnerAlly failed:', e);
   }
 }
 
@@ -120,7 +159,11 @@ export async function getJournalEntries(userId: string, limit: number = 50): Pro
     userId: row.user_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    entrySource: (row.entry_source === 'reflect' ? 'reflect' : 'journal_only') as JournalEntry['entrySource'],
+    entrySource: (row.entry_source === 'reflect'
+      ? 'reflect'
+      : row.entry_source === 'inner_ally'
+        ? 'inner_ally'
+        : 'journal_only') as JournalEntry['entrySource'],
     emotions: JSON.parse(row.emotions || '[]') as JournalEntry['emotions'],
     energyLevel: row.energy_level as JournalEntry['energyLevel'],
     pleasantness: row.pleasantness ?? undefined,
@@ -153,7 +196,11 @@ export async function getJournalEntry(id: string): Promise<JournalEntry | null> 
     userId: result.user_id,
     createdAt: result.created_at,
     updatedAt: result.updated_at,
-    entrySource: (result.entry_source === 'reflect' ? 'reflect' : 'journal_only') as JournalEntry['entrySource'],
+    entrySource: (result.entry_source === 'reflect'
+      ? 'reflect'
+      : result.entry_source === 'inner_ally'
+        ? 'inner_ally'
+        : 'journal_only') as JournalEntry['entrySource'],
     emotions: JSON.parse(result.emotions || '[]') as JournalEntry['emotions'],
     energyLevel: result.energy_level as JournalEntry['energyLevel'],
     pleasantness: result.pleasantness ?? undefined,

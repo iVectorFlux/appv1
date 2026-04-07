@@ -71,12 +71,19 @@ async function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+export type CreateJournalEntryInput = Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> & {
+  /** Web/Supabase only: links auto-journal rows to `ai_chat_messages`. */
+  chatMessageId?: string | null;
+};
+
+export async function createJournalEntry(entry: CreateJournalEntryInput): Promise<string> {
   if (Platform.OS === 'web') {
     if (!isSupabaseConfigured()) {
       throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY to .env and restart (expo start --web).');
     }
     let lastError: Error | null = null;
+    const text = (entry.journalTextEncrypted ?? '').trim();
+    const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
     const row = {
       user_id: entry.userId,
       entry_source: entry.entrySource ?? 'journal_only',
@@ -86,6 +93,8 @@ export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'creat
       reasons: entry.reasons ?? null,
       journal_text_encrypted: encryptedToStorage(entry.journalTextEncrypted ?? ''),
       encryption_key_id: null,
+      word_count: wordCount > 0 ? wordCount : null,
+      chat_message_id: entry.chatMessageId ?? null,
     };
     for (let attempt = 1; attempt <= JOURNAL_SAVE_RETRIES; attempt++) {
       try {
@@ -103,7 +112,8 @@ export async function createJournalEntry(entry: Omit<JournalEntry, 'id' | 'creat
     }
     throw lastError ?? new Error('Could not save journal entry.');
   }
-  return db.createJournalEntry(entry);
+  const { chatMessageId: _omitChatRef, ...sqliteEntry } = entry;
+  return db.createJournalEntry(sqliteEntry);
 }
 
 export async function getJournalEntries(userId: string, limit: number = 50): Promise<JournalEntry[]> {
