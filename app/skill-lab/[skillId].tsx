@@ -395,6 +395,7 @@ export default function SkillDetailScreen() {
 
   // ── Start practice: generate scenario ──────────────────────────────────────
   const startPractice = useCallback(async () => {
+    if (!selectedAtomicId) return;
     setPhase('loading_scenario');
     setFeedback(null);
     setUserAnswer('');
@@ -404,9 +405,9 @@ export default function SkillDetailScreen() {
     setPracticeQuestion('');
     scenarioStartedAt.current = Date.now();
 
-    // Record scenario attempt (increments scenarios_attempted for analytics)
+    // Record scenario attempt (increments scenarios_attempted) — await so saves don’t race ahead of this row
     if (user?.id) {
-      recordScenarioAttempt(user.id, skill.id);
+      await recordScenarioAttempt(user.id, skill.id);
     }
 
     try {
@@ -460,7 +461,7 @@ export default function SkillDetailScreen() {
     } catch {
       setPhase('idle');
     }
-  }, [skill, selectedAtomicId, selectedAtomic, practiceMode, isDecisionMode, user?.id]);
+  }, [skill, selectedAtomicId, selectedAtomic, practiceMode, isDecisionMode, user?.id]); // selectedAtomicId required before start
 
   // ── Submit answer: get feedback ─────────────────────────────────────────────
   const submitAnswer = useCallback(async () => {
@@ -510,7 +511,7 @@ export default function SkillDetailScreen() {
           ? Date.now() - scenarioStartedAt.current
           : undefined;
 
-        saveSkillSession({
+        const saved = await saveSkillSession({
           userId: user.id,
           skillId: skill.id,
           atomicSkillId: selectedAtomicId,
@@ -532,7 +533,7 @@ export default function SkillDetailScreen() {
             reflectionQuestion: data.reflectionQuestion,
           },
         });
-        setRoundsSaved((n) => n + 1);
+        if (saved) setRoundsSaved((n) => n + 1);
       }
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
@@ -607,7 +608,7 @@ export default function SkillDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sub-skills</Text>
           <Text style={styles.bodyTextMuted}>
-            Select a sub-skill to focus your practice session, or practice the full skill.
+            Choose a sub-skill below — practice is tailored to that focus.
           </Text>
           <View style={styles.chipRow}>
             {skill.atomicSkills.map((a) => (
@@ -638,15 +639,39 @@ export default function SkillDetailScreen() {
               </View>
             )}
             <TouchableOpacity
-              style={[styles.startBtn, { backgroundColor: skill.color }]}
+              style={[
+                styles.startBtn,
+                {
+                  backgroundColor: selectedAtomicId ? skill.color : colors.surface,
+                  borderWidth: selectedAtomicId ? 0 : 1,
+                  borderColor: colors.border,
+                },
+              ]}
               onPress={startPractice}
+              disabled={!selectedAtomicId}
+              activeOpacity={selectedAtomicId ? 0.85 : 1}
             >
-              <Ionicons name="play-circle-outline" size={20} color="#fff" />
-              <Text style={styles.startBtnText}>
+              <Ionicons
+                name="play-circle-outline"
+                size={20}
+                color={selectedAtomicId ? '#fff' : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.startBtnText,
+                  { color: selectedAtomicId ? '#fff' : colors.textMuted },
+                ]}
+              >
                 {roundsSaved > 0 ? 'Practice again' : 'Start AI Practice'}
               </Text>
             </TouchableOpacity>
-            <Text style={styles.practiceHint}>{modeConfig.hint}</Text>
+            {!selectedAtomicId ? (
+              <Text style={[styles.practiceHint, { color: colors.textSecondary }]}>
+                Select a sub-skill above to enable practice.
+              </Text>
+            ) : (
+              <Text style={styles.practiceHint}>{modeConfig.hint}</Text>
+            )}
           </View>
         )}
 

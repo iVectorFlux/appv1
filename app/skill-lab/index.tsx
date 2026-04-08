@@ -2,7 +2,7 @@
  * Skill Lab — landing (route: /skill-lab)
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useColors,
@@ -32,11 +32,23 @@ export default function SkillLabScreen() {
   const { user } = useAuthStore();
   const [progress, setProgress] = useState<Record<string, SkillProgress>>({});
 
-  useEffect(() => {
+  const loadProgress = useCallback(() => {
     if (user?.id) {
       getSkillsProgress(user.id).then(setProgress);
+    } else {
+      setProgress({});
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    loadProgress();
+  }, [loadProgress]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProgress();
+    }, [loadProgress])
+  );
 
   const styles = createStyles(colors);
 

@@ -14,6 +14,14 @@
  */
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { upsertLearningProgress } from '@/services/learning-progress';
+
+const SKILL_SESSION_SAVE_RETRIES = 3;
+const SKILL_SESSION_RETRY_DELAY_MS = 700;
+
+async function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 export interface SkillSessionMetadata {
   practiceMode?: string;
@@ -57,10 +65,17 @@ export interface SkillProgress {
 // Save a completed practice round
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function saveSkillSession(session: SkillSession): Promise<void> {
-  if (!isSupabaseConfigured()) return;
+/**
+ * Persist one completed practice round + aggregated progress + learning_progress (if module exists).
+ * Retries on transient failures so native builds don’t silently drop sessions.
+ */
+export async function saveSkillSession(session: SkillSession): Promise<boolean> {
+  if (!isSupabaseConfigured()) {
+    console.warn('[SkillsStorage] Supabase not configured — session not saved.');
+    return false;
+  }
 
-  const { error } = await supabase.from('skills_sessions').insert({
+  const row = {
     user_id: session.userId,
     skill_id: session.skillId,
     atomic_skill_id: session.atomicSkillId ?? null,
@@ -74,22 +89,38 @@ export async function saveSkillSession(session: SkillSession): Promise<void> {
     duration_ms: session.durationMs ?? null,
     practice_mode: session.practiceMode ?? null,
     session_metadata: session.sessionMetadata ?? null,
-  });
+  };
 
-  if (error) {
-    console.error('[SkillsStorage] Failed to save session:', error);
-    return;
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= SKILL_SESSION_SAVE_RETRIES; attempt++) {
+    const { error } = await supabase.from('skills_sessions').insert(row);
+    if (!error) {
+      const completed = await upsertSkillProgressAfterSession(session);
+      if (completed != null) {
+        await syncSkillLabToLearningProgress(session.userId, session.skillId, completed);
+      }
+      return true;
+    }
+    lastError = new Error(error.message);
+    console.warn(`[SkillsStorage] save session attempt ${attempt}/${SKILL_SESSION_SAVE_RETRIES}:`, error.message);
+    if (attempt < SKILL_SESSION_SAVE_RETRIES) await delay(SKILL_SESSION_RETRY_DELAY_MS);
   }
 
-  await upsertSkillProgress(session);
+  console.error('[SkillsStorage] Failed to save session after retries:', lastError);
+  return false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Upsert aggregated progress after each session
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function upsertSkillProgress(session: SkillSession): Promise<void> {
-  if (!isSupabaseConfigured()) return;
+/**
+ * Updates aggregates after a saved session row.
+ * `scenarios_attempted` is only incremented in `recordScenarioAttempt` (each scenario start), not here — avoids double-counting.
+ * Returns new sessions_completed total, or null on failure.
+ */
+async function upsertSkillProgressAfterSession(session: SkillSession): Promise<number | null> {
+  if (!isSupabaseConfigured()) return null;
 
   const { data: existing } = await supabase
     .from('skills_progress')
@@ -116,12 +147,14 @@ async function upsertSkillProgress(session: SkillSession): Promise<void> {
     newBreakdown[session.atomicSkillId] = (newBreakdown[session.atomicSkillId] ?? 0) + 1;
   }
 
+  const nextCompleted = prevCompleted + 1;
+
   const { error } = await supabase.from('skills_progress').upsert(
     {
       user_id: session.userId,
       skill_id: session.skillId,
-      sessions_completed: prevCompleted + 1,
-      scenarios_attempted: prevAttempted + 1,
+      sessions_completed: nextCompleted,
+      scenarios_attempted: prevAttempted,
       total_time_ms: prevTimeMs + (session.durationMs ?? 0),
       last_practiced_at: new Date().toISOString(),
       top_strengths: newStrengths,
@@ -133,6 +166,26 @@ async function upsertSkillProgress(session: SkillSession): Promise<void> {
 
   if (error) {
     console.error('[SkillsStorage] Failed to upsert progress:', error);
+    return null;
+  }
+  return nextCompleted;
+}
+
+/** Mirror Skill Lab completions into learning_progress for cross-tab “learning” analytics. */
+async function syncSkillLabToLearningProgress(
+  userId: string,
+  skillId: string,
+  sessionsCompleted: number
+): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const video_progress_pct = Math.min(100, Math.max(0, sessionsCompleted * 15));
+  try {
+    await upsertLearningProgress(userId, skillId, {
+      last_accessed_at: new Date().toISOString(),
+      video_progress_pct,
+    });
+  } catch (e) {
+    console.warn('[SkillsStorage] learning_progress sync skipped:', e);
   }
 }
 
