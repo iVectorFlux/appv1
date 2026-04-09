@@ -143,6 +143,58 @@ export async function autoJournalFromChat({
 }
 
 /**
+ * Persist the assistant turn after the UI already shows the reply (so typing can stop immediately).
+ * Runs Supabase insert + Inner Ally auto-journal; failures are logged only.
+ */
+export async function persistAssistantTurnAfterReply(params: {
+  userId: string;
+  mode: ChatMode;
+  reply: string;
+  suggestion: Record<string, unknown>;
+  userMessageForJournal: string;
+}): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+
+  const { data, error } = await supabase
+    .from('ai_chat_messages')
+    .insert({
+      user_id: params.userId,
+      mode: params.mode,
+      role: 'assistant',
+      content: params.reply,
+      metadata: { suggestion: params.suggestion },
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('[ChatStorage] Failed to save assistant message:', error);
+    return;
+  }
+
+  const assistantMsgId = (data as { id?: string } | null)?.id;
+
+  if (params.mode !== 'inner_ally') return;
+
+  const raw = params.suggestion;
+  const emotions = Array.isArray(raw.emotions)
+    ? raw.emotions.filter((x): x is string => typeof x === 'string')
+    : undefined;
+  const lifeContexts = Array.isArray(raw.lifeContexts)
+    ? raw.lifeContexts.filter((x): x is string => typeof x === 'string')
+    : undefined;
+
+  await autoJournalFromChat({
+    userId: params.userId,
+    userMessage: params.userMessageForJournal,
+    emotions,
+    lifeContexts,
+    suggestSaveAsReflection: Boolean(raw.suggestSaveAsReflection),
+    chatMessageId: assistantMsgId,
+  });
+}
+
+/**
  * Delete all chat messages for a user in a given mode (clear conversation).
  */
 export async function clearChatHistory(userId: string, mode: ChatMode): Promise<void> {

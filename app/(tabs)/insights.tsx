@@ -1,8 +1,10 @@
 /**
  * Insights Screen
  *
- * Derived only from structured data: Reflect check-ins (journal_entries, reflect)
- * and Recover sessions. Never from journal text content.
+ * Structured data only (no journal prose analysis):
+ * - Reflect + Inner Ally rows (emotions, energy) from journal_entries
+ * - EQ Check-in / full test scores from eq_scores
+ * - Recover sessions from recovery_sessions (requires Supabase)
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -22,16 +24,21 @@ import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/des
 import { Ionicons } from '@expo/vector-icons';
 import { GROUNDING_MODES } from '@/data/grounding-content';
 import { useAuthStore } from '@/stores/auth-store';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { getJournalEntries } from '@/services/journal-storage';
 import { getRecoverySessions } from '@/services/recovery-storage';
+import { getEQScores } from '@/services/eq-storage';
 import type { JournalEntry } from '@/types';
 import type { GroundingMode } from '@/types/grounding';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const RECOVERY_TIMEOUT_MS = 7000;
+const EQ_SCORES_TIMEOUT_MS = 7000;
 const WEB_JOURNAL_TIMEOUT_MS = 8000;
 const NATIVE_JOURNAL_RETRIES = 6;
 const NATIVE_JOURNAL_RETRY_MS = 280;
+/** Never leave Insights spinners stuck if a promise misbehaves. */
+const INSIGHTS_LOAD_SAFETY_MS = 18000;
 
 function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -71,15 +78,31 @@ async function loadReflectJournalEntries(userId: string, limit: number): Promise
 
 function useInsightsData() {
   const { user, isLoading: authLoading } = useAuthStore();
-  const [reflectEntries, setReflectEntries] = useState<JournalEntry[]>([]);
+  /** All journal rows (Reflect, Inner Ally, private journal) for Insights. */
+  const [allJournalRows, setAllJournalRows] = useState<JournalEntry[]>([]);
+  const [eqScores, setEqScores] = useState<
+    Awaited<ReturnType<typeof getEQScores>>
+  >([]);
   const [recoverySessions, setRecoverySessions] = useState<Awaited<ReturnType<typeof getRecoverySessions>>>([]);
   const [loadingEq, setLoadingEq] = useState(false);
   const [loadingWellbeing, setLoadingWellbeing] = useState(false);
   const [errorEq, setErrorEq] = useState<string | null>(null);
+  const [errorEqScores, setErrorEqScores] = useState<string | null>(null);
   const [errorWellbeing, setErrorWellbeing] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const cancelledRef = useRef(false);
+
+  const patternEntries = useMemo(
+    () =>
+      allJournalRows.filter((e) => e.entrySource === 'reflect' || e.entrySource === 'inner_ally'),
+    [allJournalRows]
+  );
+
+  const privateJournalCount = useMemo(
+    () => allJournalRows.filter((e) => e.entrySource === 'journal_only').length,
+    [allJournalRows]
+  );
 
   useEffect(() => {
     if (authLoading) {
@@ -87,11 +110,13 @@ function useInsightsData() {
     }
 
     if (!user?.id) {
-      setReflectEntries([]);
+      setAllJournalRows([]);
+      setEqScores([]);
       setRecoverySessions([]);
       setLoadingEq(false);
       setLoadingWellbeing(false);
       setErrorEq(null);
+      setErrorEqScores(null);
       setErrorWellbeing(null);
       return;
     }
@@ -100,48 +125,90 @@ function useInsightsData() {
     setLoadingEq(true);
     setLoadingWellbeing(true);
     setErrorEq(null);
+    setErrorEqScores(null);
     setErrorWellbeing(null);
 
-    loadReflectJournalEntries(user.id, 80)
+    const safetyTimer = setTimeout(() => {
+      if (!cancelledRef.current) {
+        setLoadingEq(false);
+        setLoadingWellbeing(false);
+      }
+    }, INSIGHTS_LOAD_SAFETY_MS);
+
+    let eqLoadsPending = isSupabaseConfigured() ? 2 : 1;
+    const markEqLoadDone = () => {
+      eqLoadsPending -= 1;
+      if (eqLoadsPending <= 0 && !cancelledRef.current) {
+        setLoadingEq(false);
+      }
+    };
+
+    loadReflectJournalEntries(user.id, 100)
       .then((entries) => {
         if (cancelledRef.current) return;
-        const reflect = (entries || []).filter((e) => e.entrySource === 'reflect');
-        setReflectEntries(reflect);
+        setAllJournalRows(entries || []);
       })
       .catch((e) => {
         if (!cancelledRef.current) {
-          setReflectEntries([]);
+          setAllJournalRows([]);
           setErrorEq(e?.message || 'Couldn’t load. Pull to retry.');
         }
       })
-      .finally(() => {
-        if (!cancelledRef.current) setLoadingEq(false);
-      });
+      .finally(markEqLoadDone);
 
-    withTimeout(getRecoverySessions(user.id, 40), RECOVERY_TIMEOUT_MS)
-      .then((sessions) => {
-        if (cancelledRef.current) return;
-        setRecoverySessions(sessions || []);
-      })
-      .catch((e) => {
-        if (!cancelledRef.current) {
-          setRecoverySessions([]);
-          setErrorWellbeing(e?.message || 'Couldn’t load. Pull to retry.');
-        }
-      })
-      .finally(() => {
-        if (!cancelledRef.current) setLoadingWellbeing(false);
-      });
+    if (isSupabaseConfigured()) {
+      withTimeout(getEQScores(user.id, 50), EQ_SCORES_TIMEOUT_MS)
+        .then((scores) => {
+          if (cancelledRef.current) return;
+          setEqScores(scores || []);
+        })
+        .catch((e) => {
+          if (!cancelledRef.current) {
+            setEqScores([]);
+            setErrorEqScores(e?.message || 'Couldn’t load EQ results.');
+          }
+        })
+        .finally(markEqLoadDone);
+    } else {
+      setEqScores([]);
+      markEqLoadDone();
+    }
+
+    if (isSupabaseConfigured()) {
+      withTimeout(getRecoverySessions(user.id, 40), RECOVERY_TIMEOUT_MS)
+        .then((sessions) => {
+          if (cancelledRef.current) return;
+          setRecoverySessions(sessions || []);
+        })
+        .catch((e) => {
+          if (!cancelledRef.current) {
+            setRecoverySessions([]);
+            setErrorWellbeing(e?.message || 'Couldn’t load. Pull to retry.');
+          }
+        })
+        .finally(() => {
+          if (!cancelledRef.current) setLoadingWellbeing(false);
+        });
+    } else {
+      setRecoverySessions([]);
+      setLoadingWellbeing(false);
+    }
 
     return () => {
       cancelledRef.current = true;
+      clearTimeout(safetyTimer);
     };
   }, [user?.id, refreshTrigger, authLoading]);
 
   const eqSummary = useMemo(() => {
-    const n = reflectEntries.length;
-    if (n === 0) return null;
-    const allEmotions = reflectEntries.flatMap((e) => e.emotions ?? []);
+    const journal = patternEntries;
+    const scores = eqScores;
+    const nJ = journal.length;
+    const nS = scores.length;
+    const nPrivate = privateJournalCount;
+    if (nJ === 0 && nS === 0 && nPrivate === 0) return null;
+
+    const allEmotions = journal.flatMap((e) => e.emotions ?? []);
     const counts: Record<string, number> = {};
     allEmotions.forEach((em) => {
       counts[em] = (counts[em] ?? 0) + 1;
@@ -150,15 +217,37 @@ function useInsightsData() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([em]) => em);
-    const withEnergy = reflectEntries.filter((e) => e.energyLevel != null && e.energyLevel > 0);
+    const withEnergy = journal.filter((e) => e.energyLevel != null && e.energyLevel > 0);
     const avgEnergy =
       withEnergy.length > 0
         ? withEnergy.reduce((s, e) => s + (e.energyLevel ?? 0), 0) / withEnergy.length
         : null;
     const now = Date.now();
-    const last7 = reflectEntries.filter((e) => now - e.createdAt < 7 * ONE_DAY_MS).length;
-    return { count: n, topEmotions, avgEnergy, last7 };
-  }, [reflectEntries]);
+    const last7Journal = journal.filter((e) => now - e.createdAt < 7 * ONE_DAY_MS).length;
+
+    const checkIns = scores.filter((s) => s.assessmentType === 'check_in');
+    const fullTests = scores.filter((s) => s.assessmentType === 'full_test');
+    const last7Scores = scores.filter(
+      (s) => now - new Date(s.completedAt).getTime() < 7 * ONE_DAY_MS
+    ).length;
+    const latestScore = nS > 0 ? scores[0].overallScore : null;
+    const avgScore =
+      nS > 0 ? scores.reduce((acc, s) => acc + s.overallScore, 0) / nS : null;
+
+    return {
+      journalCount: nJ,
+      privateJournalCount: nPrivate,
+      scoreCount: nS,
+      checkInCount: checkIns.length,
+      fullTestCount: fullTests.length,
+      topEmotions,
+      avgEnergy,
+      last7Journal,
+      last7Scores,
+      latestScore,
+      avgScore,
+    };
+  }, [patternEntries, privateJournalCount, eqScores]);
 
   const recoverySummary = useMemo(() => {
     const n = recoverySessions.length;
@@ -188,6 +277,7 @@ function useInsightsData() {
     eqSummary,
     recoverySummary,
     errorEq,
+    errorEqScores,
     errorWellbeing,
     retry,
   };
@@ -204,6 +294,7 @@ export default function InsightsScreen() {
     eqSummary,
     recoverySummary,
     errorEq,
+    errorEqScores,
     errorWellbeing,
     retry,
   } = useInsightsData();
@@ -231,7 +322,7 @@ export default function InsightsScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Insights</Text>
         <Text style={styles.subtitle}>
-          Patterns from Reflect and Recover — use the Learn tab for lessons and podcasts.
+          Mood check-ins, EQ assessments, Inner Ally tags, and Recover — Learn tab has lessons and podcasts.
         </Text>
       </View>
 
@@ -257,7 +348,7 @@ export default function InsightsScreen() {
       )}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>EQ skills</Text>
+        <Text style={styles.sectionTitle}>Mood & EQ</Text>
         {loadingEq ? (
           <View style={[styles.emptyInsightsCard, styles.insightsCardLoading]}>
             <ActivityIndicator size="small" color={colors.primary} />
@@ -268,23 +359,75 @@ export default function InsightsScreen() {
             <View style={[styles.emptyInsightsIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="analytics-outline" size={32} color={colors.primary} />
             </View>
-            <Text style={styles.emptyInsightsTitle}>
-              {eqSummary.count} reflection{eqSummary.count !== 1 ? 's' : ''} so far
-            </Text>
-            {eqSummary.last7 > 0 && (
-              <Text style={styles.summaryStat}>{eqSummary.last7} in the last 7 days</Text>
-            )}
-            {eqSummary.topEmotions.length > 0 && (
+            {eqSummary.privateJournalCount > 0 && (
               <Text style={styles.insightsDescription}>
-                Most common feelings: {eqSummary.topEmotions.join(', ')}
+                {eqSummary.privateJournalCount} private journal{' '}
+                {eqSummary.privateJournalCount !== 1 ? 'entries' : 'entry'} (Journal tab — not shown in mood tags below)
               </Text>
             )}
-            {eqSummary.avgEnergy != null && (
-              <Text style={styles.insightsDescription}>
-                Average energy: {eqSummary.avgEnergy.toFixed(1)} / 5
+            {eqSummary.journalCount > 0 && (
+              <>
+                <Text
+                  style={[
+                    styles.emptyInsightsTitle,
+                    eqSummary.privateJournalCount > 0 && { marginTop: Spacing.md },
+                  ]}
+                >
+                  {eqSummary.journalCount} mood log{eqSummary.journalCount !== 1 ? 's' : ''} (Reflect & Inner Ally)
+                </Text>
+                {eqSummary.last7Journal > 0 && (
+                  <Text style={styles.summaryStat}>{eqSummary.last7Journal} in the last 7 days</Text>
+                )}
+                {eqSummary.topEmotions.length > 0 && (
+                  <Text style={styles.insightsDescription}>
+                    Most common feelings: {eqSummary.topEmotions.join(', ')}
+                  </Text>
+                )}
+                {eqSummary.avgEnergy != null && (
+                  <Text style={styles.insightsDescription}>
+                    Average energy: {eqSummary.avgEnergy.toFixed(1)} / 5
+                  </Text>
+                )}
+              </>
+            )}
+            {eqSummary.scoreCount > 0 && (
+              <>
+                <Text
+                  style={[
+                    styles.emptyInsightsTitle,
+                    eqSummary.journalCount > 0 && { marginTop: Spacing.md },
+                  ]}
+                >
+                  EQ assessments: {eqSummary.scoreCount} completed
+                  {eqSummary.checkInCount > 0 && eqSummary.fullTestCount > 0
+                    ? ` (${eqSummary.checkInCount} check-in · ${eqSummary.fullTestCount} full)`
+                    : eqSummary.checkInCount > 0
+                      ? ` (${eqSummary.checkInCount} check-in${eqSummary.checkInCount !== 1 ? 's' : ''})`
+                      : ''}
+                </Text>
+                {eqSummary.last7Scores > 0 && (
+                  <Text style={styles.summaryStat}>{eqSummary.last7Scores} in the last 7 days</Text>
+                )}
+                {eqSummary.latestScore != null && (
+                  <Text style={styles.insightsDescription}>
+                    Latest overall score: {eqSummary.latestScore}
+                    {eqSummary.avgScore != null && eqSummary.scoreCount > 1
+                      ? ` · Average: ${Math.round(eqSummary.avgScore)}`
+                      : ''}
+                  </Text>
+                )}
+              </>
+            )}
+            {(eqSummary.journalCount > 0 || eqSummary.scoreCount > 0 || eqSummary.privateJournalCount > 0) && (
+              <Text style={styles.insightsHint}>
+                Keep logging in Reflect, EQ Check-in, Inner Ally, or Journal to deepen these patterns.
               </Text>
             )}
-            <Text style={styles.insightsHint}>Keep using Reflect to see stronger patterns over time.</Text>
+            {errorEqScores && eqSummary.scoreCount === 0 && eqSummary.journalCount > 0 && (
+              <Text style={[styles.insightsHint, { color: colors.textSecondary }]}>
+                EQ scores didn’t load ({errorEqScores}). Pull to refresh.
+              </Text>
+            )}
           </View>
         ) : (
           <View style={styles.emptyInsightsCard}>
@@ -293,17 +436,23 @@ export default function InsightsScreen() {
             </View>
             <Text style={styles.emptyInsightsTitle}>Your insights will appear here</Text>
             <Text style={styles.emptyInsightsDescription}>
-              Insights are based on your Reflect check-ins (emotions, energy). Use the heart tab to log how you feel;
-              after a few check-ins we’ll show your patterns here.
+              Complete a Reflect check-in (heart tab), an EQ Check-in from Home, or a few Inner Ally chats — or finish an EQ
+              assessment. We only use structured fields (emotions, energy, scores), never your private journal prose.
             </Text>
-            {(errorEq || !eqSummary) && (
+            {(errorEq || errorEqScores) && (
+              <TouchableOpacity style={styles.ctaButton} onPress={() => retry()} activeOpacity={0.8}>
+                <Text style={styles.ctaButtonText}>Try again</Text>
+                <Ionicons name="refresh-outline" size={18} color={colors.primaryForeground} />
+              </TouchableOpacity>
+            )}
+            {!errorEq && !errorEqScores && (
               <TouchableOpacity
                 style={styles.ctaButton}
-                onPress={() => (errorEq ? retry() : router.push('/(tabs)/reflect'))}
+                onPress={() => router.push('/(tabs)/reflect')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.ctaButtonText}>{errorEq ? 'Try again' : 'Go to Reflect'}</Text>
-                <Ionicons name={errorEq ? 'refresh-outline' : 'heart-outline'} size={18} color={colors.primaryForeground} />
+                <Text style={styles.ctaButtonText}>Go to Reflect</Text>
+                <Ionicons name="heart-outline" size={18} color={colors.primaryForeground} />
               </TouchableOpacity>
             )}
           </View>
@@ -342,8 +491,9 @@ export default function InsightsScreen() {
             </View>
             <Text style={styles.emptyInsightsTitle}>Patterns as you go</Text>
             <Text style={styles.emptyInsightsDescription}>
-              Insights are based on your Recover sessions (breathing & grounding). Use Recover a few times and we’ll show
-              your patterns here.
+              {isSupabaseConfigured()
+                ? 'After you use Recover (breathing & grounding), session summaries appear here.'
+                : 'Recover insights sync when the app is connected to Supabase (check your .env / build).'}
             </Text>
             {(errorWellbeing || !recoverySummary) && (
               <TouchableOpacity
@@ -362,7 +512,8 @@ export default function InsightsScreen() {
       <View style={styles.noteCard}>
         <Ionicons name="shield-checkmark-outline" size={16} color={colors.textMuted} />
         <Text style={styles.noteText}>
-          Insights use only Reflect check-ins and Recover sessions. Journal text is never used — your writing stays private.
+          Mood insights use Reflect, Inner Ally tags, and EQ assessment scores. Recover uses session metadata only. Private
+          journal entries are not read for this screen.
         </Text>
       </View>
     </ScrollView>

@@ -4,7 +4,7 @@
  * Works on all platforms (web and native) via the Supabase HTTP client.
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { EQAssessmentResult, EQQuestion, EQResponse } from '@/types/eq-assessment';
 
 /**
@@ -220,6 +220,10 @@ export async function getEQScores(
   dimensionScores: Record<string, number>;
   assessmentType: 'check_in' | 'full_test';
 }>> {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('eq_scores')
     .select(`
@@ -236,7 +240,7 @@ export async function getEQScores(
 
   if (error) {
     console.error('[EQ Storage] Failed to fetch scores:', error);
-    return [];
+    throw new Error(error.message || 'Could not load EQ assessments');
   }
 
   return (data || []).map((row: any) => ({

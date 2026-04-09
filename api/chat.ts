@@ -7,8 +7,43 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { FUTURE_SKILLS } from '../src/data/future-skills';
 import { applyCors, handleCorsPreflight } from './_lib/cors';
 import { GROQ_CHAT_COMPLETIONS_URL, getGroqEnv } from './_lib/groq-config';
+
+const COACH_SKILL_LAB_IDS = new Set(FUTURE_SKILLS.map((s) => s.id));
+
+/** Map legacy / model ids to real Skill Lab top-level ids (see future-skills.ts). */
+const COACH_SKILL_ID_ALIASES: Record<string, string> = {
+  digital_collaboration: 'communication_influence',
+  digitalcollaboration: 'communication_influence',
+  remote_collaboration: 'communication_influence',
+  async_collaboration: 'communication_influence',
+  data_literacy: 'critical_thinking',
+  dataliteracy: 'critical_thinking',
+  leadership: 'communication_influence',
+  influencing: 'communication_influence',
+  influence: 'communication_influence',
+  eq: 'emotional_intelligence',
+};
+
+function normalizeCoachSkillIdKey(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_');
+}
+
+function resolveCoachSkillId(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const key = normalizeCoachSkillIdKey(raw);
+  if (COACH_SKILL_LAB_IDS.has(key)) return key;
+  const mapped = COACH_SKILL_ID_ALIASES[key];
+  if (mapped && COACH_SKILL_LAB_IDS.has(mapped)) return mapped;
+  return null;
+}
 
 const INNER_ALLY_SYSTEM_PROMPT = `You are Inner Ally — a warm companion inside a wellbeing app.
 
@@ -25,26 +60,35 @@ EMOTIONS — BE CONSERVATIVE (critical):
 
 CONVERSATION STRUCTURE:
 
-STEP 1 — First substantive exchange (and until you understand what's going on):
+STEP 1 — Your **first** assistant reply in this thread:
 - Reflect briefly. Validate without minimising. **One** open question if helpful.
-- Do NOT suggest grounding yet. Do NOT offer tools on the first assistant message.
+- Set "groundingOptions": [] **unless** the user **explicitly asks** for a calming tool (exercise, breathing, grounding, calm down, relax my body, panic, nervous system, something to do with my body).
 
-STEP 2 — After 2+ user turns when the situation is clearer:
-- Brief acknowledgement. If they seem tense or overwhelmed, suggest **exactly one** grounding technique.
+STEP 2 — Your **second and later** assistant replies (there is already at least one prior assistant message in this thread):
+- **Offer grounding when it fits**: If the conversation includes **distress or tension** (e.g. sad, bad day, anxious, overwhelmed, stressed, frustrated, worried, angry, hopeless, wired, can't sleep, stuck, "idk" after sharing something hard) — set "groundingOptions" to **exactly one** allowed ID and add **one short sentence** in the body inviting them to try it (plus optional one question). Prefer **box_breathing** when unsure; **physiological_sigh** or **quick_reset** when they sound rushed or panicky; **body_scan** when they mention body tension; **release** after conflict or heavy venting.
+- **Do not** push grounding on **purely positive or neutral** threads (celebration, small talk, good news only) unless they asked for a technique — use "groundingOptions": [] there.
+- **Mandatory**: If you name any technique in the body (box breathing, sigh, scan, etc.), you **must** put the matching ID in "groundingOptions" — never describe a technique with "groundingOptions": [].
 
 STEP 3 — Learning pathway (optional): only when clearly relevant.
 
-GROUNDING TECHNIQUES — only these IDs:
-- "box_breathing", "body_scan", "release", "physiological_sigh", "quick_reset"
+GROUNDING TECHNIQUES — only these exact string IDs (snake_case) for "groundingOptions":
+- "box_breathing" — structured 4-count breathing (default when unsure)
+- "physiological_sigh" / "quick_reset" — fast nervous-system downshift (use one of these, not both in one reply)
+- "body_scan" — gentle attention through the body
+- "release" — tension / post-stress release
 
 OTHER:
 - Infer 0–3 "lifeContexts" from the allowed list only; use [] if unclear.
 - Never diagnose or prescribe. Crisis language → compassion + crisis line (e.g. 988 US).
 
-POSITIVE REFRAME — "reframe" field (critical):
-- When the user’s **latest message** carries **negative framing** — not only named “bad” emotions, but also hopelessness, stuckness, harsh self-judgment, “nothing works”, “life isn’t going the right way”, overwhelm, regret, fear things won’t improve — set "reframe" to **one short sentence** (max ~28 words): a **gentle, realistic** alternative angle, strength, or possibility they might overlook. **Not** toxic positivity; it’s OK that things are hard.
-- Put that sentence **only** in JSON "reframe". Do **not** repeat the same sentence verbatim in the main reply (you may empathize differently in the body).
-- If the message is **clearly positive-only**, purely factual/educational, neutral small talk, or a correction with no distress, set "reframe" to **null**.
+COGNITIVE REFRAME — JSON field "reframe" (critical — quality over filler):
+- Purpose: **one** sentence that gives a **specific, plausible** alternative lens tied to **what they actually said** (job, money, relationship detail, etc.). It should feel like insight, not a sticker.
+- **Tether to facts**: If they mentioned work, bonus, sales, a person, or a decision — the reframe must **reference that domain** (implicitly or explicitly). **Never** use a generic template that could apply to anyone (e.g. “You’re taking the first step by acknowledging your feelings/concerns”, “Acknowledging this is a sign of strength”, “You’re brave for naming it”) **unless** it is the **first** user message in the whole thread and they only named a vague feeling with no context.
+- **No repetition across turns**: Use the **full chat history** you receive. **Do not** ship another reframe with the same **template or moral** as an idea you already voiced in this thread (including in earlier main replies). Rotate **cognitive moves**: e.g. outcome vs identity, what’s inside/outside their control, systems vs self-blame, protecting energy vs avoidance, one tiny experiment, normalizing setback in sales/comp, etc. If nothing **new** fits, set "reframe" to **null** — **better null than a repeat**.
+- **Short or deflecting replies** (“nope”, “I didn’t”, “idk”): either **null** or one line that fits **that** reply (e.g. not being ready to act is still information) — **not** another “first step / acknowledging” line.
+- **Length**: max ~22 words; one sentence; warm but **concrete**.
+- Put the reframe **only** in JSON. Do not paste it verbatim in the main reply body.
+- **null** when: positive-only message, pure logistics, no distress, or you would be repeating a prior reframe pattern.
 
 Allowed lifeContexts (exact strings, max 3):
 "Work / School", "Family", "Relationships", "Health & Body", "Self", "Money", "Environment", "Life changes", "World", "Other", "Sleep & Rest", "Identity & Purpose", "Conflict & Boundaries", "Loss & Grief", "Creativity & Hobbies", "News & Society"
@@ -55,10 +99,10 @@ SUGGESTION_JSON: {"emotions":["sad"],"lifeContexts":["Work / School"],"grounding
 JSON rules:
 - "emotions": 0–3 short lowercase words; **[]** when not clearly emotional (see above).
 - "lifeContexts": 0–3 from list only; [] if unclear.
-- "groundingOptions": at most one ID, or []. Never on the first assistant message in a thread.
+- "groundingOptions": **at most one** allowed ID, or []. First assistant message: non-empty only if the user explicitly asked for a calming tool (STEP 1). Later messages: non-empty when distress/tension warrants it or they asked (STEP 2); [] on upbeat-only threads unless they asked.
 - "learningPathway": null unless genuinely relevant.
 - "suggestSaveAsReflection": true for meaningful personal sharing worth capturing.
-- "reframe": string (one sentence) or null — see POSITIVE REFRAME above.`;
+- "reframe": string (one concrete sentence) or null — see COGNITIVE REFRAME above; null beats generic repetition.`;
 
 const COACH_SYSTEM_PROMPT = `You are an expert leadership and professional growth coach inside a learning app.
 
@@ -66,17 +110,27 @@ Your role:
 - Answer leadership, career, communication, and professional development questions with structured insight.
 - Give 2-3 concrete, actionable points or frameworks the user can apply immediately.
 - Use real examples and scenarios where helpful.
-- When the user's question connects to one of these Skill Lab / practice skills, suggest exploring it:
-  AI Literacy, Critical Thinking, Problem Solving, Emotional Intelligence, Adaptability,
-  Digital Collaboration, Data Literacy, Creative Thinking, Systems Thinking, Communication & Influence.
+- When the user's question clearly fits one of the in-app Skill Lab areas below, suggest exploring it in SUGGESTION_JSON (see exact skillId list — no other ids exist in the app).
 - Keep responses focused and practical. 3-5 paragraphs maximum.
 - Avoid generic motivational content — be specific, nuanced, and direct.
+
+Skill Lab — use these exact skillId strings only (snake_case). When you set skillId, set learningPathway to one short line that names the same skill so the card matches the screen they open:
+- emotional_intelligence — Emotional Intelligence (EQ, self-awareness, empathy, regulation)
+- ai_literacy — AI Literacy (prompting, evaluating AI output, human–AI workflow)
+- critical_thinking — Critical Thinking (evidence, assumptions, reasoning; includes "data literacy" style questions)
+- problem_solving — Problem Solving (framing problems, options, decisions)
+- adaptability — Adaptability (change, ambiguity, learning under pressure)
+- creative_thinking — Creative Thinking (ideas, constraints, innovation)
+- systems_thinking — Systems Thinking (feedback loops, stakeholders, second-order effects)
+- communication_influence — Communication & Influence (async collaboration, stakeholder comms, persuasion)
+
+If nothing fits well, set both learningPathway and skillId to null.
 
 At the end of each response, include a JSON block on its own line in this exact format (do not include it in a code fence):
 SUGGESTION_JSON: {"learningPathway":null,"skillId":null}
 
-learningPathway: a brief description of a topic to explore, or null.
-skillId: one of the top-level skill IDs if relevant (e.g. "systems_thinking", "critical_thinking", "communication_influence", "adaptability", "problem_solving", "emotional_intelligence", "ai_literacy", "digital_collaboration", "data_literacy", "creative_thinking"), or null.`;
+learningPathway: one short line aligned with the skill above, or null.
+skillId: exactly one of: emotional_intelligence, ai_literacy, critical_thinking, problem_solving, adaptability, creative_thinking, systems_thinking, communication_influence — or null.`;
 
 function parseMode(mode: string): 'inner_ally' | 'coach' {
   return mode === 'coach' ? 'coach' : 'inner_ally';
@@ -121,11 +175,59 @@ const ALLOWED_LIFE_CONTEXTS = new Set([
   'News & Society',
 ]);
 
+/** Must match INNER_ALLY_SYSTEM_PROMPT and chat-suggestion-navigation AI_TO_MODE. */
+const ALLOWED_INNER_ALLY_GROUNDING_IDS = new Set([
+  'box_breathing',
+  'body_scan',
+  'release',
+  'physiological_sigh',
+  'quick_reset',
+]);
+
+const GROUNDING_ID_ALIASES: Record<string, string> = {
+  boxbreathing: 'box_breathing',
+  'box-breathing': 'box_breathing',
+  physiologicalsigh: 'physiological_sigh',
+  'physiological-sigh': 'physiological_sigh',
+  sigh: 'physiological_sigh',
+  bodyscan: 'body_scan',
+  'body-scan': 'body_scan',
+  quickreset: 'quick_reset',
+  'quick-reset': 'quick_reset',
+};
+
+function resolveInnerAllyGroundingId(raw: string): string | null {
+  const key = raw
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_');
+  if (ALLOWED_INNER_ALLY_GROUNDING_IDS.has(key)) return key;
+  const mapped = GROUNDING_ID_ALIASES[key];
+  if (mapped && ALLOWED_INNER_ALLY_GROUNDING_IDS.has(mapped)) return mapped;
+  return null;
+}
+
 function normalizeInnerAllyPayload(
   suggestion: Record<string, unknown> | null
 ): Record<string, unknown> {
   if (!suggestion || typeof suggestion !== 'object') return {};
   const out: Record<string, unknown> = { ...suggestion };
+
+  const rawGo = out.groundingOptions;
+  const groundingOptions: string[] = [];
+  if (Array.isArray(rawGo)) {
+    for (const x of rawGo) {
+      if (typeof x !== 'string') continue;
+      const id = resolveInnerAllyGroundingId(x);
+      if (id) {
+        groundingOptions.push(id);
+        break;
+      }
+    }
+  }
+  out.groundingOptions = groundingOptions;
 
   const rawEmotions = out.emotions;
   const emotions = Array.isArray(rawEmotions)
@@ -150,6 +252,20 @@ function normalizeInnerAllyPayload(
     out.reframe = null;
   }
 
+  return out;
+}
+
+function normalizeCoachPayload(suggestion: Record<string, unknown> | null): Record<string, unknown> {
+  if (!suggestion || typeof suggestion !== 'object') return {};
+  const out: Record<string, unknown> = { ...suggestion };
+  out.skillId = resolveCoachSkillId(out.skillId);
+  const lp = out.learningPathway;
+  if (typeof lp === 'string') {
+    const t = lp.trim();
+    out.learningPathway = t.length > 0 ? t.slice(0, 280) : null;
+  } else {
+    out.learningPathway = null;
+  }
   return out;
 }
 
@@ -242,7 +358,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const { cleanContent, suggestion } = extractSuggestion(rawContent);
 
     const payload =
-      mode === 'inner_ally' ? normalizeInnerAllyPayload(suggestion) : suggestion ?? {};
+      mode === 'inner_ally' ? normalizeInnerAllyPayload(suggestion) : normalizeCoachPayload(suggestion);
 
     res.status(200).json({
       reply: cleanContent,

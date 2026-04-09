@@ -3,6 +3,7 @@
 import { Platform } from 'react-native';
 import type { JournalEntry } from '@/types';
 import * as db from '@/services/database';
+import { ensureDatabaseReady } from '@/services/database';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 function encryptedToStorage(encrypted: string): string {
@@ -96,15 +97,27 @@ export async function createJournalEntry(entry: CreateJournalEntryInput): Promis
       word_count: wordCount > 0 ? wordCount : null,
       chat_message_id: entry.chatMessageId ?? null,
     };
+
+    function isMissingChatMessageIdColumn(msg: string): boolean {
+      const m = msg.toLowerCase();
+      return (
+        m.includes('chat_message_id') &&
+        (m.includes('schema cache') || m.includes('could not find') || m.includes('column'))
+      );
+    }
+
     for (let attempt = 1; attempt <= JOURNAL_SAVE_RETRIES; attempt++) {
       try {
-        const { data, error } = await supabase
-          .from('journal_entries')
-          .insert(row)
-          .select('id')
-          .single();
-        if (error) throw new Error(error.message);
-        return data.id as string;
+        const insertRow = async (r: typeof row) =>
+          supabase.from('journal_entries').insert(r).select('id').single();
+
+        let res = await insertRow(row);
+        if (res.error && isMissingChatMessageIdColumn(res.error.message) && row.chat_message_id != null) {
+          const { chat_message_id: _omit, ...withoutChatRef } = row;
+          res = await insertRow(withoutChatRef as typeof row);
+        }
+        if (res.error) throw new Error(res.error.message);
+        return res.data!.id as string;
       } catch (e) {
         lastError = e instanceof Error ? e : new Error(String(e));
         if (attempt < JOURNAL_SAVE_RETRIES) await delay(JOURNAL_SAVE_RETRY_DELAY_MS);
@@ -112,6 +125,7 @@ export async function createJournalEntry(entry: CreateJournalEntryInput): Promis
     }
     throw lastError ?? new Error('Could not save journal entry.');
   }
+  await ensureDatabaseReady();
   const { chatMessageId: _omitChatRef, ...sqliteEntry } = entry;
   return db.createJournalEntry(sqliteEntry);
 }
@@ -132,6 +146,7 @@ export async function getJournalEntries(userId: string, limit: number = 50): Pro
     if (!data) return [];
     return (data as Record<string, unknown>[]).map(mapSupabaseRowToEntry);
   }
+  await ensureDatabaseReady();
   return db.getJournalEntries(userId, limit);
 }
 
@@ -150,6 +165,7 @@ export async function getJournalEntry(id: string): Promise<JournalEntry | null> 
     if (!data) return null;
     return mapSupabaseRowToEntry(data as Record<string, unknown>);
   }
+  await ensureDatabaseReady();
   return db.getJournalEntry(id);
 }
 
@@ -168,6 +184,7 @@ export async function updateJournalEntry(id: string, updates: { journalTextEncry
     if (error) throw new Error(error.message);
     return;
   }
+  await ensureDatabaseReady();
   return db.updateJournalEntry(id, updates);
 }
 
@@ -183,5 +200,6 @@ export async function deleteJournalEntry(id: string): Promise<void> {
     if (error) throw new Error(error.message);
     return;
   }
+  await ensureDatabaseReady();
   return db.deleteJournalEntry(id);
 }

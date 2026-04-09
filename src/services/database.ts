@@ -5,52 +5,69 @@ import * as SQLite from 'expo-sqlite';
 import type { JournalEntry } from '@/types';
 
 let db: SQLite.SQLiteDatabase | null = null;
+let initPromise: Promise<void> | null = null;
+
+/**
+ * Wait for SQLite (native) before journal CRUD. Safe if root layout is still initializing.
+ */
+export function ensureDatabaseReady(): Promise<void> {
+  if (Platform.OS === 'web') return Promise.resolve();
+  return initializeDatabase();
+}
 
 export async function initializeDatabase(): Promise<void> {
   if (Platform.OS === 'web') {
     throw new Error('SQLite is not available on web platform.');
   }
+  if (db) return;
+  if (initPromise) return initPromise;
 
-  try {
-    db = await SQLite.openDatabaseAsync('eq_app.db');
-    await db.execAsync('PRAGMA foreign_keys = ON;');
-
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS journal_entries (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        entry_source TEXT NOT NULL DEFAULT 'journal_only' CHECK (entry_source IN ('reflect', 'journal_only', 'inner_ally')),
-        emotions TEXT NOT NULL,
-        energy_level INTEGER NOT NULL CHECK(energy_level >= 1 AND energy_level <= 5),
-        pleasantness INTEGER,
-        reason TEXT,
-        reasons TEXT,
-        journal_text_encrypted TEXT NOT NULL,
-        encryption_key_id TEXT NOT NULL
-      );
-    `);
+  initPromise = (async () => {
     try {
-      await db.execAsync(`ALTER TABLE journal_entries ADD COLUMN entry_source TEXT NOT NULL DEFAULT 'journal_only';`);
-    } catch { /* column may already exist */ }
-    try {
-      await db.execAsync(`ALTER TABLE journal_entries ADD COLUMN pleasantness INTEGER;`);
-    } catch { /* column may already exist */ }
-    try {
-      await db.execAsync(`ALTER TABLE journal_entries ADD COLUMN reasons TEXT;`);
-    } catch { /* column may already exist */ }
+      db = await SQLite.openDatabaseAsync('eq_app.db');
+      await db.execAsync('PRAGMA foreign_keys = ON;');
 
-    await db.execAsync(`
-      CREATE INDEX IF NOT EXISTS idx_journal_user_created 
-      ON journal_entries(user_id, created_at DESC);
-    `);
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS journal_entries (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          entry_source TEXT NOT NULL DEFAULT 'journal_only' CHECK (entry_source IN ('reflect', 'journal_only', 'inner_ally')),
+          emotions TEXT NOT NULL,
+          energy_level INTEGER NOT NULL CHECK(energy_level >= 1 AND energy_level <= 5),
+          pleasantness INTEGER,
+          reason TEXT,
+          reasons TEXT,
+          journal_text_encrypted TEXT NOT NULL,
+          encryption_key_id TEXT NOT NULL
+        );
+      `);
+      try {
+        await db.execAsync(`ALTER TABLE journal_entries ADD COLUMN entry_source TEXT NOT NULL DEFAULT 'journal_only';`);
+      } catch { /* column may already exist */ }
+      try {
+        await db.execAsync(`ALTER TABLE journal_entries ADD COLUMN pleasantness INTEGER;`);
+      } catch { /* column may already exist */ }
+      try {
+        await db.execAsync(`ALTER TABLE journal_entries ADD COLUMN reasons TEXT;`);
+      } catch { /* column may already exist */ }
 
-    await migrateJournalEntriesAllowInnerAlly(db);
-  } catch (error) {
-    console.error('Database initialization failed:', error);
-    throw error;
-  }
+      await db.execAsync(`
+        CREATE INDEX IF NOT EXISTS idx_journal_user_created 
+        ON journal_entries(user_id, created_at DESC);
+      `);
+
+      await migrateJournalEntriesAllowInnerAlly(db);
+    } catch (error) {
+      console.error('Database initialization failed:', error);
+      db = null;
+      initPromise = null;
+      throw error;
+    }
+  })();
+
+  return initPromise;
 }
 
 /** Expand entry_source CHECK so Inner Ally auto-journal can use SQLite (existing DBs). */

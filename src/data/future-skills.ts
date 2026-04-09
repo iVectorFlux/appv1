@@ -320,6 +320,13 @@ export const FUTURE_SKILLS: FutureSkill[] = [
   },
 ];
 
+const SKILL_LAB_ID_SET = new Set(FUTURE_SKILLS.map((s) => s.id));
+
+/** True when `id` is a top-level Skill Lab route segment (`/skill-lab/[id]`). */
+export function isSkillLabSkillId(id: string | null | undefined): boolean {
+  return typeof id === 'string' && SKILL_LAB_ID_SET.has(id);
+}
+
 export function getSkillById(id: string): FutureSkill | undefined {
   return FUTURE_SKILLS.find((s) => s.id === id);
 }

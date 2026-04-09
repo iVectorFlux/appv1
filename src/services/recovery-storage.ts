@@ -72,7 +72,7 @@ export async function getRecoverySessions(
 
   if (error) {
     console.error('[Recovery Storage] Failed to fetch sessions:', error);
-    return [];
+    throw new Error(error.message || 'Could not load Recover sessions');
   }
 
   const normalizeMode = (t: string): GroundingSession['mode'] => {

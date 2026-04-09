@@ -33,11 +33,9 @@ import {
   Radius,
 } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
-import { supabase } from '@/lib/supabase';
-import { saveChatMessage, getChatHistoryWithTimeout, autoJournalFromChat } from '@/services/chat-storage';
+import { saveChatMessage, getChatHistoryWithTimeout, persistAssistantTurnAfterReply } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
-import { useLearningCatalog } from '@/hooks/useLearningCatalog';
-import { staticFallbackDetailId } from '@/services/learning-content-catalog';
+import { isSkillLabSkillId } from '@/data/future-skills';
 import { requestChatCompletion } from '@/utils/vercel-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,8 +79,9 @@ const MODE_CONFIG: Record<ChatMode, {
     label: 'Inner Ally',
     icon: 'heart-outline',
     color: '#C45C5C',
-    intro: "Hi, I'm your Inner Ally. Share how you're feeling — I'm here to listen, reflect, and suggest ways to ground yourself.",
-    placeholder: "Share how you're feeling...",
+    intro:
+      "Hi, I'm your Inner Ally. Share how you're feeling — I'm here to listen, reflect, and suggest ways to ground yourself.",
+    placeholder: "Share how you're feeling",
   },
   coach: {
     label: 'Coach',
@@ -289,7 +288,6 @@ export default function AssistScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { firstPersonalRouteId } = useLearningCatalog();
 
   const [mode, setMode]         = useState<ChatMode>('inner_ally');
   const [messages, setMessages] = useState<Message[]>(() => [introMessageForMode('inner_ally')]);
@@ -392,7 +390,7 @@ export default function AssistScreen() {
       };
 
       const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         role: 'assistant',
         content: data.reply,
         suggestion,
@@ -400,37 +398,28 @@ export default function AssistScreen() {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+      setIsSending(false);
 
       if (user?.id) {
-        // Save assistant turn — capture the row id so the auto-journal can link back
-        const savedAssistant = await supabase
-          .from('ai_chat_messages')
-          .insert({ user_id: user.id, mode, role: 'assistant', content: data.reply, metadata: { suggestion } })
-          .select('id')
-          .single();
-        const assistantMsgId = (savedAssistant.data as { id?: string } | null)?.id;
-
-        // Auto-journal: when Inner Ally detects emotions, silently record the
-        // user's message + tagged emotions as a journal entry for analytics.
-        if (mode === 'inner_ally') {
-          autoJournalFromChat({
-            userId: user.id,
-            userMessage: text,
-            emotions: suggestion.emotions,
-            lifeContexts: suggestion.lifeContexts,
-            suggestSaveAsReflection: suggestion.suggestSaveAsReflection,
-            chatMessageId: assistantMsgId,
-          });
-        }
+        void persistAssistantTurnAfterReply({
+          userId: user.id,
+          mode,
+          reply: data.reply,
+          suggestion: { ...suggestion } as Record<string, unknown>,
+          userMessageForJournal: text,
+        });
       }
     } catch (e) {
       const detail = e instanceof Error ? e.message : 'Something went wrong.';
-      setMessages((prev) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `I could not reach the assistant just now.\n\n${detail}`,
-        createdAt: new Date().toISOString(),
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `I could not reach the assistant just now.\n\n${detail}`,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
     } finally {
       setIsSending(false);
     }
@@ -443,13 +432,8 @@ export default function AssistScreen() {
   };
 
   const openLearnFromAssist = (skillId?: string | null) => {
-    if (skillId) {
+    if (skillId && isSkillLabSkillId(skillId)) {
       router.push(`/skill-lab/${skillId}?returnTo=assist`);
-      return;
-    }
-    const id = firstPersonalRouteId ?? staticFallbackDetailId();
-    if (id) {
-      router.push(`/learning-detail?id=${encodeURIComponent(id)}&returnTo=assist`);
       return;
     }
     router.push('/(tabs)/learn');

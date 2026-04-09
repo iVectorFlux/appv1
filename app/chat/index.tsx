@@ -30,11 +30,9 @@ import {
   Radius,
 } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
-import { supabase } from '@/lib/supabase';
-import { saveChatMessage, getChatHistoryWithTimeout, autoJournalFromChat } from '@/services/chat-storage';
+import { saveChatMessage, getChatHistoryWithTimeout, persistAssistantTurnAfterReply } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
-import { useLearningCatalog } from '@/hooks/useLearningCatalog';
-import { staticFallbackDetailId } from '@/services/learning-content-catalog';
+import { isSkillLabSkillId } from '@/data/future-skills';
 import { requestChatCompletion } from '@/utils/vercel-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -460,7 +458,6 @@ export default function ChatScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { firstPersonalRouteId } = useLearningCatalog();
 
   const [mode, setMode] = useState<ChatMode>('inner_ally');
   const [messages, setMessages] = useState<Message[]>(() => [introMessageForMode('inner_ally')]);
@@ -552,7 +549,7 @@ export default function ChatScreen() {
       };
 
       const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         role: 'assistant',
         content: data.reply,
         suggestion,
@@ -560,34 +557,16 @@ export default function ChatScreen() {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+      setIsLoading(false);
 
       if (user?.id) {
-        const savedAssistant = await supabase
-          .from('ai_chat_messages')
-          .insert({
-            user_id: user.id,
-            mode,
-            role: 'assistant',
-            content: data.reply,
-            metadata: { suggestion },
-          })
-          .select('id')
-          .single();
-        if (savedAssistant.error) {
-          console.error('[Chat] Failed to save assistant message:', savedAssistant.error);
-        }
-        const assistantMsgId = (savedAssistant.data as { id?: string } | null)?.id;
-
-        if (mode === 'inner_ally') {
-          void autoJournalFromChat({
-            userId: user.id,
-            userMessage: text,
-            emotions: suggestion.emotions,
-            lifeContexts: suggestion.lifeContexts,
-            suggestSaveAsReflection: suggestion.suggestSaveAsReflection,
-            chatMessageId: assistantMsgId,
-          });
-        }
+        void persistAssistantTurnAfterReply({
+          userId: user.id,
+          mode,
+          reply: data.reply,
+          suggestion: { ...suggestion } as Record<string, unknown>,
+          userMessageForJournal: text,
+        });
       }
     } catch (e) {
       const detail = e instanceof Error ? e.message : 'Something went wrong.';
@@ -609,13 +588,8 @@ export default function ChatScreen() {
     router.push(`/grounding?mode=${encodeURIComponent(technique)}&returnTo=chat`);
   };
   const handleLearnPress = (skillId?: string | null) => {
-    if (skillId) {
+    if (skillId && isSkillLabSkillId(skillId)) {
       router.push(`/skill-lab/${skillId}?returnTo=chat`);
-      return;
-    }
-    const id = firstPersonalRouteId ?? staticFallbackDetailId();
-    if (id) {
-      router.push(`/learning-detail?id=${encodeURIComponent(id)}&returnTo=chat`);
       return;
     }
     router.push('/(tabs)/learn');
