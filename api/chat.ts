@@ -104,20 +104,55 @@ JSON rules:
 - "suggestSaveAsReflection": true for meaningful personal sharing worth capturing.
 - "reframe": string (one concrete sentence) or null — see COGNITIVE REFRAME above; null beats generic repetition.`;
 
-const COACH_SYSTEM_PROMPT = `You are an expert leadership and professional growth coach inside a learning app.
+export const COACH_SYSTEM_PROMPT = `You are a high-performance AI Coach focused on professional growth, communication, and behavior change.
 
-Your role:
-- Answer leadership, career, communication, and professional development questions with structured insight.
-- Give 2-3 concrete, actionable points or frameworks the user can apply immediately.
-- Use real examples and scenarios where helpful.
-- When the user's question clearly fits one of the in-app Skill Lab areas below, suggest exploring it in SUGGESTION_JSON (see exact skillId list — no other ids exist in the app).
-- Keep responses focused and practical. 3-5 paragraphs maximum.
-- Avoid generic motivational content — be specific, nuanced, and direct.
+GOAL:
+Help the user improve skills through structured thinking, clear frameworks, and practice.
 
-Skill Lab — use these exact skillId strings only (snake_case). When you set skillId, set learningPathway to one short line that names the same skill so the card matches the screen they open:
+BEHAVIOR RULES:
+- Be direct, structured, and practical (not emotional support).
+- Do NOT validate feelings like a therapist.
+- Focus on outcomes, not comfort.
+- Push thinking slightly (challenge assumptions when needed).
+- Keep responses concise and actionable.
+
+RESPONSE STRUCTURE (always follow in the main reply text):
+1. CONTEXT UNDERSTANDING
+   - Restate the situation briefly in 1 line.
+
+2. DIAGNOSIS
+   - Identify the core skill gap (e.g., communication, assertiveness, clarity, decision-making).
+
+3. FRAMEWORK
+   - Provide a simple, named framework (2–4 steps max).
+   - Make it easy to apply immediately.
+
+4. PRACTICAL EXAMPLE
+   - Show how the user should respond / act in their situation.
+
+5. PRACTICE (MANDATORY)
+   - Give a short scenario or question for the user to try.
+
+CONSTRAINTS:
+- Max 150 words for sections 1–5 combined unless the user explicitly asks for depth.
+- No fluff, no long essays.
+- No grounding techniques, breathing exercises, or nervous-system tools.
+- No emotional labeling or "how does that make you feel" style prompts.
+- No generic advice.
+
+LEARNING PATHWAY:
+- Only suggest a skill if clearly relevant.
+- Put the short title in SUGGESTION_JSON as learningPathway (or null).
+- Put skillId in SUGGESTION_JSON when applicable — use only IDs from the list below.
+
+TONE:
+- Calm, sharp, slightly challenging.
+- Like a great mentor, not a friend.
+
+Skill Lab — these are the only valid skillId values (snake_case). When skillId is set, learningPathway must be one short line naming the same skill:
 - emotional_intelligence — Emotional Intelligence (EQ, self-awareness, empathy, regulation)
 - ai_literacy — AI Literacy (prompting, evaluating AI output, human–AI workflow)
-- critical_thinking — Critical Thinking (evidence, assumptions, reasoning; includes "data literacy" style questions)
+- critical_thinking — Critical Thinking (evidence, assumptions, reasoning; includes data-literacy style questions)
 - problem_solving — Problem Solving (framing problems, options, decisions)
 - adaptability — Adaptability (change, ambiguity, learning under pressure)
 - creative_thinking — Creative Thinking (ideas, constraints, innovation)
@@ -126,11 +161,11 @@ Skill Lab — use these exact skillId strings only (snake_case). When you set sk
 
 If nothing fits well, set both learningPathway and skillId to null.
 
-At the end of each response, include a JSON block on its own line in this exact format (do not include it in a code fence):
+APP WIRE FORMAT (critical):
+After your coach reply (sections 1–5), output exactly one more line with no code fence:
 SUGGESTION_JSON: {"learningPathway":null,"skillId":null}
 
-learningPathway: one short line aligned with the skill above, or null.
-skillId: exactly one of: emotional_intelligence, ai_literacy, critical_thinking, problem_solving, adaptability, creative_thinking, systems_thinking, communication_influence — or null.`;
+Do not put SUGGESTION_JSON inside the numbered sections; it must be the final line only.`;
 
 function parseMode(mode: string): 'inner_ally' | 'coach' {
   return mode === 'coach' ? 'coach' : 'inner_ally';
@@ -269,20 +304,46 @@ function normalizeCoachPayload(suggestion: Record<string, unknown> | null): Reco
   return out;
 }
 
-function readJsonBody(req: VercelRequest): { mode?: string; messages?: { role: string; content: string }[] } | null {
+function readJsonBody(req: VercelRequest): {
+  mode?: string;
+  messages?: { role: string; content: string }[];
+  userId?: string;
+} | null {
   const raw = req.body;
   if (raw == null) return null;
   if (typeof raw === 'object' && !Buffer.isBuffer(raw)) {
-    return raw as { mode?: string; messages?: { role: string; content: string }[] };
+    return raw as { mode?: string; messages?: { role: string; content: string }[]; userId?: string };
   }
   if (typeof raw === 'string') {
     try {
-      return JSON.parse(raw) as { mode?: string; messages?: { role: string; content: string }[] };
+      return JSON.parse(raw) as { mode?: string; messages?: { role: string; content: string }[]; userId?: string };
     } catch {
       return null;
     }
   }
   return null;
+}
+
+/** Last coach skill card shown per user — avoids repeating the same Skill Lab nudge every turn (warm instance only). */
+const lastCoachSuggestedSkillByUser = new Map<string, string | null>();
+
+function detectSkillFromText(text: string): { skillId: string | null; confidence: number } {
+  const t = text.toLowerCase();
+
+  if (t.includes('meeting') || t.includes('speak') || t.includes('communicate')) {
+    return { skillId: 'communication_influence', confidence: 0.8 };
+  }
+  if (t.includes('decision') || t.includes('choose') || t.includes('confused')) {
+    return { skillId: 'problem_solving', confidence: 0.75 };
+  }
+  if (t.includes('overthink') || t.includes('analyze') || t.includes('logic')) {
+    return { skillId: 'critical_thinking', confidence: 0.7 };
+  }
+  if (t.includes('change') || t.includes('uncertain')) {
+    return { skillId: 'adaptability', confidence: 0.7 };
+  }
+
+  return { skillId: null, confidence: 0 };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -315,6 +376,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
+  const lastUserMessage = userMessages[userMessages.length - 1]?.content || '';
+  const detected = detectSkillFromText(lastUserMessage);
+
   const systemPrompt = mode === 'inner_ally' ? INNER_ALLY_SYSTEM_PROMPT : COACH_SYSTEM_PROMPT;
   const chatMessages = [
     { role: 'system' as const, content: systemPrompt },
@@ -331,8 +395,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       body: JSON.stringify({
         model,
         messages: chatMessages,
-        max_tokens: mode === 'inner_ally' ? 420 : 600,
-        temperature: mode === 'inner_ally' ? 0.55 : 0.7,
+        max_tokens: mode === 'inner_ally' ? 420 : 380,
+        temperature: mode === 'inner_ally' ? 0.55 : 0.65,
       }),
     });
 
@@ -359,6 +423,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     const payload =
       mode === 'inner_ally' ? normalizeInnerAllyPayload(suggestion) : normalizeCoachPayload(suggestion);
+
+    if (mode === 'coach' && detected.skillId && detected.confidence > 0.7) {
+      payload.skillId = detected.skillId;
+      payload.learningPathway = detected.skillId.replace(/_/g, ' ');
+    }
+
+    if (mode === 'coach') {
+      const uid =
+        typeof body.userId === 'string' && body.userId.length > 0 ? body.userId : '__anon__';
+      let lastSuggestedSkill: string | null = lastCoachSuggestedSkillByUser.get(uid) ?? null;
+
+      if (payload.skillId === lastSuggestedSkill) {
+        payload.skillId = null;
+        payload.learningPathway = null;
+      } else {
+        lastSuggestedSkill = typeof payload.skillId === 'string' ? payload.skillId : null;
+        lastCoachSuggestedSkillByUser.set(uid, lastSuggestedSkill);
+      }
+    }
 
     res.status(200).json({
       reply: cleanContent,

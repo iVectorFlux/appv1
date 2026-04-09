@@ -296,6 +296,9 @@ export default function AssistScreen() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
+  /** Latest mode for stale-reply guard (response must match the thread user was in when they sent). */
+  const modeRef = useRef<ChatMode>(mode);
+  modeRef.current = mode;
 
   // ── Load history + check pending mode from home nudge ────────────────────
   const loadForMode = useCallback(async (selectedMode: ChatMode) => {
@@ -334,6 +337,7 @@ export default function AssistScreen() {
   // Reload when mode switches
   const handleModeSwitch = useCallback((newMode: ChatMode) => {
     if (newMode === mode) return;
+    setIsSending(false);
     setMode(newMode);
     setMessages([introMessageForMode(newMode)]);
     loadForMode(newMode);
@@ -349,6 +353,8 @@ export default function AssistScreen() {
     const text = inputText.trim();
     if (!text || isSending) return;
 
+    const modeAtSend = mode;
+
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -360,24 +366,28 @@ export default function AssistScreen() {
     setMessages((prev) => [...prev, userMsg]);
     setIsSending(true);
 
-    if (user?.id) {
-      saveChatMessage({ userId: user.id, mode, role: 'user', content: text });
-      await AsyncStorage.multiSet([
-        [STORAGE_KEYS.lastMode, mode],
-        [STORAGE_KEYS.lastTime, Date.now().toString()],
-      ]);
-    }
-
-    const history = messages
-      .filter((m) => m.id !== 'intro')
-      .map((m) => ({ role: m.role, content: m.content }));
-
     try {
+      if (user?.id) {
+        saveChatMessage({ userId: user.id, mode: modeAtSend, role: 'user', content: text });
+        await AsyncStorage.multiSet([
+          [STORAGE_KEYS.lastMode, modeAtSend],
+          [STORAGE_KEYS.lastTime, Date.now().toString()],
+        ]);
+      }
+
+      const history = messages
+        .filter((m) => m.id !== 'intro')
+        .map((m) => ({ role: m.role, content: m.content }));
+
       const data = await requestChatCompletion({
-        mode,
+        mode: modeAtSend,
         messages: [...history, { role: 'user', content: text }],
         userId: user?.id,
       });
+
+      if (modeRef.current !== modeAtSend) {
+        return;
+      }
 
       const suggestion: ChatSuggestion = {
         emotions: data.emotions,
@@ -398,28 +408,29 @@ export default function AssistScreen() {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-      setIsSending(false);
 
       if (user?.id) {
         void persistAssistantTurnAfterReply({
           userId: user.id,
-          mode,
+          mode: modeAtSend,
           reply: data.reply,
           suggestion: { ...suggestion } as Record<string, unknown>,
           userMessageForJournal: text,
         });
       }
     } catch (e) {
-      const detail = e instanceof Error ? e.message : 'Something went wrong.';
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `I could not reach the assistant just now.\n\n${detail}`,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      if (modeRef.current === modeAtSend) {
+        const detail = e instanceof Error ? e.message : 'Something went wrong.';
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: `I could not reach the assistant just now.\n\n${detail}`,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      }
     } finally {
       setIsSending(false);
     }

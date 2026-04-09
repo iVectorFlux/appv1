@@ -93,17 +93,58 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
   const url = joinApiUrl('/api/chat');
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CHAT_FETCH_TIMEOUT_MS);
-  let res: Response;
   try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } catch (e) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (fetchErr: unknown) {
+      if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+        throw fetchErr;
+      }
+      throw new Error(
+        'Could not reach the chat server. If you use the app on a phone or simulator, set EXPO_PUBLIC_APP_URL in .env to your live site (https://….vercel.app), then rebuild.'
+      );
+    }
+
+    // Keep the same AbortSignal active until the body is read. Clearing the timeout right after
+    // `fetch` resolves leaves `res.text()` with no deadline — hung streams keep Assist stuck on “thinking”.
+    const text = await res.text();
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      const needsAppUrl =
+        Platform.OS !== 'web' && !readConfiguredAppUrl();
+      throw new Error(
+        needsAppUrl
+          ? `Chat server returned non-JSON (${res.status}). Set EXPO_PUBLIC_APP_URL to your Vercel URL in .env and rebuild the app.`
+          : res.status === 404
+            ? `Chat API returned 404 at ${url}. If you are on the deployed site, check Vercel: Root Directory = repo root (not "dist"), then redeploy. If you are on localhost, set EXPO_PUBLIC_APP_URL in .env.`
+            : `Chat server returned an unexpected response (${res.status}). Try again or check the deployment.`
+      );
+    }
+
+    if (!res.ok) {
+      const msg = typeof parsed.error === 'string' ? parsed.error : `Request failed (${res.status})`;
+      throw new Error(msg);
+    }
+
+    if (typeof parsed.reply !== 'string' || !parsed.reply.trim()) {
+      throw new Error('The assistant returned an empty reply. Please try again.');
+    }
+
+    return parsed as unknown as ChatApiSuccess;
+  } catch (e: unknown) {
     if (e instanceof Error && e.name === 'AbortError') {
       throw new Error('The assistant took too long to respond. Please try again.');
+    }
+    if (e instanceof Error) {
+      throw e;
     }
     throw new Error(
       'Could not reach the chat server. If you use the app on a phone or simulator, set EXPO_PUBLIC_APP_URL in .env to your live site (https://….vercel.app), then rebuild.'
@@ -111,31 +152,4 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
   } finally {
     clearTimeout(timeoutId);
   }
-
-  const text = await res.text();
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    const needsAppUrl =
-      Platform.OS !== 'web' && !readConfiguredAppUrl();
-    throw new Error(
-      needsAppUrl
-        ? `Chat server returned non-JSON (${res.status}). Set EXPO_PUBLIC_APP_URL to your Vercel URL in .env and rebuild the app.`
-        : res.status === 404
-          ? `Chat API returned 404 at ${url}. If you are on the deployed site, check Vercel: Root Directory = repo root (not "dist"), then redeploy. If you are on localhost, set EXPO_PUBLIC_APP_URL in .env.`
-          : `Chat server returned an unexpected response (${res.status}). Try again or check the deployment.`
-    );
-  }
-
-  if (!res.ok) {
-    const msg = typeof parsed.error === 'string' ? parsed.error : `Request failed (${res.status})`;
-    throw new Error(msg);
-  }
-
-  if (typeof parsed.reply !== 'string' || !parsed.reply.trim()) {
-    throw new Error('The assistant returned an empty reply. Please try again.');
-  }
-
-  return parsed as unknown as ChatApiSuccess;
 }
