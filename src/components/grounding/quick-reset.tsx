@@ -7,10 +7,10 @@
  *  3. "Press feet into floor" hold timer (10s)
  *
  * Design: immersive dark bg, multi-ring glowing orb, large typography,
- *         breath-synced motion, no scroll.
+ *         breath-synced motion, colour sweep (cool → warm), no scroll.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius, Layout } from '@/constants/design-tokens';
@@ -18,45 +18,59 @@ import type { GroundingModeProps } from '@/types/grounding';
 import { PHYSIOLOGICAL_SIGH_PATTERN } from '@/data/grounding-content';
 
 type Step = 'breathe' | 'anchor' | 'ground';
+type BreathPhase = 'in' | 'hold' | 'out';
 
 // Map physiological sigh pattern (seconds) to ms for animation
 const BREATH = {
   inhale: PHYSIOLOGICAL_SIGH_PATTERN.inhale * 1000,
-  hold: PHYSIOLOGICAL_SIGH_PATTERN.sighInhale * 1000,
+  hold:   PHYSIOLOGICAL_SIGH_PATTERN.sighInhale * 1000,
   exhale: PHYSIOLOGICAL_SIGH_PATTERN.exhale * 1000,
 };
 const BREATH_CYCLES = 3;
 const ANCHOR_DURATION = 15_000;
 const GROUND_DURATION = 10_000;
-const TOTAL_DURATION = BREATH_CYCLES * (BREATH.inhale + BREATH.hold + BREATH.exhale) + ANCHOR_DURATION + GROUND_DURATION;
+const TOTAL_DURATION =
+  BREATH_CYCLES * (BREATH.inhale + BREATH.hold + BREATH.exhale) + ANCHOR_DURATION + GROUND_DURATION;
 
 const STEP_LABELS: Record<Step, string> = {
   breathe: 'Step 1 of 3 · Breathing',
-  anchor: 'Step 2 of 3 · Visual anchor',
-  ground: 'Step 3 of 3 · Grounding',
+  anchor:  'Step 2 of 3 · Visual anchor',
+  ground:  'Step 3 of 3 · Grounding',
+};
+
+// Phase display config
+const PHASE_INFO: Record<BreathPhase, { label: string; timing: string; color: string }> = {
+  in:   { label: 'Breathe in through your nose',      timing: `${PHYSIOLOGICAL_SIGH_PATTERN.inhale}s`,       color: '#6EA8FE' },
+  hold: { label: 'Take a short top-up inhale',        timing: `${PHYSIOLOGICAL_SIGH_PATTERN.sighInhale}s`,   color: '#A78BFA' },
+  out:  { label: 'Long exhale through your mouth',    timing: `${PHYSIOLOGICAL_SIGH_PATTERN.exhale}s`,       color: '#F97316' },
 };
 
 export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
   const colors = useColors();
-  const [step, setStep] = useState<Step>('breathe');
-  const [breathPhase, setBreathPhase] = useState<'in' | 'hold' | 'out'>('in');
+  const [step, setStep]             = useState<Step>('breathe');
+  const [breathPhase, setBreathPhase] = useState<BreathPhase>('in');
   const [breathCycle, setBreathCycle] = useState(0);
-  const [countdown, setCountdown] = useState(0);
+  const [countdown, setCountdown]   = useState(0);
 
   // Orb animations
-  const orbScale = useRef(new Animated.Value(1)).current;
-  const orbOpacity = useRef(new Animated.Value(0.5)).current;
-  const ringPulse = useRef(new Animated.Value(1)).current;
-  const textFade = useRef(new Animated.Value(1)).current;
+  const orbScale    = useRef(new Animated.Value(1)).current;
+  const orbOpacity  = useRef(new Animated.Value(0.5)).current;
+  const ringPulse   = useRef(new Animated.Value(1)).current;
+  const textFade    = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const startTime = useRef(Date.now());
+  const startTime   = useRef(Date.now());
+
+  // Memoized Animated.multiply results so they are not re-created on every render
+  const ring3Opacity = useRef(Animated.multiply(orbOpacity, new Animated.Value(0.12))).current;
+  const ring2Opacity = useRef(Animated.multiply(orbOpacity, new Animated.Value(0.25))).current;
+  const ring3Scale   = useRef(Animated.multiply(orbScale, ringPulse)).current;
 
   // Ambient ring pulse (continuous)
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(ringPulse, { toValue: 1.08, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(ringPulse, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(ringPulse, { toValue: 1,    duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ]),
     );
     pulse.start();
@@ -84,7 +98,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
     [textFade],
   );
 
-  // Breathing animation
+  // Breathing animation with phase colours
   const runBreathCycle = useCallback(
     (cycle: number) => {
       if (cycle >= BREATH_CYCLES) {
@@ -93,7 +107,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
       }
       setBreathCycle(cycle);
 
-      // First inhale – smooth expansion
+      // Inhale – cool blue expansion
       setBreathPhase('in');
       Animated.parallel([
         Animated.timing(orbScale, {
@@ -102,13 +116,9 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.timing(orbOpacity, {
-          toValue: 0.85,
-          duration: BREATH.inhale,
-          useNativeDriver: true,
-        }),
+        Animated.timing(orbOpacity, { toValue: 0.85, duration: BREATH.inhale, useNativeDriver: true }),
       ]).start(() => {
-        // Second quick top-up inhale
+        // Top-up inhale
         setBreathPhase('hold');
         Animated.parallel([
           Animated.timing(orbScale, {
@@ -117,13 +127,9 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
             easing: Easing.inOut(Easing.cubic),
             useNativeDriver: true,
           }),
-          Animated.timing(orbOpacity, {
-            toValue: 0.95,
-            duration: BREATH.hold,
-            useNativeDriver: true,
-          }),
+          Animated.timing(orbOpacity, { toValue: 0.95, duration: BREATH.hold, useNativeDriver: true }),
         ]).start(() => {
-          // Long exhale
+          // Long exhale – warm amber
           setBreathPhase('out');
           Animated.parallel([
             Animated.timing(orbScale, {
@@ -132,11 +138,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
               easing: Easing.inOut(Easing.cubic),
               useNativeDriver: true,
             }),
-            Animated.timing(orbOpacity, {
-              toValue: 0.5,
-              duration: BREATH.exhale,
-              useNativeDriver: true,
-            }),
+            Animated.timing(orbOpacity, { toValue: 0.5, duration: BREATH.exhale, useNativeDriver: true }),
           ]).start(() => runBreathCycle(cycle + 1));
         });
       });
@@ -177,24 +179,17 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
   }, [step, onComplete]);
 
   const styles = createStyles(colors);
-  const phaseLabel =
-    breathPhase === 'in'
-      ? 'Breathe in through your nose'
-      : breathPhase === 'hold'
-      ? 'Take a short top-up inhale'
-      : 'Long exhale through your mouth';
-  const phaseTiming =
-    breathPhase === 'in'
-      ? `${PHYSIOLOGICAL_SIGH_PATTERN.inhale}s`
-      : breathPhase === 'hold'
-      ? `${PHYSIOLOGICAL_SIGH_PATTERN.sighInhale}s`
-      : `${PHYSIOLOGICAL_SIGH_PATTERN.exhale}s`;
+  const phaseInfo = PHASE_INFO[breathPhase];
+  const orbColor  = step === 'breathe' ? phaseInfo.color : colors.destructive;
 
   return (
     <View style={styles.container}>
       {/* Progress */}
       <View style={styles.progressTrack}>
-        <Animated.View style={[styles.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }]} />
+        <Animated.View style={[styles.progressFill, {
+          width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+          backgroundColor: orbColor,
+        }]} />
       </View>
 
       {/* Top bar */}
@@ -211,16 +206,33 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
           <>
             {/* Multi-ring glowing orb */}
             <View style={styles.orbContainer}>
-              <Animated.View style={[styles.orbRing3, { transform: [{ scale: Animated.multiply(orbScale, ringPulse) }], opacity: Animated.multiply(orbOpacity, new Animated.Value(0.12)) }]} />
-              <Animated.View style={[styles.orbRing2, { transform: [{ scale: orbScale }], opacity: Animated.multiply(orbOpacity, new Animated.Value(0.25)) }]} />
-              <Animated.View style={[styles.orbCore, { transform: [{ scale: orbScale }], opacity: orbOpacity }]} />
+              <Animated.View style={[
+                styles.orbRing3,
+                {
+                  backgroundColor: orbColor,
+                  transform: [{ scale: ring3Scale }],
+                  opacity: ring3Opacity,
+                },
+              ]} />
+              <Animated.View style={[
+                styles.orbRing2,
+                {
+                  backgroundColor: orbColor,
+                  transform: [{ scale: orbScale }],
+                  opacity: ring2Opacity,
+                },
+              ]} />
+              <Animated.View style={[
+                styles.orbCore,
+                { backgroundColor: orbColor, transform: [{ scale: orbScale }], opacity: orbOpacity },
+              ]} />
             </View>
 
             <View style={styles.breathTextBlock}>
-              <Text style={styles.phaseText}>{phaseLabel}</Text>
+              <Text style={[styles.phaseText, { color: colors.textPrimary }]}>{phaseInfo.label}</Text>
               <View style={styles.metaRow}>
-                <View style={styles.metaPill}>
-                  <Text style={styles.metaPillText}>{phaseTiming}</Text>
+                <View style={[styles.metaPill, { borderColor: phaseInfo.color + '50', backgroundColor: phaseInfo.color + '14' }]}>
+                  <Text style={[styles.metaPillText, { color: phaseInfo.color }]}>{phaseInfo.timing}</Text>
                 </View>
                 <View style={styles.metaPill}>
                   <Text style={styles.metaPillText}>
@@ -268,7 +280,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
 
     /* ── Progress ─────────────────────────────────────── */
     progressTrack: { height: 3, backgroundColor: colors.surface, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-    progressFill: { height: 3, backgroundColor: colors.destructive, borderRadius: 2 },
+    progressFill: { height: 3, borderRadius: 2 },
 
     topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Layout.paddingHorizontal, paddingTop: Spacing.xl, paddingBottom: Spacing.sm, zIndex: 10 },
     stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
@@ -277,15 +289,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Layout.paddingHorizontal },
 
     orbContainer: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
-    orbRing3: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: colors.destructive },
-    orbRing2: { position: 'absolute', width: 170, height: 170, borderRadius: 85, backgroundColor: colors.destructive },
-    orbCore: { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.destructive },
+    orbRing3: { position: 'absolute', width: 220, height: 220, borderRadius: 110 },
+    orbRing2: { position: 'absolute', width: 170, height: 170, borderRadius: 85 },
+    orbCore:  { width: 120, height: 120, borderRadius: 60 },
 
     breathTextBlock: { alignItems: 'center', marginTop: Spacing.lg, maxWidth: 320 },
     phaseText: {
       fontSize: Typography.fontSize.heroCard,
       fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
       fontFamily: Typography.fontFamily.heading,
       textAlign: 'center',
       lineHeight: 36,

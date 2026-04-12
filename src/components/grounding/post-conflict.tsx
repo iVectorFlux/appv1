@@ -58,6 +58,13 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
   const orbOpacity = useRef(new Animated.Value(0.5)).current;
   const ringPulse = useRef(new Animated.Value(1)).current;
 
+  // Memoize Animated.multiply values so they are not recreated on every render
+  const ring3Opacity = useRef(Animated.multiply(orbOpacity, new Animated.Value(0.12))).current;
+  const ring2Opacity = useRef(Animated.multiply(orbOpacity, new Animated.Value(0.25))).current;
+  const ring3Scale   = useRef(Animated.multiply(orbScale, ringPulse)).current;
+
+  const [breathTimingLabel, setBreathTimingLabel] = useState('Inhale · 4s');
+
   const currentStepIdx = STEP_ORDER.indexOf(step);
 
   // Ambient pulse
@@ -90,13 +97,16 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
       if (cycle >= BREATH_CYCLES) { fadeToStep('reframe'); return; }
       setBreathCycle(cycle);
       setBreathPhase('in');
+      setBreathTimingLabel('Inhale · 4s');
       Animated.parallel([
         Animated.timing(orbScale, { toValue: 1.3, duration: BREATH.inhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
         Animated.timing(orbOpacity, { toValue: 0.85, duration: BREATH.inhale, useNativeDriver: true }),
       ]).start(() => {
         setBreathPhase('hold');
+        setBreathTimingLabel('Hold · 2s');
         setTimeout(() => {
           setBreathPhase('out');
+          setBreathTimingLabel('Exhale · 6s');
           Animated.parallel([
             Animated.timing(orbScale, { toValue: 1, duration: BREATH.exhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
             Animated.timing(orbOpacity, { toValue: 0.5, duration: BREATH.exhale, useNativeDriver: true }),
@@ -110,7 +120,9 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
   useEffect(() => { if (step === 'breathe') runBreathCycle(0); }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const styles = createStyles(colors);
+  const orbColor = breathPhase === 'out' ? '#F97316' : breathPhase === 'hold' ? '#A78BFA' : '#6EA8FE';
   const phaseLabel = breathPhase === 'in' ? 'Breathe in deeply' : breathPhase === 'hold' ? 'Hold gently' : 'Let it all out';
+
 
   return (
     <View style={styles.container}>
@@ -193,11 +205,12 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
         {step === 'breathe' && (
           <>
             <View style={styles.orbContainer}>
-              <Animated.View style={[styles.orbRing3, { transform: [{ scale: Animated.multiply(orbScale, ringPulse) }], opacity: Animated.multiply(orbOpacity, new Animated.Value(0.12)) }]} />
-              <Animated.View style={[styles.orbRing2, { transform: [{ scale: orbScale }], opacity: Animated.multiply(orbOpacity, new Animated.Value(0.25)) }]} />
-              <Animated.View style={[styles.orbCore, { transform: [{ scale: orbScale }], opacity: orbOpacity }]} />
+              <Animated.View style={[styles.orbRing3, { backgroundColor: orbColor, transform: [{ scale: ring3Scale }], opacity: ring3Opacity }]} />
+              <Animated.View style={[styles.orbRing2, { backgroundColor: orbColor, transform: [{ scale: orbScale }], opacity: ring2Opacity }]} />
+              <Animated.View style={[styles.orbCore, { backgroundColor: orbColor, transform: [{ scale: orbScale }], opacity: orbOpacity }]} />
             </View>
             <Text style={styles.heading}>{phaseLabel}</Text>
+            <Text style={[styles.breathTimingText, { color: orbColor }]}>{breathTimingLabel}</Text>
             <Text style={styles.counterText}>Breath {breathCycle + 1} of {BREATH_CYCLES}</Text>
           </>
         )}
@@ -279,9 +292,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     iconGlow: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.accentSoft + '18', borderWidth: 1.5, borderColor: colors.accentSoft + '30', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
 
     orbContainer: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
-    orbRing3: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: colors.accentSoft },
-    orbRing2: { position: 'absolute', width: 155, height: 155, borderRadius: 78, backgroundColor: colors.accentSoft },
-    orbCore: { width: 110, height: 110, borderRadius: 55, backgroundColor: colors.accentSoft },
+    orbRing3: { position: 'absolute', width: 200, height: 200, borderRadius: 100 },
+    orbRing2: { position: 'absolute', width: 155, height: 155, borderRadius: 78 },
+    orbCore: { width: 110, height: 110, borderRadius: 55 },
+
+    breathTimingText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.xs, marginBottom: Spacing.sm },
 
     /* ── Tags (same design as app-wide TagChip) ─────────── */
     tagWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing['2xl'], maxWidth: 360 },

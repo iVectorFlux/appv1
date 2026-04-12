@@ -12,7 +12,7 @@
  * Saves completed rounds to Supabase via skills-storage.ts.
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -368,10 +368,13 @@ export default function SkillDetailScreen() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [attemptNumber, setAttemptNumber] = useState(1);
   const [roundsSaved, setRoundsSaved] = useState(0);
+  const [practiceError, setPracticeError] = useState<string | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   /** Timestamp when the current scenario started loading — used for duration_ms. */
   const scenarioStartedAt = useRef<number>(0);
+  /** Keep a ref in sync with selectedAtomicId to avoid stale closures in startPractice. */
+  const selectedAtomicIdRef = useRef<string | null>(null);
   const styles = createStyles(colors);
 
   if (!skill) {
@@ -393,9 +396,16 @@ export default function SkillDetailScreen() {
   const selectedAtomic = skill.atomicSkills.find((a) => a.id === selectedAtomicId) ?? null;
   const isDecisionMode = practiceMode === 'decision_simulator';
 
+  // Keep ref in sync with state
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => { selectedAtomicIdRef.current = selectedAtomicId; }, [selectedAtomicId]);
+
   // ── Start practice: generate scenario ──────────────────────────────────────
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const startPractice = useCallback(async () => {
-    if (!selectedAtomicId) return;
+    const atomicId = selectedAtomicIdRef.current;
+    if (!atomicId) return;
+    setPracticeError(null);
     setPhase('loading_scenario');
     setFeedback(null);
     setUserAnswer('');
@@ -405,7 +415,6 @@ export default function SkillDetailScreen() {
     setPracticeQuestion('');
     scenarioStartedAt.current = Date.now();
 
-    // Record scenario attempt (increments scenarios_attempted) — await so saves don’t race ahead of this row
     if (user?.id) {
       await recordScenarioAttempt(user.id, skill.id);
     }
@@ -417,29 +426,32 @@ export default function SkillDetailScreen() {
         body: JSON.stringify({
           skillId: skill.id,
           skillName: skill.name,
-          atomicSkillId: selectedAtomicId ?? null,
-          atomicSkillName: selectedAtomic?.name ?? null,
+          atomicSkillId: atomicId,
+          atomicSkillName: skill.atomicSkills.find((a) => a.id === atomicId)?.name ?? null,
           practiceMode,
           generateScenario: true,
         }),
       });
 
-      if (!res.ok) throw new Error('API error');
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        let errMsg = `Server error (${res.status})`;
+        try { const j = JSON.parse(errBody) as Record<string, unknown>; if (typeof j.error === 'string') errMsg = j.error; } catch { /* ignore */ }
+        throw new Error(errMsg);
+      }
 
       const data = (await res.json()) as Record<string, unknown>;
       const scenarioText = String(data.scenario ?? '').trim();
-      if (!scenarioText) throw new Error('No scenario in response');
+      if (!scenarioText) throw new Error('The AI returned an empty scenario. Please try again.');
 
       setScenario(scenarioText);
 
       if (isDecisionMode) {
         let options = parseDecisionOptionsFromApi(data);
         if (options.length < 2) options = [...FALLBACK_DECISION_OPTIONS];
-
         const reasoning = String(
           data.reasoningPrompt ?? data.reasoning_prompt ?? data.question ?? ''
         ).trim() || 'Explain your reasoning for the path you chose, using the skill you are practising.';
-
         setDecisionOptions(options);
         setPracticeQuestion(reasoning);
         setPhase('choosing_decision');
@@ -450,18 +462,20 @@ export default function SkillDetailScreen() {
         const question =
           rawQ ||
           (practiceMode === 'output_audit'
-            ? fallbackOutputAuditQuestion(skill.id, selectedAtomicId)
+            ? fallbackOutputAuditQuestion(skill.id, atomicId)
             : 'Respond to the situation above using the skill you are practising.');
-
         setPracticeQuestion(question);
         setPhase('answering');
       }
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
-    } catch {
+    } catch (err) {
+      const errMsg2 = err instanceof Error ? err.message : 'Could not generate a scenario. Check your connection and try again.';
+      setPracticeError(errMsg2);
       setPhase('idle');
     }
-  }, [skill, selectedAtomicId, selectedAtomic, practiceMode, isDecisionMode, user?.id]); // selectedAtomicId required before start
+  }, [skill, practiceMode, isDecisionMode, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // ── Submit answer: get feedback ─────────────────────────────────────────────
   const submitAnswer = useCallback(async () => {
@@ -537,7 +551,9 @@ export default function SkillDetailScreen() {
       }
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not get feedback. Check your connection and try again.';
+      setPracticeError(msg);
       setPhase('answering');
     }
   }, [
@@ -638,6 +654,15 @@ export default function SkillDetailScreen() {
                 </Text>
               </View>
             )}
+
+            {/* Error banner */}
+            {practiceError && (
+              <View style={[styles.errorBanner, { backgroundColor: colors.destructive + '14', borderColor: colors.destructive + '40' }]}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.destructive} />
+                <Text style={[styles.errorBannerText, { color: colors.destructive }]}>{practiceError}</Text>
+              </View>
+            )}
+
             <TouchableOpacity
               style={[
                 styles.startBtn,
@@ -662,7 +687,7 @@ export default function SkillDetailScreen() {
                   { color: selectedAtomicId ? '#fff' : colors.textMuted },
                 ]}
               >
-                {roundsSaved > 0 ? 'Practice again' : 'Start AI Practice'}
+                {practiceError ? 'Try again' : roundsSaved > 0 ? 'Practice again' : 'Start AI Practice'}
               </Text>
             </TouchableOpacity>
             {!selectedAtomicId ? (
@@ -887,6 +912,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     atomicDesc: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, lineHeight: Typography.fontSize.sm * 1.5, fontStyle: 'italic' },
     roundsBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.sm },
     roundsText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
+    errorBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, padding: Spacing.sm, marginBottom: Spacing.sm },
+    errorBannerText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.5 },
     startBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderRadius: Radius.lg, paddingVertical: Spacing.md, marginBottom: Spacing.sm },
     startBtnText: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
     practiceHint: { textAlign: 'center', fontSize: Typography.fontSize.xs, color: colors.textMuted },

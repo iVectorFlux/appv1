@@ -2,11 +2,11 @@
  * Box breathing — 4-5 min
  *
  * Steps:
- *  1. Box breathing 4-4-4-4 (4 cycles) — animated square with glowing corners
+ *  1. Box breathing 4-4-4-4 (4 cycles) — glowing box-tracer + countdown
  *  2. Identity anchor — name / date / location
  *  3. Progressive muscle tension release (clench + release × 3)
  *
- * Design: directive tone, bold text, glowing square, dark bg.
+ * Design: directive tone, bold text, animated glowing square tracer, dark bg.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -33,12 +33,137 @@ const STEP_LABELS: Record<Step, string> = {
   release: 'Step 3 of 3 · Tension release',
 };
 
-const PHASE_COPY: Record<'in' | 'hold' | 'out' | 'holdEmpty', { main: string; sub: string }> = {
-  in: { main: 'Inhale', sub: 'Fill slowly' },
-  hold: { main: 'Hold', sub: 'Keep it gentle' },
-  out: { main: 'Exhale', sub: 'Let it go' },
-  holdEmpty: { main: 'Hold', sub: 'Rest' },
+const PHASE_COPY: Record<'in' | 'hold' | 'out' | 'holdEmpty', { main: string; sub: string; color: string }> = {
+  in:        { main: 'Inhale',  sub: 'Fill slowly',    color: '#6EA8FE' },
+  hold:      { main: 'Hold',    sub: 'Keep it gentle', color: '#A78BFA' },
+  out:       { main: 'Exhale',  sub: 'Let it go',      color: '#34D399' },
+  holdEmpty: { main: 'Hold',    sub: 'Rest',           color: '#94A3B8' },
 };
+
+const PHASE_ORDER: Array<'in' | 'hold' | 'out' | 'holdEmpty'> = ['in', 'hold', 'out', 'holdEmpty'];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BoxTracer: A glowing dot that traces around a square, one side per phase.
+// Top=in, Right=hold, Bottom=out, Left=holdEmpty
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BOX_SIZE = 220;
+const DOT_SIZE = 14;
+
+function BoxTracer({
+  phaseIndex,
+  traceProgress,
+  phaseColor,
+}: {
+  phaseIndex: number;   // 0=in(top), 1=hold(right), 2=out(bottom), 3=holdEmpty(left)
+  traceProgress: Animated.Value;
+  phaseColor: string;
+}) {
+  // Each phase, the dot travels one side of the square.
+  // We derive (x, y) from phaseIndex + traceProgress.
+  const half = BOX_SIZE / 2;
+  const corners = [
+    { x: -half, y: -half }, // top-left  (start of top side → in)
+    { x:  half, y: -half }, // top-right (start of right side → hold)
+    { x:  half, y:  half }, // bottom-right (start of bottom side → out)
+    { x: -half, y:  half }, // bottom-left (start of left side → holdEmpty)
+  ];
+
+  const from = corners[phaseIndex];
+  const to   = corners[(phaseIndex + 1) % 4];
+
+  const translateX = traceProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [from.x, to.x],
+  });
+  const translateY = traceProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [from.y, to.y],
+  });
+
+  const dotOffset = -DOT_SIZE / 2;
+
+  return (
+    <View
+      style={{
+        width: BOX_SIZE,
+        height: BOX_SIZE,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {/* Static square border */}
+      <View
+        style={{
+          position: 'absolute',
+          width: BOX_SIZE,
+          height: BOX_SIZE,
+          borderRadius: 20,
+          borderWidth: 2,
+          borderColor: phaseColor + '30',
+          backgroundColor: phaseColor + '08',
+        }}
+      />
+
+      {/* Side highlight — active side glows */}
+      {phaseIndex === 0 && (
+        <Animated.View style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+          borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          backgroundColor: phaseColor,
+          opacity: traceProgress.interpolate({ inputRange: [0, 0.1, 0.9, 1], outputRange: [0.4, 1, 1, 0.4] }),
+        }} />
+      )}
+      {phaseIndex === 1 && (
+        <Animated.View style={{
+          position: 'absolute', top: 0, right: 0, bottom: 0, width: 3,
+          borderTopRightRadius: 20, borderBottomRightRadius: 20,
+          backgroundColor: phaseColor,
+          opacity: traceProgress.interpolate({ inputRange: [0, 0.1, 0.9, 1], outputRange: [0.4, 1, 1, 0.4] }),
+        }} />
+      )}
+      {phaseIndex === 2 && (
+        <Animated.View style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+          borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
+          backgroundColor: phaseColor,
+          opacity: traceProgress.interpolate({ inputRange: [0, 0.1, 0.9, 1], outputRange: [0.4, 1, 1, 0.4] }),
+        }} />
+      )}
+      {phaseIndex === 3 && (
+        <Animated.View style={{
+          position: 'absolute', top: 0, left: 0, bottom: 0, width: 3,
+          borderTopLeftRadius: 20, borderBottomLeftRadius: 20,
+          backgroundColor: phaseColor,
+          opacity: traceProgress.interpolate({ inputRange: [0, 0.1, 0.9, 1], outputRange: [0.4, 1, 1, 0.4] }),
+        }} />
+      )}
+
+      {/* Travelling dot */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          width: DOT_SIZE,
+          height: DOT_SIZE,
+          borderRadius: DOT_SIZE / 2,
+          backgroundColor: phaseColor,
+          left: half + dotOffset,
+          top: half + dotOffset,
+          transform: [{ translateX }, { translateY }],
+          // Glow effect via shadow on iOS
+          ...Platform.select({
+            ios: {
+              shadowColor: phaseColor,
+              shadowOpacity: 0.85,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 0 },
+            },
+          }),
+        }}
+      />
+    </View>
+  );
+}
 
 export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
   const colors = useColors();
@@ -48,10 +173,13 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
   const [identityIdx, setIdentityIdx] = useState(0);
   const [releaseCycle, setReleaseCycle] = useState(0);
   const [releasePhase, setReleasePhase] = useState<'clench' | 'release'>('clench');
-  const [countdown, setCountdown] = useState(0);
+  const [countdown, setCountdown] = useState(BOX_SIDE_MS / 1000);
 
   const textFade = useRef(new Animated.Value(1)).current;
   const traceProgress = useRef(new Animated.Value(0)).current;
+
+  const phaseIndex = PHASE_ORDER.indexOf(boxPhase);
+  const phaseCopy = PHASE_COPY[boxPhase];
 
   const fadeToStep = useCallback(
     (next: Step) => {
@@ -69,19 +197,32 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
       if (cycle >= BOX_CYCLES) { fadeToStep('identity'); return; }
       setBoxCycle(cycle);
 
-      const phases: Array<'in' | 'hold' | 'out' | 'holdEmpty'> = ['in', 'hold', 'out', 'holdEmpty'];
       let phaseIdx = 0;
 
       const nextPhase = () => {
-        if (phaseIdx >= phases.length) { runBoxCycle(cycle + 1); return; }
-        setBoxPhase(phases[phaseIdx]);
+        if (phaseIdx >= PHASE_ORDER.length) { runBoxCycle(cycle + 1); return; }
+        const phase = PHASE_ORDER[phaseIdx];
+        setBoxPhase(phase);
         traceProgress.setValue(0);
+
+        // Countdown for this phase
+        let secsLeft = BOX_SIDE_MS / 1000;
+        setCountdown(secsLeft);
+        const iv = setInterval(() => {
+          secsLeft -= 1;
+          setCountdown(Math.max(0, secsLeft));
+          if (secsLeft <= 0) clearInterval(iv);
+        }, 1000);
+
         Animated.timing(traceProgress, {
           toValue: 1,
           duration: BOX_SIDE_MS,
           easing: Easing.linear,
           useNativeDriver,
-        }).start(() => { phaseIdx++; nextPhase(); });
+        }).start(({ finished }) => {
+          clearInterval(iv);
+          if (finished) { phaseIdx++; nextPhase(); }
+        });
       };
       nextPhase();
     },
@@ -131,8 +272,6 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
   useEffect(() => { if (step === 'release') runReleaseCycle(0); }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const styles = createStyles(colors);
-  const phaseCopy = PHASE_COPY[boxPhase];
-  const phaseOrder = ['in', 'hold', 'out', 'holdEmpty'].indexOf(boxPhase);
 
   return (
     <View style={styles.container}>
@@ -151,24 +290,24 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
         <Animated.View style={[styles.center, { opacity: textFade }]}>
           {step === 'box_breathe' && (
             <>
-              <View style={[styles.phaseCard, { borderColor: colors.primary + '40' }]}>
-                <Text style={[styles.phaseMain, { color: colors.primary }]}>{phaseCopy.main}</Text>
-                <Text style={styles.phaseSub}>{phaseCopy.sub}</Text>
+              {/* Box tracer */}
+              <BoxTracer
+                phaseIndex={phaseIndex}
+                traceProgress={traceProgress}
+                phaseColor={phaseCopy.color}
+              />
+
+              {/* Phase info below box */}
+              <Text style={[styles.phaseMain, { color: phaseCopy.color, marginTop: Spacing.xl }]}>
+                {phaseCopy.main}
+              </Text>
+              <Text style={styles.phaseSub}>{phaseCopy.sub}</Text>
+
+              {/* Countdown */}
+              <View style={[styles.countdownCircle, { borderColor: phaseCopy.color + '50' }]}>
+                <Text style={[styles.countdownNumber, { color: phaseCopy.color }]}>{countdown}</Text>
               </View>
-              <View style={styles.progressBarWrap}>
-                <Animated.View
-                  style={[
-                    styles.progressBarFill,
-                    {
-                      width: traceProgress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0%', '100%'],
-                      }),
-                      backgroundColor: colors.primary,
-                    },
-                  ]}
-                />
-              </View>
+
               <Text style={styles.phaseHint}>4 in · 4 hold · 4 out · 4 hold</Text>
               <Text style={styles.counterText}>Breath {boxCycle + 1} of {BOX_CYCLES}</Text>
             </>
@@ -225,45 +364,38 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     stepLabel: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
     closeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
     scrollContent: { flexGrow: 1, paddingBottom: Spacing['3xl'] },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, minHeight: 320 },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, minHeight: 400 },
 
-    phaseCard: {
-      width: '100%',
-      maxWidth: 280,
-      paddingVertical: Spacing.xl,
-      paddingHorizontal: Spacing.xl,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surface,
-      borderRadius: Radius.xl,
-      borderWidth: 2,
-      marginBottom: Spacing.xl,
-    },
-    progressBarWrap: {
-      width: '100%',
-      maxWidth: 280,
-      height: 8,
-      backgroundColor: colors.border,
-      borderRadius: 4,
-      overflow: 'hidden',
-      marginBottom: Spacing.md,
-    },
-    progressBarFill: {
-      height: '100%',
-      borderRadius: 4,
-    },
+    // Phase display
     phaseMain: {
       fontSize: Typography.fontSize['2xl'],
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
+      fontWeight: Typography.fontWeight.bold,
       fontFamily: Typography.fontFamily.heading,
       textAlign: 'center',
       marginBottom: Spacing.xs,
     },
-    phaseSub: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginBottom: Spacing.sm },
-    phaseHint: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginTop: Spacing.xs },
-    counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.md },
+    phaseSub: { fontSize: Typography.fontSize.base, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary, textAlign: 'center' },
+    phaseHint: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, textAlign: 'center', marginTop: Spacing.md },
+    counterText: { fontSize: Typography.fontSize.sm, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.sm },
 
+    // Countdown circle
+    countdownCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: Spacing.md,
+      marginBottom: Spacing.xs,
+    },
+    countdownNumber: {
+      fontSize: Typography.fontSize.xl,
+      fontWeight: Typography.fontWeight.bold,
+      fontFamily: Typography.fontFamily.heading,
+    },
+
+    // Identity step
     directiveText: {
       fontSize: Typography.fontSize.xl,
       fontWeight: Typography.fontWeight.semibold,
@@ -286,6 +418,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: 'center',
       marginBottom: Spacing.lg,
     },
+
+    // Release step
     releaseCircle: {
       width: 100,
       height: 100,
@@ -297,6 +431,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     },
     timerCircle: { width: 72, height: 72, borderRadius: 36, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.md },
     timerNumber: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading },
+
+    // Action button
     actionBtn: {
       flexDirection: 'row',
       alignItems: 'center',

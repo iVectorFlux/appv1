@@ -540,7 +540,7 @@ export default function LearningDetailScreen() {
               {Platform.OS === 'web'
                 ? React.createElement('video', {
                     key: videoSrc,
-                    ref: (el: HTMLVideoElement | null) => { webVideoRef.current = el; },
+                    ref: (el: HTMLVideoElement | null): void => { webVideoRef.current = el; },
                     src: videoSrc,
                     controls: true,
                     playsInline: true,

@@ -16,7 +16,6 @@ import {
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
-  ActivityIndicator,
   Animated,
   Easing,
 } from 'react-native';
@@ -105,7 +104,6 @@ interface TextSegment {
 
 function parseInlineMarkdown(raw: string): TextSegment[] {
   const segments: TextSegment[] = [];
-  // Regex matches **bold**, *italic* (not preceded by another *)
   const regex = /\*\*(.+?)\*\*|\*(?!\*)(.+?)(?<!\*)\*/gs;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -128,7 +126,6 @@ function parseInlineMarkdown(raw: string): TextSegment[] {
 }
 
 function MarkdownText({ content, style }: { content: string; style?: object }) {
-  // Split on newlines to render paragraph breaks, then inline-parse each block
   const paragraphs = content.split(/\n+/);
 
   return (
@@ -159,12 +156,16 @@ function MarkdownText({ content, style }: { content: string; style?: object }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Animated typing indicator (3 bouncing dots)
+// Hooks order is stable: three top-level refs, never in an array literal
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TypingIndicator({ color }: { color: string }) {
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const dot0 = useRef(new Animated.Value(0)).current;
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    const dots = [dot0, dot1, dot2];
     const animations = dots.map((dot, i) =>
       Animated.loop(
         Animated.sequence([
@@ -177,7 +178,7 @@ function TypingIndicator({ color }: { color: string }) {
     );
     animations.forEach((a) => a.start());
     return () => animations.forEach((a) => a.stop());
-  }, []);
+  }, [dot0, dot1, dot2]);
 
   return (
     <View style={typingStyles.row}>
@@ -185,7 +186,7 @@ function TypingIndicator({ color }: { color: string }) {
         <View style={[typingStyles.avatarDot, { backgroundColor: color }]} />
       </View>
       <View style={typingStyles.bubble}>
-        {dots.map((dot, i) => (
+        {[dot0, dot1, dot2].map((dot, i) => (
           <Animated.View
             key={i}
             style={[typingStyles.dot, { backgroundColor: color + '80', transform: [{ translateY: dot }] }]}
@@ -466,6 +467,8 @@ export default function ChatScreen() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
+  // Send button press animation
+  const sendScale = useRef(new Animated.Value(1)).current;
 
   const modeColor = MODE_CONFIG[mode].color;
 
@@ -511,6 +514,12 @@ export default function ChatScreen() {
   const handleSend = async () => {
     const text = inputText.trim();
     if (!text || isLoading) return;
+
+    // Animate send button press
+    Animated.sequence([
+      Animated.timing(sendScale, { toValue: 0.85, duration: 80, useNativeDriver: true }),
+      Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }),
+    ]).start();
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -602,21 +611,11 @@ export default function ChatScreen() {
   };
 
   const canSend = inputText.trim().length > 0 && !isLoading;
-  const isEmptyComposer = inputText.length === 0;
-
-  /** Single-line placeholder vertically centered in the pill (multiline uses normal padding). */
-  const composerMinRow = 48;
-  const composerEmptyPad = Math.max(
-    8,
-    Math.round((composerMinRow - Typography.fontSize.base * 1.45) / 2)
-  );
-
-  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'padding';
 
   return (
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: colors.background }]}
-      behavior={keyboardBehavior}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -652,7 +651,7 @@ export default function ChatScreen() {
         <View style={styles.backBtn} />
       </View>
 
-      {/* ── Messages (always show list so welcome / history is never hidden by load) ── */}
+      {/* ── Messages ── */}
       <ScrollView
         ref={scrollRef}
         style={styles.messagesList}
@@ -674,7 +673,7 @@ export default function ChatScreen() {
         {isLoading && <TypingIndicator color={modeColor} />}
       </ScrollView>
 
-      {/* ── Input bar ──────────────────────────────────────────────────────── */}
+      {/* ── Input bar ── premium pill design ──────────────────────────────── */}
       <View
         style={[
           styles.inputBar,
@@ -688,21 +687,28 @@ export default function ChatScreen() {
         <View
           style={[
             styles.inputWrap,
-            { backgroundColor: colors.floating, borderColor: canSend ? modeColor + '70' : colors.border },
-            isEmptyComposer && styles.inputWrapEmpty,
+            {
+              backgroundColor: colors.floating,
+              borderColor: canSend ? modeColor + '80' : colors.border,
+              // subtle shadow on iOS/web
+              ...Platform.select({
+                ios: {
+                  shadowColor: modeColor,
+                  shadowOpacity: canSend ? 0.12 : 0,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 2 },
+                },
+                web: canSend
+                  ? ({ boxShadow: `0 0 0 3px ${modeColor}18` } as object)
+                  : {},
+              }),
+            },
           ]}
         >
           <TextInput
             style={[
               styles.input,
               { color: colors.textPrimary },
-              isEmptyComposer
-                ? {
-                    minHeight: composerMinRow,
-                    paddingTop: composerEmptyPad,
-                    paddingBottom: composerEmptyPad,
-                  }
-                : styles.inputFilled,
               Platform.OS === 'android' && styles.inputAndroid,
             ]}
             value={inputText}
@@ -723,23 +729,33 @@ export default function ChatScreen() {
                   outlineWidth: 0,
                   outlineColor: 'transparent',
                   boxShadow: 'none',
-                  caretColor: colors.textPrimary,
+                  caretColor: modeColor,
+                  resize: 'none',
                 } as object)
               : {})}
           />
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!canSend}
-            style={[styles.sendBtn, { backgroundColor: canSend ? modeColor : colors.surface }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="arrow-up"
-              size={17}
-              color={canSend ? '#fff' : colors.textMuted}
-            />
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: sendScale }] }}>
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={!canSend}
+              style={[
+                styles.sendBtn,
+                { backgroundColor: canSend ? modeColor : colors.surface },
+              ]}
+              activeOpacity={0.85}
+            >
+              <Ionicons
+                name="arrow-up"
+                size={18}
+                color={canSend ? '#fff' : colors.textMuted}
+              />
+            </TouchableOpacity>
+          </Animated.View>
         </View>
+        {/* Hint text */}
+        <Text style={[styles.hintText, { color: colors.textMuted }]}>
+          {MODE_CONFIG[mode].label} · Powered by AI
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -780,7 +796,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: Radius.full,
   },
   modePillText: {
@@ -796,48 +812,56 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
   },
+
+  // ── Premium input bar ──────────────────────────────────────────────────────
   inputBar: {
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 6,
   },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    borderRadius: 26,
+    borderRadius: 28,
     borderWidth: 1.5,
-    paddingLeft: Spacing.md,
-    paddingRight: 5,
-    paddingTop: 6,
-    paddingBottom: 6,
+    paddingLeft: Spacing.md + 2,
+    paddingRight: 6,
+    paddingVertical: 6,
     gap: 8,
-  },
-  inputWrapEmpty: {
-    alignItems: 'center',
+    minHeight: 52,
+    // Transition border glow smoothly
   },
   input: {
     flex: 1,
     fontSize: Typography.fontSize.base,
-    lineHeight: Typography.fontSize.base * 1.45,
-    maxHeight: 140,
+    lineHeight: Typography.fontSize.base * 1.5,
+    maxHeight: 160,
+    minHeight: 38,
     borderWidth: 0,
     backgroundColor: 'transparent',
-  },
-  inputFilled: {
-    minHeight: 36,
-    paddingTop: Platform.OS === 'ios' ? 8 : 6,
-    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
+    paddingTop: Platform.OS === 'ios' ? 8 : 4,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 4,
   },
   inputAndroid: {
     includeFontPadding: false,
     textAlignVertical: 'center',
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    marginBottom: 0,
+  },
+  hintText: {
+    fontSize: 11,
+    textAlign: 'center',
+    fontFamily: Typography.fontFamily?.primary,
+    paddingBottom: 2,
   },
 });

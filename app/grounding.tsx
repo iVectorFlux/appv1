@@ -369,7 +369,7 @@ export default function GroundingScreen() {
 
           {showStressSection && (
             <View style={styles.stressCard}>
-              <Text style={styles.stressCardTitle}>How&apos;s your stress now?</Text>
+              <Text style={styles.stressCardTitle}>How's your stress now?</Text>
               <Text style={styles.stressCardHint}>Tap a number — 1 is low, 5 is high</Text>
               <View style={styles.stressRow}>
                 {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
