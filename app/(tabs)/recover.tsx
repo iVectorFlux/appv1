@@ -1,9 +1,7 @@
 /**
  * Recover Screen
- * 
- * Includes:
- * - Breathing techniques
- * - "Release & Let Go" flow
+ *
+ * Grounding exercises + Release & Let Go with atmospheric animation.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -16,13 +14,15 @@ import {
   Animated,
   TextInput,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
 import { Button } from '@/components/ui/button';
-import { ListCard } from '@/components/ui/list-card';
-import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassBackground } from '@/components/ui/glass-background';
+import { GlassCard } from '@/components/ui/glass-card';
 
 type RecoverView = 'main' | 'release';
 
@@ -33,7 +33,11 @@ const AFFIRMATIONS = [
   "Peace is available to you right now.",
   "You are stronger than this moment.",
   "Let it dissolve like mist in the morning sun.",
+  "You deserve lightness.",
+  "Breathe in calm, breathe out what hurts.",
 ];
+
+const { height: SCREEN_H } = Dimensions.get('window');
 
 export default function RecoverScreen() {
   const router = useRouter();
@@ -42,504 +46,293 @@ export default function RecoverScreen() {
   const [releaseText, setReleaseText] = useState('');
   const [isReleasing, setIsReleasing] = useState(false);
   const [hasReleased, setHasReleased] = useState(false);
-  
-  // Animation refs for release flow
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const scaleReleaseAnim = useRef(new Animated.Value(1)).current;
-  const textOpacityAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const textOpacity = useRef(new Animated.Value(1)).current;
+  const riseAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0.3)).current;
   const [currentAffirmation, setCurrentAffirmation] = useState('');
   const [showText, setShowText] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  const playReleaseSound = async () => {
-    try {
-      // Optional: add a release sound file or expo-haptics for feedback
-    } catch {
-      // Fail silently
-    }
-  };
-
-  // Cleanup sound on unmount
   useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch(() => {});
-      }
-    };
+    return () => { if (soundRef.current) soundRef.current.unloadAsync().catch(() => {}); };
   }, []);
+
+  // Ambient glow pulse when on release writing screen
+  useEffect(() => {
+    if (view !== 'release' || isReleasing) return;
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 0.6, duration: 2000, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.3, duration: 2000, useNativeDriver: true }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [view, isReleasing]);
 
   const handleRelease = async () => {
     if (!releaseText.trim()) return;
-
     setIsReleasing(true);
     setShowText(true);
     setCurrentAffirmation(AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)]);
-    
-    // Reset animations to starting state
     fadeAnim.setValue(1);
-    scaleReleaseAnim.setValue(0.85);
-    textOpacityAnim.setValue(0);
-    
-    // Play sound (optional)
-    playReleaseSound();
+    scaleAnim.setValue(1);
+    textOpacity.setValue(0);
+    riseAnim.setValue(0);
 
-    // Phase 1: Fade in and scale up text (1 second)
+    // Phase 1: Show the text with affirmation
     Animated.parallel([
-      Animated.timing(textOpacityAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleReleaseAnim, {
-        toValue: 1,
-        friction: 7,
-        tension: 50,
-        useNativeDriver: true,
-      }),
+      Animated.timing(textOpacity, { toValue: 1, duration: 1200, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1.02, useNativeDriver: true, speed: 4, bounciness: 6 }),
     ]).start();
 
-    // Phase 2: Hold and let user read (4 seconds)
+    // Phase 2: Float up and dissolve
     setTimeout(() => {
-      // Phase 3: Fade out everything gracefully (3 seconds)
       Animated.parallel([
-        Animated.timing(textOpacityAnim, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleReleaseAnim, {
-          toValue: 0.7,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(textOpacity, { toValue: 0, duration: 3500, useNativeDriver: true }),
+        Animated.timing(riseAnim, { toValue: -80, duration: 3500, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 0.8, duration: 3500, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 3500, useNativeDriver: true }),
       ]).start(() => {
-        // Phase 4: Show completion message
         setShowText(false);
         setReleaseText('');
         setIsReleasing(false);
         setHasReleased(true);
-        // Reset animations for next time
         fadeAnim.setValue(1);
-        scaleReleaseAnim.setValue(1);
-        textOpacityAnim.setValue(1);
-        
-        // Stop sound
-        if (soundRef.current) {
-          soundRef.current.unloadAsync().catch(() => {});
-        }
-        
-        // Navigate to home after showing completion message briefly
-        setTimeout(() => {
-          router.replace('/(tabs)/home');
-        }, 2000);
+        scaleAnim.setValue(1);
+        textOpacity.setValue(1);
+        riseAnim.setValue(0);
+        if (soundRef.current) soundRef.current.unloadAsync().catch(() => {});
       });
     }, 4000);
   };
 
-  const styles = createStyles(colors);
+  const st = createStyles(colors);
 
+  // ── Release view ────────────────────────────────
   if (view === 'release') {
     return (
-      <View style={styles.container}>
-        {!isReleasing && (
-          <TouchableOpacity
-            onPress={() => {
-              setView('main');
-              setHasReleased(false);
-              setReleaseText('');
-            }}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-        )}
-
-        {isReleasing && showText ? (
-          <View style={styles.releaseAnimationContainer}>
-            <Animated.View
-              style={[
-                styles.releaseTextContainer,
-                {
-                  opacity: textOpacityAnim,
-                  transform: [{ scale: scaleReleaseAnim }],
-                },
-              ]}
+      <GlassBackground style={{ flex: 1 }}>
+        <View style={st.releaseRoot}>
+          {/* Back button */}
+          {!isReleasing && !hasReleased && (
+            <TouchableOpacity
+              onPress={() => { setView('main'); setHasReleased(false); setReleaseText(''); }}
+              style={st.releaseBack}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Text style={styles.releaseInstruction}>
-                Read this one more time, then let it go...
-              </Text>
-              
-              <Animated.View
-                style={[
-                  styles.releaseTextCard,
-                  {
-                    opacity: fadeAnim,
-                  },
-                ]}
-              >
-                <Text style={styles.releaseTextDisplay}>{releaseText}</Text>
+              <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
+
+          {/* Releasing animation */}
+          {isReleasing && showText ? (
+            <View style={st.releaseCenter}>
+              <Animated.View style={[st.releaseFloat, { opacity: textOpacity, transform: [{ scale: scaleAnim }, { translateY: riseAnim }] }]}>
+                <Text style={[st.releaseHint, { color: colors.textMuted }]}>Read it one more time, then let it go...</Text>
+
+                <Animated.View style={[st.releaseQuote, { opacity: fadeAnim, borderColor: colors.glassBorder, backgroundColor: colors.glass }]}>
+                  <Text style={[st.releaseQuoteText, { color: colors.textPrimary }]}>{releaseText}</Text>
+                </Animated.View>
+
+                <Animated.View style={[st.affirmRow, { opacity: textOpacity }]}>
+                  <Ionicons name="water-outline" size={20} color={colors.primary} />
+                  <Text style={[st.affirmText, { color: colors.textPrimary }]}>{currentAffirmation}</Text>
+                </Animated.View>
+
+                <Text style={[st.breatheText, { color: colors.textMuted }]}>Take a deep breath. Watch these words dissolve.</Text>
               </Animated.View>
-
-              <Animated.View
-                style={[
-                  styles.affirmationContainer,
-                  {
-                    opacity: textOpacityAnim,
-                  },
-                ]}
-              >
-                <Ionicons name="heart" size={24} color={colors.primary} />
-                <Text style={styles.affirmationText}>{currentAffirmation}</Text>
+            </View>
+          ) : isReleasing ? (
+            <View style={st.releaseCenter}>
+              <Animated.View style={{ opacity: glowAnim }}>
+                <Ionicons name="water-outline" size={48} color={colors.primary} />
               </Animated.View>
-
-              <Text style={styles.releaseGuidance}>
-                Take a deep breath. Watch these words fade away. They don't have to stay with you.
+              <Text style={[st.releasingLabel, { color: colors.textSecondary }]}>Letting go...</Text>
+            </View>
+          ) : hasReleased ? (
+            /* ── Post-release state ─────────────── */
+            <View style={st.releaseCenter}>
+              <View style={[st.releasedIcon, { backgroundColor: colors.primary + '14' }]}>
+                <Ionicons name="checkmark" size={36} color={colors.primary} />
+              </View>
+              <Text style={[st.releasedTitle, { color: colors.textPrimary }]}>You let it go</Text>
+              <Text style={[st.releasedBody, { color: colors.textSecondary }]}>
+                You don't have to carry this right now.{'\n'}Take a breath. You're doing okay.
               </Text>
-            </Animated.View>
-          </View>
-        ) : !isReleasing ? (
-          <ScrollView 
-            style={styles.releaseContainer}
-            contentContainerStyle={styles.releaseContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.releaseHeader}>
-              <Text style={styles.releaseTitle}>Release & Let Go</Text>
+              <View style={st.releasedActions}>
+                <TouchableOpacity
+                  style={[st.releasedBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => { setHasReleased(false); setReleaseText(''); }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={st.releasedBtnText}>Release something else</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[st.releasedBtnGhost]}
+                  onPress={() => { setView('main'); setHasReleased(false); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[st.releasedBtnGhostText, { color: colors.textSecondary }]}>Done</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+          ) : (
+            /* ── Writing state ──────────────────── */
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={st.releaseWriteContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {/* Ambient glow orb */}
+              <Animated.View style={[st.glowOrb, { opacity: glowAnim, backgroundColor: colors.primary + '10' }]} />
 
-            <View style={styles.textInputContainer}>
-              <TextInput
-                value={releaseText}
-                onChangeText={setReleaseText}
-                placeholder="What's weighing on you?"
-                placeholderTextColor={colors.textMuted}
-                multiline
-                style={styles.releaseInput}
-                textAlignVertical="top"
-              />
-            </View>
-            
-            {releaseText.length > 0 && (
-              <Button
-                title="Release"
-                onPress={handleRelease}
-                fullWidth
-                size="lg"
-              />
-            )}
+              <View style={st.releaseWriteHeader}>
+                <Ionicons name="water-outline" size={28} color={colors.primary} />
+                <Text style={[st.releaseWriteTitle, { color: colors.textPrimary }]}>Release & Let Go</Text>
+                <Text style={[st.releaseWriteSub, { color: colors.textSecondary }]}>
+                  Write down what's weighing on you.{'\n'}Then release it — nothing is saved.
+                </Text>
+              </View>
 
-            {!isReleasing && releaseText === '' && hasReleased && (
-              <View style={styles.releasedContainer}>
-                <Ionicons name="checkmark-circle" size={64} color={colors.primary} />
-                <Text style={styles.releasedTitle}>
-                  You don't have to carry this right now
-                </Text>
-                <Text style={styles.releasedText}>
-                  Take a breath. You're doing okay.
-                </Text>
-                <Button
-                  title="Release Something Else"
-                  onPress={() => {
-                    setHasReleased(false);
-                    setReleaseText('');
-                  }}
-                  variant="ghost"
-                  fullWidth
-                  size="md"
+              <View style={[st.releaseTextArea, { backgroundColor: colors.inputBackground, borderColor: releaseText.length > 0 ? colors.primary + '30' : colors.border }]}>
+                <TextInput
+                  value={releaseText}
+                  onChangeText={setReleaseText}
+                  placeholder="What's weighing on you right now?"
+                  placeholderTextColor={colors.textMuted}
+                  multiline
+                  style={[st.releaseInput, { color: colors.textPrimary }]}
+                  textAlignVertical="top"
+                  autoFocus
                 />
               </View>
-            )}
 
-            <Text style={styles.releaseNote}>
-              Nothing is saved. This space is temporary.
-            </Text>
-          </ScrollView>
-        ) : (
-          <View style={styles.releasingContainer}>
-            <Text style={styles.releasingText}>Letting go...</Text>
-          </View>
-        )}
-      </View>
+              {releaseText.length > 0 && (
+                <TouchableOpacity
+                  style={[st.releaseBtn, { backgroundColor: colors.primary }]}
+                  onPress={handleRelease}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="water-outline" size={18} color="#fff" />
+                  <Text style={st.releaseBtnText}>Let it go</Text>
+                </TouchableOpacity>
+              )}
+
+              <Text style={[st.releaseNote, { color: colors.textMuted }]}>
+                Nothing is saved. This space is completely temporary.
+              </Text>
+            </ScrollView>
+          )}
+        </View>
+      </GlassBackground>
     );
   }
 
+  // ── Main view ───────────────────────────────────
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Recover</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick calm</Text>
-        <View style={styles.cardList}>
-          <ListCard
-            onPress={() => router.push('/grounding')}
-            title="Grounding"
-            icon="leaf-outline"
-            iconBackgroundColor={colors.accentCalm + '20'}
-            iconColor={colors.accentCalm}
-            compact
-          />
+    <GlassBackground>
+      <ScrollView style={st.container} contentContainerStyle={st.content}>
+        <View style={st.header}>
+          <TouchableOpacity onPress={() => router.back()} style={st.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={st.title}>Recover & Grounding</Text>
+          <Text style={st.subtitle}>Breathe, ground, and release</Text>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Release & let go</Text>
-        <ListCard
-          onPress={() => setView('release')}
-          title="Let go of heavy thoughts"
-          icon="heart-outline"
-          iconBackgroundColor={colors.primary + '20'}
-          leftBorderColor={colors.primary}
-          compact
-        />
-      </View>
-    </ScrollView>
+        {/* Grounding card */}
+        <View style={st.section}>
+          <GlassCard onPress={() => router.push('/grounding')} borderRadius={Radius.xl}>
+            <View style={st.featureCard}>
+              <View style={[st.featureIcon, { backgroundColor: colors.accentCalm + '18' }]}>
+                <Ionicons name="leaf-outline" size={24} color={colors.accentCalm} />
+              </View>
+              <Text style={[st.featureTitle, { color: colors.textPrimary }]}>Grounding Exercises</Text>
+              <Text style={[st.featureSub, { color: colors.textSecondary }]}>
+                Breathing techniques and sensory exercises to bring you back to the present moment.
+              </Text>
+              <View style={st.featureArrow}>
+                <Text style={[st.featureArrowText, { color: colors.primary }]}>Start</Text>
+                <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+              </View>
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* Release card */}
+        <View style={st.section}>
+          <GlassCard onPress={() => setView('release')} borderRadius={Radius.xl}>
+            <View style={st.featureCard}>
+              <View style={[st.featureIcon, { backgroundColor: colors.primary + '18' }]}>
+                <Ionicons name="water-outline" size={24} color={colors.primary} />
+              </View>
+              <Text style={[st.featureTitle, { color: colors.textPrimary }]}>Release & Let Go</Text>
+              <Text style={[st.featureSub, { color: colors.textSecondary }]}>
+                Write down heavy thoughts, watch them dissolve, and feel a little lighter.
+              </Text>
+              <View style={st.featureArrow}>
+                <Text style={[st.featureArrowText, { color: colors.primary }]}>Begin</Text>
+                <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+              </View>
+            </View>
+          </GlassCard>
+        </View>
+      </ScrollView>
+    </GlassBackground>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
-    paddingBottom: Spacing['2xl'],
-  },
-  header: {
-    marginBottom: Spacing.lg,
-  },
-  title: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: Spacing.xs,
-    fontFamily: Typography.fontFamily.heading,
-  },
-  subtitle: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  section: {
-    marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.textMuted,
-    fontWeight: Typography.fontWeight.semibold,
-    marginBottom: Spacing.sm,
-    fontFamily: Typography.fontFamily.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  cardList: {
-    gap: Spacing.sm,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.lg,
-    gap: Spacing.xs,
-  },
-  backButtonText: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    fontWeight: Typography.fontWeight.medium,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  breathingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.xl,
-  },
-  breathingTitle: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: Spacing.md,
-    fontFamily: Typography.fontFamily.heading,
-  },
-  breathingDescription: {
-    fontSize: Typography.fontSize.base,
-    color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
-    textAlign: 'center',
-    marginBottom: Spacing['3xl'],
-    maxWidth: 280,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  breathingCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: colors.accentCalm,
-    marginBottom: Spacing['3xl'],
-  },
-  breathingInstruction: {
-    fontSize: Typography.fontSize.lg,
-    color: colors.textPrimary,
-    fontWeight: Typography.fontWeight.medium,
-    marginBottom: Spacing.lg,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  breathCount: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  releaseContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  releaseContent: {
-    padding: Spacing.lg,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing['2xl'],
-  },
-  releaseHeader: {
-    marginBottom: Spacing.lg,
-  },
-  releaseTitle: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: Spacing.sm,
-    fontFamily: Typography.fontFamily.heading,
-  },
-  releaseDescription: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  textInputContainer: {
-    backgroundColor: colors.floating,
-    borderRadius: Radius.lg,
-    marginBottom: Spacing.lg,
-    minHeight: 120,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...Shadows.sm,
-  },
-  releaseInput: {
-    padding: Spacing.md,
-    fontSize: Typography.fontSize.base,
-    color: colors.textPrimary,
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.primary,
-    minHeight: 120,
-  },
-  releaseAnimationContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  releaseTextContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  releaseInstruction: {
-    fontSize: Typography.fontSize.base,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: Spacing['2xl'],
-    fontFamily: Typography.fontFamily.primary,
-    fontWeight: Typography.fontWeight.medium,
-  },
-  releaseTextCard: {
-    backgroundColor: colors.floating,
-    borderRadius: Radius.xl,
-    padding: Spacing.xl,
-    marginBottom: Spacing['2xl'],
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    ...Shadows.lg,
-  },
-  releaseTextDisplay: {
-    fontSize: Typography.fontSize.lg,
-    color: colors.textPrimary,
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.lg,
-    textAlign: 'center',
-    fontFamily: Typography.fontFamily.primary,
-    fontWeight: Typography.fontWeight.normal,
-  },
-  affirmationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: colors.surface,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.full,
-    marginBottom: Spacing['2xl'],
-    maxWidth: '90%',
-  },
-  affirmationText: {
-    fontSize: Typography.fontSize.base,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    fontFamily: Typography.fontFamily.primary,
-    fontWeight: Typography.fontWeight.medium,
-    fontStyle: 'italic',
-  },
-  releaseGuidance: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
-    maxWidth: 300,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  releasingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  releasingText: {
-    fontSize: Typography.fontSize.lg,
-    color: colors.textSecondary,
-    fontWeight: Typography.fontWeight.medium,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  releasedContainer: {
-    paddingVertical: Spacing['3xl'],
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  releasedTitle: {
-    fontSize: Typography.fontSize.xl,
-    color: colors.textPrimary,
-    fontWeight: Typography.fontWeight.semibold,
-    textAlign: 'center',
-    fontFamily: Typography.fontFamily.heading,
-  },
-  releasedText: {
-    fontSize: Typography.fontSize.base,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: Spacing.lg,
-    fontFamily: Typography.fontFamily.primary,
-  },
-  releaseNote: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: Spacing['2xl'],
-    fontFamily: Typography.fontFamily.primary,
-  },
+  container: { flex: 1 },
+  content: { paddingHorizontal: Spacing.md, paddingTop: Platform.OS === 'ios' ? 56 : Spacing.lg, paddingBottom: 120 },
+  header: { marginBottom: Spacing.xl },
+  backBtn: { marginBottom: Spacing.sm },
+  title: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, marginBottom: 4 },
+  subtitle: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontWeight: Typography.fontWeight.medium },
+  section: { marginBottom: Spacing.md },
+
+  /* Feature cards on main screen */
+  featureCard: { paddingVertical: 4 },
+  featureIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  featureTitle: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.bold, marginBottom: 6 },
+  featureSub: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.55, marginBottom: 16 },
+  featureArrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  featureArrowText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
+
+  /* ── Release view ─────────────────────────── */
+  releaseRoot: { flex: 1, paddingTop: Platform.OS === 'ios' ? 56 : Spacing.lg },
+  releaseBack: { marginLeft: Spacing.md, marginBottom: Spacing.sm, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+
+  releaseCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: Spacing.xl },
+  releaseFloat: { width: '100%', alignItems: 'center' },
+  releaseHint: { fontSize: Typography.fontSize.sm, textAlign: 'center', marginBottom: Spacing.xl, fontWeight: Typography.fontWeight.medium, letterSpacing: 0.2 },
+  releaseQuote: { borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.xl, width: '100%', maxWidth: 360, borderWidth: 1 },
+  releaseQuoteText: { fontSize: Typography.fontSize.lg, lineHeight: Typography.fontSize.lg * 1.6, textAlign: 'center', fontStyle: 'italic' },
+  affirmRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.xl },
+  affirmText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.medium, fontStyle: 'italic', textAlign: 'center', maxWidth: 280 },
+  breatheText: { fontSize: Typography.fontSize.xs, textAlign: 'center' },
+
+  releasingLabel: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.medium, marginTop: Spacing.lg },
+
+  /* Writing state */
+  releaseWriteContent: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing['3xl'] },
+  glowOrb: { position: 'absolute', top: -60, right: -40, width: 200, height: 200, borderRadius: 100 },
+  releaseWriteHeader: { alignItems: 'center', marginBottom: Spacing.xl, gap: 8 },
+  releaseWriteTitle: { fontSize: Typography.fontSize.xl, fontWeight: Typography.fontWeight.bold },
+  releaseWriteSub: { fontSize: Typography.fontSize.sm, textAlign: 'center', lineHeight: Typography.fontSize.sm * 1.55 },
+  releaseTextArea: { borderRadius: Radius.xl, borderWidth: 1.5, padding: Spacing.md, marginBottom: Spacing.lg, minHeight: 160 },
+  releaseInput: { fontSize: Typography.fontSize.base, lineHeight: Typography.fontSize.base * 1.65, minHeight: 140 },
+  releaseBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: Radius.lg },
+  releaseBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: '#fff' },
+  releaseNote: { fontSize: Typography.fontSize.xs, textAlign: 'center', marginTop: Spacing.xl },
+
+  /* Post-release */
+  releasedIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
+  releasedTitle: { fontSize: Typography.fontSize.xl, fontWeight: Typography.fontWeight.bold, marginBottom: Spacing.sm },
+  releasedBody: { fontSize: Typography.fontSize.base, textAlign: 'center', lineHeight: Typography.fontSize.base * 1.6, marginBottom: Spacing.xl },
+  releasedActions: { width: '100%', maxWidth: 300, gap: Spacing.sm },
+  releasedBtn: { paddingVertical: 14, borderRadius: Radius.lg, alignItems: 'center' },
+  releasedBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: '#fff' },
+  releasedBtnGhost: { paddingVertical: 12, alignItems: 'center' },
+  releasedBtnGhostText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
 });

@@ -210,3 +210,115 @@ export async function clearChatHistory(userId: string, mode: ChatMode): Promise<
     console.error('[ChatStorage] Failed to clear history:', error);
   }
 }
+
+export interface ChatSession {
+  date: string;
+  preview: string;
+  messageCount: number;
+  emotions: string[];
+  firstMessageAt: string;
+}
+
+/**
+ * Group chat messages into daily sessions for the history panel.
+ */
+export async function getChatSessions(
+  userId: string,
+  mode: ChatMode,
+  limit = 30
+): Promise<ChatSession[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const { data, error } = await supabase
+    .from('ai_chat_messages')
+    .select('id, role, content, metadata, created_at')
+    .eq('user_id', userId)
+    .eq('mode', mode)
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  if (error) {
+    console.error('[ChatStorage] Failed to load sessions:', error);
+    return [];
+  }
+
+  const rows = (data ?? []) as Record<string, unknown>[];
+  const byDate = new Map<string, typeof rows>();
+
+  for (const row of rows) {
+    const dateStr = new Date(row.created_at as string).toLocaleDateString('en-CA');
+    const bucket = byDate.get(dateStr) ?? [];
+    bucket.push(row);
+    byDate.set(dateStr, bucket);
+  }
+
+  const sessions: ChatSession[] = [];
+  for (const [date, msgs] of byDate) {
+    const userMsgs = msgs.filter((m) => m.role === 'user');
+    const preview = userMsgs.length > 0
+      ? (userMsgs[userMsgs.length - 1].content as string).slice(0, 80)
+      : '(no messages)';
+
+    const emotions: string[] = [];
+    for (const m of msgs) {
+      const meta = m.metadata as Record<string, unknown> | null;
+      const suggestion = meta?.suggestion as Record<string, unknown> | undefined;
+      const ems = suggestion?.emotions;
+      if (Array.isArray(ems)) {
+        for (const e of ems) {
+          if (typeof e === 'string' && !emotions.includes(e)) emotions.push(e);
+        }
+      }
+    }
+
+    sessions.push({
+      date,
+      preview,
+      messageCount: msgs.length,
+      emotions: emotions.slice(0, 3),
+      firstMessageAt: msgs[msgs.length - 1].created_at as string,
+    });
+
+    if (sessions.length >= limit) break;
+  }
+
+  return sessions;
+}
+
+/**
+ * Load messages for a specific date session.
+ */
+export async function getChatSessionMessages(
+  userId: string,
+  mode: ChatMode,
+  date: string
+): Promise<ChatMessage[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const startOfDay = `${date}T00:00:00.000Z`;
+  const endOfDay = `${date}T23:59:59.999Z`;
+
+  const { data, error } = await supabase
+    .from('ai_chat_messages')
+    .select('id, user_id, mode, role, content, metadata, created_at')
+    .eq('user_id', userId)
+    .eq('mode', mode)
+    .gte('created_at', startOfDay)
+    .lte('created_at', endOfDay)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('[ChatStorage] Failed to load session messages:', error);
+    return [];
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: row.id as string,
+    userId: row.user_id as string,
+    mode: row.mode as ChatMode,
+    role: row.role as ChatRole,
+    content: row.content as string,
+    metadata: row.metadata as Record<string, unknown> | null,
+    createdAt: row.created_at as string,
+  }));
+}

@@ -1,5 +1,7 @@
 /**
- * Learn Screen — catalog from Supabase learning_content (personal / B2C only).
+ * Learn Screen — Glassmorphism v5
+ *
+ * Catalog from Supabase learning_content with frosted glass cards.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -14,10 +16,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
-import { FeatureCard } from '@/components/ui/feature-card';
-import { ModuleCard } from '@/components/ui/module-card';
-import { SectionHeaderCard } from '@/components/ui/section-header-card';
-import { AudioRowCard } from '@/components/ui/audio-row-card';
+import { Ionicons } from '@expo/vector-icons';
+import { GlassBackground } from '@/components/ui/glass-background';
+import { GlassCard } from '@/components/ui/glass-card';
 import { DIMENSION_INFO } from '@/data/learning-content';
 import type { EQDimension } from '@/types/eq-assessment';
 import { useLearningCatalog } from '@/hooks/useLearningCatalog';
@@ -25,13 +26,7 @@ import { isIntroEpisodeTitle } from '@/services/learning-content-catalog';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 const DIMENSION_FILTERS: (EQDimension | 'all')[] = [
-  'all',
-  'self_awareness',
-  'self_regulation',
-  'empathy',
-  'social_skills',
-  'motivation',
-  'resilience',
+  'all', 'self_awareness', 'self_regulation', 'empathy', 'social_skills', 'motivation', 'resilience',
 ];
 
 export default function LearnScreen() {
@@ -40,282 +35,148 @@ export default function LearnScreen() {
   const { episodes, loading, error, reload, emptyRemote } = useLearningCatalog();
   const [selectedDimension, setSelectedDimension] = useState<EQDimension | 'all'>('all');
 
-  const baseEpisodes = useMemo(() => {
-    if (loading) return [];
-    return episodes;
-  }, [loading, episodes]);
-
+  const baseEpisodes = useMemo(() => (loading ? [] : episodes), [loading, episodes]);
   const filteredEpisodes = useMemo(() => {
     if (selectedDimension === 'all') return baseEpisodes;
     return baseEpisodes.filter((e) => e.dimension === selectedDimension);
   }, [baseEpisodes, selectedDimension]);
 
-  const featured = filteredEpisodes[0];
+  const getDimensionName = (dim: EQDimension | 'all') => dim === 'all' ? 'All skills' : DIMENSION_INFO[dim].name;
+  const getEpisodeSubtitle = (title: string, dimension: EQDimension) =>
+    isIntroEpisodeTitle(title) ? 'Introduction' : DIMENSION_INFO[dimension].name;
 
   const handleOpenEpisode = (routeId: string) => {
     router.push(`/learning-detail?id=${encodeURIComponent(routeId)}`);
   };
 
-  const getDimensionName = (dim: EQDimension | 'all') => {
-    if (dim === 'all') return 'All skills';
-    return DIMENSION_INFO[dim].name;
-  };
-  const getEpisodeSubtitle = (title: string, dimension: EQDimension) =>
-    isIntroEpisodeTitle(title) ? 'Introduction' : DIMENSION_INFO[dimension].name;
-
-  const styles = createStyles(colors);
+  const st = createStyles(colors);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Learn</Text>
-        <Text style={styles.subtitle}>
-          Build emotional intelligence with expert-led content
-        </Text>
-      </View>
-
-      {error ? (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>{error}</Text>
-          <TouchableOpacity onPress={reload} style={styles.bannerBtn}>
-            <Text style={styles.bannerBtnText}>Retry</Text>
+    <GlassBackground>
+      <ScrollView style={st.container} contentContainerStyle={st.content}>
+        <View style={st.header}>
+          <TouchableOpacity onPress={() => router.back()} style={st.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="arrow-back" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
+          <Text style={st.title}>Learn EQ</Text>
+          <Text style={st.subtitle}>Build emotional intelligence with expert-led content</Text>
         </View>
-      ) : null}
 
-      {!loading && !error && emptyRemote ? (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>
-            No learning content found in the database. Run migrations `00010`, `00011`, `00012` in Supabase SQL Editor.
-          </Text>
-          <TouchableOpacity onPress={reload} style={styles.bannerBtn}>
-            <Text style={styles.bannerBtnText}>Reload</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {!loading && !error && !isSupabaseConfigured() ? (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>
-            Supabase is not configured. Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` in `.env`, then restart.
-          </Text>
-        </View>
-      ) : null}
-
-      {loading ? (
-        <View style={styles.loadingBlock}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingHint}>Loading lessons…</Text>
-        </View>
-      ) : (
-        <>
-          {featured ? (
-            <View style={styles.featuredSection}>
-              <Text style={styles.sectionTitle}>Featured</Text>
-              <FeatureCard
-                onPress={() => handleOpenEpisode(featured.routeId)}
-                title={featured.title}
-                subtitle={getEpisodeSubtitle(featured.title, featured.dimension)}
-                badge={featured.sortOrder === 1 ? 'Start here' : 'Featured'}
-                meta={[
-                  ...(featured.videoUrl
-                    ? [{ icon: 'videocam-outline' as const, text: 'Video lesson' }]
-                    : []),
-                  ...(featured.audioUrl
-                    ? [{ icon: 'headset-outline' as const, text: 'Podcast' }]
-                    : []),
-                ]}
-                icon={featured.icon as any}
-                iconBackgroundColor={featured.color}
-                backgroundColor={featured.color + '15'}
-              />
+        {error ? (
+          <GlassCard>
+            <View style={st.bannerRow}>
+              <Text style={st.bannerText}>{error}</Text>
+              <TouchableOpacity onPress={reload}><Text style={st.retryText}>Retry</Text></TouchableOpacity>
             </View>
-          ) : null}
+          </GlassCard>
+        ) : null}
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterContainer}
-          >
-            {DIMENSION_FILTERS.map((dim) => (
-              <TouchableOpacity
-                key={dim}
-                onPress={() => setSelectedDimension(dim)}
-                style={[
-                  styles.filterChip,
-                  selectedDimension === dim && styles.filterChipSelected,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    selectedDimension === dim && styles.filterChipTextSelected,
-                  ]}
+        {!loading && !error && emptyRemote ? (
+          <GlassCard style={st.bannerCard}>
+            <Text style={st.bannerText}>No learning content found. Run migrations in Supabase.</Text>
+            <TouchableOpacity onPress={reload}><Text style={st.retryText}>Reload</Text></TouchableOpacity>
+          </GlassCard>
+        ) : null}
+
+        {!loading && !error && !isSupabaseConfigured() ? (
+          <GlassCard style={st.bannerCard}>
+            <Text style={st.bannerText}>Supabase not configured. Set env variables and restart.</Text>
+          </GlassCard>
+        ) : null}
+
+        {loading ? (
+          <View style={st.loadingBlock}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={st.loadingHint}>Loading lessons…</Text>
+          </View>
+        ) : (
+          <>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={st.filterContainer}
+            >
+              {DIMENSION_FILTERS.map((dim) => (
+                <TouchableOpacity
+                  key={dim}
+                  onPress={() => setSelectedDimension(dim)}
+                  style={[st.filterChip, selectedDimension === dim && st.filterChipSelected]}
                 >
-                  {getDimensionName(dim)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                  <Text style={[st.filterChipText, selectedDimension === dim && st.filterChipTextSelected]}>
+                    {getDimensionName(dim)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
-          <View style={styles.modulesSection}>
-            <Text style={styles.sectionTitle}>
-              Lessons · {selectedDimension === 'all' ? 'All skills' : getDimensionName(selectedDimension)}
-            </Text>
-            {filteredEpisodes.length === 0 ? (
-              <Text style={styles.emptyText}>
-                No lessons match this filter. Try another skill.
-              </Text>
-            ) : (
-              <View style={styles.modulesGrid}>
-                {filteredEpisodes.map((ep) => (
-                  <ModuleCard
-                    key={ep.episodeKey}
-                    onPress={() => handleOpenEpisode(ep.routeId)}
-                    title={ep.title}
-                    subtitle={getEpisodeSubtitle(ep.title, ep.dimension)}
-                    meta={[
-                      ...(ep.videoUrl
-                        ? [{ icon: 'videocam' as const, text: 'Video' }]
-                        : []),
-                      ...(ep.audioUrl
-                        ? [{ icon: 'headset' as const, text: 'Audio' }]
-                        : []),
-                    ]}
-                    icon={ep.icon as any}
-                    iconColor={ep.color}
-                    iconBackgroundColor={ep.color + '20'}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-
-          <View style={styles.audioSection}>
-            <SectionHeaderCard
-              title="Deep dive podcasts"
-              subtitle="Extended audio sessions for deeper learning"
-              icon="headset"
-            />
-            {filteredEpisodes.filter((ep) => Boolean(ep.audioUrl)).map((ep) => (
-              <AudioRowCard
-                key={`audio-${ep.episodeKey}`}
-                onPress={() => handleOpenEpisode(ep.routeId)}
-                title={ep.title}
-                subtitle={getEpisodeSubtitle(ep.title, ep.dimension)}
-                icon={ep.icon as any}
-                iconBackgroundColor={ep.color + '20'}
-                iconColor={ep.color}
-              />
-            ))}
-          </View>
-        </>
-      )}
-    </ScrollView>
+            <View style={st.episodeList}>
+              {filteredEpisodes.length === 0 ? (
+                <Text style={st.emptyText}>No lessons match this filter.</Text>
+              ) : (
+                filteredEpisodes.map((ep) => (
+                  <GlassCard key={ep.episodeKey} onPress={() => handleOpenEpisode(ep.routeId)}>
+                    <View style={st.episodeRow}>
+                      <View style={[st.episodeIcon, { backgroundColor: (ep.color || colors.primary) + '18' }]}>
+                        <Ionicons name={(ep.icon as any) || 'book-outline'} size={20} color={ep.color || colors.primary} />
+                      </View>
+                      <View style={st.episodeText}>
+                        <Text style={st.episodeTitle} numberOfLines={2}>{ep.title}</Text>
+                        <Text style={st.episodeSubtitle}>{getEpisodeSubtitle(ep.title, ep.dimension)}</Text>
+                        <View style={st.metaRow}>
+                          {ep.videoUrl && (
+                            <View style={st.metaItem}>
+                              <Ionicons name="videocam-outline" size={12} color={colors.textMuted} />
+                              <Text style={st.metaText}>Video</Text>
+                            </View>
+                          )}
+                          {ep.audioUrl && (
+                            <View style={st.metaItem}>
+                              <Ionicons name="headset-outline" size={12} color={colors.textMuted} />
+                              <Text style={st.metaText}>Audio</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+                    </View>
+                  </GlassCard>
+                ))
+              )}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </GlassBackground>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    content: {
-      paddingBottom: Spacing['2xl'],
-    },
-    header: {
-      paddingHorizontal: Spacing.md,
-      paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
-      paddingBottom: Spacing.md,
-    },
-    title: {
-      fontSize: Typography.fontSize['2xl'],
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-      marginBottom: Spacing.xs,
-    },
-    subtitle: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
-    },
-    banner: {
-      marginHorizontal: Spacing.md,
-      marginBottom: Spacing.md,
-      padding: Spacing.md,
-      borderRadius: Radius.lg,
-      backgroundColor: colors.surface,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: Spacing.sm,
-    },
+    container: { flex: 1 },
+    content: { paddingBottom: 120 },
+    header: { paddingHorizontal: Spacing.md, paddingTop: Platform.OS === 'ios' ? 56 : Spacing.lg, paddingBottom: Spacing.md },
+    backBtn: { marginBottom: Spacing.sm },
+    title: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, marginBottom: Spacing.xs },
+    subtitle: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm },
+    bannerCard: { marginHorizontal: Spacing.md, marginBottom: Spacing.md },
+    bannerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
     bannerText: { flex: 1, fontSize: Typography.fontSize.sm, color: colors.textSecondary },
-    bannerBtn: { paddingVertical: Spacing.xs, paddingHorizontal: Spacing.sm },
-    bannerBtnText: { fontSize: Typography.fontSize.sm, color: colors.primary, fontWeight: '600' },
-    sectionTitle: {
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textMuted,
-      marginBottom: Spacing.sm,
-      paddingHorizontal: Spacing.md,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-    },
-    featuredSection: {
-      marginBottom: Spacing.lg,
-      paddingHorizontal: Spacing.md,
-    },
-    filterContainer: {
-      paddingHorizontal: Spacing.md,
-      paddingBottom: Spacing.md,
-      gap: Spacing.sm,
-    },
-    filterChip: {
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.sm,
-      borderRadius: Radius.full,
-      backgroundColor: colors.surface,
-    },
-    filterChipSelected: {
-      backgroundColor: colors.primary,
-    },
-    filterChipText: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
-      fontWeight: Typography.fontWeight.medium,
-    },
-    filterChipTextSelected: {
-      color: colors.primaryForeground,
-    },
-    loadingBlock: {
-      paddingVertical: Spacing['2xl'],
-      alignItems: 'center',
-      gap: Spacing.md,
-    },
-    loadingHint: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textMuted,
-    },
-    modulesSection: {
-      marginBottom: Spacing.lg,
-    },
-    modulesGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      paddingHorizontal: Spacing.md,
-      gap: Spacing.sm,
-    },
-    emptyText: {
-      paddingHorizontal: Spacing.lg,
-      fontSize: Typography.fontSize.sm,
-      color: colors.textMuted,
-    },
-    audioSection: {
-      paddingHorizontal: Spacing.md,
-      paddingTop: Spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.borderLight,
-    },
+    retryText: { fontSize: Typography.fontSize.sm, color: colors.primary, fontWeight: '600' },
+    loadingBlock: { paddingVertical: Spacing['2xl'], alignItems: 'center', gap: Spacing.md },
+    loadingHint: { fontSize: Typography.fontSize.sm, color: colors.textMuted },
+    filterContainer: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.md, gap: Spacing.sm },
+    filterChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassBorder },
+    filterChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    filterChipText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontWeight: Typography.fontWeight.medium },
+    filterChipTextSelected: { color: colors.primaryForeground },
+    episodeList: { paddingHorizontal: Spacing.md, gap: Spacing.sm },
+    emptyText: { paddingHorizontal: Spacing.lg, fontSize: Typography.fontSize.sm, color: colors.textMuted },
+    episodeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    episodeIcon: { width: 40, height: 40, borderRadius: Radius.sm, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    episodeText: { flex: 1 },
+    episodeTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, marginBottom: 2 },
+    episodeSubtitle: { fontSize: Typography.fontSize.xs, color: colors.textSecondary, marginBottom: 4 },
+    metaRow: { flexDirection: 'row', gap: Spacing.sm },
+    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+    metaText: { fontSize: Typography.fontSize.micro, color: colors.textMuted },
   });

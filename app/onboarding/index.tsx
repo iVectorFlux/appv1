@@ -66,27 +66,27 @@ function spotlightForGoal(goal: PrimaryGoalId): SpotlightItem[] {
     case 'feel_better':
       return [
         {
-          id: 'reflect',
-          title: 'Reflect check-in',
-          description: 'Short guided check-ins to notice how you feel and what matters.',
-          icon: 'checkmark-circle-outline',
-          accentColor: 'accentEnergy',
+          id: 'inner_ally',
+          title: 'AI Companion',
+          description: 'Talk things through with your Inner Ally — it listens, reflects, and helps ground you.',
+          icon: 'heart-outline',
+          accentColor: 'primary',
           featured: true,
         },
         {
           id: 'recover',
-          title: 'Grounding & Recover',
+          title: 'Recover & Grounding',
           description: 'Breathing and regulation tools when things feel heavy.',
           icon: 'leaf-outline',
           accentColor: 'accentCalm',
           featured: false,
         },
         {
-          id: 'journal',
-          title: 'Journal',
-          description: 'Private, encrypted writing — only you can read it.',
-          icon: 'journal-outline',
-          accentColor: 'primary',
+          id: 'learn',
+          title: 'Learn EQ',
+          description: 'Build emotional awareness with expert-led lessons.',
+          icon: 'library-outline',
+          accentColor: 'accentEnergy',
           featured: false,
         },
       ];
@@ -121,7 +121,7 @@ function spotlightForGoal(goal: PrimaryGoalId): SpotlightItem[] {
       return [
         {
           id: 'recover',
-          title: 'Grounding & Recover',
+          title: 'Recover & Grounding',
           description: 'Calm your nervous system with structured exercises.',
           icon: 'leaf-outline',
           accentColor: 'accentCalm',
@@ -129,17 +129,17 @@ function spotlightForGoal(goal: PrimaryGoalId): SpotlightItem[] {
         },
         {
           id: 'inner_ally',
-          title: 'Inner Ally (AI)',
+          title: 'AI Companion',
           description: 'Talk things through with a warm companion that listens first.',
           icon: 'heart-outline',
           accentColor: 'primary',
           featured: false,
         },
         {
-          id: 'reflect',
-          title: 'Reflect check-in',
-          description: 'Name stress patterns and track how you feel over time.',
-          icon: 'checkmark-circle-outline',
+          id: 'learn',
+          title: 'Learn EQ',
+          description: 'Understand stress patterns with expert guidance.',
+          icon: 'library-outline',
           accentColor: 'accentEnergy',
           featured: false,
         },
@@ -148,7 +148,7 @@ function spotlightForGoal(goal: PrimaryGoalId): SpotlightItem[] {
       return [
         {
           id: 'ai_chat',
-          title: 'Inner Ally & Coach',
+          title: 'AI Companion',
           description: 'Wellbeing support and professional coaching in one place.',
           icon: 'chatbubbles-outline',
           accentColor: 'primary',
@@ -183,11 +183,11 @@ function spotlightForGoal(goal: PrimaryGoalId): SpotlightItem[] {
           featured: true,
         },
         {
-          id: 'reflect',
-          title: 'Reflect check-in',
-          description: 'A gentle way to start noticing mood and energy.',
-          icon: 'checkmark-circle-outline',
-          accentColor: 'accentEnergy',
+          id: 'ai_chat',
+          title: 'AI Companion',
+          description: 'Your Inner Ally and Coach for wellbeing and growth.',
+          icon: 'chatbubbles-outline',
+          accentColor: 'primary',
           featured: false,
         },
         {
@@ -195,7 +195,7 @@ function spotlightForGoal(goal: PrimaryGoalId): SpotlightItem[] {
           title: 'Learn EQ',
           description: 'Browse lessons when you want to go deeper.',
           icon: 'library-outline',
-          accentColor: 'primary',
+          accentColor: 'accentEnergy',
           featured: false,
         },
       ];
@@ -390,13 +390,13 @@ export default function OnboardingScreen() {
               </View>
               <Text style={styles.headline}>Your personal growth companion</Text>
               <Text style={styles.subtext}>
-                Reflect on your feelings, build real skills, and get AI guidance — all in one place.
+                Build emotional intelligence, get AI guidance, and track your growth — all in one place.
               </Text>
             </View>
 
             <View style={styles.badgeRow}>
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>Reflect & Journal</Text>
+                <Text style={styles.badgeText}>Learn EQ</Text>
               </View>
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>AI Companion</Text>
@@ -408,7 +408,7 @@ export default function OnboardingScreen() {
 
             <View style={styles.privacyCard}>
               <Ionicons name="shield-checkmark" size={20} color={colors.primary} style={styles.privacyCardIcon} />
-              <Text style={styles.privacyCardText}>Your journal is encrypted and never read by us.</Text>
+              <Text style={styles.privacyCardText}>Your data is private and encrypted.</Text>
             </View>
           </View>
         )}

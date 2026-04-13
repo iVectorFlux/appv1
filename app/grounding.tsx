@@ -3,8 +3,8 @@
  *
  * State machine: 'select' → 'active' → 'complete'
  *
- * - select:  Choose a tag + pick a technique
- * - active:  Renders chosen technique full-screen
+ * - select:  Choose a tag + pick a technique (glassmorphic cards)
+ * - active:  Renders chosen technique full-screen (dark immersive)
  * - complete: Post-session stress re-rate + save
  */
 
@@ -26,14 +26,15 @@ import { saveRecoverySession } from '@/services/recovery-storage';
 import { GROUNDING_MODES } from '@/data/grounding-content';
 import type { GroundingMode, StressLevel, EmotionalTone, GroundingSession } from '@/types/grounding';
 import { aiTechniqueToGroundingMode, type ChatReturnTarget } from '@/utils/chat-suggestion-navigation';
+import { GlassBackground } from '@/components/ui/glass-background';
+import { GlassCard } from '@/components/ui/glass-card';
+import { TagChip } from '@/components/ui/tag-chip';
 
-// Mode components
 import { QuickReset } from '@/components/grounding/quick-reset';
 import { SensoryAnchor } from '@/components/grounding/sensory-anchor';
 import { BoxBreathing } from '@/components/grounding/box-breathing';
 import { PreMeeting } from '@/components/grounding/pre-meeting';
 import { PostConflict } from '@/components/grounding/post-conflict';
-import { TagChip } from '@/components/ui/tag-chip';
 
 type ScreenState = 'select' | 'active' | 'complete';
 type BreathingTag =
@@ -48,8 +49,23 @@ type BreathingTag =
   | 'stress'
   | 'anxiety';
 
-/** Stress level color gradient from cool → warm */
 const STRESS_COLORS = ['#60A5FA', '#34D399', '#FBBF24', '#F97316', '#FB923C'];
+
+const TECHNIQUE_ICONS: Record<string, string> = {
+  quick_reset: 'flash-outline',
+  sensory_anchor: 'eye-outline',
+  box_breathing: 'cube-outline',
+  pre_meeting: 'briefcase-outline',
+  post_conflict: 'heart-outline',
+};
+
+const TECHNIQUE_DESCRIPTIONS: Record<string, string> = {
+  quick_reset: '60 sec · Physiological sigh + grounding',
+  sensory_anchor: '3-4 min · 5-4-3-2-1 senses',
+  box_breathing: '4-5 min · Square breath + release',
+  pre_meeting: '2-3 min · Breath + intention',
+  post_conflict: '4-6 min · Label + breathe + reframe',
+};
 
 function parseReturnTo(raw: string | string[] | undefined): ChatReturnTarget | null {
   const v = Array.isArray(raw) ? raw[0] : raw;
@@ -82,7 +98,6 @@ export default function GroundingScreen() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const deepLinkedRef = useRef(false);
 
-  /** Jump straight into a technique when opened from chat (mode = AI technique id). */
   useEffect(() => {
     if (deepLinkedRef.current) return;
     const raw = params.mode;
@@ -126,7 +141,6 @@ export default function GroundingScreen() {
   const handleModeComplete = useCallback(
     (pct: number) => {
       setCompletionPct(pct);
-      // Stress re-rate only for techniques meant to reduce stress (not pre-meeting).
       setStressAfter(selectedMode && selectedMode !== 'pre_meeting' ? stressLevel : null);
       setHelpful(null);
       transitionTo('complete');
@@ -134,32 +148,19 @@ export default function GroundingScreen() {
     [selectedMode, stressLevel, transitionTo],
   );
 
-  /** Exit grounding — return to chat/assist if opened from there, else Recover tab. */
   const exitGrounding = useCallback(() => {
-    if (returnTarget === 'chat') {
-      router.replace('/chat');
-      return;
-    }
-    if (returnTarget === 'assist') {
-      router.replace('/(tabs)/assist');
-      return;
-    }
+    if (returnTarget === 'chat') { router.replace('/chat'); return; }
+    if (returnTarget === 'assist') { router.replace('/(tabs)/assist'); return; }
     router.replace('/(tabs)/recover');
   }, [router, returnTarget]);
 
   const handleModeExit = useCallback(() => {
-    if (returnTarget) {
-      exitGrounding();
-      return;
-    }
+    if (returnTarget) { exitGrounding(); return; }
     transitionTo('select');
   }, [returnTarget, exitGrounding, transitionTo]);
 
   const handleDone = useCallback(async () => {
-    if (!user?.id || !selectedMode) {
-      exitGrounding();
-      return;
-    }
+    if (!user?.id || !selectedMode) { exitGrounding(); return; }
     const session: GroundingSession = {
       mode: selectedMode,
       stressBefore: stressLevel,
@@ -178,10 +179,7 @@ export default function GroundingScreen() {
       exitGrounding();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('not configured') || msg.includes('Supabase')) {
-        exitGrounding();
-        return;
-      }
+      if (msg.includes('not configured') || msg.includes('Supabase')) { exitGrounding(); return; }
       console.error('[Grounding] Save failed:', e);
       setSaveError(msg || 'Could not save. Check connection and try again.');
     } finally {
@@ -189,11 +187,9 @@ export default function GroundingScreen() {
     }
   }, [user, selectedMode, stressLevel, stressAfter, emotionalTone, completionPct, sessionStart, helpful, exitGrounding]);
 
-  const styles = createStyles(colors);
+  const st = createStyles(colors);
 
-  // ═══════════════════════════════════════════════════════════════════
-  // ACTIVE
-  // ═══════════════════════════════════════════════════════════════════
+  // ═══════════════ ACTIVE ════════════════════════════════════
   if (screen === 'active' && selectedMode) {
     const modeProps = { stressLevel, emotionalTone, onComplete: handleModeComplete, onExit: handleModeExit };
     switch (selectedMode) {
@@ -205,9 +201,7 @@ export default function GroundingScreen() {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // SELECT
-  // ═══════════════════════════════════════════════════════════════════
+  // ═══════════════ SELECT ════════════════════════════════════
   if (screen === 'select') {
     const tags: Array<{ id: BreathingTag; label: string; defaultStress: StressLevel }> = [
       { id: 'anxiety', label: 'Anxiety', defaultStress: 4 },
@@ -243,49 +237,49 @@ export default function GroundingScreen() {
       return colors.accentSoft;
     };
 
+    const recommendedMode = selectedTag ? recommendedByTag[selectedTag] : null;
+
     const renderTechniqueCard = (mode: GroundingMode, isRecommended: boolean) => {
       const cfg = GROUNDING_MODES.find((m) => m.id === mode);
       const accent = accentForMode(mode);
       return (
-        <TouchableOpacity
+        <GlassCard
           key={mode}
-          style={[
-            styles.techniqueCard,
-            Shadows.card,
-            { borderColor: isRecommended ? accent : colors.border },
-          ]}
-          activeOpacity={0.9}
+          style={isRecommended ? { borderColor: accent + '50', borderWidth: 1.5 } : undefined}
           onPress={() => {
             setSelectedScenarioId(selectedTag);
             setEmotionalTone(null);
             beginMode(mode);
           }}
         >
-          <View style={[styles.techniqueIconWrap, { backgroundColor: accent }]}>
-            <Ionicons name={(cfg?.icon as any) ?? 'leaf-outline'} size={22} color={colors.primaryForeground} />
+          <View style={st.techniqueRow}>
+            <View style={[st.techniqueIconWrap, { backgroundColor: accent }]}>
+              <Ionicons name={(TECHNIQUE_ICONS[mode] ?? cfg?.icon ?? 'leaf-outline') as any} size={22} color="#fff" />
+            </View>
+            <View style={st.techniqueTextWrap}>
+              <Text style={st.techniqueTitle}>{cfg?.label ?? mode}</Text>
+              <Text style={st.techniqueDesc}>{TECHNIQUE_DESCRIPTIONS[mode] ?? ''}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </View>
-          <Text style={styles.techniqueTitle}>{cfg?.label ?? mode}</Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-        </TouchableOpacity>
+        </GlassCard>
       );
     };
 
-    const recommendedMode = selectedTag ? recommendedByTag[selectedTag] : null;
-
     return (
-      <View style={styles.container}>
-        <View style={styles.topBar}>
-          <Text style={styles.topTitle}>Grounding</Text>
-          <TouchableOpacity style={styles.closeBtn} onPress={exitGrounding} hitSlop={12}>
+      <GlassBackground>
+        <View style={st.topBar}>
+          <Text style={st.topTitle}>Grounding</Text>
+          <TouchableOpacity style={st.closeBtn} onPress={exitGrounding} hitSlop={12}>
             <Ionicons name="close" size={22} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
-        <Animated.View style={[styles.flexOne, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-          <ScrollView contentContainerStyle={styles.selectScroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.heading}>What do you want to shift?</Text>
+        <Animated.View style={[st.flexOne, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+          <ScrollView contentContainerStyle={st.selectScroll} showsVerticalScrollIndicator={false}>
+            <Text style={st.heading}>What do you want to shift?</Text>
 
-            <View style={styles.tagRow}>
+            <View style={st.tagRow}>
               {tags.map((t) => {
                 const active = selectedTag === t.id;
                 const accent = accentForMode(recommendedByTag[t.id]);
@@ -307,71 +301,67 @@ export default function GroundingScreen() {
 
             {recommendedMode && (
               <>
-                <Text style={styles.sectionLabel}>Recommended</Text>
+                <Text style={st.sectionLabel}>Recommended</Text>
                 {renderTechniqueCard(recommendedMode, true)}
               </>
             )}
 
-            <Text style={styles.sectionLabel}>All techniques</Text>
-            <View style={styles.techniqueList}>
+            <Text style={st.sectionLabel}>All techniques</Text>
+            <View style={st.techniqueList}>
               {GROUNDING_MODES.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
             </View>
           </ScrollView>
         </Animated.View>
-      </View>
+      </GlassBackground>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // COMPLETE
-  // ═══════════════════════════════════════════════════════════════════
+  // ═══════════════ COMPLETE ══════════════════════════════════
   const delta = stressAfter != null ? stressLevel - stressAfter : 0;
   const modeLabel = GROUNDING_MODES.find((m) => m.id === selectedMode)?.label ?? '';
-
   const showStressSection = selectedMode && selectedMode !== 'pre_meeting';
 
   return (
-    <View style={styles.container}>
+    <GlassBackground>
       <ScrollView
-        contentContainerStyle={styles.completeScrollContent}
+        contentContainerStyle={st.completeScrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Animated.View style={[styles.completeWrap, { opacity: fadeAnim }]}>
-          {/* Success icon with glow */}
-          <View style={styles.successGlow}>
-            <View style={styles.successInner}>
+        <Animated.View style={[st.completeWrap, { opacity: fadeAnim }]}>
+          <View style={st.successGlow}>
+            <View style={st.successInner}>
               <Ionicons name="checkmark" size={36} color={colors.success} />
             </View>
           </View>
 
-          <Text style={styles.completeHeading}>Did it help?</Text>
-          {modeLabel ? <Text style={styles.completeModeName}>{modeLabel}</Text> : null}
+          <Text style={st.completeHeading}>Did it help?</Text>
+          {modeLabel ? <Text style={st.completeModeName}>{modeLabel}</Text> : null}
 
-          <View style={styles.thumbRow}>
+          <View style={st.thumbRow}>
             <TouchableOpacity
               onPress={() => setHelpful(true)}
               activeOpacity={0.85}
-              style={[styles.thumbBtn, helpful === true && styles.thumbBtnActive]}
+              style={[st.thumbBtn, helpful === true && st.thumbBtnActive]}
             >
               <Ionicons name="thumbs-up-outline" size={22} color={helpful === true ? colors.primaryForeground : colors.textPrimary} />
-              <Text style={[styles.thumbText, helpful === true && styles.thumbTextActive]}>Yes</Text>
+              <Text style={[st.thumbText, helpful === true && st.thumbTextActive]}>Yes</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setHelpful(false)}
               activeOpacity={0.85}
-              style={[styles.thumbBtn, helpful === false && styles.thumbBtnActive]}
+              style={[st.thumbBtn, helpful === false && st.thumbBtnActive]}
             >
               <Ionicons name="thumbs-down-outline" size={22} color={helpful === false ? colors.primaryForeground : colors.textPrimary} />
-              <Text style={[styles.thumbText, helpful === false && styles.thumbTextActive]}>Not really</Text>
+              <Text style={[st.thumbText, helpful === false && st.thumbTextActive]}>Not really</Text>
             </TouchableOpacity>
           </View>
 
           {showStressSection && (
-            <View style={styles.stressCard}>
-              <Text style={styles.stressCardTitle}>How's your stress now?</Text>
-              <Text style={styles.stressCardHint}>Tap a number — 1 is low, 5 is high</Text>
-              <View style={styles.stressRow}>
+            <GlassCard style={{ marginTop: Spacing.xl, width: '100%' }}>
+              <Text style={st.stressCardTitle}>How's your stress now?</Text>
+              <Text style={st.stressCardHint}>Tap a number — 1 is low, 5 is high</Text>
+              <View style={st.stressRow}>
                 {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
                   const isSelected = stressAfter === level;
                   const accentColor = STRESS_COLORS[level - 1];
@@ -379,37 +369,37 @@ export default function GroundingScreen() {
                     <TouchableOpacity
                       key={level}
                       onPress={() => setStressAfter(level)}
-                      style={[styles.stressPill, isSelected && { backgroundColor: accentColor, borderColor: accentColor }]}
+                      style={[st.stressPill, isSelected && { backgroundColor: accentColor, borderColor: accentColor }]}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.stressPillText, isSelected && { color: '#fff' }]}>{level}</Text>
+                      <Text style={[st.stressPillText, isSelected && { color: '#fff' }]}>{level}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
-              <View style={styles.stressLabelsRow}>
-                <Text style={styles.stressCaption}>Low</Text>
-                <Text style={styles.stressCaption}>High</Text>
+              <View style={st.stressLabelsRow}>
+                <Text style={st.stressCaption}>Low</Text>
+                <Text style={st.stressCaption}>High</Text>
               </View>
-            </View>
+            </GlassCard>
           )}
 
           {stressAfter != null && delta > 0 && (
-            <View style={styles.deltaCard}>
+            <View style={st.deltaCard}>
               <Ionicons name="trending-down" size={20} color={colors.success} />
-              <Text style={styles.deltaText}>Stress dropped by {delta} point{delta > 1 ? 's' : ''}</Text>
+              <Text style={st.deltaText}>Stress dropped by {delta} point{delta > 1 ? 's' : ''}</Text>
             </View>
           )}
 
           {saveError ? (
-            <View style={styles.saveErrorWrap}>
-              <Text style={styles.saveErrorText}>{saveError}</Text>
-              <View style={styles.saveErrorButtons}>
-                <TouchableOpacity onPress={handleDone} style={styles.retrySaveBtn} activeOpacity={0.85}>
-                  <Text style={styles.retrySaveBtnText}>Try again</Text>
+            <View style={st.saveErrorWrap}>
+              <Text style={st.saveErrorText}>{saveError}</Text>
+              <View style={st.saveErrorButtons}>
+                <TouchableOpacity onPress={handleDone} style={st.retrySaveBtn} activeOpacity={0.85}>
+                  <Text style={st.retrySaveBtnText}>Try again</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={exitGrounding} style={styles.leaveAnywayBtn} activeOpacity={0.85}>
-                  <Text style={styles.leaveAnywayBtnText}>Leave anyway</Text>
+                <TouchableOpacity onPress={exitGrounding} style={st.leaveAnywayBtn} activeOpacity={0.85}>
+                  <Text style={st.leaveAnywayBtnText}>Leave anyway</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -417,117 +407,42 @@ export default function GroundingScreen() {
 
           <TouchableOpacity
             style={[
-              styles.primaryBtn,
+              st.primaryBtn,
               { marginTop: Spacing.xl, alignSelf: 'stretch', opacity: helpful == null || isSaving ? 0.6 : 1 },
             ]}
             onPress={handleDone}
             activeOpacity={0.85}
             disabled={helpful == null || isSaving}
           >
-            <Text style={styles.primaryBtnText}>{isSaving ? 'Saving…' : 'Done'}</Text>
+            <Text style={st.primaryBtnText}>{isSaving ? 'Saving…' : 'Done'}</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
-    </View>
+    </GlassBackground>
   );
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-// STYLES
-// ═══════════════════════════════════════════════════════════════════════
 
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     flexOne: { flex: 1 },
 
-    /* ── Top bar ──────────────────────────────────────── */
     topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
-    topTitle: { fontSize: Typography.fontSize.cardTitle, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading },
-    closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.surface },
-    backRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
-    backText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontWeight: Typography.fontWeight.medium, fontFamily: Typography.fontFamily.primary },
-
-    detectScroll: { paddingHorizontal: Spacing.md, paddingBottom: Spacing['2xl'] },
-    heading: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.medium, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.lg, letterSpacing: Typography.letterSpacing.snug, lineHeight: 36 },
-    sectionLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.lg, marginBottom: Spacing.sm },
-
-    stressSectionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.medium, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.sm },
-    stressCard: {
-      marginTop: Spacing.xl,
-      paddingVertical: Spacing.lg,
-      paddingHorizontal: Spacing.lg,
-      backgroundColor: colors.floating,
-      borderRadius: Radius.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      width: '100%',
-    },
-    stressCardTitle: {
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
-      fontFamily: Typography.fontFamily.heading,
-      marginBottom: Spacing.xs,
-      textAlign: 'center',
-    },
-    stressCardHint: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
-      fontFamily: Typography.fontFamily.primary,
-      marginBottom: Spacing.md,
-      textAlign: 'center',
-    },
-    stressRow: { flexDirection: 'row', gap: Spacing.sm },
-    stressPill: {
-      flex: 1,
-      minWidth: 44,
-      height: 44,
-      borderRadius: Radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surface,
-      borderWidth: 1.5,
-      borderColor: colors.borderLight,
-    },
-    stressPillText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary },
-    stressLabelsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.sm, paddingHorizontal: 2 },
-    stressCaption: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
-
-    /* Tone tags (kept for future use if we reintroduce tone selection) */
-    toneWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-    toneTag: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-    toneTagActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    toneTagText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
-    toneTagTextActive: { color: colors.primaryForeground },
+    topTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading },
+    closeBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassBorder },
 
     selectScroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing['2xl'] },
+    heading: { fontSize: 26, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.lg, letterSpacing: Typography.letterSpacing.snug, lineHeight: 34 },
+    sectionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.xl, marginBottom: Spacing.md, letterSpacing: 1, textTransform: 'uppercase' },
+
     tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     techniqueList: { gap: Spacing.sm },
-    techniqueCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.md,
-      backgroundColor: colors.floating,
-      borderRadius: Radius.lg,
-      padding: Spacing.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    techniqueIconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: Radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    techniqueTitle: {
-      flex: 1,
-      fontSize: Typography.fontSize.cardTitle,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
-      fontFamily: Typography.fontFamily.heading,
-    },
+
+    techniqueRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    techniqueIconWrap: { width: 44, height: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
+    techniqueTextWrap: { flex: 1 },
+    techniqueTitle: { fontSize: Typography.fontSize.cardTitle, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading },
+    techniqueDesc: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: 2 },
 
     completeScrollContent: { flexGrow: 1, padding: Spacing.lg, paddingBottom: Spacing['3xl'] },
     completeWrap: { alignItems: 'center', paddingVertical: Spacing.md },
@@ -543,23 +458,31 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 2, borderColor: colors.success + '50',
       alignItems: 'center', justifyContent: 'center',
     },
-    completeHeading: { fontSize: Typography.fontSize.heroCard, fontWeight: Typography.fontWeight.medium, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs },
+    completeHeading: { fontSize: 26, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs },
     completeModeName: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary },
     thumbRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xl },
     thumbBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.md,
-      borderRadius: Radius.sm,
-      backgroundColor: colors.floating,
-      borderWidth: 1,
-      borderColor: colors.border,
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+      paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+      borderRadius: Radius.md, backgroundColor: colors.glass,
+      borderWidth: 1, borderColor: colors.glassBorder,
     },
     thumbBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     thumbText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.semibold },
     thumbTextActive: { color: colors.primaryForeground },
+
+    stressCardTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs, textAlign: 'center' },
+    stressCardHint: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.md, textAlign: 'center' },
+    stressRow: { flexDirection: 'row', gap: Spacing.sm },
+    stressPill: {
+      flex: 1, minWidth: 44, height: 44, borderRadius: Radius.md,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.borderLight,
+    },
+    stressPillText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary },
+    stressLabelsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.sm, paddingHorizontal: 2 },
+    stressCaption: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary },
+
     deltaCard: {
       flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
       backgroundColor: colors.success + '12', borderRadius: Radius.lg,
@@ -577,12 +500,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     leaveAnywayBtnText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium, color: colors.textSecondary, fontFamily: Typography.fontFamily.primary },
 
     primaryBtn: {
-      backgroundColor: colors.primary,
-      borderRadius: Radius.sm,
-      paddingVertical: Spacing.md,
-      paddingHorizontal: Spacing.xl,
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: colors.primary, borderRadius: Radius.md,
+      paddingVertical: 14, paddingHorizontal: Spacing.xl,
+      alignItems: 'center', justifyContent: 'center',
     },
     primaryBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.primary },
   });

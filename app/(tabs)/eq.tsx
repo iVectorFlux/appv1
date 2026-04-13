@@ -23,6 +23,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
@@ -59,6 +60,7 @@ import type {
 export default function EQCheckInScreen() {
   const router = useRouter();
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   
   const [questions, setQuestions] = useState<EQQuestion[]>([]);
@@ -569,7 +571,7 @@ export default function EQCheckInScreen() {
       </ScrollView>
 
       {/* Skip button */}
-      <View style={styles.skipContainer}>
+      <View style={[styles.skipContainer, { paddingBottom: Math.max(insets.bottom, 8) + 64 }]}>
         <TouchableOpacity onPress={handleSkip}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
@@ -812,7 +814,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   completeScrollContent: {
     flexGrow: 1,
     padding: Spacing.xl,
-    paddingBottom: Spacing['3xl'],
+    paddingBottom: 120,
   },
   completeContainer: {
     alignItems: 'center',

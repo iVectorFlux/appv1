@@ -124,7 +124,7 @@ export default function SignInScreen() {
           {/* Privacy Note */}
           <View style={styles.privacyNote}>
             <Text style={styles.privacyText}>
-              Your privacy is protected. Journal entries are encrypted and stored locally only.
+              Your privacy is protected. Your data is encrypted and stays private.
             </Text>
           </View>
         </View>

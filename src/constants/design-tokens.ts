@@ -1,7 +1,7 @@
 /**
- * Design System Tokens — 2026 editorial wellness
+ * Design System Tokens — visionOS glassmorphism (2026)
  *
- * Bento grid, 8px base, DM Sans typography.
+ * 8px base grid, DM Sans typography, frosted glass surfaces.
  * Use useColors() for theme-aware colors.
  */
 
@@ -17,7 +17,6 @@ export const useColors = () => {
 /** @deprecated Use useColors() */
 export const Colors = themes.light;
 
-/** Base 8px. xs=4, sm=8, md=16, lg=24, xl=32, 2xl=40, 3xl=48, 4xl=56, 5xl=64 */
 export const Spacing = {
   xs: 4,
   sm: 8,
@@ -30,17 +29,24 @@ export const Spacing = {
   '5xl': 64,
 } as const;
 
-/** sm=10, md=12, lg=20, xl=24, full=50% */
 export const Radius = {
-  sm: 10,
-  md: 12,
-  lg: 20,
-  xl: 24,
-  '2xl': 28,
+  sm: 12,
+  md: 16,
+  lg: 22,
+  xl: 28,
+  '2xl': 32,
   full: 9999,
 } as const;
 
-/** Editorial type scale: hero 42, heroCard 32, largeNumber 48, section 14, cardTitle 17, body 15, small 13, micro 11 */
+export const Glass = {
+  blur: 20,
+  blurLight: 12,
+  blurHeavy: 40,
+  tint: 'light' as const,
+  tintDark: 'dark' as const,
+  intensity: 60,
+} as const;
+
 export const Typography = {
   fontFamily: {
     primary: Platform.OS === 'web' ? '"DM Sans", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' : 'System',
@@ -85,24 +91,25 @@ export const Typography = {
 } as const;
 
 const shadowsNative = {
-  sm: { shadowColor: '#2D4739', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 },
-  md: { shadowColor: '#2D4739', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
-  lg: { shadowColor: '#2D4739', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
-  card: { shadowColor: '#2D4739', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  hero: { shadowColor: '#2D4739', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 4 },
+  sm: { shadowColor: '#1A2E23', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
+  md: { shadowColor: '#1A2E23', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  lg: { shadowColor: '#1A2E23', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4 },
+  card: { shadowColor: '#1A2E23', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  hero: { shadowColor: '#1A2E23', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 6 },
+  glass: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 4 },
 };
 
 const shadowsWeb = {
-  sm: { boxShadow: '0 1px 2px rgba(45, 71, 57, 0.06)', elevation: 1 },
-  md: { boxShadow: '0 2px 6px rgba(45, 71, 57, 0.08)', elevation: 2 },
-  lg: { boxShadow: '0 4px 12px rgba(45, 71, 57, 0.1)', elevation: 4 },
-  card: { boxShadow: '0 2px 8px rgba(45, 71, 57, 0.06)', elevation: 2 },
-  hero: { boxShadow: '0 4px 16px rgba(45, 71, 57, 0.12)', elevation: 4 },
+  sm: { boxShadow: '0 1px 3px rgba(26, 46, 35, 0.04)', elevation: 1 },
+  md: { boxShadow: '0 2px 8px rgba(26, 46, 35, 0.06)', elevation: 2 },
+  lg: { boxShadow: '0 6px 16px rgba(26, 46, 35, 0.08)', elevation: 4 },
+  card: { boxShadow: '0 2px 10px rgba(26, 46, 35, 0.05)', elevation: 2 },
+  hero: { boxShadow: '0 6px 20px rgba(26, 46, 35, 0.1)', elevation: 6 },
+  glass: { boxShadow: '0 2px 16px rgba(0,0,0,0.06), 0 0 1px rgba(0,0,0,0.08)', elevation: 4 },
 };
 
 export const Shadows = Platform.OS === 'web' ? shadowsWeb : shadowsNative;
 
-/** Bento: 12-col grid, 16px gap, max 1400, horizontal padding 32 */
 export const Layout = {
   gridGap: 16,
   maxWidth: 1400,

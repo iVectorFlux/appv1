@@ -1,8 +1,8 @@
 /**
- * Root Layout
+ * Root Layout — Glassmorphism v5
  * 
  * Expo Router root layout with navigation setup.
- * On web desktop: mobile frame wrapper. On web mobile (e.g. Android phone browser): full viewport for proper scroll and tab bar.
+ * On web desktop: mobile frame wrapper. On web mobile: full viewport.
  */
 
 import { Stack } from 'expo-router';
@@ -26,13 +26,9 @@ export default function RootLayout() {
   const { revalidateSession } = useAuthStore();
 
   useEffect(() => {
-    // Initialize database, auth, and theme
-    // Note: SQLite only works on native platforms, not web
     const init = async () => {
       try {
-        // Initialize theme first
         await initializeTheme();
-        // Only initialize database on native platforms
         if (Platform.OS !== 'web') {
           await initializeDatabase();
         }
@@ -41,11 +37,9 @@ export default function RootLayout() {
         console.error('Initialization failed:', error);
       }
     };
-
     init();
   }, [initialize, initializeTheme]);
 
-  // Re-validate session when app comes to foreground so token refresh is reflected and we don't log out unexpectedly
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
@@ -55,48 +49,49 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, [revalidateSession]);
 
-  const stackContent = (
-    <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background, flex: 1 },
-        }}
-      >
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen 
-          name="full-eq-test" 
-          options={{ presentation: 'card', animation: 'slide_from_right' }} 
-        />
-        <Stack.Screen 
-          name="learning-detail" 
-          options={{ presentation: 'card', animation: 'slide_from_right' }} 
-        />
-        <Stack.Screen 
-          name="journal" 
-          options={{ presentation: 'card', animation: 'slide_from_right' }} 
-        />
-        <Stack.Screen 
-          name="grounding" 
-          options={{ presentation: 'card', animation: 'slide_from_right' }} 
-        />
-        <Stack.Screen 
-          name="chat" 
-          options={{ presentation: 'card', animation: 'slide_from_right' }} 
-        />
-        <Stack.Screen 
-          name="skill-lab" 
-          options={{ presentation: 'card', animation: 'slide_from_right' }} 
-        />
-        <Stack.Screen
-          name="future-skills"
-          options={{ presentation: 'card', animation: 'slide_from_right' }}
-        />
-  </Stack>
+  const stackScreens = (
+    <>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen 
+        name="full-eq-test" 
+        options={{ presentation: 'card', animation: 'slide_from_right' }} 
+      />
+      <Stack.Screen 
+        name="learning-detail" 
+        options={{ presentation: 'card', animation: 'slide_from_right' }} 
+      />
+      <Stack.Screen 
+        name="grounding" 
+        options={{ presentation: 'card', animation: 'slide_from_right' }} 
+      />
+      <Stack.Screen 
+        name="chat" 
+        options={{ presentation: 'card', animation: 'slide_from_right' }} 
+      />
+      <Stack.Screen 
+        name="skill-lab" 
+        options={{ presentation: 'card', animation: 'slide_from_right' }} 
+      />
+      <Stack.Screen
+        name="future-skills"
+        options={{ presentation: 'card', animation: 'slide_from_right' }}
+      />
+    </>
   );
 
-  // On web: mobile viewport (e.g. Android phone browser) = full screen for proper scroll and tab bar; desktop = decorative frame
+  const stackContent = (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background, flex: 1 },
+      }}
+    >
+      {stackScreens}
+    </Stack>
+  );
+
   if (Platform.OS === 'web') {
     const wrapped = isMobileWeb ? (
       <View style={[styles.webFullScreen, { backgroundColor: colors.background }]}>
@@ -112,68 +107,16 @@ export default function RootLayout() {
     return <SafeAreaProvider>{wrapped}</SafeAreaProvider>;
   }
 
-  // On native platforms, use standard Stack
   return (
     <SafeAreaProvider>
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    >
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="onboarding" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen 
-        name="full-eq-test" 
-        options={{ 
-          presentation: 'fullScreenModal',
-          animation: 'slide_from_bottom',
-        }} 
-      />
-      <Stack.Screen 
-        name="learning-detail" 
-        options={{ 
-          presentation: 'card',
-          animation: 'slide_from_right',
-        }} 
-      />
-      <Stack.Screen 
-        name="journal" 
-        options={{ 
-          presentation: 'card',
-          animation: 'slide_from_right',
-        }} 
-      />
-      <Stack.Screen 
-        name="grounding" 
-        options={{ 
-          presentation: 'card',
-          animation: 'slide_from_right',
-        }} 
-      />
-      <Stack.Screen 
-        name="chat" 
-        options={{ 
-          presentation: 'card',
-          animation: 'slide_from_right',
-        }} 
-      />
-      <Stack.Screen 
-        name="skill-lab" 
-        options={{ 
-          presentation: 'card',
-          animation: 'slide_from_right',
-        }} 
-      />
-      <Stack.Screen
-        name="future-skills"
-        options={{
-          presentation: 'card',
-          animation: 'slide_from_right',
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
         }}
-      />
-    </Stack>
+      >
+        {stackScreens}
+      </Stack>
     </SafeAreaProvider>
   );
 }

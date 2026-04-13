@@ -1,27 +1,90 @@
 /**
- * Tabs Layout
+ * Tabs Layout — 3 icon-only tabs inside a floating glass capsule.
  *
- * Bottom tab navigation for main app screens.
- * Protects all tab routes: direct /home, /profile, etc. require sign-in.
- * Uses safe area insets so tab bar is not cut off on Android phone browser / notched devices.
+ * Home, AI Companion, Profile.
+ * Hidden routes: learn, eq, recover, progress.
+ * Active tab gets a highlighted pill glow.
  */
 
+import React from 'react';
 import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  ActivityIndicator,
+  StyleSheet,
+  Animated,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors, Spacing } from '@/constants/design-tokens';
+import { useColors } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
+
+const CAPSULE_H = 56;
+const CAPSULE_HORIZONTAL = 12;
+
+interface TabButtonProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  focused: boolean;
+  colors: ReturnType<typeof useColors>;
+  onPress: () => void;
+  onLongPress: () => void;
+}
+
+function TabButton({ icon, focused, colors, onPress, onLongPress }: TabButtonProps) {
+  const anim = React.useRef(new Animated.Value(focused ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.spring(anim, {
+      toValue: focused ? 1 : 0,
+      useNativeDriver: true,
+      speed: 18,
+      bounciness: focused ? 8 : 4,
+    }).start();
+  }, [focused]);
+
+  const pillScale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
+  const pillOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const iconScale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onLongPress={onLongPress}
+      activeOpacity={0.7}
+      style={styles.tabButton}
+    >
+      <Animated.View
+        style={[
+          styles.activePill,
+          {
+            backgroundColor: colors.primary + '20',
+            opacity: pillOpacity,
+            transform: [{ scale: pillScale }],
+          },
+        ]}
+      />
+      <Animated.View style={{ transform: [{ scale: iconScale }] }}>
+        <Ionicons
+          name={focused ? (icon.replace('-outline', '') as keyof typeof Ionicons.glyphMap) : icon}
+          size={22}
+          color={focused ? colors.primary : colors.textMuted}
+        />
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
 
 export default function TabsLayout() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } = useAuthStore();
+  const isDark = colors.glassTint === 'dark';
 
   const tabBarPaddingBottom = Math.max(insets.bottom, 12);
-  const tabBarContentHeight = 52;
-  const tabBarHeight = tabBarContentHeight + tabBarPaddingBottom;
 
   if (isLoading) {
     return (
@@ -30,111 +93,83 @@ export default function TabsLayout() {
       </View>
     );
   }
-  if (!isAuthenticated) {
-    return <Redirect href="/(auth)/sign-in" />;
-  }
-  if (needsEmailConfirmation) {
-    return <Redirect href="/(auth)/confirm-email" />;
-  }
-  if (hasCompletedOnboarding === false) {
-    return <Redirect href="/onboarding" />;
-  }
+  if (!isAuthenticated) return <Redirect href="/(auth)/sign-in" />;
+  if (needsEmailConfirmation) return <Redirect href="/(auth)/confirm-email" />;
+  if (hasCompletedOnboarding === false) return <Redirect href="/onboarding" />;
+
+  const tabs: { name: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { name: 'home', icon: 'home-outline' },
+    { name: 'companion', icon: 'chatbubble-ellipses-outline' },
+    { name: 'profile', icon: 'person-outline' },
+  ];
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
-        tabBarShowLabel: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: colors.floating,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          paddingTop: 10,
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          height: CAPSULE_H + tabBarPaddingBottom + 8,
           paddingBottom: tabBarPaddingBottom,
-          height: tabBarHeight,
-          minHeight: tabBarHeight,
+          paddingTop: 0,
+          elevation: 0,
+          shadowOpacity: 0,
         },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '500',
-          marginTop: 2,
-        },
-        tabBarIconStyle: {
-          marginBottom: 0,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 4,
-        },
+        tabBarItemStyle: { flex: 1 },
         sceneStyle: { flex: 1 },
+        tabBarBackground: () => (
+          <View style={[styles.capsuleOuter, { bottom: tabBarPaddingBottom }]}>
+            {Platform.OS !== 'web' ? (
+              <BlurView
+                tint={colors.glassTint as 'light' | 'dark'}
+                intensity={isDark ? 50 : 65}
+                style={[StyleSheet.absoluteFill, { borderRadius: CAPSULE_H / 2 }]}
+              />
+            ) : null}
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  borderRadius: CAPSULE_H / 2,
+                  backgroundColor: isDark
+                    ? 'rgba(255,255,255,0.08)'
+                    : 'rgba(255,255,255,0.55)',
+                  borderWidth: 1,
+                  borderColor: isDark
+                    ? 'rgba(255,255,255,0.12)'
+                    : 'rgba(255,255,255,0.65)',
+                },
+              ]}
+            />
+          </View>
+        ),
       }}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="compass-outline" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="reflect"
-        options={{
-          title: 'Reflect',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="heart-outline" size={22} color={focused ? '#C45C5C' : color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="recover"
-        options={{
-          title: 'Recover',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="fitness-outline" size={22} color={focused ? colors.primary : color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="insights"
-        options={{
-          title: 'Insights',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="bulb-outline" size={22} color={focused ? '#E8952F' : color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="person-outline" size={22} color={color} />
-          ),
-        }}
-      />
-      {/* Hidden screens - accessible via navigation but not in tab bar */}
-      <Tabs.Screen
-        name="eq"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="learn"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="assist"
-        options={{
-          href: null,
-        }}
-      />
+      {tabs.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            tabBarButton: (props) => (
+              <TabButton
+                icon={tab.icon}
+                focused={!!props.accessibilityState?.selected}
+                colors={colors}
+                onPress={props.onPress as () => void}
+                onLongPress={props.onLongPress as () => void}
+              />
+            ),
+          }}
+        />
+      ))}
+      <Tabs.Screen name="eq" options={{ href: null }} />
+      <Tabs.Screen name="learn" options={{ href: null }} />
+      <Tabs.Screen name="recover" options={{ href: null }} />
+      <Tabs.Screen name="progress" options={{ href: null }} />
     </Tabs>
   );
 }
@@ -144,5 +179,27 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  capsuleOuter: {
+    position: 'absolute',
+    left: CAPSULE_HORIZONTAL,
+    right: CAPSULE_HORIZONTAL,
+    height: CAPSULE_H,
+    borderRadius: CAPSULE_H / 2,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web'
+      ? { backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' } as object
+      : {}),
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activePill: {
+    position: 'absolute',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
   },
 });
