@@ -473,7 +473,7 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
         setIsHistoryLoading(false);
       }
     },
-    [user?.id]
+    [user?.id, displayName]
   );
 
   useEffect(() => { loadHistory(mode); }, [mode, loadHistory]);
@@ -599,7 +599,6 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
   const handleModeSwitch = (newMode: ChatMode) => {
     if (newMode === mode) return;
     setMode(newMode);
-    setMessages([introMessageForMode(newMode, displayName)]);
   };
 
   const canSend = inputText.trim().length > 0 && !isLoading;
