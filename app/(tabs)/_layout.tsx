@@ -97,11 +97,59 @@ export default function TabsLayout() {
   if (needsEmailConfirmation) return <Redirect href="/(auth)/confirm-email" />;
   if (hasCompletedOnboarding === false) return <Redirect href="/onboarding" />;
 
-  const tabs: { name: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { name: 'home', icon: 'home-outline' },
-    { name: 'companion', icon: 'chatbubble-ellipses-outline' },
-    { name: 'profile', icon: 'person-outline' },
-  ];
+  const tabBarStyleVisible = {
+    position: 'absolute' as const,
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    height: CAPSULE_H + tabBarPaddingBottom + 8,
+    paddingBottom: tabBarPaddingBottom,
+    paddingTop: 0,
+    elevation: 0,
+    shadowOpacity: 0,
+  };
+
+  const tabBarStyleHidden = {
+    display: 'none' as const,
+    height: 0,
+    overflow: 'hidden' as const,
+  };
+
+  const tabBarBackground = () => (
+    <View style={[styles.capsuleOuter, { bottom: tabBarPaddingBottom }]}>
+      {Platform.OS !== 'web' ? (
+        <BlurView
+          tint={colors.glassTint as 'light' | 'dark'}
+          intensity={isDark ? 50 : 65}
+          style={[StyleSheet.absoluteFill, { borderRadius: CAPSULE_H / 2 }]}
+        />
+      ) : null}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            borderRadius: CAPSULE_H / 2,
+            backgroundColor: isDark
+              ? 'rgba(255,255,255,0.08)'
+              : 'rgba(255,255,255,0.55)',
+            borderWidth: 1,
+            borderColor: isDark
+              ? 'rgba(255,255,255,0.12)'
+              : 'rgba(255,255,255,0.65)',
+          },
+        ]}
+      />
+    </View>
+  );
+
+  const tabButton = (icon: keyof typeof Ionicons.glyphMap) => (props: Record<string, unknown>) => (
+    <TabButton
+      icon={icon}
+      focused={!!(props.accessibilityState as { selected?: boolean } | undefined)?.selected}
+      colors={colors}
+      onPress={props.onPress as () => void}
+      onLongPress={props.onLongPress as () => void}
+    />
+  );
 
   return (
     <Tabs
@@ -109,63 +157,21 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarHideOnKeyboard: true,
         tabBarShowLabel: false,
-        tabBarStyle: {
-          position: 'absolute',
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          height: CAPSULE_H + tabBarPaddingBottom + 8,
-          paddingBottom: tabBarPaddingBottom,
-          paddingTop: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
+        tabBarStyle: tabBarStyleVisible,
         tabBarItemStyle: { flex: 1 },
         sceneStyle: { flex: 1 },
-        tabBarBackground: () => (
-          <View style={[styles.capsuleOuter, { bottom: tabBarPaddingBottom }]}>
-            {Platform.OS !== 'web' ? (
-              <BlurView
-                tint={colors.glassTint as 'light' | 'dark'}
-                intensity={isDark ? 50 : 65}
-                style={[StyleSheet.absoluteFill, { borderRadius: CAPSULE_H / 2 }]}
-              />
-            ) : null}
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  borderRadius: CAPSULE_H / 2,
-                  backgroundColor: isDark
-                    ? 'rgba(255,255,255,0.08)'
-                    : 'rgba(255,255,255,0.55)',
-                  borderWidth: 1,
-                  borderColor: isDark
-                    ? 'rgba(255,255,255,0.12)'
-                    : 'rgba(255,255,255,0.65)',
-                },
-              ]}
-            />
-          </View>
-        ),
+        tabBarBackground,
       }}
     >
-      {tabs.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            tabBarButton: (props) => (
-              <TabButton
-                icon={tab.icon}
-                focused={!!props.accessibilityState?.selected}
-                colors={colors}
-                onPress={props.onPress as () => void}
-                onLongPress={props.onLongPress as () => void}
-              />
-            ),
-          }}
-        />
-      ))}
+      <Tabs.Screen name="home" options={{ tabBarButton: tabButton('home-outline') }} />
+      <Tabs.Screen
+        name="companion"
+        options={{
+          tabBarButton: tabButton('chatbubble-ellipses-outline'),
+          tabBarStyle: tabBarStyleHidden,
+        }}
+      />
+      <Tabs.Screen name="profile" options={{ tabBarButton: tabButton('person-outline') }} />
       <Tabs.Screen name="eq" options={{ href: null }} />
       <Tabs.Screen name="learn" options={{ href: null }} />
       <Tabs.Screen name="recover" options={{ href: null }} />

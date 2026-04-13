@@ -42,7 +42,11 @@ import { isSkillLabSkillId } from '@/data/future-skills';
 import { requestChatCompletion } from '@/utils/vercel-api';
 import { ChatHistoryPanel } from '@/components/chat/chat-history-panel';
 
-interface ChatScreenProps { asTab?: boolean; }
+interface ChatScreenProps {
+  asTab?: boolean;
+  /** When true (tab bar hidden on Companion), show Home in header and use safe-area-only bottom inset */
+  hideBottomTabBar?: boolean;
+}
 
 interface Message {
   id: string;
@@ -426,7 +430,7 @@ function introMessageForMode(selectedMode: ChatMode, name?: string): Message {
   };
 }
 
-export default function ChatScreen({ asTab }: ChatScreenProps = {}) {
+export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps = {}) {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -624,6 +628,16 @@ export default function ChatScreen({ asTab }: ChatScreenProps = {}) {
             >
               <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
+          ) : hideBottomTabBar ? (
+            <TouchableOpacity
+              onPress={() => router.replace('/(tabs)/home')}
+              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+              style={st.headerSideBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Home"
+            >
+              <Ionicons name="home-outline" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
           ) : (
             <View style={st.headerSideBtn} />
           )}
@@ -681,7 +695,17 @@ export default function ChatScreen({ asTab }: ChatScreenProps = {}) {
 
       {/* ── Input bar ─────────────────────────────── */}
       <View style={st.inputOuter}>
-          <View style={[st.inputRow, { paddingBottom: asTab ? Math.max(insets.bottom, 12) + 72 : Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 12) }]}>
+          <View
+            style={[
+              st.inputRow,
+              {
+                paddingBottom:
+                  asTab && !hideBottomTabBar
+                    ? Math.max(insets.bottom, 12) + 72
+                    : Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 12),
+              },
+            ]}
+          >
           {/* Quick suggestions */}
           {showSuggestions && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.suggestionsRow} style={st.suggestionsScroll}>

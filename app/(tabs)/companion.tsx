@@ -12,7 +12,7 @@ import ChatScreen from '../chat/index';
 export default function CompanionTab() {
   return (
     <GlassBackground>
-      <ChatScreen asTab />
+      <ChatScreen asTab hideBottomTabBar />
     </GlassBackground>
   );
 }
