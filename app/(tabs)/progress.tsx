@@ -1,8 +1,8 @@
 /**
- * Progress & Report — Glassmorphism v5
+ * Progress & Report — Premium glassmorphism dashboard
  *
- * EQ scores, learning/skill lab activity, recovery sessions, and AI companion usage.
- * Uses structured data only.
+ * EQ score ring, dimension strength bars, episode progress bars,
+ * skill lab visual cards, companion usage, and recovery stats.
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -15,6 +15,8 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
@@ -28,7 +30,6 @@ import { getEQScores } from '@/services/eq-storage';
 import {
   EMPTY_INSIGHTS_LEARNING_BUNDLE,
   loadInsightsLearningBundle,
-  shortenEpisodeKey,
   skillDisplayName,
   type InsightsLearningBundle,
 } from '@/services/insights-learning-bundle';
@@ -37,11 +38,17 @@ import { GlassCard } from '@/components/ui/glass-card';
 import type { EQDimension } from '@/types/eq-assessment';
 import type { GroundingMode } from '@/types/grounding';
 
+const { width: SCREEN_W } = Dimensions.get('window');
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const RECOVERY_TIMEOUT_MS = 8000;
 const EQ_SCORES_TIMEOUT_MS = 8000;
 const LEARNING_BUNDLE_TIMEOUT_MS = 10000;
 const SAFETY_TIMEOUT_MS = 20000;
+
+const SCORE_RING_SIZE = 140;
+const SCORE_RING_STROKE = 10;
+const SCORE_RING_RADIUS = (SCORE_RING_SIZE - SCORE_RING_STROKE) / 2;
+const SCORE_RING_CIRC = 2 * Math.PI * SCORE_RING_RADIUS;
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -54,12 +61,200 @@ function dimensionLabel(key: string): string {
   return DIMENSION_INFO[key as EQDimension]?.name ?? key.replace(/_/g, ' ');
 }
 
+function dimensionColor(key: string): string {
+  return DIMENSION_INFO[key as EQDimension]?.color ?? '#94A3B8';
+}
+
+function dimensionIcon(key: string): keyof typeof Ionicons.glyphMap {
+  return (DIMENSION_INFO[key as EQDimension]?.icon ?? 'ellipse-outline') as keyof typeof Ionicons.glyphMap;
+}
+
 function formatDate(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
+
+function extractEpisodeName(key: string): string {
+  const parts = key.split('|');
+  return parts[parts.length - 1]?.trim() || key;
+}
+
+// ── Score ring (SVG-free, uses border + rotation trick) ────────────────
+
+function ScoreRing({ score, maxScore = 100, color, colors }: { score: number; maxScore?: number; color: string; colors: ReturnType<typeof useColors> }) {
+  const pct = Math.min(score / maxScore, 1);
+  const dashOffset = SCORE_RING_CIRC * (1 - pct);
+  const isDark = colors.glassTint === 'dark';
+
+  return (
+    <View style={ringStyles.wrap}>
+      {Platform.OS === 'web' ? (
+        <svg width={SCORE_RING_SIZE} height={SCORE_RING_SIZE} viewBox={`0 0 ${SCORE_RING_SIZE} ${SCORE_RING_SIZE}`}>
+          <circle
+            cx={SCORE_RING_SIZE / 2}
+            cy={SCORE_RING_SIZE / 2}
+            r={SCORE_RING_RADIUS}
+            fill="none"
+            stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'}
+            strokeWidth={SCORE_RING_STROKE}
+          />
+          <circle
+            cx={SCORE_RING_SIZE / 2}
+            cy={SCORE_RING_SIZE / 2}
+            r={SCORE_RING_RADIUS}
+            fill="none"
+            stroke={color}
+            strokeWidth={SCORE_RING_STROKE}
+            strokeLinecap="round"
+            strokeDasharray={`${SCORE_RING_CIRC}`}
+            strokeDashoffset={`${dashOffset}`}
+            transform={`rotate(-90 ${SCORE_RING_SIZE / 2} ${SCORE_RING_SIZE / 2})`}
+          />
+        </svg>
+      ) : (
+        <View style={[ringStyles.ring, { width: SCORE_RING_SIZE, height: SCORE_RING_SIZE, borderRadius: SCORE_RING_SIZE / 2, borderWidth: SCORE_RING_STROKE, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+          <View style={[ringStyles.ringFill, { borderColor: color, borderWidth: SCORE_RING_STROKE, borderRadius: SCORE_RING_SIZE / 2, width: SCORE_RING_SIZE, height: SCORE_RING_SIZE }]} />
+        </View>
+      )}
+      <View style={ringStyles.center}>
+        <Text style={[ringStyles.scoreNum, { color: colors.textPrimary }]}>{score}</Text>
+        <Text style={[ringStyles.scoreLabel, { color: colors.textMuted }]}>EQ Score</Text>
+      </View>
+    </View>
+  );
+}
+
+const ringStyles = StyleSheet.create({
+  wrap: { alignItems: 'center', justifyContent: 'center', width: SCORE_RING_SIZE, height: SCORE_RING_SIZE },
+  ring: { position: 'absolute' },
+  ringFill: { position: 'absolute' },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  scoreNum: { fontSize: 36, fontWeight: '700', letterSpacing: -1 },
+  scoreLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 2 },
+});
+
+// ── Dimension bar ─────────────────────────────────────────────────────
+
+function DimensionBar({ label, score, maxScore = 100, color, icon, colors }: {
+  label: string; score: number; maxScore?: number; color: string;
+  icon: keyof typeof Ionicons.glyphMap; colors: ReturnType<typeof useColors>;
+}) {
+  const pct = Math.min(score / maxScore, 1);
+  const barAnim = useRef(new Animated.Value(0)).current;
+  const isDark = colors.glassTint === 'dark';
+
+  useEffect(() => {
+    Animated.timing(barAnim, { toValue: pct, duration: 800, useNativeDriver: false }).start();
+  }, [pct]);
+
+  const barWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+
+  return (
+    <View style={dimStyles.row}>
+      <View style={[dimStyles.iconWrap, { backgroundColor: color + '18' }]}>
+        <Ionicons name={icon} size={14} color={color} />
+      </View>
+      <View style={dimStyles.body}>
+        <View style={dimStyles.labelRow}>
+          <Text style={[dimStyles.label, { color: colors.textPrimary }]} numberOfLines={1}>{label}</Text>
+          <Text style={[dimStyles.value, { color: colors.textSecondary }]}>{score}</Text>
+        </View>
+        <View style={[dimStyles.track, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
+          <Animated.View style={[dimStyles.fill, { width: barWidth, backgroundColor: color }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const dimStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  iconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  body: { flex: 1 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
+  label: { fontSize: 13, fontWeight: '500' },
+  value: { fontSize: 12, fontWeight: '600' },
+  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  fill: { height: 6, borderRadius: 3 },
+});
+
+// ── Episode progress bar ──────────────────────────────────────────────
+
+function EpisodeRow({ name, videoPct, audioPct, colors }: {
+  name: string; videoPct: number; audioPct: number; colors: ReturnType<typeof useColors>;
+}) {
+  const isDark = colors.glassTint === 'dark';
+  const trackBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+  const avgPct = Math.round((videoPct + audioPct) / 2);
+  const done = videoPct >= 100 && audioPct >= 100;
+
+  return (
+    <View style={epStyles.row}>
+      <View style={epStyles.titleRow}>
+        {done ? (
+          <Ionicons name="checkmark-circle" size={16} color={colors.success} style={{ marginRight: 6 }} />
+        ) : (
+          <Ionicons name="play-circle-outline" size={16} color={colors.textMuted} style={{ marginRight: 6 }} />
+        )}
+        <Text style={[epStyles.name, { color: colors.textPrimary }]} numberOfLines={1}>{name}</Text>
+        <Text style={[epStyles.pct, { color: done ? colors.success : colors.textSecondary }]}>{avgPct}%</Text>
+      </View>
+      <View style={epStyles.bars}>
+        <View style={epStyles.barGroup}>
+          <Text style={[epStyles.barLabel, { color: colors.textMuted }]}>V</Text>
+          <View style={[epStyles.track, { backgroundColor: trackBg }]}>
+            <View style={[epStyles.fill, { width: `${videoPct}%`, backgroundColor: colors.accentIndigo }]} />
+          </View>
+        </View>
+        <View style={epStyles.barGroup}>
+          <Text style={[epStyles.barLabel, { color: colors.textMuted }]}>A</Text>
+          <View style={[epStyles.track, { backgroundColor: trackBg }]}>
+            <View style={[epStyles.fill, { width: `${audioPct}%`, backgroundColor: colors.accentSage }]} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const epStyles = StyleSheet.create({
+  row: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(128,128,128,0.1)' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  name: { flex: 1, fontSize: 13, fontWeight: '500' },
+  pct: { fontSize: 12, fontWeight: '600', marginLeft: 8 },
+  bars: { gap: 5, paddingLeft: 22 },
+  barGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  barLabel: { fontSize: 10, fontWeight: '600', width: 10 },
+  track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
+  fill: { height: 4, borderRadius: 2 },
+});
+
+// ── Stat pill (small stat with icon) ──────────────────────────────────
+
+function StatPill({ icon, value, label, color, colors }: {
+  icon: keyof typeof Ionicons.glyphMap; value: string | number; label: string; color: string; colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={spStyles.pill}>
+      <View style={[spStyles.iconWrap, { backgroundColor: color + '18' }]}>
+        <Ionicons name={icon} size={18} color={color} />
+      </View>
+      <Text style={[spStyles.value, { color: colors.textPrimary }]}>{value}</Text>
+      <Text style={[spStyles.label, { color: colors.textMuted }]}>{label}</Text>
+    </View>
+  );
+}
+
+const spStyles = StyleSheet.create({
+  pill: { alignItems: 'center', flex: 1, paddingVertical: 12 },
+  iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  value: { fontSize: 20, fontWeight: '700', letterSpacing: -0.5 },
+  label: { fontSize: 11, fontWeight: '500', marginTop: 2, textAlign: 'center' },
+});
+
+// ── Data hook (unchanged logic) ───────────────────────────────────────
 
 function useProgressData() {
   const { user, isLoading: authLoading } = useAuthStore();
@@ -145,15 +340,16 @@ function useProgressData() {
       ? Object.entries(latest.dimensionScores).filter(([, v]) => typeof v === 'number')
       : [];
     dimEntries.sort((a, b) => (b[1] as number) - (a[1] as number));
-    const topDimensions = dimEntries.slice(0, 3).map(([k]) => ({ key: k, label: dimensionLabel(k) }));
-    return { total: n, checkInCount: checkIns.length, fullTestCount: fullTests.length, latestOverall: latest.overallScore, avgOverall, last7, topDimensions };
+    const allDimensions = dimEntries.map(([k, v]) => ({ key: k, label: dimensionLabel(k), score: v as number, color: dimensionColor(k), icon: dimensionIcon(k) }));
+    const topDimensions = allDimensions.slice(0, 3);
+    return { total: n, checkInCount: checkIns.length, fullTestCount: fullTests.length, latestOverall: latest.overallScore, avgOverall, last7, allDimensions, topDimensions };
   }, [eqScores]);
 
   const assistActivity = useMemo(() => {
     if (!learningHydrated) return null;
     const b = learningBundle;
     if (b.assistInnerAllyMessages === 0 && b.assistCoachMessages === 0) return null;
-    return { inner: b.assistInnerAllyMessages, coach: b.assistCoachMessages, lastAt: b.lastAssistMessageAt };
+    return { inner: b.assistInnerAllyMessages, coach: b.assistCoachMessages, total: b.assistInnerAllyMessages + b.assistCoachMessages, lastAt: b.lastAssistMessageAt };
   }, [learningHydrated, learningBundle]);
 
   const learningSummary = useMemo(() => {
@@ -162,7 +358,7 @@ function useProgressData() {
     const totalSkillSessions = skillList.reduce((s, p) => s + p.sessionsCompleted, 0);
     const totalScenarios = skillList.reduce((s, p) => s + p.scenariosAttempted, 0);
     const topSkills = [...skillList]
-      .sort((a, b) => b.sessionsCompleted - a.sessionsCompleted)
+      .sort((a, bx) => bx.sessionsCompleted - a.sessionsCompleted)
       .slice(0, 6)
       .map((p) => ({ id: p.skillId, name: skillDisplayName(p.skillId), completed: p.sessionsCompleted, attempted: p.scenariosAttempted, lastAt: p.lastPracticedAt }));
     const hasRealActivity = b.catalogEpisodesEngaged > 0 || totalSkillSessions > 0;
@@ -182,10 +378,14 @@ function useProgressData() {
     const n = recoverySessions.length;
     const byMode: Record<GroundingMode, number> = {} as Record<GroundingMode, number>;
     recoverySessions.forEach((s) => { byMode[s.mode] = (byMode[s.mode] ?? 0) + 1; });
-    const top = (Object.entries(byMode) as [GroundingMode, number][]).sort((a, b) => b[1] - a[1])[0];
-    const topMode = top ? GROUNDING_MODES.find((m) => m.id === top[0])?.label ?? top[0] : null;
+    const sorted = (Object.entries(byMode) as [GroundingMode, number][]).sort((a, b) => b[1] - a[1]);
+    const topModes = sorted.slice(0, 3).map(([id, count]) => ({
+      id,
+      label: GROUNDING_MODES.find((m) => m.id === id)?.label ?? id,
+      count,
+    }));
     const last7 = recoverySessions.filter((s) => Date.now() - new Date(s.startedAt).getTime() < 7 * ONE_DAY_MS).length;
-    return { count: n, topMode, last7 };
+    return { count: n, topModes, last7 };
   }, [recoverySessions]);
 
   return {
@@ -196,14 +396,16 @@ function useProgressData() {
   };
 }
 
+// ── Main screen ───────────────────────────────────────────────────────
+
 export default function ProgressScreen() {
   const router = useRouter();
   const colors = useColors();
   const [refreshing, setRefreshing] = useState(false);
   const d = useProgressData();
+  const isDark = colors.glassTint === 'dark';
 
   const onRefresh = () => { setRefreshing(true); d.retry(); setTimeout(() => setRefreshing(false), 500); };
-  const signedIn = !!d.user?.id && !d.authLoading;
   const st = createStyles(colors);
 
   return (
@@ -212,110 +414,182 @@ export default function ProgressScreen() {
         style={st.container}
         contentContainerStyle={st.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        showsVerticalScrollIndicator={false}
       >
         <View style={st.header}>
-          <Text style={st.title}>Progress & Report</Text>
-          <Text style={st.subtitle}>What you practice, made visible.</Text>
+          <Text style={st.title}>Your Progress</Text>
+          <Text style={st.subtitle}>Track your emotional intelligence growth</Text>
         </View>
 
-        {/* AI Companion activity */}
+        {/* ── EQ Score Hero ──────────────────────────── */}
+        <View style={st.section}>
+          {d.loadingEq ? (
+            <GlassCard>
+              <View style={st.loadingRow}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={st.loadingText}>Loading EQ results…</Text>
+              </View>
+            </GlassCard>
+          ) : d.eqSummary ? (
+            <>
+              <GlassCard>
+                <View style={st.heroRow}>
+                  <ScoreRing score={d.eqSummary.latestOverall} color={colors.primary} colors={colors} />
+                  <View style={st.heroMeta}>
+                    <View style={st.heroStatRow}>
+                      <Text style={[st.heroStatNum, { color: colors.textPrimary }]}>{d.eqSummary.total}</Text>
+                      <Text style={[st.heroStatLabel, { color: colors.textSecondary }]}>
+                        assessment{d.eqSummary.total !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    {d.eqSummary.last7 > 0 && (
+                      <View style={st.heroStatRow}>
+                        <Text style={[st.heroStatNum, { color: colors.primary }]}>{d.eqSummary.last7}</Text>
+                        <Text style={[st.heroStatLabel, { color: colors.textSecondary }]}>this week</Text>
+                      </View>
+                    )}
+                    {d.eqSummary.topDimensions.length > 0 && (
+                      <View style={st.strengthBadges}>
+                        {d.eqSummary.topDimensions.map((dim) => (
+                          <View key={dim.key} style={[st.strengthBadge, { backgroundColor: dim.color + '18' }]}>
+                            <Ionicons name={dim.icon} size={10} color={dim.color} />
+                            <Text style={[st.strengthBadgeText, { color: dim.color }]}>{dim.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </GlassCard>
+
+              {d.eqSummary.allDimensions.length > 0 && (
+                <GlassCard style={{ marginTop: Spacing.sm }}>
+                  <Text style={st.cardTitle}>Dimension Breakdown</Text>
+                  <View style={{ marginTop: 8 }}>
+                    {d.eqSummary.allDimensions.map((dim) => (
+                      <DimensionBar
+                        key={dim.key}
+                        label={dim.label}
+                        score={dim.score}
+                        color={dim.color}
+                        icon={dim.icon}
+                        colors={colors}
+                      />
+                    ))}
+                  </View>
+                </GlassCard>
+              )}
+
+              <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.primary }]} onPress={() => router.push('/(tabs)/eq')} activeOpacity={0.85}>
+                <Ionicons name="pulse-outline" size={18} color={colors.primaryForeground} />
+                <Text style={[st.ctaBtnText, { color: colors.primaryForeground }]}>Take EQ Check-in</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <GlassCard>
+              <View style={st.emptyState}>
+                <View style={[st.emptyIcon, { backgroundColor: colors.primary + '14' }]}>
+                  <Ionicons name="analytics-outline" size={28} color={colors.primary} />
+                </View>
+                <Text style={[st.emptyTitle, { color: colors.textPrimary }]}>No EQ scores yet</Text>
+                <Text style={[st.emptyBody, { color: colors.textSecondary }]}>
+                  Complete your first check-in to unlock your EQ dashboard with scores, dimensions, and progress tracking.
+                </Text>
+                <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.primary, alignSelf: 'stretch' }]} onPress={() => router.push('/(tabs)/eq')} activeOpacity={0.85}>
+                  <Ionicons name="pulse-outline" size={18} color={colors.primaryForeground} />
+                  <Text style={[st.ctaBtnText, { color: colors.primaryForeground }]}>Start EQ Check-in</Text>
+                </TouchableOpacity>
+              </View>
+            </GlassCard>
+          )}
+          {d.errorEq ? <Text style={st.errorText}>{d.errorEq}</Text> : null}
+        </View>
+
+        {/* ── AI Companion ───────────────────────────── */}
         {d.assistActivity && (
           <View style={st.section}>
             <SectionHeading icon="chatbubble-ellipses-outline" iconColor={colors.accentTerracotta} title="AI Companion" colors={colors} />
             <GlassCard>
-              <Text style={st.cardTitle}>Conversation activity</Text>
-              <Text style={st.bodyText}>
-                Inner Ally: {d.assistActivity.inner} message{d.assistActivity.inner !== 1 ? 's' : ''} · Coach: {d.assistActivity.coach} message{d.assistActivity.coach !== 1 ? 's' : ''}
-              </Text>
+              <View style={st.statsRow}>
+                <StatPill icon="heart-outline" value={d.assistActivity.inner} label="Inner Ally" color={colors.accentSage} colors={colors} />
+                <View style={[st.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
+                <StatPill icon="rocket-outline" value={d.assistActivity.coach} label="Coach" color={colors.accentIndigo} colors={colors} />
+                <View style={[st.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
+                <StatPill icon="chatbubbles-outline" value={d.assistActivity.total} label="Total" color={colors.accentTerracotta} colors={colors} />
+              </View>
               {formatDate(d.assistActivity.lastAt) && (
-                <Text style={st.statLine}>Last message · {formatDate(d.assistActivity.lastAt)}</Text>
+                <Text style={[st.metaFooter, { color: colors.textMuted }]}>Last message · {formatDate(d.assistActivity.lastAt)}</Text>
               )}
             </GlassCard>
           </View>
         )}
 
-        {/* EQ assessments */}
+        {/* ── Learning & Skill Lab ───────────────────── */}
         <View style={st.section}>
-          <SectionHeading icon="analytics-outline" iconColor={colors.primary} title="EQ Assessments" colors={colors} />
-          {d.loadingEq ? (
-            <GlassCard><View style={st.loadingRow}><ActivityIndicator size="small" color={colors.primary} /><Text style={st.loadingText}>Loading EQ results…</Text></View></GlassCard>
-          ) : d.eqSummary ? (
-            <GlassCard>
-              <Text style={st.cardTitle}>
-                {d.eqSummary.total} completed ({d.eqSummary.checkInCount} check-in{d.eqSummary.checkInCount !== 1 ? 's' : ''}{d.eqSummary.fullTestCount > 0 ? ` · ${d.eqSummary.fullTestCount} full test${d.eqSummary.fullTestCount !== 1 ? 's' : ''}` : ''})
-              </Text>
-              {d.eqSummary.last7 > 0 && <Text style={st.statLine}>{d.eqSummary.last7} in the last 7 days</Text>}
-              <Text style={st.bodyText}>
-                Latest overall: {d.eqSummary.latestOverall}{d.eqSummary.avgOverall != null && d.eqSummary.total > 1 ? ` · Average: ${Math.round(d.eqSummary.avgOverall)}` : ''}
-              </Text>
-              {d.eqSummary.topDimensions.length > 0 && (
-                <Text style={st.bodyText}>Strongest: {d.eqSummary.topDimensions.map((d) => d.label).join(' · ')}</Text>
-              )}
-              <TouchableOpacity style={st.primaryCta} onPress={() => router.push('/(tabs)/eq')} activeOpacity={0.85}>
-                <Text style={st.primaryCtaText}>Take EQ Check-in</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.primaryForeground} />
-              </TouchableOpacity>
-            </GlassCard>
-          ) : !d.supabaseOn ? (
-            <GlassCard><Text style={st.bodyText}>EQ scores sync when Supabase is configured.</Text></GlassCard>
-          ) : (
-            <GlassCard>
-              <Text style={st.cardTitle}>No EQ scores yet</Text>
-              <Text style={st.bodyText}>Complete a check-in to see your scores here.</Text>
-              <TouchableOpacity style={st.primaryCta} onPress={() => router.push('/(tabs)/eq')} activeOpacity={0.85}>
-                <Text style={st.primaryCtaText}>Start EQ Check-in</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.primaryForeground} />
-              </TouchableOpacity>
-            </GlassCard>
-          )}
-          {d.errorEq && <Text style={st.errorText}>{d.errorEq}</Text>}
-        </View>
-
-        {/* Learning & Skill Lab */}
-        <View style={st.section}>
-          <SectionHeading icon="school-outline" iconColor={colors.accentIndigo} title="Learning & Skill Lab" colors={colors} />
+          <SectionHeading icon="school-outline" iconColor={colors.accentIndigo} title="Learning" colors={colors} />
           {d.loadingLearning ? (
-            <GlassCard><View style={st.loadingRow}><ActivityIndicator size="small" color={colors.primary} /><Text style={st.loadingText}>Loading learning activity…</Text></View></GlassCard>
+            <GlassCard>
+              <View style={st.loadingRow}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={st.loadingText}>Loading learning activity…</Text>
+              </View>
+            </GlassCard>
           ) : d.learningHydrated && d.learningSummary.emptyLearning ? (
             <GlassCard>
-              <Text style={st.cardTitle}>No learning progress yet</Text>
-              <Text style={st.bodyText}>Open episodes in Learn or practice in Skill Lab to see activity here.</Text>
-              <TouchableOpacity style={st.primaryCta} onPress={() => router.push('/(tabs)/learn')} activeOpacity={0.85}>
-                <Text style={st.primaryCtaText}>Browse Learn</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.primaryForeground} />
-              </TouchableOpacity>
+              <View style={st.emptyState}>
+                <View style={[st.emptyIcon, { backgroundColor: colors.accentIndigo + '14' }]}>
+                  <Ionicons name="school-outline" size={28} color={colors.accentIndigo} />
+                </View>
+                <Text style={[st.emptyTitle, { color: colors.textPrimary }]}>Start learning</Text>
+                <Text style={[st.emptyBody, { color: colors.textSecondary }]}>
+                  Explore lessons and practice in Skill Lab to track your growth here.
+                </Text>
+                <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.accentIndigo, alignSelf: 'stretch' }]} onPress={() => router.push('/(tabs)/learn')} activeOpacity={0.85}>
+                  <Ionicons name="book-outline" size={18} color="#fff" />
+                  <Text style={[st.ctaBtnText, { color: '#fff' }]}>Browse Lessons</Text>
+                </TouchableOpacity>
+              </View>
             </GlassCard>
           ) : (
             <>
               {d.learningSummary.catalogEpisodesEngaged > 0 && (
                 <GlassCard>
-                  <Text style={st.cardTitle}>Lessons</Text>
-                  <Text style={st.bodyText}>
-                    {d.learningSummary.catalogEpisodesEngaged} episode{d.learningSummary.catalogEpisodesEngaged !== 1 ? 's' : ''} with activity · {d.learningSummary.catalogEpisodesCompleteBoth} fully complete
-                  </Text>
-                  {d.learningSummary.catalogDetails.length > 0 && (
-                    <View style={st.progressBlock}>
-                      {d.learningSummary.catalogDetails.map((ep) => (
-                        <View key={ep.episodeKey} style={st.progressRow}>
-                          <Text style={st.progressTitle} numberOfLines={1}>{shortenEpisodeKey(ep.episodeKey)}</Text>
-                          <Text style={st.progressMeta}>Video {ep.videoPct}% · Audio {ep.audioPct}%</Text>
-                        </View>
-                      ))}
+                  <View style={st.cardTitleRow}>
+                    <Text style={st.cardTitle}>Lessons</Text>
+                    <View style={[st.badge, { backgroundColor: colors.accentIndigo + '18' }]}>
+                      <Text style={[st.badgeText, { color: colors.accentIndigo }]}>
+                        {d.learningSummary.catalogEpisodesCompleteBoth}/{d.learningSummary.catalogEpisodesEngaged} done
+                      </Text>
                     </View>
-                  )}
+                  </View>
+                  {d.learningSummary.catalogDetails.map((ep, i) => (
+                    <EpisodeRow
+                      key={ep.episodeKey}
+                      name={extractEpisodeName(ep.episodeKey)}
+                      videoPct={ep.videoPct}
+                      audioPct={ep.audioPct}
+                      colors={colors}
+                    />
+                  ))}
                 </GlassCard>
               )}
+
               {d.learningSummary.totalSkillSessions > 0 && (
-                <GlassCard style={d.learningSummary.catalogEpisodesEngaged > 0 ? { marginTop: Spacing.sm } : undefined}>
+                <GlassCard style={{ marginTop: Spacing.sm }}>
                   <Text style={st.cardTitle}>Skill Lab</Text>
-                  <Text style={st.bodyText}>
-                    {d.learningSummary.totalSkillSessions} practice round{d.learningSummary.totalSkillSessions !== 1 ? 's' : ''} completed
-                    {d.learningSummary.totalScenarios > 0 ? ` · ${d.learningSummary.totalScenarios} scenario${d.learningSummary.totalScenarios !== 1 ? 's' : ''}` : ''}
-                  </Text>
+                  <View style={st.statsRow}>
+                    <StatPill icon="fitness-outline" value={d.learningSummary.totalSkillSessions} label="Sessions" color={colors.accentSage} colors={colors} />
+                    <View style={[st.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
+                    <StatPill icon="layers-outline" value={d.learningSummary.totalScenarios} label="Scenarios" color={colors.accentIndigo} colors={colors} />
+                  </View>
                   {d.learningSummary.topSkills.filter((s) => s.completed > 0).length > 0 && (
-                    <View style={st.bulletList}>
+                    <View style={{ marginTop: 8 }}>
                       {d.learningSummary.topSkills.filter((s) => s.completed > 0).map((s) => (
-                        <Text key={s.id} style={st.bulletItem}>· {s.name}: {s.completed} completed</Text>
+                        <View key={s.id} style={st.skillRow}>
+                          <View style={[st.skillDot, { backgroundColor: colors.primary }]} />
+                          <Text style={[st.skillName, { color: colors.textPrimary }]} numberOfLines={1}>{s.name}</Text>
+                          <Text style={[st.skillCount, { color: colors.textSecondary }]}>{s.completed}×</Text>
+                        </View>
                       ))}
                     </View>
                   )}
@@ -323,36 +597,60 @@ export default function ProgressScreen() {
               )}
             </>
           )}
-          {d.errorLearning && <Text style={st.errorText}>{d.errorLearning}</Text>}
+          {d.errorLearning ? <Text style={st.errorText}>{d.errorLearning}</Text> : null}
         </View>
 
-        {/* Recover & grounding */}
+        {/* ── Recover & Grounding ────────────────────── */}
         <View style={st.section}>
-          <SectionHeading icon="leaf-outline" iconColor={colors.accentCalm} title="Recover & Grounding" colors={colors} />
+          <SectionHeading icon="leaf-outline" iconColor={colors.accentCalm} title="Recovery" colors={colors} />
           {d.loadingRecover ? (
-            <GlassCard><View style={st.loadingRow}><ActivityIndicator size="small" color={colors.primary} /><Text style={st.loadingText}>Loading recovery data…</Text></View></GlassCard>
+            <GlassCard>
+              <View style={st.loadingRow}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={st.loadingText}>Loading recovery data…</Text>
+              </View>
+            </GlassCard>
           ) : d.recoverySummary ? (
             <GlassCard>
-              <Text style={st.cardTitle}>{d.recoverySummary.count} session{d.recoverySummary.count !== 1 ? 's' : ''}</Text>
-              {d.recoverySummary.last7 > 0 && <Text style={st.statLine}>{d.recoverySummary.last7} in the last 7 days</Text>}
-              {d.recoverySummary.topMode && <Text style={st.bodyText}>Most used: {d.recoverySummary.topMode}</Text>}
+              <View style={st.statsRow}>
+                <StatPill icon="leaf-outline" value={d.recoverySummary.count} label="Total Sessions" color={colors.accentCalm} colors={colors} />
+                <View style={[st.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
+                <StatPill icon="calendar-outline" value={d.recoverySummary.last7} label="This Week" color={colors.accentIndigo} colors={colors} />
+              </View>
+              {d.recoverySummary.topModes.length > 0 && (
+                <View style={st.modeChips}>
+                  {d.recoverySummary.topModes.map((m) => (
+                    <View key={m.id} style={[st.modeChip, { backgroundColor: colors.accentCalm + '14', borderColor: colors.accentCalm + '25' }]}>
+                      <Text style={[st.modeChipText, { color: colors.accentCalm }]}>{m.label}</Text>
+                      <Text style={[st.modeChipCount, { color: colors.textMuted }]}>×{m.count}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </GlassCard>
           ) : (
             <GlassCard>
-              <Text style={st.cardTitle}>No recovery sessions yet</Text>
-              <Text style={st.bodyText}>Complete a grounding exercise to see summaries here.</Text>
-              <TouchableOpacity style={st.primaryCta} onPress={() => router.push('/(tabs)/recover')} activeOpacity={0.85}>
-                <Text style={st.primaryCtaText}>Go to Recover</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.primaryForeground} />
-              </TouchableOpacity>
+              <View style={st.emptyState}>
+                <View style={[st.emptyIcon, { backgroundColor: colors.accentCalm + '14' }]}>
+                  <Ionicons name="leaf-outline" size={28} color={colors.accentCalm} />
+                </View>
+                <Text style={[st.emptyTitle, { color: colors.textPrimary }]}>No recovery sessions</Text>
+                <Text style={[st.emptyBody, { color: colors.textSecondary }]}>
+                  Try a grounding or breathing exercise to see your recovery stats here.
+                </Text>
+                <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.accentCalm, alignSelf: 'stretch' }]} onPress={() => router.push('/(tabs)/recover')} activeOpacity={0.85}>
+                  <Ionicons name="leaf-outline" size={18} color="#fff" />
+                  <Text style={[st.ctaBtnText, { color: '#fff' }]}>Try Grounding</Text>
+                </TouchableOpacity>
+              </View>
             </GlassCard>
           )}
-          {d.errorRecover && <Text style={st.errorText}>{d.errorRecover}</Text>}
+          {d.errorRecover ? <Text style={st.errorText}>{d.errorRecover}</Text> : null}
         </View>
 
         <View style={st.footer}>
           <Text style={st.footerText}>
-            Progress uses structured data only (scores, completion, session counts). Your conversations remain private.
+            Progress uses structured data only. Your conversations remain private.
           </Text>
         </View>
       </ScrollView>
@@ -360,47 +658,76 @@ export default function ProgressScreen() {
   );
 }
 
-function SectionHeading({ icon, iconColor, title, colors }: { icon: keyof typeof Ionicons.glyphMap; iconColor: string; title: string; colors: ReturnType<typeof useColors> }) {
-  const st = createStyles(colors);
+// ── Section heading ───────────────────────────────────────────────────
+
+function SectionHeading({ icon, iconColor, title, colors }: {
+  icon: keyof typeof Ionicons.glyphMap; iconColor: string; title: string; colors: ReturnType<typeof useColors>;
+}) {
   return (
-    <View style={st.sectionHeadingRow}>
-      <View style={[st.sectionIcon, { backgroundColor: iconColor + '18' }]}>
-        <Ionicons name={icon} size={18} color={iconColor} />
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm }}>
+      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: iconColor + '18', alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={16} color={iconColor} />
       </View>
-      <Text style={st.sectionTitle}>{title}</Text>
+      <Text style={{ fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary }}>{title}</Text>
     </View>
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
+// ── Styles ────────────────────────────────────────────────────────────
+
+const createStyles = (colors: ReturnType<typeof useColors>) => {
+  const isDark = colors.glassTint === 'dark';
+  return StyleSheet.create({
     container: { flex: 1 },
     content: { paddingBottom: 120, paddingHorizontal: Spacing.md },
     header: { paddingTop: Platform.OS === 'ios' ? 56 : Spacing.xl, marginBottom: Spacing.lg },
-    title: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, marginBottom: Spacing.xs },
-    subtitle: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45, color: colors.textSecondary },
+    title: { fontSize: 26, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.5 },
+    subtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+
     section: { marginBottom: Spacing.xl },
-    sectionHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-    sectionIcon: { width: 36, height: 36, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
-    sectionTitle: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary },
-    cardTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, marginBottom: Spacing.xs },
-    statLine: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, marginBottom: Spacing.xs },
-    bodyText: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45, color: colors.textSecondary, marginBottom: Spacing.xs },
+
+    cardTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary, marginBottom: 4 },
+    cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    badgeText: { fontSize: 11, fontWeight: '600' },
+
+    heroRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+    heroMeta: { flex: 1, gap: 8 },
+    heroStatRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+    heroStatNum: { fontSize: 22, fontWeight: '700' },
+    heroStatLabel: { fontSize: 12, fontWeight: '500' },
+    strengthBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+    strengthBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
+    strengthBadgeText: { fontSize: 10, fontWeight: '600' },
+
+    statsRow: { flexDirection: 'row', alignItems: 'center' },
+    statDivider: { width: 1, height: 36, marginHorizontal: 4 },
+
+    ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, paddingHorizontal: Spacing.md, borderRadius: Radius.md, marginTop: 12 },
+    ctaBtnText: { fontSize: 14, fontWeight: '600' },
+
+    emptyState: { alignItems: 'center', paddingVertical: 8 },
+    emptyIcon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+    emptyTitle: { fontSize: 16, fontWeight: '600', marginBottom: 6 },
+    emptyBody: { fontSize: 13, lineHeight: 19, textAlign: 'center', maxWidth: 280, marginBottom: 8 },
+
+    metaFooter: { fontSize: 11, textAlign: 'center', marginTop: 10 },
+
+    skillRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
+    skillDot: { width: 6, height: 6, borderRadius: 3 },
+    skillName: { flex: 1, fontSize: 13, fontWeight: '500' },
+    skillCount: { fontSize: 12, fontWeight: '600' },
+
+    modeChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+    modeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, borderWidth: 1 },
+    modeChipText: { fontSize: 12, fontWeight: '600' },
+    modeChipCount: { fontSize: 11, fontWeight: '500' },
+
     loadingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-    loadingText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary },
-    errorText: { fontSize: Typography.fontSize.xs, color: colors.destructive, marginTop: Spacing.xs },
-    primaryCta: {
-      marginTop: Spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      gap: Spacing.xs, backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: Spacing.md, borderRadius: Radius.md,
-    },
-    primaryCtaText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.primaryForeground },
-    progressBlock: { marginTop: Spacing.sm },
-    progressRow: { paddingVertical: Spacing.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight },
-    progressTitle: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium, color: colors.textPrimary, marginBottom: 2 },
-    progressMeta: { fontSize: Typography.fontSize.xs, color: colors.textSecondary },
-    divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: Spacing.md },
-    bulletList: { marginTop: Spacing.xs, marginBottom: Spacing.sm },
-    bulletItem: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, marginBottom: 2 },
-    footer: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs },
-    footerText: { fontSize: Typography.fontSize.xs, lineHeight: 16, color: colors.textMuted, textAlign: 'center' },
+    loadingText: { fontSize: 13, color: colors.textSecondary },
+    errorText: { fontSize: 11, color: colors.destructive, marginTop: 4 },
+
+    footer: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs, marginBottom: Spacing.md },
+    footerText: { fontSize: 11, lineHeight: 16, color: colors.textMuted, textAlign: 'center' },
   });
+};
