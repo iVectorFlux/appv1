@@ -26,6 +26,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
+import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 
 const STAGGER = 70;
 const FADE_MS = 420;
@@ -34,7 +35,6 @@ const GAP = 12;
 interface Feature {
   key: string;
   title: string;
-  subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
   accent: string;
   route: string;
@@ -44,15 +44,16 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const colors = useColors();
+  const isWebLaptop = useWebLaptopLayout();
   const [mounted, setMounted] = useState(false);
 
   const features: Feature[] = [
-    { key: 'learn', title: 'Learn EQ', subtitle: 'Expert-led emotional intelligence lessons', icon: 'book-outline', accent: colors.accentIndigo, route: '/(tabs)/learn' },
-    { key: 'companion', title: 'AI Companion', subtitle: 'Inner Ally & Coach, always here', icon: 'chatbubble-ellipses-outline', accent: colors.accentTerracotta, route: '/(tabs)/companion' },
-    { key: 'skill-lab', title: 'Skill Lab', subtitle: 'AI-powered practice drills', icon: 'rocket-outline', accent: colors.accentSage, route: '/skill-lab' },
-    { key: 'recover', title: 'Recover', subtitle: 'Grounding & breathing exercises', icon: 'leaf-outline', accent: colors.accentCalm, route: '/(tabs)/recover' },
-    { key: 'eq', title: 'EQ Check-in', subtitle: 'Quick 7-dimension assessment', icon: 'pulse-outline', accent: colors.accentWarmTan, route: '/(tabs)/eq' },
-    { key: 'progress', title: 'Progress', subtitle: 'Track growth and patterns', icon: 'stats-chart-outline', accent: colors.accentTerracotta, route: '/(tabs)/progress' },
+    { key: 'learn', title: 'Learn EQ', icon: 'book-outline', accent: colors.accentIndigo, route: '/(tabs)/learn' },
+    { key: 'companion', title: 'AI Companion', icon: 'chatbubble-ellipses-outline', accent: colors.accentTerracotta, route: '/(tabs)/companion' },
+    { key: 'skill-lab', title: 'Skill Lab', icon: 'rocket-outline', accent: colors.accentSage, route: '/skill-lab' },
+    { key: 'recover', title: 'Recover', icon: 'leaf-outline', accent: colors.accentCalm, route: '/(tabs)/recover' },
+    { key: 'eq', title: 'EQ Check-in', icon: 'pulse-outline', accent: colors.accentWarmTan, route: '/(tabs)/eq' },
+    { key: 'progress', title: 'Progress', icon: 'stats-chart-outline', accent: colors.accentTerracotta, route: '/(tabs)/progress' },
   ];
 
   const anims = useRef(features.map(() => new Animated.Value(0))).current;
@@ -63,6 +64,7 @@ export default function HomeScreen() {
   useEffect(() => {
     Animated.timing(greetAnim, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
     Animated.stagger(STAGGER, anims.map((a) => Animated.timing(a, { toValue: 1, duration: FADE_MS, useNativeDriver: true }))).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only entrance; refs stable
   }, []);
 
   const greeting = (() => {
@@ -88,13 +90,33 @@ export default function HomeScreen() {
     </Animated.View>
   );
 
+  const renderTile = (index: number) => {
+    const f = features[index];
+    return animWrap(
+      index,
+      <GlassCard onPress={() => router.push(f.route as never)} borderRadius={Radius.xl} style={isWebLaptop ? st.webTile : st.gridCardFill}>
+        <View style={st.gridContent}>
+          <View style={[st.iconWrap, { backgroundColor: f.accent + '1A' }]}>
+            <Ionicons name={f.icon} size={22} color={f.accent} />
+          </View>
+          <Text style={st.gridTitle}>{f.title}</Text>
+        </View>
+      </GlassCard>,
+      isWebLaptop ? st.webTileWrap : st.gridCell
+    );
+  };
+
   return (
     <GlassBackground>
-      <ScrollView style={st.scroll} contentContainerStyle={st.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={st.scroll}
+        contentContainerStyle={[st.content, isWebLaptop && st.contentWebLaptop]}
+        showsVerticalScrollIndicator={false}
+      >
         <Animated.View style={[st.greetSection, { opacity: greetAnim }]}>
           <View style={st.greetRow}>
             <View style={{ flex: 1 }}>
-              <Text style={st.greeting}>{greeting}</Text>
+              <Text style={[st.greeting, isWebLaptop && st.greetingWeb]}>{greeting}</Text>
               <Text style={st.tagline}>Start your transformation journey</Text>
             </View>
             <TouchableOpacity
@@ -107,73 +129,37 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {/* Row 1 */}
-        <View style={st.gridRow}>
-          {animWrap(0, (
-            <GlassCard onPress={() => router.push(features[0].route as any)} borderRadius={Radius.xl} style={st.gridCardFill}>
-              <View style={st.gridContent}>
-                <View style={[st.iconWrap, { backgroundColor: features[0].accent + '1A' }]}>
-                  <Ionicons name={features[0].icon} size={22} color={features[0].accent} />
-                </View>
-                <Text style={st.gridTitle}>{features[0].title}</Text>
-                <Text style={st.gridSub} numberOfLines={2}>{features[0].subtitle}</Text>
-              </View>
-            </GlassCard>
-          ), st.gridCell)}
-          {animWrap(1, (
-            <GlassCard onPress={() => router.push(features[1].route as any)} borderRadius={Radius.xl} style={st.gridCardFill}>
-              <View style={st.gridContent}>
-                <View style={[st.iconWrap, { backgroundColor: features[1].accent + '1A' }]}>
-                  <Ionicons name={features[1].icon} size={22} color={features[1].accent} />
-                </View>
-                <Text style={st.gridTitle}>{features[1].title}</Text>
-                <Text style={st.gridSub} numberOfLines={2}>{features[1].subtitle}</Text>
-              </View>
-            </GlassCard>
-          ), st.gridCell)}
-        </View>
-
-        {/* Row 2 */}
-        <View style={st.gridRow}>
-          {animWrap(2, (
-            <GlassCard onPress={() => router.push(features[2].route as any)} borderRadius={Radius.xl} style={st.gridCardFill}>
-              <View style={st.gridContent}>
-                <View style={[st.iconWrap, { backgroundColor: features[2].accent + '1A' }]}>
-                  <Ionicons name={features[2].icon} size={22} color={features[2].accent} />
-                </View>
-                <Text style={st.gridTitle}>{features[2].title}</Text>
-                <Text style={st.gridSub} numberOfLines={2}>{features[2].subtitle}</Text>
-              </View>
-            </GlassCard>
-          ), st.gridCell)}
-          {animWrap(3, (
-            <GlassCard onPress={() => router.push(features[3].route as any)} borderRadius={Radius.xl} style={st.gridCardFill}>
-              <View style={st.gridContent}>
-                <View style={[st.iconWrap, { backgroundColor: features[3].accent + '1A' }]}>
-                  <Ionicons name={features[3].icon} size={22} color={features[3].accent} />
-                </View>
-                <Text style={st.gridTitle}>{features[3].title}</Text>
-                <Text style={st.gridSub} numberOfLines={2}>{features[3].subtitle}</Text>
-              </View>
-            </GlassCard>
-          ), st.gridCell)}
-        </View>
-
-        {/* Bottom compact rows */}
-        {[4, 5].map((i) => animWrap(i, (
-          <GlassCard onPress={() => router.push(features[i].route as any)} borderRadius={Radius.lg}>
-            <View style={st.compactInner}>
-              <View style={[st.iconSmall, { backgroundColor: features[i].accent + '1A' }]}>
-                <Ionicons name={features[i].icon} size={18} color={features[i].accent} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={st.compactTitle}>{features[i].title}</Text>
-                <Text style={st.compactSub} numberOfLines={1}>{features[i].subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+        {isWebLaptop ? (
+          <View style={st.webTileGrid}>
+            {features.map((_, i) => (
+              <React.Fragment key={features[i].key}>{renderTile(i)}</React.Fragment>
+            ))}
+          </View>
+        ) : (
+          <>
+            <View style={st.gridRow}>
+              {renderTile(0)}
+              {renderTile(1)}
             </View>
-          </GlassCard>
-        ), st.compactWrap))}
+            <View style={st.gridRow}>
+              {renderTile(2)}
+              {renderTile(3)}
+            </View>
+            {[4, 5].map((i) => animWrap(i, (
+              <GlassCard key={features[i].key} onPress={() => router.push(features[i].route as never)} borderRadius={Radius.lg}>
+                <View style={st.compactInner}>
+                  <View style={[st.iconSmall, { backgroundColor: features[i].accent + '1A' }]}>
+                    <Ionicons name={features[i].icon} size={18} color={features[i].accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.compactTitle}>{features[i].title}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+                </View>
+              </GlassCard>
+            ), st.compactWrap))}
+          </>
+        )}
 
         <View style={st.footer}>
           <Ionicons name="shield-checkmark-outline" size={13} color={colors.textMuted} />
@@ -191,6 +177,29 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: Spacing.md,
       paddingTop: Platform.OS === 'ios' ? 60 : Spacing.xl,
       paddingBottom: 120,
+    },
+    contentWebLaptop: {
+      paddingHorizontal: Spacing.xl,
+      paddingTop: Platform.OS === 'web' ? Spacing['2xl'] : Spacing.xl,
+      paddingBottom: Spacing['2xl'],
+    },
+    greetingWeb: {
+      fontSize: 32,
+      letterSpacing: -0.8,
+    },
+    webTileGrid: {
+      width: '100%',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: GAP,
+      justifyContent: 'flex-start',
+    },
+    webTileWrap: {
+      width: '32%' as any,
+      maxWidth: 340,
+    },
+    webTile: {
+      width: '100%',
     },
     greetSection: { marginBottom: Spacing.lg + 4 },
     greetRow: {
@@ -245,12 +254,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
       marginTop: Spacing.sm,
-      marginBottom: 3,
-    },
-    gridSub: {
-      fontSize: 12,
-      color: colors.textSecondary,
-      lineHeight: 16,
     },
 
     /* Compact rows */
@@ -273,11 +276,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.base,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
-      marginBottom: 1,
-    },
-    compactSub: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
     },
 
     footer: {

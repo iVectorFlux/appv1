@@ -1,8 +1,10 @@
 /**
  * Root Layout — Glassmorphism v5
- * 
- * Expo Router root layout with navigation setup.
- * On web desktop: mobile frame wrapper. On web mobile: full viewport.
+ *
+ * Web:
+ * - Narrow (≤500): full viewport (phone in browser).
+ * - Medium (501–1023): centered phone frame (current “app preview”).
+ * - Laptop (≥1024): full window, no frame — desktop experience.
  */
 
 import { Stack } from 'expo-router';
@@ -13,8 +15,11 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { initializeDatabase } from '@/services/database';
 import { useColors } from '@/constants/design-tokens';
-
-const MOBILE_WEB_BREAKPOINT = 500;
+import {
+  LAPTOP_WEB_BREAKPOINT,
+  MOBILE_WEB_BREAKPOINT,
+  WEB_LAPTOP_MAX_CONTENT_WIDTH,
+} from '@/hooks/useWebLaptopLayout';
 
 export default function RootLayout() {
   const { initialize } = useAuthStore();
@@ -22,6 +27,7 @@ export default function RootLayout() {
   const colors = useColors();
   const { width: windowWidth } = useWindowDimensions();
   const isMobileWeb = Platform.OS === 'web' && windowWidth <= MOBILE_WEB_BREAKPOINT;
+  const isLaptopWeb = Platform.OS === 'web' && windowWidth >= LAPTOP_WEB_BREAKPOINT;
 
   const { revalidateSession } = useAuthStore();
 
@@ -93,7 +99,13 @@ export default function RootLayout() {
   );
 
   if (Platform.OS === 'web') {
-    const wrapped = isMobileWeb ? (
+    const wrapped = isLaptopWeb ? (
+      <View style={[styles.webLaptopRoot, { backgroundColor: colors.background }]}>
+        <View style={[styles.webLaptopInner, { maxWidth: WEB_LAPTOP_MAX_CONTENT_WIDTH }]}>
+          {stackContent}
+        </View>
+      </View>
+    ) : isMobileWeb ? (
       <View style={[styles.webFullScreen, { backgroundColor: colors.background }]}>
         {stackContent}
       </View>
@@ -136,6 +148,17 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+  },
+  webLaptopRoot: {
+    flex: 1,
+    width: '100%',
+    minHeight: '100vh' as any,
+    alignItems: 'center',
+  },
+  webLaptopInner: {
+    flex: 1,
+    width: '100%',
+    minHeight: '100vh' as any,
   },
   mobileFrame: {
     width: 393,

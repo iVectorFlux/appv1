@@ -231,7 +231,7 @@ export default function LearningDetailScreen() {
       return;
     }
     if (r === 'assist') {
-      router.replace('/(tabs)/assist');
+      router.replace('/(tabs)/companion');
       return;
     }
     if (router.canGoBack()) {

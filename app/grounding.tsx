@@ -150,7 +150,7 @@ export default function GroundingScreen() {
 
   const exitGrounding = useCallback(() => {
     if (returnTarget === 'chat') { router.replace('/chat'); return; }
-    if (returnTarget === 'assist') { router.replace('/(tabs)/assist'); return; }
+    if (returnTarget === 'assist') { router.replace('/(tabs)/companion'); return; }
     router.replace('/(tabs)/recover');
   }, [router, returnTarget]);
 
@@ -433,7 +433,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
 
     selectScroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing['2xl'] },
     heading: { fontSize: 26, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.lg, letterSpacing: Typography.letterSpacing.snug, lineHeight: 34 },
-    sectionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.xl, marginBottom: Spacing.md, letterSpacing: 1, textTransform: 'uppercase' },
+    sectionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.xl, marginBottom: Spacing.md, letterSpacing: 0.35 },
 
     tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     techniqueList: { gap: Spacing.sm },

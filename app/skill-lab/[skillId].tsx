@@ -23,6 +23,7 @@ import {
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Animated,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,13 @@ import { useAuthStore } from '@/stores/auth-store';
 import { getSkillById } from '@/data/future-skills';
 import type { AtomicSkill, FutureSkill, PracticeMode } from '@/data/future-skills';
 import { saveSkillSession, recordScenarioAttempt } from '@/services/skills-storage';
+import {
+  DEFAULT_SKILL_PRACTICE_CONTEXT,
+  loadSkillPracticeContext,
+  isSkillPracticeContextFilled,
+  practiceContextForApi,
+  type SkillPracticeContext,
+} from '@/services/skill-practice-context';
 import { buildVercelApiUrl } from '@/utils/vercel-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,7 +115,7 @@ function getModeConfig(
       return {
         scenarioLabel,
         // Placeholder stays short — the task lives in the "question" line only (no duplicate audit essay).
-        inputPlaceholder: 'Be specific — what you noticed, why it matters, what you’d change or verify.',
+        inputPlaceholder: "Be specific — what you noticed, why it matters, what you'd change or verify.",
         hint: 'Each sub-skill uses a different exercise. Pick a sub-skill, then start practice.',
         loadingText: 'Generating your exercise...',
       };
@@ -140,6 +148,38 @@ function getModeConfig(
         hint: 'Scenario → pick a move → explain your reasoning → feedback, trade-offs, and a reflection prompt.',
         loadingText: 'Generating your scenario...',
       };
+  }
+}
+
+function getHowToSolveBullets(mode: PracticeMode, isDecisionMode: boolean): string[] {
+  if (isDecisionMode) {
+    return [
+      'Read the scenario for stakes, constraints, and who is affected.',
+      'Pick the option you would honestly take — not the one that sounds most polished in a panel interview.',
+      'In your reasoning, name trade-offs, risks, and what you would watch after you act.',
+    ];
+  }
+  switch (mode) {
+    case 'output_audit':
+      return [
+        'Separate what the text claims from what it proves — flag overconfidence, missing caveats, and weak sourcing.',
+        'Say what you would verify, and how, before trusting or sharing the output.',
+      ];
+    case 'generative_brainstorm':
+      return [
+        'Aim for range before polish — quantity helps you escape the first obvious idea.',
+        'Include one idea that challenges an assumption and one borrowed from a different domain.',
+      ];
+    case 'draft_and_refine':
+      return [
+        'State your goal in one line, then write for a sceptical reader in that room.',
+        'Keep the ask clear: one main request and one obvious next step.',
+      ];
+    default:
+      return [
+        'Name emotions and incentives for each side before you decide what you would say or do.',
+        'Ground your answer in the sub-skill you selected — reference a concrete detail from the scenario.',
+      ];
   }
 }
 
@@ -187,6 +227,23 @@ function parseDecisionOptionsFromApi(data: Record<string, unknown>): DecisionOpt
       return { id, label };
     })
     .filter((x) => x.label.length > 0);
+}
+
+/** Phase step labels for the practice stepper bar. */
+const PHASE_STEPS_DECISION = ['Choose', 'Reason', 'Feedback'] as const;
+const PHASE_STEPS_OPEN = ['Read', 'Respond', 'Feedback'] as const;
+
+function getPhaseIndex(phase: PracticePhase, isDecision: boolean): number {
+  if (phase === 'loading_scenario') return 0;
+  if (isDecision) {
+    if (phase === 'choosing_decision') return 0;
+    if (phase === 'answering' || phase === 'loading_feedback') return 1;
+    if (phase === 'feedback') return 2;
+  } else {
+    if (phase === 'answering' || phase === 'loading_feedback') return 1;
+    if (phase === 'feedback') return 2;
+  }
+  return 0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,8 +373,7 @@ const fbStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   bullet: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.5, paddingLeft: Spacing.xs },
   refinementBox: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm },
@@ -328,11 +384,82 @@ const fbStyles = StyleSheet.create({
   reflectionLabel: {
     fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
     marginBottom: 4,
   },
   reflectionQ: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium, lineHeight: Typography.fontSize.sm * 1.5 },
+});
+
+/** Phase stepper bar rendered above the practice area. */
+function PhaseStepper({
+  steps,
+  activeIndex,
+  accentColor,
+  colors,
+}: {
+  steps: readonly string[];
+  activeIndex: number;
+  accentColor: string;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={stepperStyles.row}>
+      {steps.map((label, i) => {
+        const done = i < activeIndex;
+        const active = i === activeIndex;
+        return (
+          <React.Fragment key={label}>
+            {i > 0 && (
+              <View
+                style={[
+                  stepperStyles.line,
+                  { backgroundColor: done ? accentColor : colors.border },
+                ]}
+              />
+            )}
+            <View style={stepperStyles.stepCol}>
+              <View
+                style={[
+                  stepperStyles.dot,
+                  {
+                    backgroundColor: done || active ? accentColor : colors.surface,
+                    borderColor: done || active ? accentColor : colors.border,
+                  },
+                ]}
+              >
+                {done && <Ionicons name="checkmark" size={10} color="#fff" />}
+                {active && !done && <View style={[stepperStyles.innerDot, { backgroundColor: '#fff' }]} />}
+              </View>
+              <Text
+                style={[
+                  stepperStyles.label,
+                  { color: active ? accentColor : done ? colors.textSecondary : colors.textMuted },
+                ]}
+              >
+                {label}
+              </Text>
+            </View>
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+}
+
+const stepperStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md, gap: 2 },
+  stepCol: { alignItems: 'center', gap: 3 },
+  dot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  innerDot: { width: 6, height: 6, borderRadius: 3 },
+  line: { height: 2, flex: 1, borderRadius: 1, minWidth: 28 },
+  label: { fontSize: Typography.fontSize.micro, fontWeight: Typography.fontWeight.medium },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -350,10 +477,11 @@ export default function SkillDetailScreen() {
     const ret = params.returnTo;
     const r = Array.isArray(ret) ? ret[0] : ret;
     if (r === 'chat') { router.replace('/chat'); return; }
-    if (r === 'assist') { router.replace('/(tabs)/assist'); return; }
+    if (r === 'assist') { router.replace('/(tabs)/companion'); return; }
     router.back();
   }, [params.returnTo, router]);
 
+  // Resolve skill — may be undefined; hooks still run unconditionally
   const skill = getSkillById(skillId ?? '');
 
   const [selectedAtomicId, setSelectedAtomicId] = useState<string | null>(null);
@@ -369,42 +497,45 @@ export default function SkillDetailScreen() {
   const [attemptNumber, setAttemptNumber] = useState(1);
   const [roundsSaved, setRoundsSaved] = useState(0);
   const [practiceError, setPracticeError] = useState<string | null>(null);
+  const [practiceCtx, setPracticeCtx] = useState<SkillPracticeContext>({ ...DEFAULT_SKILL_PRACTICE_CONTEXT });
+  const [customProblemDraft, setCustomProblemDraft] = useState('');
 
   const scrollRef = useRef<ScrollView>(null);
   /** Timestamp when the current scenario started loading — used for duration_ms. */
   const scenarioStartedAt = useRef<number>(0);
   /** Keep a ref in sync with selectedAtomicId to avoid stale closures in startPractice. */
   const selectedAtomicIdRef = useRef<string | null>(null);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
   const styles = createStyles(colors);
 
-  if (!skill) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={{ color: colors.textPrimary }}>Skill not found.</Text>
-        <TouchableOpacity onPress={navigateBackFromSkill}>
-          <Text style={{ color: colors.primary, marginTop: 8 }}>Go back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const practiceMode = skill.practiceMode;
+  // Derived values — safe even when skill is null
+  const practiceMode = skill?.practiceMode ?? 'decision_simulator';
   const modeConfig = getModeConfig(practiceMode, {
-    skillId: skill.id,
+    skillId: skill?.id,
     atomicSkillId: selectedAtomicId,
   });
-  const selectedAtomic = skill.atomicSkills.find((a) => a.id === selectedAtomicId) ?? null;
+  const selectedAtomic = skill?.atomicSkills.find((a) => a.id === selectedAtomicId) ?? null;
   const isDecisionMode = practiceMode === 'decision_simulator';
 
+  // Load practice context
+  useEffect(() => {
+    loadSkillPracticeContext().then(setPracticeCtx);
+  }, []);
+
   // Keep ref in sync with state
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => { selectedAtomicIdRef.current = selectedAtomicId; }, [selectedAtomicId]);
 
+  // Fade-in animation on mount
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+  }, [fadeAnim]);
+
   // ── Start practice: generate scenario ──────────────────────────────────────
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const startPractice = useCallback(async () => {
     const atomicId = selectedAtomicIdRef.current;
-    if (!atomicId) return;
+    if (!atomicId || !skill) return;
     setPracticeError(null);
     setPhase('loading_scenario');
     setFeedback(null);
@@ -420,6 +551,11 @@ export default function SkillDetailScreen() {
     }
 
     try {
+      const practiceContext = isSkillPracticeContextFilled(practiceCtx)
+        ? practiceContextForApi(practiceCtx)
+        : undefined;
+      const customDraft = customProblemDraft.trim();
+
       const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -430,6 +566,8 @@ export default function SkillDetailScreen() {
           atomicSkillName: skill.atomicSkills.find((a) => a.id === atomicId)?.name ?? null,
           practiceMode,
           generateScenario: true,
+          ...(practiceContext ? { practiceContext } : {}),
+          ...(customDraft ? { customProblemDraft: customDraft } : {}),
         }),
       });
 
@@ -474,13 +612,13 @@ export default function SkillDetailScreen() {
       setPracticeError(errMsg2);
       setPhase('idle');
     }
-  }, [skill, practiceMode, isDecisionMode, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [skill, practiceMode, isDecisionMode, user?.id, practiceCtx, customProblemDraft]);
 
 
   // ── Submit answer: get feedback ─────────────────────────────────────────────
   const submitAnswer = useCallback(async () => {
     const answer = userAnswer.trim();
-    if (!answer || phase !== 'answering') return;
+    if (!answer || phase !== 'answering' || !skill) return;
     if (isDecisionMode && !selectedDecisionId) return;
 
     setPhase('loading_feedback');
@@ -563,16 +701,16 @@ export default function SkillDetailScreen() {
   ]);
 
   // ── Refine: keep scenario, increment attempt ────────────────────────────────
-  const refineAnswer = () => {
+  const refineAnswer = useCallback(() => {
     setAttemptNumber((n) => n + 1);
     setUserAnswer('');
     setFeedback(null);
     setPhase('answering');
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
-  };
+  }, []);
 
   // ── New scenario ────────────────────────────────────────────────────────────
-  const newScenario = () => {
+  const newScenario = useCallback(() => {
     setScenario('');
     setPracticeQuestion('');
     setDecisionOptions([]);
@@ -580,301 +718,398 @@ export default function SkillDetailScreen() {
     setUserAnswer('');
     setFeedback(null);
     startPractice();
-  };
+  }, [startPractice]);
+
+  // ── Early return for missing skill — AFTER all hooks have run ──────────────
+  if (!skill) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color={colors.textMuted} />
+        <Text style={{ color: colors.textPrimary, fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, marginTop: Spacing.md }}>Skill not found</Text>
+        <Text style={{ color: colors.textMuted, fontSize: Typography.fontSize.sm, marginTop: Spacing.xs }}>This skill may have been removed or the link is invalid.</Text>
+        <TouchableOpacity onPress={navigateBackFromSkill} style={{ marginTop: Spacing.lg }}>
+          <Text style={{ color: colors.primary, fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold }}>Go back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const isPracticing = phase !== 'idle';
+  const phaseSteps = isDecisionMode ? PHASE_STEPS_DECISION : PHASE_STEPS_OPEN;
+  const maxCustomChars = 300;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView
-        ref={scrollRef}
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={navigateBackFromSkill} style={styles.backBtn} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <View style={[styles.iconCircle, { backgroundColor: skill.color + '18' }]}>
-            <Ionicons name={skill.icon as any} size={24} color={skill.color} />
-          </View>
-          <View style={styles.headerText}>
-            <Text style={styles.skillName}>{skill.name}</Text>
-            <Text style={styles.skillTagline}>{skill.tagline}</Text>
-          </View>
-        </View>
-
-        {/* About */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About this skill</Text>
-          <Text style={styles.bodyText}>{skill.description}</Text>
-          <View style={[styles.whyBox, { backgroundColor: skill.color + '10', borderColor: skill.color + '30' }]}>
-            <Ionicons name="information-circle-outline" size={16} color={skill.color} />
-            <Text style={[styles.whyText, { color: colors.textPrimary }]}>{skill.why}</Text>
-          </View>
-        </View>
-
-        {/* Sub-skills */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sub-skills</Text>
-          <Text style={styles.bodyTextMuted}>
-            Choose a sub-skill below — practice is tailored to that focus.
-          </Text>
-          <View style={styles.chipRow}>
-            {skill.atomicSkills.map((a) => (
-              <AtomicSkillChip
-                key={a.id}
-                skill={a}
-                selected={selectedAtomicId === a.id}
-                color={skill.color}
-                colors={colors}
-                onPress={() => setSelectedAtomicId((prev) => (prev === a.id ? null : a.id))}
-              />
-            ))}
-          </View>
-          {selectedAtomic && (
-            <Text style={styles.atomicDesc}>{selectedAtomic.description}</Text>
-          )}
-        </View>
-
-        {/* Start CTA (idle) */}
-        {!isPracticing && (
-          <View style={styles.section}>
-            {roundsSaved > 0 && (
-              <View style={[styles.roundsBadge, { backgroundColor: colors.primary + '15' }]}>
-                <Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} />
-                <Text style={[styles.roundsText, { color: colors.primary }]}>
-                  {roundsSaved} {roundsSaved === 1 ? 'round' : 'rounds'} completed this session
-                </Text>
-              </View>
-            )}
-
-            {/* Error banner */}
-            {practiceError && (
-              <View style={[styles.errorBanner, { backgroundColor: colors.destructive + '14', borderColor: colors.destructive + '40' }]}>
-                <Ionicons name="alert-circle-outline" size={16} color={colors.destructive} />
-                <Text style={[styles.errorBannerText, { color: colors.destructive }]}>{practiceError}</Text>
-              </View>
-            )}
-
-            <TouchableOpacity
-              style={[
-                styles.startBtn,
-                {
-                  backgroundColor: selectedAtomicId ? skill.color : colors.surface,
-                  borderWidth: selectedAtomicId ? 0 : 1,
-                  borderColor: colors.border,
-                },
-              ]}
-              onPress={startPractice}
-              disabled={!selectedAtomicId}
-              activeOpacity={selectedAtomicId ? 0.85 : 1}
-            >
-              <Ionicons
-                name="play-circle-outline"
-                size={20}
-                color={selectedAtomicId ? '#fff' : colors.textMuted}
-              />
-              <Text
-                style={[
-                  styles.startBtnText,
-                  { color: selectedAtomicId ? '#fff' : colors.textMuted },
-                ]}
-              >
-                {practiceError ? 'Try again' : roundsSaved > 0 ? 'Practice again' : 'Start AI Practice'}
-              </Text>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={navigateBackFromSkill} style={styles.backBtn} hitSlop={8}>
+              <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
-            {!selectedAtomicId ? (
-              <Text style={[styles.practiceHint, { color: colors.textSecondary }]}>
-                Select a sub-skill above to enable practice.
-              </Text>
-            ) : (
-              <Text style={styles.practiceHint}>{modeConfig.hint}</Text>
-            )}
-          </View>
-        )}
-
-        {/* ── PRACTICE AREA ─────────────────────────────────────── */}
-        {isPracticing && (
-          <View style={styles.section}>
-            <View style={styles.practiceHeader}>
-              <Ionicons name="school-outline" size={16} color={skill.color} />
-              <Text style={[styles.practiceLabel, { color: skill.color }]}>
-                AI Practice{selectedAtomic ? ` · ${selectedAtomic.name}` : ''}
-              </Text>
-              <TouchableOpacity onPress={() => setPhase('idle')} hitSlop={8} style={{ marginLeft: 'auto' }}>
-                <Ionicons name="close" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
+            <View style={[styles.iconCircle, { backgroundColor: skill.color + '18' }]}>
+              <Ionicons name={skill.icon as any} size={24} color={skill.color} />
             </View>
+            <View style={styles.headerText}>
+              <Text style={styles.skillName}>{skill.name}</Text>
+              <Text style={styles.skillTagline}>{skill.tagline}</Text>
+            </View>
+          </View>
 
-            {/* Loading */}
-            {phase === 'loading_scenario' && (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator size="small" color={skill.color} />
-                <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-                  {modeConfig.loadingText}
-                </Text>
-              </View>
-            )}
+          {/* About */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About this skill</Text>
+            <Text style={styles.bodyText}>{skill.description}</Text>
+            <View style={[styles.whyBox, { backgroundColor: skill.color + '10', borderColor: skill.color + '30' }]}>
+              <Ionicons name="information-circle-outline" size={16} color={skill.color} />
+              <Text style={[styles.whyText, { color: colors.textPrimary }]}>{skill.why}</Text>
+            </View>
+          </View>
 
-            {/* Scenario / brief / AI output */}
-            {(phase === 'choosing_decision' ||
-              phase === 'answering' ||
-              phase === 'loading_feedback' ||
-              phase === 'feedback') && (
+          {/* Sub-skills */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Sub-skills</Text>
+            <Text style={styles.bodyTextMuted}>
+              Choose a sub-skill below — practice is tailored to that focus.
+            </Text>
+            <View style={styles.chipRow}>
+              {skill.atomicSkills.map((a) => (
+                <AtomicSkillChip
+                  key={a.id}
+                  skill={a}
+                  selected={selectedAtomicId === a.id}
+                  color={skill.color}
+                  colors={colors}
+                  onPress={() => setSelectedAtomicId((prev) => (prev === a.id ? null : a.id))}
+                />
+              ))}
+            </View>
+            {selectedAtomic && (
               <>
-                <View style={[styles.scenarioBox, { backgroundColor: skill.color + '0D', borderColor: skill.color + '30' }]}>
-                  <Text style={[styles.scenarioLabel, { color: skill.color }]}>
-                    {modeConfig.scenarioLabel}
-                  </Text>
-                  <Text style={[styles.scenarioText, { color: colors.textPrimary }]}>{scenario}</Text>
-                </View>
+                <Text style={styles.atomicDesc}>{selectedAtomic.description}</Text>
 
-                {/* Decision choice step (decision_simulator only) */}
-                {phase === 'choosing_decision' && isDecisionMode && (
-                  <>
-                    <Text style={[styles.decisionStepTitle, { color: colors.textPrimary }]}>
-                      Your move — pick one
-                    </Text>
-                    <Text style={[styles.decisionHint, { color: colors.textSecondary }]}>
-                      You'll explain your reasoning next. Choose the path you'd actually take.
-                    </Text>
-                    {decisionOptions.map((opt, i) => {
-                      const letter = ['A', 'B', 'C', 'D', 'E', 'F'][i] ?? '•';
-                      return (
-                        <TouchableOpacity
-                          key={opt.id}
-                          style={[styles.decisionRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                          onPress={() => {
-                            setSelectedDecisionId(opt.id);
-                            setPhase('answering');
-                            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
-                          }}
-                          activeOpacity={0.75}
-                        >
-                          <View style={[styles.decisionLetterBadge, { backgroundColor: skill.color + '22' }]}>
-                            <Text style={[styles.decisionLetter, { color: skill.color }]}>{letter}</Text>
-                          </View>
-                          <Text style={[styles.decisionLabelText, { color: colors.textPrimary }]}>
-                            {opt.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </>
-                )}
-
-                {/* Answering + feedback area */}
-                {(phase === 'answering' || phase === 'loading_feedback' || phase === 'feedback') && (
-                  <>
-                    {/* Show chosen option (decision_simulator only) */}
-                    {isDecisionMode && selectedDecisionId && (
-                      <View style={[styles.choiceSummary, { borderColor: skill.color + '35', backgroundColor: skill.color + '08' }]}>
-                        <Text style={[styles.questionLabel, { color: skill.color }]}>Your choice</Text>
-                        <Text style={[styles.choiceSummaryText, { color: colors.textPrimary }]}>
-                          {(() => {
-                            const idx = decisionOptions.findIndex((o) => o.id === selectedDecisionId);
-                            const L = idx >= 0 ? (['A', 'B', 'C', 'D', 'E', 'F'][idx] ?? '•') : '•';
-                            const lab = decisionOptions.find((o) => o.id === selectedDecisionId)?.label ?? '';
-                            return `${L} · ${lab}`;
-                          })()}
-                        </Text>
+                {/* How to solve — numbered bullets with accent left border */}
+                <View style={[styles.howBox, { borderColor: colors.border, backgroundColor: colors.floating, borderLeftColor: skill.color, borderLeftWidth: 3 }]}>
+                  <Text style={[styles.howTitle, { color: colors.textPrimary }]}>How to solve this well</Text>
+                  {getHowToSolveBullets(practiceMode, isDecisionMode).map((line, idx) => (
+                    <View key={idx} style={styles.howBulletRow}>
+                      <View style={[styles.howBulletNum, { backgroundColor: skill.color + '18' }]}>
+                        <Text style={[styles.howBulletNumText, { color: skill.color }]}>{idx + 1}</Text>
                       </View>
-                    )}
-
-                    {/* Question / reasoning prompt */}
-                    <View style={styles.questionBox}>
-                      <Text style={[styles.questionLabel, { color: colors.textSecondary }]}>
-                        {isDecisionMode
-                          ? `Reasoning${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`
-                          : practiceMode === 'output_audit'
-                            ? `Task${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`
-                            : `Your response${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`}
-                      </Text>
-                      <Text style={[styles.questionText, { color: colors.textPrimary }]}>
-                        {practiceQuestion}
+                      <Text style={[styles.howBulletText, { color: colors.textSecondary }]}>
+                        {line}
                       </Text>
                     </View>
+                  ))}
+                  <Text style={[styles.howFooter, { color: colors.textMuted }]}>
+                    {`After feedback, use "Try again" to deepen the same scenario or "New scenario" for a fresh situation.`}
+                  </Text>
+                </View>
 
-                    {(phase === 'answering' || phase === 'loading_feedback') && (
-                      <View style={styles.answerArea}>
-                        <TextInput
-                          style={[
-                            styles.answerInput,
-                            { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary },
-                          ]}
-                          value={userAnswer}
-                          onChangeText={setUserAnswer}
-                          placeholder={modeConfig.inputPlaceholder}
-                          placeholderTextColor={colors.textMuted}
-                          multiline
-                          textAlignVertical="top"
-                          editable={phase === 'answering'}
-                        />
-                        <TouchableOpacity
-                          style={[
-                            styles.submitBtn,
-                            { backgroundColor: userAnswer.trim() && phase === 'answering' ? skill.color : colors.surface },
-                          ]}
-                          onPress={submitAnswer}
-                          disabled={!userAnswer.trim() || phase === 'loading_feedback'}
-                        >
-                          {phase === 'loading_feedback' ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                          ) : (
-                            <>
-                              <Ionicons name="send-outline" size={16} color={userAnswer.trim() ? '#fff' : colors.textMuted} />
-                              <Text style={[styles.submitBtnText, { color: userAnswer.trim() ? '#fff' : colors.textMuted }]}>
-                                Get feedback
-                              </Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                {/* Your situation (optional) — with character count */}
+                <Text style={[styles.customLabel, { color: colors.textPrimary }]}>Your situation (optional)</Text>
+                <Text style={[styles.customHint, { color: colors.textMuted }]}>
+                  Describe a real situation. The AI will anchor the scenario here when it fits.
+                </Text>
+                <View>
+                  <TextInput
+                    style={[
+                      styles.customInput,
+                      { borderColor: colors.border, backgroundColor: colors.surface, color: colors.textPrimary },
+                    ]}
+                    placeholder="Example: my manager challenged my timeline in front of the client…"
+                    placeholderTextColor={colors.textMuted}
+                    value={customProblemDraft}
+                    onChangeText={(t) => setCustomProblemDraft(t.slice(0, maxCustomChars))}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                  <Text style={[styles.charCount, { color: customProblemDraft.length >= maxCustomChars ? colors.destructive : colors.textMuted }]}>
+                    {customProblemDraft.length}/{maxCustomChars}
+                  </Text>
+                </View>
 
-                    {phase === 'feedback' && feedback && (
-                      <View style={styles.feedbackArea}>
-                        <FeedbackCard fb={feedback} colors={colors} skill={skill} />
-
-                        <View style={styles.feedbackActions}>
-                          <TouchableOpacity
-                            style={[styles.actionBtn, styles.refineBtn, { borderColor: skill.color }]}
-                            onPress={refineAnswer}
-                          >
-                            <Ionicons name="pencil-outline" size={16} color={skill.color} />
-                            <Text style={[styles.actionBtnText, { color: skill.color }]}>
-                              {isDecisionMode ? 'Refine my reasoning' : 'Try again'}
-                            </Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[styles.actionBtn, { backgroundColor: skill.color }]}
-                            onPress={newScenario}
-                          >
-                            <Ionicons name="shuffle-outline" size={16} color="#fff" />
-                            <Text style={[styles.actionBtnText, { color: '#fff' }]}>New scenario</Text>
-                          </TouchableOpacity>
-                        </View>
-
-                        <TouchableOpacity onPress={() => setPhase('idle')} style={styles.doneLink}>
-                          <Text style={[styles.doneLinkText, { color: colors.textMuted }]}>Done for now</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </>
-                )}
+                {/* Context links — mini action cards */}
+                <View style={styles.contextLinks}>
+                  <TouchableOpacity
+                    style={[styles.contextCard, { borderColor: colors.border, backgroundColor: colors.floating }]}
+                    onPress={() => router.push('/skill-lab/practice-setup')}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="person-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.contextCardText, { color: colors.primary }]}>Practice context</Text>
+                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.contextCard, { borderColor: colors.border, backgroundColor: colors.floating }]}
+                    onPress={() => router.push(`/skill-lab/journey-builder?skillId=${skill.id}` as never)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="map-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.contextCardText, { color: colors.primary }]}>Learning journey</Text>
+                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </View>
-        )}
-      </ScrollView>
+
+          {/* Start CTA (idle) */}
+          {!isPracticing && (
+            <View style={styles.section}>
+              {roundsSaved > 0 && (
+                <View style={[styles.roundsBadge, { backgroundColor: colors.primary + '15' }]}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.roundsText, { color: colors.primary }]}>
+                    {roundsSaved} {roundsSaved === 1 ? 'round' : 'rounds'} completed this session
+                  </Text>
+                </View>
+              )}
+
+              {/* Error banner */}
+              {practiceError && (
+                <View style={[styles.errorBanner, { backgroundColor: colors.destructive + '14', borderColor: colors.destructive + '40' }]}>
+                  <Ionicons name="alert-circle-outline" size={16} color={colors.destructive} />
+                  <Text style={[styles.errorBannerText, { color: colors.destructive }]}>{practiceError}</Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.startBtn,
+                  {
+                    backgroundColor: selectedAtomicId ? skill.color : colors.surface,
+                    borderWidth: selectedAtomicId ? 0 : 1,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={startPractice}
+                disabled={!selectedAtomicId}
+                activeOpacity={selectedAtomicId ? 0.85 : 1}
+              >
+                <Ionicons
+                  name="play-circle-outline"
+                  size={20}
+                  color={selectedAtomicId ? '#fff' : colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.startBtnText,
+                    { color: selectedAtomicId ? '#fff' : colors.textMuted },
+                  ]}
+                >
+                  {practiceError ? 'Try again' : roundsSaved > 0 ? 'Practice again' : 'Start AI practice'}
+                </Text>
+              </TouchableOpacity>
+              {!selectedAtomicId ? (
+                <Text style={[styles.practiceHint, { color: colors.textSecondary }]}>
+                  Select a sub-skill above to enable practice.
+                </Text>
+              ) : (
+                <Text style={styles.practiceHint}>{modeConfig.hint}</Text>
+              )}
+            </View>
+          )}
+
+          {/* ── PRACTICE AREA ─────────────────────────────────────── */}
+          {isPracticing && (
+            <View style={styles.section}>
+              {/* Practice header with close */}
+              <View style={styles.practiceHeader}>
+                <Ionicons name="school-outline" size={16} color={skill.color} />
+                <Text style={[styles.practiceLabel, { color: skill.color }]}>
+                  AI Practice{selectedAtomic ? ` · ${selectedAtomic.name}` : ''}
+                </Text>
+                <TouchableOpacity onPress={() => setPhase('idle')} hitSlop={8} style={{ marginLeft: 'auto' }}>
+                  <Ionicons name="close" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Phase stepper */}
+              {phase !== 'loading_scenario' && (
+                <PhaseStepper
+                  steps={phaseSteps}
+                  activeIndex={getPhaseIndex(phase, isDecisionMode)}
+                  accentColor={skill.color}
+                  colors={colors}
+                />
+              )}
+
+              {/* Loading */}
+              {phase === 'loading_scenario' && (
+                <View style={styles.loadingBox}>
+                  <ActivityIndicator size="small" color={skill.color} />
+                  <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+                    {modeConfig.loadingText}
+                  </Text>
+                </View>
+              )}
+
+              {/* Scenario / brief / AI output */}
+              {(phase === 'choosing_decision' ||
+                phase === 'answering' ||
+                phase === 'loading_feedback' ||
+                phase === 'feedback') && (
+                <>
+                  <View style={[styles.scenarioBox, { backgroundColor: skill.color + '0D', borderColor: skill.color + '30' }]}>
+                    <View style={styles.scenarioLabelRow}>
+                      <Ionicons name={skill.icon as any} size={14} color={skill.color} />
+                      <Text style={[styles.scenarioLabel, { color: skill.color }]}>
+                        {modeConfig.scenarioLabel}
+                      </Text>
+                    </View>
+                    <Text style={[styles.scenarioText, { color: colors.textPrimary }]}>{scenario}</Text>
+                  </View>
+
+                  {/* Decision choice step (decision_simulator only) */}
+                  {phase === 'choosing_decision' && isDecisionMode && (
+                    <>
+                      <Text style={[styles.decisionStepTitle, { color: colors.textPrimary }]}>
+                        Your move — pick one
+                      </Text>
+                      <Text style={[styles.decisionHint, { color: colors.textSecondary }]}>
+                        You'll explain your reasoning next. Choose the path you'd actually take.
+                      </Text>
+                      {decisionOptions.map((opt, i) => {
+                        const letter = ['A', 'B', 'C', 'D', 'E', 'F'][i] ?? '•';
+                        return (
+                          <TouchableOpacity
+                            key={opt.id}
+                            style={[styles.decisionRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                            onPress={() => {
+                              setSelectedDecisionId(opt.id);
+                              setPhase('answering');
+                              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+                            }}
+                            activeOpacity={0.75}
+                          >
+                            <View style={[styles.decisionLetterBadge, { backgroundColor: skill.color + '22' }]}>
+                              <Text style={[styles.decisionLetter, { color: skill.color }]}>{letter}</Text>
+                            </View>
+                            <Text style={[styles.decisionLabelText, { color: colors.textPrimary }]}>
+                              {opt.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {/* Answering + feedback area */}
+                  {(phase === 'answering' || phase === 'loading_feedback' || phase === 'feedback') && (
+                    <>
+                      {/* Show chosen option (decision_simulator only) */}
+                      {isDecisionMode && selectedDecisionId && (
+                        <View style={[styles.choiceSummary, { borderColor: skill.color + '35', backgroundColor: skill.color + '08' }]}>
+                          <Text style={[styles.questionLabel, { color: skill.color }]}>Your choice</Text>
+                          <Text style={[styles.choiceSummaryText, { color: colors.textPrimary }]}>
+                            {(() => {
+                              const idx = decisionOptions.findIndex((o) => o.id === selectedDecisionId);
+                              const L = idx >= 0 ? (['A', 'B', 'C', 'D', 'E', 'F'][idx] ?? '•') : '•';
+                              const lab = decisionOptions.find((o) => o.id === selectedDecisionId)?.label ?? '';
+                              return `${L} · ${lab}`;
+                            })()}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Question / reasoning prompt */}
+                      <View style={styles.questionBox}>
+                        <Text style={[styles.questionLabel, { color: colors.textSecondary }]}>
+                          {isDecisionMode
+                            ? `Reasoning${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`
+                            : practiceMode === 'output_audit'
+                              ? `Task${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`
+                              : `Your response${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`}
+                        </Text>
+                        <Text style={[styles.questionText, { color: colors.textPrimary }]}>
+                          {practiceQuestion}
+                        </Text>
+                      </View>
+
+                      {(phase === 'answering' || phase === 'loading_feedback') && (
+                        <View style={styles.answerArea}>
+                          <TextInput
+                            style={[
+                              styles.answerInput,
+                              { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary },
+                            ]}
+                            value={userAnswer}
+                            onChangeText={setUserAnswer}
+                            placeholder={modeConfig.inputPlaceholder}
+                            placeholderTextColor={colors.textMuted}
+                            multiline
+                            textAlignVertical="top"
+                            editable={phase === 'answering'}
+                          />
+                          <TouchableOpacity
+                            style={[
+                              styles.submitBtn,
+                              { backgroundColor: userAnswer.trim() && phase === 'answering' ? skill.color : colors.surface },
+                            ]}
+                            onPress={submitAnswer}
+                            disabled={!userAnswer.trim() || phase === 'loading_feedback'}
+                          >
+                            {phase === 'loading_feedback' ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <>
+                                <Ionicons name="send-outline" size={16} color={userAnswer.trim() ? '#fff' : colors.textMuted} />
+                                <Text style={[styles.submitBtnText, { color: userAnswer.trim() ? '#fff' : colors.textMuted }]}>
+                                  Get feedback
+                                </Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {phase === 'feedback' && feedback && (
+                        <View style={styles.feedbackArea}>
+                          <FeedbackCard fb={feedback} colors={colors} skill={skill} />
+
+                          <View style={styles.feedbackActions}>
+                            <TouchableOpacity
+                              style={[styles.actionBtn, styles.refineBtn, { borderColor: skill.color }]}
+                              onPress={refineAnswer}
+                            >
+                              <Ionicons name="pencil-outline" size={16} color={skill.color} />
+                              <Text style={[styles.actionBtnText, { color: skill.color }]}>
+                                {isDecisionMode ? 'Refine my reasoning' : 'Try again'}
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[styles.actionBtn, { backgroundColor: skill.color }]}
+                              onPress={newScenario}
+                            >
+                              <Ionicons name="shuffle-outline" size={16} color="#fff" />
+                              <Text style={[styles.actionBtnText, { color: '#fff' }]}>New scenario</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          <TouchableOpacity onPress={() => setPhase('idle')} style={styles.doneLink}>
+                            <Text style={[styles.doneLinkText, { color: colors.textMuted }]}>Done for now</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </View>
+          )}
+        </ScrollView>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }
@@ -888,7 +1123,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     container: { flex: 1, backgroundColor: colors.background },
     scroll: { flex: 1 },
     content: { paddingBottom: Spacing['3xl'], maxWidth: Layout.maxWidth, alignSelf: 'center', width: '100%' },
-    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, paddingHorizontal: Spacing.xl },
     header: {
       paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
       paddingHorizontal: Spacing.md,
@@ -910,6 +1145,35 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     whyText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.5 },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: Spacing.sm },
     atomicDesc: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, lineHeight: Typography.fontSize.sm * 1.5, fontStyle: 'italic' },
+    howBox: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, marginTop: Spacing.md, gap: Spacing.sm },
+    howTitle: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, marginBottom: 2 },
+    howBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+    howBulletNum: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+    howBulletNumText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.bold },
+    howBulletText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45 },
+    howFooter: { fontSize: Typography.fontSize.xs, lineHeight: Typography.fontSize.xs * 1.45, marginTop: Spacing.xs },
+    customLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, marginTop: Spacing.lg },
+    customHint: { fontSize: Typography.fontSize.xs, lineHeight: Typography.fontSize.xs * 1.45, marginTop: Spacing.xs, marginBottom: Spacing.sm },
+    customInput: {
+      borderWidth: 1,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      fontSize: Typography.fontSize.sm,
+      minHeight: 88,
+      lineHeight: Typography.fontSize.sm * 1.45,
+    },
+    charCount: { position: 'absolute', bottom: Spacing.sm, right: Spacing.md, fontSize: Typography.fontSize.micro },
+    contextLinks: { flexDirection: 'column', gap: Spacing.sm, marginTop: Spacing.md },
+    contextCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingVertical: Spacing.sm + 2,
+      paddingHorizontal: Spacing.md,
+      borderWidth: 1,
+      borderRadius: Radius.md,
+    },
+    contextCardText: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
     roundsBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.sm },
     roundsText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
     errorBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, padding: Spacing.sm, marginBottom: Spacing.sm },
@@ -917,15 +1181,16 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     startBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderRadius: Radius.lg, paddingVertical: Spacing.md, marginBottom: Spacing.sm },
     startBtnText: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
     practiceHint: { textAlign: 'center', fontSize: Typography.fontSize.xs, color: colors.textMuted },
-    practiceHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.md },
+    practiceHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.sm },
     practiceLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
     loadingBox: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md },
     loadingText: { fontSize: Typography.fontSize.sm },
     scenarioBox: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.md },
-    scenarioLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.xs },
+    scenarioLabelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.xs },
+    scenarioLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, letterSpacing: 0.2 },
     scenarioText: { fontSize: Typography.fontSize.base, lineHeight: Typography.fontSize.base * 1.5 },
     questionBox: { marginBottom: Spacing.md },
-    questionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.xs },
+    questionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, letterSpacing: 0.2, marginBottom: Spacing.xs },
     questionText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.medium, lineHeight: Typography.fontSize.base * 1.5 },
     decisionStepTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, marginBottom: Spacing.xs },
     decisionHint: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45, marginBottom: Spacing.md },

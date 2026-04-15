@@ -10,7 +10,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Switch,
   Platform,
 } from 'react-native';
@@ -149,7 +148,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   username: { fontSize: Typography.fontSize.xl, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, marginBottom: Spacing.xs, textTransform: 'capitalize' },
   email: { fontSize: Typography.fontSize.sm, color: colors.textSecondary },
   section: { marginBottom: Spacing.xl },
-  sectionTitle: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontWeight: Typography.fontWeight.semibold, marginBottom: Spacing.sm, textTransform: 'uppercase', letterSpacing: 0.8 },
+  sectionTitle: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontWeight: Typography.fontWeight.semibold, marginBottom: Spacing.sm, letterSpacing: 0.3 },
   settingsList: { gap: Spacing.sm },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   settingText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontWeight: Typography.fontWeight.medium },

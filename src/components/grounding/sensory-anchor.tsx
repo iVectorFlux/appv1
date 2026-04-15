@@ -168,7 +168,7 @@ const s = StyleSheet.create({
   glowRing1: { position: 'absolute', width: 110, height: 110, borderRadius: 55 },
   iconInner: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
 
-  senseLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, color: TEXT_MUTED, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.sm, letterSpacing: 2, textTransform: 'uppercase' },
+  senseLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, color: TEXT_MUTED, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.sm, letterSpacing: 0.35 },
   countBig: { fontSize: 72, fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.md, lineHeight: 80 },
   prompt: { fontSize: 24, fontWeight: Typography.fontWeight.semibold, color: TEXT_PRIMARY, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 34, marginBottom: Spacing.md },
   hint: { fontSize: Typography.fontSize.sm, color: TEXT_MUTED, fontFamily: Typography.fontFamily.primary, textAlign: 'center' },

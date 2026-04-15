@@ -13,6 +13,11 @@
  *   decision_simulator → { scenario, decisionOptions, reasoningPrompt }
  *   all other modes   → { scenario, question }
  *
+ * Optional on scenario generation: practiceContext, customProblemDraft (tailors / anchors scenarios).
+ *
+ * Learning journey (generateLearningJourney: true, skillId, atomicSkillsForJourney?):
+ *   → { summary, steps: [{ order, title, description, suggestedSubSkillId }] }
+ *
  * Phase 2 (feedback):
  *   decision_simulator → requires selectedDecisionId + decisionOptions + userAnswer
  *   all other modes   → requires scenario + question + userAnswer
@@ -32,6 +37,114 @@ type PracticeMode =
 interface DecisionOption {
   id: string;
   label: string;
+}
+
+interface PracticeContextWire {
+  background?: string;
+  roleTitle?: string;
+  industry?: string;
+  seniority?: string;
+}
+
+interface AtomicSkillWire {
+  id: string;
+  name: string;
+}
+
+function formatPracticeContextBlock(pc?: PracticeContextWire): string {
+  if (!pc) return '(none supplied)';
+  const bits = [
+    pc.background?.trim() && `Background: ${pc.background.trim()}`,
+    pc.roleTitle?.trim() && `Role or title: ${pc.roleTitle.trim()}`,
+    pc.industry?.trim() && `Industry: ${pc.industry.trim()}`,
+    pc.seniority?.trim() && `Seniority level: ${pc.seniority.trim()}`,
+  ].filter(Boolean) as string[];
+  return bits.length ? bits.join('\n') : '(none supplied)';
+}
+
+function appendScenarioLearnerTail(
+  basePrompt: string,
+  body: { practiceContext?: PracticeContextWire; customProblemDraft?: string }
+): string {
+  const ctxBlock = formatPracticeContextBlock(body.practiceContext);
+  const custom = body.customProblemDraft?.trim();
+
+  const tail = `
+
+---
+LEARNER CONTEXT (use to choose setting, stakes, and characters; do not read these labels aloud inside the scenario):
+${ctxBlock}
+
+VARIETY AND DE-DUPLICATION:
+- Vary industries and contexts: consider healthcare, education, nonprofit, logistics, creative work, public sector, manufacturing, retail, family business, or volunteer settings when they fit the learner context — avoid defaulting to a generic "big tech steering committee" pattern unless the context clearly fits.
+- Make this scenario feel meaningfully different from a bland default office meeting.
+
+${custom ? `CUSTOM SITUATION FROM THE LEARNER (anchor the scenario primarily here; replace real names with roles or initials only):
+"""${custom}"""
+
+If the situation is only a weak match for this skill or sub-skill, still return valid JSON with all required keys: briefly note the mismatch in the scenario prose, then shape the task so they can still practise the target skill constructively.` : ''}`;
+
+  return basePrompt + tail;
+}
+
+function buildLearningJourneyPrompt(
+  skillName: string,
+  skillId: string,
+  atoms: AtomicSkillWire[],
+  pc?: PracticeContextWire
+): string {
+  const atomLines =
+    atoms.length > 0
+      ? atoms.map((a) => `- id "${a.id}": ${a.name}`).join('\n')
+      : '(no sub-skill list supplied — infer sensible practice themes from the skill name only)';
+  const ctx = formatPracticeContextBlock(pc);
+
+  return `You are designing a multi-step LEARNING JOURNEY for the skill "${skillName}" (skill id: ${skillId}).
+
+Learner context (for pacing and examples):
+${ctx}
+
+Official sub-skills (when listed, set suggestedSubSkillId to one of these ids when a step maps clearly; otherwise use null):
+${atomLines}
+
+Rules:
+- Produce 4 to 7 ordered steps. Step 1 should emphasise hands-on problem-solving or application with this skill.
+- Later steps deepen: reflection, using feedback, adjacent sub-skills, or transfer to a real situation.
+- Each step description is 2-4 sentences: what to do, why it matters, and one concrete success signal.
+
+Return JSON only, no markdown:
+{
+  "summary": "One short paragraph describing the arc.",
+  "steps": [
+    { "order": 1, "title": "Short title", "description": "...", "suggestedSubSkillId": "atomic_id_or_null" }
+  ]
+}
+
+suggestedSubSkillId must be one of the listed ids or the JSON null value.`;
+}
+
+type JourneyStepOut = {
+  order: number;
+  title: string;
+  description: string;
+  suggestedSubSkillId: string | null;
+};
+
+function normalizeJourneySteps(raw: unknown): JourneyStepOut[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row, i) => {
+      const o = (row && typeof row === 'object' ? row : {}) as Record<string, unknown>;
+      const sid = o.suggestedSubSkillId;
+      return {
+        order: typeof o.order === 'number' && !Number.isNaN(o.order) ? o.order : i + 1,
+        title: String(o.title ?? `Step ${i + 1}`).trim() || `Step ${i + 1}`,
+        description: String(o.description ?? '').trim(),
+        suggestedSubSkillId:
+          sid == null || sid === '' || String(sid).toLowerCase() === 'null' ? null : String(sid),
+      };
+    })
+    .sort((a, b) => a.order - b.order);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -478,6 +591,10 @@ type SkillsBody = {
   userAnswer?: string;
   attemptNumber?: number;
   generateScenario?: boolean;
+  generateLearningJourney?: boolean;
+  practiceContext?: PracticeContextWire;
+  customProblemDraft?: string;
+  atomicSkillsForJourney?: AtomicSkillWire[];
 };
 
 function readJsonBody(req: VercelRequest): SkillsBody | null {
@@ -529,6 +646,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     userAnswer,
     attemptNumber = 1,
     generateScenario,
+    generateLearningJourney,
     practiceMode = 'decision_simulator',
   } = body;
 
@@ -538,8 +656,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   try {
+    // ── Learning journey (separate from scenario / feedback) ────────────────
+    if (generateLearningJourney) {
+      if (!skillId) {
+        res.status(400).json({ error: 'skillId is required for learning journey.' });
+        return;
+      }
+      const atoms = Array.isArray(body.atomicSkillsForJourney) ? body.atomicSkillsForJourney : [];
+      const promptJ = buildLearningJourneyPrompt(skillName, skillId, atoms, body.practiceContext);
+      const rawJ = await callGroqJson(promptJ, apiKey, model, 1400);
+      const parsedJ = JSON.parse(rawJ) as Record<string, unknown>;
+      res.status(200).json({
+        summary: String(parsedJ.summary ?? ''),
+        steps: normalizeJourneySteps(parsedJ.steps),
+      });
+      return;
+    }
+
     // ── Phase 1: Generate scenario ──────────────────────────────────────────
-    if (generateScenario || !userAnswer) {
+    if (generateScenario) {
       let promptText: string;
       switch (practiceMode) {
         case 'output_audit':
@@ -558,6 +693,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           promptText = buildDecisionSimulatorPrompt(skillName, atomicSkillName);
       }
 
+      promptText = appendScenarioLearnerTail(promptText, body);
+
       const raw = await callGroqJson(promptText, apiKey, model, 1000);
       const parsed = JSON.parse(raw) as Record<string, unknown>;
 
@@ -572,6 +709,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     // ── Phase 2: Feedback ───────────────────────────────────────────────────
+    if (!userAnswer || typeof userAnswer !== 'string' || !userAnswer.trim()) {
+      res.status(400).json({
+        error: 'userAnswer is required for feedback. Send generateScenario: true to start a new scenario.',
+      });
+      return;
+    }
+
     if (!scenario) {
       res.status(400).json({ error: 'scenario is required for feedback.' });
       return;

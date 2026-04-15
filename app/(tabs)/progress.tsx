@@ -132,7 +132,7 @@ const ringStyles = StyleSheet.create({
   ringFill: { position: 'absolute' },
   center: { alignItems: 'center', justifyContent: 'center' },
   scoreNum: { fontSize: 36, fontWeight: '700', letterSpacing: -1 },
-  scoreLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 2 },
+  scoreLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, marginTop: 2 },
 });
 
 // ── Dimension bar ─────────────────────────────────────────────────────

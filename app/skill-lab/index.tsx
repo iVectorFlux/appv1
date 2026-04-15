@@ -2,7 +2,7 @@
  * Skill Lab — landing (route: /skill-lab)
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Animated,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,12 +26,20 @@ import { useAuthStore } from '@/stores/auth-store';
 import { FUTURE_SKILLS } from '@/data/future-skills';
 import { getSkillsProgress } from '@/services/skills-storage';
 import type { SkillProgress } from '@/services/skills-storage';
+import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
+
+const STAGGER = 60;
+const FADE_MS = 350;
 
 export default function SkillLabScreen() {
   const router = useRouter();
   const colors = useColors();
+  const isWebLaptop = useWebLaptopLayout();
   const { user } = useAuthStore();
   const [progress, setProgress] = useState<Record<string, SkillProgress>>({});
+
+  const headerFade = useRef(new Animated.Value(0)).current;
+  const cardAnims = useRef(FUTURE_SKILLS.map(() => new Animated.Value(0))).current;
 
   const loadProgress = useCallback(() => {
     if (user?.id) {
@@ -50,91 +59,169 @@ export default function SkillLabScreen() {
     }, [loadProgress])
   );
 
+  useEffect(() => {
+    Animated.timing(headerFade, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
+    Animated.stagger(
+      STAGGER,
+      cardAnims.map((a) => Animated.timing(a, { toValue: 1, duration: FADE_MS, useNativeDriver: true }))
+    ).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only entrance; refs stable
+  }, []);
+
+  const skillsStarted = Object.values(progress).filter((p) => p.sessionsCompleted > 0).length;
+  const totalSessions = Object.values(progress).reduce((sum, p) => sum + p.sessionsCompleted, 0);
+
   const styles = createStyles(colors);
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, isWebLaptop && styles.contentWebLaptop]}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <Animated.View style={[styles.header, { opacity: headerFade, transform: [{ translateY: headerFade.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Skill Lab</Text>
+          <View style={styles.titleRow}>
+            <View style={[styles.headerIcon, { backgroundColor: colors.primary + '15' }]}>
+              <Ionicons name="rocket-outline" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.title}>Skill Lab</Text>
+          </View>
           <Text style={styles.subtitle}>
-            {`The ${FUTURE_SKILLS.length} skills that matter most in an AI-powered world — practice with AI coaching`}
+            {`${FUTURE_SKILLS.length} skills that matter most in an AI-powered world — practice with AI coaching`}
           </Text>
         </View>
+      </Animated.View>
+
+      {/* Action pills */}
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[styles.actionPill, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '25' }]}
+          onPress={() => router.push('/skill-lab/practice-setup')}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.actionPillIcon, { backgroundColor: colors.primary + '18' }]}>
+            <Ionicons name="person-outline" size={15} color={colors.primary} />
+          </View>
+          <Text style={[styles.actionPillText, { color: colors.primary }]}>Practice context</Text>
+          <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionPill, { backgroundColor: colors.accentIndigo + '12', borderColor: colors.accentIndigo + '25' }]}
+          onPress={() => router.push('/skill-lab/journey-builder')}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.actionPillIcon, { backgroundColor: colors.accentIndigo + '18' }]}>
+            <Ionicons name="map-outline" size={15} color={colors.accentIndigo} />
+          </View>
+          <Text style={[styles.actionPillText, { color: colors.accentIndigo }]}>Learning journey</Text>
+          <Ionicons name="chevron-forward" size={14} color={colors.accentIndigo} />
+        </TouchableOpacity>
       </View>
 
       {/* Stats row */}
       <View style={styles.statsRow}>
         <View style={[styles.statCard, Shadows.card]}>
-          <Text style={styles.statNumber}>
-            {Object.values(progress).filter((p) => p.sessionsCompleted > 0).length}
-          </Text>
+          <View style={[styles.statIcon, { backgroundColor: colors.primary + '12' }]}>
+            <Ionicons name="rocket-outline" size={16} color={colors.primary} />
+          </View>
+          <Text style={styles.statNumber}>{skillsStarted}</Text>
           <Text style={styles.statLabel}>Skills started</Text>
         </View>
         <View style={[styles.statCard, Shadows.card]}>
-          <Text style={styles.statNumber}>
-            {Object.values(progress).reduce((sum, p) => sum + p.sessionsCompleted, 0)}
-          </Text>
+          <View style={[styles.statIcon, { backgroundColor: colors.accentIndigo + '12' }]}>
+            <Ionicons name="flash-outline" size={16} color={colors.accentIndigo} />
+          </View>
+          <Text style={styles.statNumber}>{totalSessions}</Text>
           <Text style={styles.statLabel}>Practice sessions</Text>
         </View>
       </View>
 
-      {/* Skills grid */}
-      <View style={styles.grid}>
-        {FUTURE_SKILLS.map((skill) => {
+      {/* Section label */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionLabel}>All skills</Text>
+        <Text style={styles.sectionCount}>{FUTURE_SKILLS.length}</Text>
+      </View>
+
+      {/* Skills — single column on phone; 3-up tiles on laptop web */}
+      <View style={[styles.grid, isWebLaptop && styles.gridWebLaptop]}>
+        {FUTURE_SKILLS.map((skill, idx) => {
           const p = progress[skill.id];
-          const hasPracticed = (p?.sessionsCompleted ?? 0) > 0;
+          const sessions = p?.sessionsCompleted ?? 0;
+          const hasPracticed = sessions > 0;
 
           return (
-            <TouchableOpacity
+            <Animated.View
               key={skill.id}
-              style={[styles.card, Shadows.card]}
-              onPress={() => router.push(`/skill-lab/${skill.id}`)}
-              activeOpacity={0.75}
+              style={[
+                isWebLaptop && styles.cardWebLaptopWrap,
+                {
+                  opacity: cardAnims[idx],
+                  transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+                },
+              ]}
             >
-              {/* Icon */}
-              <View style={[styles.iconCircle, { backgroundColor: skill.color + '18' }]}>
-                <Ionicons name={skill.icon as any} size={22} color={skill.color} />
-              </View>
-
-              {/* Content */}
-              <View style={styles.cardContent}>
-                <Text style={styles.skillName}>{skill.name}</Text>
-                <Text style={styles.skillTagline} numberOfLines={1}>
-                  {skill.tagline}
-                </Text>
-
-                {/* Atomic skill count */}
-                <View style={styles.metaRow}>
-                  <Ionicons name="layers-outline" size={12} color={colors.textMuted} />
-                  <Text style={styles.metaText}>{skill.atomicSkills.length} sub-skills</Text>
+              <TouchableOpacity
+                style={[styles.card, Shadows.card, isWebLaptop && styles.cardWebLaptop]}
+                onPress={() => router.push(`/skill-lab/${skill.id}`)}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.iconCircle, { backgroundColor: skill.color + '18' }]}>
+                  <Ionicons name={skill.icon as any} size={22} color={skill.color} />
                 </View>
-              </View>
 
-              {/* Progress / Status */}
-              <View style={styles.cardRight}>
-                {hasPracticed ? (
-                  <View style={styles.progressBadge}>
-                    <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-                    <Text style={[styles.progressText, { color: colors.primary }]}>
-                      {p.sessionsCompleted}
-                    </Text>
+                <View style={[styles.cardContent, isWebLaptop && styles.cardContentWebLaptop]}>
+                  <Text style={styles.skillName}>{skill.name}</Text>
+                  <Text style={[styles.skillTagline, isWebLaptop && styles.skillTaglineWeb]} numberOfLines={isWebLaptop ? 2 : 1}>
+                    {skill.tagline}
+                  </Text>
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="layers-outline" size={12} color={colors.textMuted} />
+                    <Text style={styles.metaText}>{skill.atomicSkills.length} sub-skills</Text>
                   </View>
-                ) : (
-                  <View style={[styles.startBadge, { borderColor: skill.color }]}>
-                    <Text style={[styles.startText, { color: skill.color }]}>Start</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
+
+                  {/* Progress bar */}
+                  {hasPracticed && (
+                    <View style={styles.progressBarWrap}>
+                      <View style={[styles.progressBarTrack, { backgroundColor: colors.border }]}>
+                        <View
+                          style={[
+                            styles.progressBarFill,
+                            {
+                              backgroundColor: skill.color,
+                              width: `${Math.min(100, (sessions / (skill.atomicSkills.length * 3)) * 100)}%` as any,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text style={[styles.progressBarText, { color: colors.textMuted }]}>
+                        {sessions} {sessions === 1 ? 'session' : 'sessions'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={[styles.cardRight, isWebLaptop && styles.cardRightWebLaptop]}>
+                  {hasPracticed ? (
+                    <View style={[styles.progressBadge, { backgroundColor: colors.primary + '12' }]}>
+                      <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+                      <Text style={[styles.progressText, { color: colors.primary }]}>
+                        {p.sessionsCompleted}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.startBadge, { borderColor: skill.color, backgroundColor: skill.color + '08' }]}>
+                      <Text style={[styles.startText, { color: skill.color }]}>Start</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
           );
         })}
       </View>
@@ -154,6 +241,10 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       alignSelf: 'center',
       width: '100%',
     },
+    contentWebLaptop: {
+      maxWidth: 1120,
+      paddingHorizontal: Spacing.xl,
+    },
     header: {
       paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
       paddingHorizontal: Spacing.md,
@@ -168,16 +259,55 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     headerText: {
       flex: 1,
     },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginBottom: Spacing.xs,
+    },
+    headerIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     title: {
       fontSize: Typography.fontSize['2xl'],
       fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
-      marginBottom: Spacing.xs,
     },
     subtitle: {
       fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
       lineHeight: Typography.fontSize.sm * 1.5,
+    },
+    actionRow: {
+      flexDirection: 'column',
+      paddingHorizontal: Spacing.md,
+      gap: Spacing.sm,
+      marginBottom: Spacing.lg,
+    },
+    actionPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderRadius: Radius.md,
+      paddingVertical: Spacing.sm + 2,
+      paddingHorizontal: Spacing.md,
+    },
+    actionPillIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    actionPillText: {
+      flex: 1,
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
     },
     statsRow: {
       flexDirection: 'row',
@@ -193,6 +323,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       borderColor: colors.border,
       padding: Spacing.md,
       alignItems: 'center',
+      gap: Spacing.xs,
+    },
+    statIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     statNumber: {
       fontSize: Typography.fontSize['2xl'],
@@ -202,11 +340,40 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     statLabel: {
       fontSize: Typography.fontSize.xs,
       color: colors.textMuted,
-      marginTop: Spacing.xs,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.md,
+      marginBottom: Spacing.sm,
+      gap: Spacing.sm,
+    },
+    sectionLabel: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textSecondary,
+    },
+    sectionCount: {
+      fontSize: Typography.fontSize.xs,
+      fontWeight: Typography.fontWeight.medium,
+      color: colors.textMuted,
+      backgroundColor: colors.surface,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 2,
+      borderRadius: Radius.full,
+      overflow: 'hidden',
     },
     grid: {
       paddingHorizontal: Spacing.md,
       gap: Spacing.sm,
+    },
+    gridWebLaptop: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      width: '100%',
+      paddingHorizontal: 0,
+      gap: Spacing.md,
+      justifyContent: 'flex-start',
     },
     card: {
       backgroundColor: colors.floating,
@@ -217,6 +384,28 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.sm,
+    },
+    cardWebLaptopWrap: {
+      width: '32%' as any,
+      maxWidth: 340,
+    },
+    cardWebLaptop: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      padding: Spacing.lg,
+      gap: Spacing.md,
+    },
+    cardContentWebLaptop: {
+      flex: 0,
+      width: '100%',
+    },
+    skillTaglineWeb: {
+      marginBottom: Spacing.sm,
+    },
+    cardRightWebLaptop: {
+      marginTop: 'auto' as any,
+      flexDirection: 'row',
+      alignSelf: 'flex-end',
     },
     iconCircle: {
       width: 44,
@@ -248,6 +437,25 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.xs,
       color: colors.textMuted,
     },
+    progressBarWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginTop: Spacing.xs,
+    },
+    progressBarTrack: {
+      flex: 1,
+      height: 3,
+      borderRadius: 2,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: '100%',
+      borderRadius: 2,
+    },
+    progressBarText: {
+      fontSize: Typography.fontSize.micro,
+    },
     cardRight: {
       alignItems: 'center',
       gap: Spacing.xs,
@@ -256,6 +464,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 3,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 3,
+      borderRadius: Radius.full,
     },
     progressText: {
       fontSize: Typography.fontSize.sm,
