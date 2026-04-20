@@ -4,7 +4,7 @@
  * Explore grid first (Learn EQ, Companion, Skill Lab, Recover), then Assessments & progress.
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,8 @@ import {
   Platform,
   Animated,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import {
   useColors,
@@ -27,16 +26,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
-import { getEQScores } from '@/services/eq-storage';
-import { getLatestBig5Assessment } from '@/services/big5-storage';
-import { isSupabaseConfigured } from '@/lib/supabase';
-import {
-  assessmentTypeLabel,
-  formatShortDate,
-  latestByType,
-  latestOverall,
-  type EqScoreSnapshot,
-} from '@/lib/home-assessment-summary';
 
 const STAGGER = 70;
 const FADE_MS = 420;
@@ -56,9 +45,6 @@ export default function HomeScreen() {
   const colors = useColors();
   const isWebLaptop = useWebLaptopLayout();
   const [mounted, setMounted] = useState(false);
-  const [summaryLoading, setSummaryLoading] = useState(true);
-  const [eqSnapshots, setEqSnapshots] = useState<EqScoreSnapshot[]>([]);
-  const [big5CompletedAt, setBig5CompletedAt] = useState<string | null>(null);
 
   const exploreFeatures: ExploreFeature[] = [
     { key: 'learn', title: 'Learn EQ', icon: 'book-outline', accent: colors.accentIndigo, route: '/(tabs)/learn' },
@@ -114,45 +100,6 @@ export default function HomeScreen() {
     setMounted(true);
   }, []);
 
-  const loadAssessmentSummary = useCallback(async () => {
-    if (!user?.id || !isSupabaseConfigured()) {
-      setEqSnapshots([]);
-      setBig5CompletedAt(null);
-      setSummaryLoading(false);
-      return;
-    }
-    setSummaryLoading(true);
-    try {
-      const [scores, big5] = await Promise.all([
-        getEQScores(user.id, 30).catch(() => []),
-        getLatestBig5Assessment(user.id),
-      ]);
-      setEqSnapshots(
-        scores.map((s) => ({
-          completedAt: s.completedAt,
-          overallScore: s.overallScore,
-          assessmentType: s.assessmentType,
-        }))
-      );
-      setBig5CompletedAt(big5?.completed_at ?? null);
-    } catch {
-      setEqSnapshots([]);
-      setBig5CompletedAt(null);
-    } finally {
-      setSummaryLoading(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    loadAssessmentSummary();
-  }, [loadAssessmentSummary]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadAssessmentSummary();
-    }, [loadAssessmentSummary])
-  );
-
   useEffect(() => {
     Animated.timing(greetAnim, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
     Animated.timing(assessAnim, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
@@ -171,10 +118,6 @@ export default function HomeScreen() {
     if (n) g += `, ${n.charAt(0).toUpperCase()}${n.slice(1)}`;
     return g;
   })();
-
-  const latest = latestOverall(eqSnapshots);
-  const lastCheckIn = latestByType(eqSnapshots, 'check_in');
-  const lastFull = latestByType(eqSnapshots, 'full_test');
 
   const st = createStyles(colors);
 
@@ -253,60 +196,6 @@ export default function HomeScreen() {
         {/* Assessments & progress — after Explore */}
         <Animated.View style={[st.assessSection, { opacity: assessAnim }]}>
           <Text style={st.sectionHeading}>Assessments & progress</Text>
-          <GlassCard borderRadius={Radius.lg} style={st.snapshotCard}>
-            {summaryLoading ? (
-              <View style={st.snapshotLoading}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={st.snapshotMuted}>Loading your snapshot…</Text>
-              </View>
-            ) : (
-              <>
-                <View style={st.snapshotRow}>
-                  <Ionicons name="heart-outline" size={20} color={colors.primary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={st.snapshotTitle}>EQ</Text>
-                    {latest ? (
-                      <Text style={st.snapshotBody}>
-                        Latest score <Text style={st.snapshotEm}>{latest.overallScore}</Text>
-                        {' · '}
-                        {assessmentTypeLabel(latest.assessmentType)}
-                        {formatShortDate(latest.completedAt) ? ` · ${formatShortDate(latest.completedAt)}` : ''}
-                      </Text>
-                    ) : (
-                      <Text style={st.snapshotBody}>No completed EQ session yet — start with a check-in below.</Text>
-                    )}
-                  </View>
-                </View>
-                <View style={[st.snapshotRow, { marginTop: Spacing.sm }]}>
-                  <Ionicons name="git-compare-outline" size={20} color={colors.accentIndigo} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={st.snapshotTitle}>Check-in vs full test</Text>
-                    <Text style={st.snapshotBody}>
-                      {lastCheckIn
-                        ? `Last check-in: ${lastCheckIn.overallScore} · ${formatShortDate(lastCheckIn.completedAt) ?? ''}`
-                        : 'No check-in yet'}
-                      {' · '}
-                      {lastFull
-                        ? `Full test: ${lastFull.overallScore} · ${formatShortDate(lastFull.completedAt) ?? ''}`
-                        : 'Full test: not completed'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={[st.snapshotRow, { marginTop: Spacing.sm }]}>
-                  <Ionicons name="color-wand-outline" size={20} color={colors.accentIndigo} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={st.snapshotTitle}>Big Five</Text>
-                    <Text style={st.snapshotBody}>
-                      {big5CompletedAt
-                        ? `Last completed ${formatShortDate(big5CompletedAt) ?? ''}`
-                        : 'Not completed yet — tap Big Five below.'}
-                    </Text>
-                  </View>
-                </View>
-              </>
-            )}
-          </GlassCard>
-
           <View style={st.assessGrid}>
             {assessmentActions.map((a) => (
               <TouchableOpacity
@@ -407,42 +296,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     },
     assessSection: {
       marginBottom: Spacing.lg + 4,
-    },
-    snapshotCard: {
-      padding: Spacing.md,
-      marginBottom: Spacing.md,
-    },
-    snapshotLoading: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-      paddingVertical: Spacing.xs,
-    },
-    snapshotMuted: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textMuted,
-    },
-    snapshotRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: Spacing.sm,
-    },
-    snapshotTitle: {
-      fontSize: Typography.fontSize.micro,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.3,
-      marginBottom: 2,
-    },
-    snapshotBody: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.sm * 1.45,
-    },
-    snapshotEm: {
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
     },
     assessGrid: {
       flexDirection: 'row',

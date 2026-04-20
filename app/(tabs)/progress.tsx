@@ -27,6 +27,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getRecoverySessions } from '@/services/recovery-storage';
 import { getEQScores } from '@/services/eq-storage';
+import { getLatestBig5Assessment } from '@/services/big5-storage';
 import {
   EMPTY_INSIGHTS_LEARNING_BUNDLE,
   loadInsightsLearningBundle,
@@ -35,7 +36,9 @@ import {
 } from '@/services/insights-learning-bundle';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
+import { AssessmentSnapshotCard } from '@/components/assessment-snapshot-card';
 import type { EQDimension } from '@/types/eq-assessment';
+import type { EqScoreSnapshot } from '@/lib/home-assessment-summary';
 import type { GroundingMode } from '@/types/grounding';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -260,6 +263,7 @@ function useProgressData() {
   const { user, isLoading: authLoading } = useAuthStore();
 
   const [eqScores, setEqScores] = useState<Awaited<ReturnType<typeof getEQScores>>>([]);
+  const [big5CompletedAt, setBig5CompletedAt] = useState<string | null>(null);
   const [recoverySessions, setRecoverySessions] = useState<Awaited<ReturnType<typeof getRecoverySessions>>>([]);
   const [learningBundle, setLearningBundle] = useState<InsightsLearningBundle>(EMPTY_INSIGHTS_LEARNING_BUNDLE);
   const [learningHydrated, setLearningHydrated] = useState(false);
@@ -278,6 +282,7 @@ function useProgressData() {
   useEffect(() => {
     if (authLoading || !user?.id) {
       setEqScores([]);
+      setBig5CompletedAt(null);
       setRecoverySessions([]);
       setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE);
       setLearningHydrated(false);
@@ -308,6 +313,14 @@ function useProgressData() {
         .catch((e) => { if (!cancelledRef.current) { setEqScores([]); setErrorEq(e?.message || 'Could not load EQ data.'); } })
         .finally(() => { if (!cancelledRef.current) setLoadingEq(false); });
 
+      getLatestBig5Assessment(user.id)
+        .then((row) => {
+          if (!cancelledRef.current) setBig5CompletedAt(row?.completed_at ?? null);
+        })
+        .catch(() => {
+          if (!cancelledRef.current) setBig5CompletedAt(null);
+        });
+
       withTimeout(loadInsightsLearningBundle(user.id), LEARNING_BUNDLE_TIMEOUT_MS)
         .then((b) => { if (!cancelledRef.current) setLearningBundle(b); })
         .catch((e) => { if (!cancelledRef.current) { setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE); setErrorLearning(e?.message || 'Could not load learning data.'); } })
@@ -319,6 +332,7 @@ function useProgressData() {
         .finally(() => { if (!cancelledRef.current) setLoadingRecover(false); });
     } else {
       setLoadingEq(false);
+      setBig5CompletedAt(null);
       setLoadingLearning(false);
       setLoadingRecover(false);
       setLearningHydrated(true);
@@ -389,9 +403,22 @@ function useProgressData() {
   }, [recoverySessions]);
 
   return {
-    user, authLoading, eqSummary, assistActivity, learningHydrated, learningSummary, recoverySummary,
-    loadingEq, loadingLearning, loadingRecover, errorEq, errorLearning, errorRecover,
+    user,
+    authLoading,
+    eqScores,
+    eqSummary,
+    assistActivity,
+    learningHydrated,
+    learningSummary,
+    recoverySummary,
+    loadingEq,
+    loadingLearning,
+    loadingRecover,
+    errorEq,
+    errorLearning,
+    errorRecover,
     supabaseOn: isSupabaseConfigured(),
+    big5CompletedAt,
     retry: () => setRefreshTrigger((t) => t + 1),
   };
 }
@@ -408,6 +435,16 @@ export default function ProgressScreen() {
   const onRefresh = () => { setRefreshing(true); d.retry(); setTimeout(() => setRefreshing(false), 500); };
   const st = createStyles(colors);
 
+  const eqSnapshots: EqScoreSnapshot[] = useMemo(
+    () =>
+      d.eqScores.map((s) => ({
+        completedAt: s.completedAt,
+        overallScore: s.overallScore,
+        assessmentType: s.assessmentType,
+      })),
+    [d.eqScores]
+  );
+
   return (
     <GlassBackground>
       <ScrollView
@@ -419,6 +456,15 @@ export default function ProgressScreen() {
         <View style={st.header}>
           <Text style={st.title}>Your Progress</Text>
           <Text style={st.subtitle}>Track your emotional intelligence growth</Text>
+        </View>
+
+        <View style={st.section}>
+          <Text style={st.snapshotSectionTitle}>Assessment snapshot</Text>
+          <AssessmentSnapshotCard
+            loading={d.loadingEq}
+            snapshots={eqSnapshots}
+            big5CompletedAt={d.big5CompletedAt}
+          />
         </View>
 
         {/* ── EQ Score Hero ──────────────────────────── */}
@@ -683,6 +729,14 @@ const createStyles = (colors: ReturnType<typeof useColors>) => {
     header: { paddingTop: Platform.OS === 'ios' ? 56 : Spacing.xl, marginBottom: Spacing.lg },
     title: { fontSize: 26, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.5 },
     subtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+
+    snapshotSectionTitle: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textSecondary,
+      letterSpacing: Typography.letterSpacing.normal,
+      marginBottom: Spacing.sm,
+    },
 
     section: { marginBottom: Spacing.xl },
 

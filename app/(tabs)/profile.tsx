@@ -1,7 +1,7 @@
 /**
  * Profile Screen — Glassmorphism v5
  *
- * User profile, dark mode toggle, settings. (EQ & Big Five live on Home.)
+ * User profile, dark mode toggle, settings. (Assessment snapshot on Progress.)
  */
 
 import React, { useEffect, useState } from 'react';
@@ -70,7 +70,7 @@ export default function ProfileScreen() {
           </View>
           <Text style={st.username}>{nameToShow}</Text>
           {user?.email ? <Text style={st.email}>{user.email}</Text> : null}
-          <Text style={st.homeHint}>EQ, Big Five, and your progress snapshot are on Home.</Text>
+          <Text style={st.homeHint}>EQ and Big Five quick links are on Home; the detailed snapshot is on Progress.</Text>
         </View>
 
         {/* Appearance */}
