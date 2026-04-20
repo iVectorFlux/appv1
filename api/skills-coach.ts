@@ -5,7 +5,7 @@
  *
  *  decision_simulator  → scenario + A–D choice + reasoning → feedback
  *  output_audit        → flawed AI output to evaluate → critique → feedback
- *  open_reflection     → interpersonal/systemic situation → open response → coaching
+ *  open_reflection     → situation → full written analysis → coaching (no forced choice)
  *  generative_brainstorm → creative constraint → ideas list → originality feedback
  *  draft_and_refine    → communication brief → draft message → audience-fit feedback
  *
@@ -210,9 +210,64 @@ ${jsonShape}`;
 
 function buildOpenReflectionPrompt(skillName: string, atomicSkillName?: string): string {
   const focus = atomicSkillName ? `${skillName} — specifically "${atomicSkillName}"` : skillName;
+  const lower = skillName.toLowerCase();
+  const atomicLower = (atomicSkillName ?? '').toLowerCase();
 
-  const isEQ = skillName.toLowerCase().includes('emotional');
-  const isSystems = skillName.toLowerCase().includes('systems');
+  const isEQ = lower.includes('emotional');
+  const isSystems = lower.includes('systems');
+  const isCritical = lower.includes('critical thinking');
+  const isProblemSolving = lower.includes('problem solving');
+  const isAdaptability = lower.includes('adaptability');
+
+  if (isCritical) {
+    const firstPrinciples = atomicLower.includes('first principle');
+    return `You are designing a CRITICAL THINKING exercise for: "${focus}".
+
+Create a realistic workplace or decision situation (4-7 sentences) where the obvious move relies on analogy, habit, or authority — and a stronger approach requires unpacking assumptions and reasoning from fundamentals.
+
+The learner must answer in full prose — NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written analysis only.
+
+Then write ONE question that requires them to: (1) name the main hidden assumptions or weak analogies, (2) separate what counts as a foundational fact vs what needs evidence, (3) reason step-by-step toward a conclusion, naming trade-offs and what would change their mind.
+${firstPrinciples ? '\nBecause this sub-skill is first principles: explicitly ask them to strip the problem to basic truths before rebuilding the argument.' : ''}
+
+JSON only, no markdown:
+{
+  "scenario": "[The situation]",
+  "question": "[One analytical question — free text only, no multiple choice]"
+}`;
+  }
+
+  if (isProblemSolving) {
+    return `You are designing a PROBLEM SOLVING exercise for: "${focus}".
+
+Create a messy but realistic problem (4-7 sentences) — unclear scope, conflicting signals, or pressure to jump to a fix.
+
+The learner must answer in full prose — NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written response only.
+
+Then write ONE question that asks them to: (1) reframe what the real problem might be vs symptoms, (2) state a root-cause hypothesis and what they'd verify, (3) propose options with trade-offs and the smallest next test or experiment.
+
+JSON only, no markdown:
+{
+  "scenario": "[The situation]",
+  "question": "[One question — structured written answer, no multiple choice]"
+}`;
+  }
+
+  if (isAdaptability) {
+    return `You are designing an ADAPTABILITY exercise for: "${focus}".
+
+Create a situation (4-7 sentences) where priorities shift, information is incomplete, or a plan is suddenly wrong — something that rewards updating one's model and acting anyway.
+
+The learner must answer in full prose — NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written response only.
+
+Then write ONE question that asks them to: (1) name what changed and what is still unknown, (2) how they'd adjust their approach or mental model, (3) concrete next steps — not generic positivity.
+
+JSON only, no markdown:
+{
+  "scenario": "[The situation]",
+  "question": "[One question — free text only, no multiple choice]"
+}`;
+  }
 
   if (isEQ) {
     return `You are designing an emotional intelligence reflection exercise for: "${focus}".
@@ -360,9 +415,29 @@ function buildOpenFeedbackPrompt(
   const focus = atomicSkillName ? `${skillName} — "${atomicSkillName}"` : skillName;
   const isRetry = attemptNumber > 1;
 
+  const openReflectionInstruction = (() => {
+    const ln = skillName.toLowerCase();
+    if (ln.includes('critical thinking')) {
+      return `The learner wrote a free-form analytical response (no multiple choice). Evaluate clarity of reasoning, assumptions they surfaced, logical structure, evidence-mindedness, and genuine use of the sub-skill — not verbosity or rhetorical polish.`;
+    }
+    if (ln.includes('problem solving')) {
+      return `The learner wrote a structured response about a messy problem. Evaluate problem framing, root-cause thinking, quality of options and trade-offs, and whether their next step is concrete — not buzzwords.`;
+    }
+    if (ln.includes('adaptability')) {
+      return `The learner described how they would adapt under change or ambiguity. Evaluate flexibility of thinking, honesty about unknowns, and concrete actions — not generic resilience clichés.`;
+    }
+    if (ln.includes('systems')) {
+      return `The learner analysed a systemic situation. Evaluate whether they identified loops, second-order effects, dependencies, or patterns in a substantive way — not vague "big picture" language.`;
+    }
+    if (ln.includes('emotional')) {
+      return `The learner responded to an open reflective situation. Evaluate the depth of their emotional/systemic awareness, whether they considered multiple perspectives, and whether their response shows real skill — not just empathy-sounding language.`;
+    }
+    return `The learner responded in writing to an open prompt. Evaluate depth, specificity, and use of the target sub-skill — not length or tone.`;
+  })();
+
   const modeInstructions: Record<string, string> = {
     output_audit: `The learner was asked to audit a piece of AI-generated content and identify issues. Evaluate: (1) how many real issues they caught, (2) whether they explained WHY each is a problem, (3) what they missed. Reward precision and specificity over vague concerns.`,
-    open_reflection: `The learner responded to an open reflective situation. Evaluate the depth of their emotional/systemic awareness, whether they considered multiple perspectives, and whether their response shows real skill — not just empathy-sounding language.`,
+    open_reflection: openReflectionInstruction,
     generative_brainstorm: `The learner generated ideas in response to a creative challenge. Evaluate: (1) range and diversity of ideas, (2) whether any challenge assumptions, (3) cross-domain inspiration, (4) originality vs. obvious answers. Reward breadth and boldness over polish.`,
     draft_and_refine: `The learner drafted a message for a specific communication context. Evaluate: clarity, audience-fit, framing, whether they addressed the tension in the brief, and persuasive effectiveness. Reward precision and audience awareness over length or style.`,
   };

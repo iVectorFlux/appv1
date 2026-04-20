@@ -1,7 +1,7 @@
 /**
  * Home — Glassmorphic dashboard
  *
- * Assessments & progress (EQ check-in, full EQ, Big Five, Progress) + 2×2 explore grid.
+ * Explore grid first (Learn EQ, Companion, Skill Lab, Recover), then Assessments & progress.
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -229,7 +229,28 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {/* Assessments & progress */}
+        <Text style={[st.sectionHeading, { marginBottom: Spacing.sm }]}>Explore</Text>
+
+        {isWebLaptop ? (
+          <View style={[st.exploreSection, st.webTileGrid]}>
+            {exploreFeatures.map((_, i) => (
+              <React.Fragment key={exploreFeatures[i].key}>{renderExploreTile(i)}</React.Fragment>
+            ))}
+          </View>
+        ) : (
+          <View style={st.exploreSection}>
+            <View style={st.gridRow}>
+              {renderExploreTile(0)}
+              {renderExploreTile(1)}
+            </View>
+            <View style={st.gridRow}>
+              {renderExploreTile(2)}
+              {renderExploreTile(3)}
+            </View>
+          </View>
+        )}
+
+        {/* Assessments & progress — after Explore */}
         <Animated.View style={[st.assessSection, { opacity: assessAnim }]}>
           <Text style={st.sectionHeading}>Assessments & progress</Text>
           <GlassCard borderRadius={Radius.lg} style={st.snapshotCard}>
@@ -306,27 +327,6 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <Text style={[st.sectionHeading, { marginBottom: Spacing.sm }]}>Explore</Text>
-
-        {isWebLaptop ? (
-          <View style={st.webTileGrid}>
-            {exploreFeatures.map((_, i) => (
-              <React.Fragment key={exploreFeatures[i].key}>{renderExploreTile(i)}</React.Fragment>
-            ))}
-          </View>
-        ) : (
-          <>
-            <View style={st.gridRow}>
-              {renderExploreTile(0)}
-              {renderExploreTile(1)}
-            </View>
-            <View style={st.gridRow}>
-              {renderExploreTile(2)}
-              {renderExploreTile(3)}
-            </View>
-          </>
-        )}
-
         <View style={st.footer}>
           <Ionicons name="shield-checkmark-outline" size={13} color={colors.textMuted} />
           <Text style={st.footerText}>Your data is private and encrypted</Text>
@@ -399,9 +399,11 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.sm,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textSecondary,
-      letterSpacing: 0.4,
-      textTransform: 'uppercase',
+      letterSpacing: Typography.letterSpacing.normal,
       marginBottom: Spacing.sm,
+    },
+    exploreSection: {
+      marginBottom: Spacing.lg + 4,
     },
     assessSection: {
       marginBottom: Spacing.lg + 4,

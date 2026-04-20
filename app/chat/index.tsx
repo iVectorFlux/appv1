@@ -103,8 +103,8 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
     icon: 'briefcase-outline',
     color: '#3D8B6E',
     intro: (name) => name
-      ? `Hey ${name}, ready when you are. Ask me anything about leadership, growth, or professional development.`
-      : "Ready when you are. Ask me anything about leadership, growth, or professional development.",
+      ? `Hey ${name}, ready when you are. Ask about leadership, work skills, or growth — or learn something new step-by-step right here (even when it is not in Skill Lab).`
+      : "Ready when you are. Ask about leadership, work skills, or growth — or learn something new step-by-step here (even when it is not in Skill Lab).",
     placeholder: 'Ask me anything...',
     suggestions: [
       "How do I handle a difficult conversation?",

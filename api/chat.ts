@@ -104,32 +104,40 @@ JSON rules:
 - "suggestSaveAsReflection": true for meaningful personal sharing worth capturing.
 - "reframe": string (one concrete sentence) or null — see COGNITIVE REFRAME above; null beats generic repetition.`;
 
-export const COACH_SYSTEM_PROMPT = `You are a high-performance AI Coach focused on professional growth, communication, and behaviour change.
+export const COACH_SYSTEM_PROMPT = `You are a high-performance AI Coach inside a professional growth app. You combine sharp reasoning with practical teaching.
 
-GOAL: Help the user improve the specific skill they're asking about through clear thinking, actionable frameworks, and practice.
+TWO KINDS OF TOPICS (read carefully — this avoids confusing users):
+
+A) SKILL LAB–ALIGNED (workplace / professional skills — the only topics that map to in-app practice):
+These eight areas: Emotional Intelligence, AI Literacy, Critical Thinking, Problem Solving, Adaptability, Creative Thinking, Systems Thinking, Communication & Influence.
+- When the user's goal clearly fits one of these (e.g. difficult feedback, prioritisation, stakeholder communication), you may use a tight framework and **may** set skillId / learningPathway to that one skill.
+- **Never** invent fake module names (e.g. "language foundation", "literacy track") that are not in the list below. Those labels do not exist in the app.
+
+B) NOT COVERED BY SKILL LAB (languages, school subjects, hobbies, general life skills with no workplace angle, etc. — e.g. learning Japanese, calculus, guitar):
+- **Be explicit in plain language** that this topic is not something they practise in Skill Lab, but **they can still learn it right here in this chat** with you.
+- **Do not** pretend there is a "skill gap" that maps to a Skill Lab skill. **Do not** frame the topic as if it were one of the eight skills unless they are clearly asking about work communication, EQ, thinking habits, etc.
+- Teach well anyway: infer what they need (goal, level, time), reason step-by-step, then deliver **structured in-chat learning**:
+  • One clear objective for this reply
+  • One concrete micro-lesson (short, accurate — if you teach a fact or script, get it right)
+  • One small practice (say it / try it / self-check)
+  • One follow-up prompt for the next message (what to send you next)
+- Stay practical and honest. If you are unsure of a fact (e.g. exact characters), say so and offer a verifiable next step instead of inventing placeholders.
+
+REASONING:
+- Briefly notice what they actually asked and why it matters to them before you teach.
+- Prefer clarity over jargon. Challenge soft assumptions only when it helps.
 
 BEHAVIOR RULES:
-- Be direct, structured, and practical — not emotional support.
-- Focus on outcomes, trade-offs, and skill-building.
-- Challenge assumptions gently when useful.
-- Do NOT validate feelings like a therapist or use "How does that make you feel?" prompts.
-- Do NOT use grounding techniques, breathing, or nervous-system tools.
+- Direct, structured, practical — not therapy.
+- Do NOT use grounding, breathing, or nervous-system tools (those belong to Inner Ally mode elsewhere).
 
-HOW TO WRITE YOUR REPLY (critical — formatting rules):
-- Write in clear, flowing paragraphs or short bullet lists. No numbered section titles. No ALL-CAPS headers.
-- Do NOT label sections (e.g. do NOT write "CONTEXT UNDERSTANDING:", "DIAGNOSIS:", "FRAMEWORK:", "PRACTICE:").
-- Think through this structure internally, but write as a coach speaking naturally:
-  1. Briefly restate the situation in one sentence to show you understood.
-  2. Name the core skill gap or challenge.
-  3. Offer a simple, named framework (2–4 steps) that applies immediately.
-  4. Show a concrete example of how to use it in their specific situation.
-  5. End with one short practice question or scenario for them to try.
-- Aim for 120–200 words. You may go longer if the user explicitly asks for depth.
+FORMATTING:
+- Flowing paragraphs or short bullets. No ALL-CAPS headers. No fake section labels like "DIAGNOSIS:" or "FRAMEWORK:".
 
-TONE:
-- Calm, sharp, slightly challenging. Like a great senior mentor — not a friend, not a therapist.
+LENGTH:
+- Default ~120–220 words; go longer only if they asked for depth or the topic needs careful accuracy (e.g. teaching content).
 
-Skill Lab — these are the only valid skillId values (snake_case). When skillId is set, learningPathway must be one short line naming the same skill:
+Skill Lab — **only** these skillId values (snake_case). If the conversation is type B above, or nothing fits, you **must** use null:
 - emotional_intelligence — Emotional Intelligence
 - ai_literacy — AI Literacy
 - critical_thinking — Critical Thinking
@@ -139,7 +147,7 @@ Skill Lab — these are the only valid skillId values (snake_case). When skillId
 - systems_thinking — Systems Thinking
 - communication_influence — Communication & Influence
 
-If nothing fits well, set both learningPathway and skillId to null.
+When skillId is set, learningPathway must be exactly one short line naming that same skill. Otherwise both null.
 
 APP WIRE FORMAT (critical):
 After your reply text, output exactly one more line with no code fence:
@@ -307,8 +315,45 @@ function readJsonBody(req: VercelRequest): {
 /** Last coach skill card shown per user — avoids repeating the same Skill Lab nudge every turn (warm instance only). */
 const lastCoachSuggestedSkillByUser = new Map<string, string | null>();
 
+/**
+ * Topics we can teach in Coach chat but must NOT label as Skill Lab skills
+ * (avoids invented "skill gaps" and wrong skill cards).
+ */
+function isLikelyNonSkillLabCoachTopic(text: string): boolean {
+  const t = text.toLowerCase();
+  if (t.length < 3) return false;
+
+  if (
+    /\b(japanese|nihongo|hiragana|katakana|kanji|romaji|learn japanese|teach me japanese|spanish|español|espanol|french|français|francais|german|deutsch|mandarin|cantonese|korean|hangul|italian|portuguese|arabic|hebrew|hindi|russian|polish|dutch|swedish|norwegian|turkish|vietnamese|thai|greek|ukrainian)\b/.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (/\b(learn (a |the )?language|language learning|language lesson|duolingo|babbel|rosetta)\b/.test(t)) {
+    return true;
+  }
+  if (
+    /\bteach me (some )?(spanish|french|german|japanese|korean|mandarin|italian|portuguese|arabic|hindi)\b/.test(t)
+  ) {
+    return true;
+  }
+  if (
+    /\b(teach me (calculus|algebra|geometry|physics|chemistry|biology|statistics)|homework help (for|with) math)\b/.test(t)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function detectSkillFromText(text: string): { skillId: string | null; confidence: number } {
   const t = text.toLowerCase();
+
+  // Do not attach Skill Lab heuristics to language/academic tutoring threads.
+  if (isLikelyNonSkillLabCoachTopic(text)) {
+    return { skillId: null, confidence: 0 };
+  }
 
   if (t.includes('meeting') || t.includes('speak') || t.includes('communicate')) {
     return { skillId: 'communication_influence', confidence: 0.8 };
@@ -356,8 +401,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const lastUserMessage = userMessages[userMessages.length - 1]?.content || '';
-  const detected = detectSkillFromText(lastUserMessage);
+  const lastUserMessage =
+    typeof userMessages[userMessages.length - 1]?.content === 'string'
+      ? userMessages[userMessages.length - 1].content
+      : '';
+
+  const recentUserText = userMessages
+    .filter((m) => m.role === 'user')
+    .slice(-8)
+    .map((m) => (typeof m.content === 'string' ? m.content : ''))
+    .join('\n');
+
+  const coachOffSkillLab = mode === 'coach' && isLikelyNonSkillLabCoachTopic(recentUserText);
+
+  let detected = detectSkillFromText(lastUserMessage);
+  if (coachOffSkillLab) {
+    detected = { skillId: null, confidence: 0 };
+  }
 
   const systemPrompt = mode === 'inner_ally' ? INNER_ALLY_SYSTEM_PROMPT : COACH_SYSTEM_PROMPT;
   const chatMessages = [
@@ -375,8 +435,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       body: JSON.stringify({
         model,
         messages: chatMessages,
-        max_tokens: mode === 'inner_ally' ? 420 : 600,
-        temperature: mode === 'inner_ally' ? 0.55 : 0.65,
+        max_tokens: mode === 'inner_ally' ? 420 : 720,
+        temperature: mode === 'inner_ally' ? 0.55 : 0.62,
       }),
     });
 
@@ -415,9 +475,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       communication_influence: 'Communication & Influence',
     };
 
-    if (mode === 'coach' && detected.skillId && detected.confidence > 0.7) {
+    if (mode === 'coach' && !coachOffSkillLab && detected.skillId && detected.confidence > 0.7) {
       payload.skillId = detected.skillId;
       payload.learningPathway = SKILL_LABELS[detected.skillId] ?? detected.skillId.replace(/_/g, ' ');
+    }
+
+    if (mode === 'coach' && coachOffSkillLab) {
+      payload.skillId = null;
+      payload.learningPathway = null;
     }
 
     if (mode === 'coach') {

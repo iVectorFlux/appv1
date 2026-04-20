@@ -64,6 +64,10 @@ export default function RootLayout() {
         name="full-eq-test" 
         options={{ presentation: 'card', animation: 'slide_from_right' }} 
       />
+      <Stack.Screen
+        name="big5-test"
+        options={{ presentation: 'card', animation: 'slide_from_right' }}
+      />
       <Stack.Screen 
         name="learning-detail" 
         options={{ presentation: 'card', animation: 'slide_from_right' }} 
