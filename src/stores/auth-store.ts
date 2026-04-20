@@ -232,12 +232,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   logout: async () => {
     const userId = get().user?.id;
+    // Clear Supabase session first — do not await endSession before signOut: DB/RLS slowness
+    // or failures would block sign-out and leave the user stuck signed in.
     try {
-      if (userId) await endSession(userId);
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      if (error) console.warn('[Auth] signOut:', error.message);
       set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
+      if (userId) void endSession(userId).catch(() => {});
     } catch (error) {
       console.error('Logout failed:', error);
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch {
+        /* ignore */
+      }
       set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
     }
   },

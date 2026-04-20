@@ -21,7 +21,7 @@ export default function ConfirmEmailScreen() {
 
   const handleSignOut = async () => {
     await logout();
-    router.replace('/(auth)/sign-in');
+    router.replace('/');
   };
 
   const styles = createStyles(colors);

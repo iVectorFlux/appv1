@@ -29,6 +29,7 @@ export default function ProfileScreen() {
   const { colorMode, toggleColorMode } = useThemeStore();
   const colors = useColors();
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -45,8 +46,15 @@ export default function ProfileScreen() {
   }, [user?.id]);
 
   const handleLogout = async () => {
-    await logout();
-    router.replace('/(auth)/sign-in');
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await logout();
+      // Root index redirects to sign-in when !isAuthenticated — resets stack more reliably than pushing auth.
+      router.replace('/');
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const nameToShow = (displayName?.trim() || user?.username || 'User').replace(/^\w/, (c) => c.toUpperCase());
@@ -117,7 +125,7 @@ export default function ProfileScreen() {
 
         {/* Logout */}
         <View style={st.logoutSection}>
-          <Button title="Sign Out" onPress={handleLogout} variant="ghost" fullWidth size="lg" />
+          <Button title="Sign Out" onPress={handleLogout} variant="ghost" fullWidth size="lg" loading={signingOut} />
         </View>
       </ScrollView>
     </GlassBackground>
