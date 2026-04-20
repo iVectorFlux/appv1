@@ -212,14 +212,16 @@ export async function saveEQAssessmentResult(
 export async function getEQScores(
   userId: string,
   limit: number = 50
-): Promise<Array<{
-  id: string;
-  sessionId: string;
-  completedAt: string;
-  overallScore: number;
-  dimensionScores: Record<string, number>;
-  assessmentType: 'check_in' | 'full_test';
-}>> {
+): Promise<
+  {
+    id: string;
+    sessionId: string;
+    completedAt: string;
+    overallScore: number;
+    dimensionScores: Record<string, number>;
+    assessmentType: 'check_in' | 'full_test';
+  }[]
+> {
   if (!isSupabaseConfigured()) {
     return [];
   }

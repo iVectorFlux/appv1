@@ -12,11 +12,7 @@
  * Each technique shifts one or more of these mechanisms.
  */
 
-import type {
-  GroundingMode,
-  GroundingModeConfig,
-  EmotionalTone,
-} from '@/types/grounding';
+import type { GroundingModeConfig, EmotionalTone } from '@/types/grounding';
 
 // ============================================================================
 // MODE CONFIGURATIONS

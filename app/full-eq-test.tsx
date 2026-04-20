@@ -25,12 +25,11 @@ import {
 } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { selectFullTestQuestions } from '@/data/eq-questions';
-import { calculateEQScore, getScoreLevel, getScoreLevelDescription, getDimensionDescription } from '@/services/eq-scoring';
+import { calculateEQScore, getScoreLevel } from '@/services/eq-scoring';
 import { loadFullTestQuestions } from '@/services/eq-questions-loader';
 import {
   startEQAssessmentSession,
@@ -40,14 +39,12 @@ import {
 import {
   AnimationDuration,
   AnimationConfigs,
-  TransitionValues,
   createQuestionTransition,
   createSelectionWithDelay,
   getQuestionAnimatedStyle,
   getSelectionCheckmarkStyle,
   getProgressBarWidth,
 } from '@/styles/animations';
-import { createSharedStyles } from '@/styles/shared';
 import type {
   EQQuestion,
   EQResponse,
@@ -108,9 +105,6 @@ export default function FullEQTestScreen() {
   // Flag to prevent double-submission
   const isTransitioning = useRef(false);
   
-  // Memoized shared styles
-  const sharedStyles = useMemo(() => createSharedStyles(colors), [colors]);
-
   useEffect(() => {
     let cancelled = false;
     const DB_TIMEOUT_MS = 5000;
@@ -145,7 +139,6 @@ export default function FullEQTestScreen() {
   }, [currentIndex, questions.length, progressAnim]);
 
   const currentQuestion = questions[currentIndex];
-  const progress = questions.length > 0 ? ((currentIndex) / questions.length) * 100 : 0;
 
   // Use centralized transition animation
   const questionTransition = useMemo(

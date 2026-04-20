@@ -82,9 +82,6 @@ const QUESTION_TYPE_WEIGHTS = {
 // Minimum response time in ms to be considered valid
 const MIN_RESPONSE_TIME = 500;
 
-// Maximum reasonable response time in ms
-const MAX_RESPONSE_TIME = 120000; // 2 minutes
-
 // Likert: desirability bias attenuation (score *= 1 - bias*α)
 const DESIRABILITY_ATTENUATION_ALPHA = 0.4;
 

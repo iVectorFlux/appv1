@@ -21,20 +21,12 @@ interface ThemeState {
 
 const COLOR_MODE_STORAGE_KEY = 'eq-app-color-mode';
 
-const getStorage = () => {
-  if (Platform.OS === 'web') {
-    return AsyncStorage;
-  }
-  return SecureStore;
-};
-
 export const useThemeStore = create<ThemeState>((set) => ({
   colorMode: 'light',
   
   setColorMode: async (mode: ColorMode) => {
     set({ colorMode: mode });
     try {
-      const storage = getStorage();
       if (Platform.OS === 'web') {
         await AsyncStorage.setItem(COLOR_MODE_STORAGE_KEY, mode);
       } else {
@@ -53,7 +45,6 @@ export const useThemeStore = create<ThemeState>((set) => ({
   
   initialize: async () => {
     try {
-      const storage = getStorage();
       let savedColorMode: ColorMode = 'light';
       
       if (Platform.OS === 'web') {

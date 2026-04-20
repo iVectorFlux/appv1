@@ -8,7 +8,7 @@
  * Web audio still uses a hidden HTML audio element for reliable playback.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,8 +18,10 @@ import {
   Platform,
   ActivityIndicator,
   useWindowDimensions,
+  AppState,
+  type AppStateStatus,
 } from 'react-native';
-import { Redirect, useRouter, useLocalSearchParams } from 'expo-router';
+import { Redirect, useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, Audio, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
@@ -99,6 +101,9 @@ export default function LearningDetailScreen() {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  /** Bumps when screen refocuses or app returns foreground — remounts native <Video> to recover stuck decoders. */
+  const [videoMountNonce, setVideoMountNonce] = useState(0);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   // expo-av ref for native platforms
   const videoRef = useRef<Video>(null);
@@ -162,6 +167,42 @@ export default function LearningDetailScreen() {
     };
   }, [params.id]);
 
+  // Native: routing + expo-av often stalls the first decoder attach; remount on focus / app resume fixes “blank until I background the app”.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      allowsRecordingIOS: false,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    }).catch(() => {});
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setVideoMountNonce((n) => n + 1);
+      return () => {
+        if (Platform.OS === 'web') {
+          webVideoRef.current?.pause();
+        } else {
+          videoRef.current?.pauseAsync().catch(() => {});
+        }
+      };
+    }, [])
+  );
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      const prev = appStateRef.current;
+      if ((prev === 'background' || prev === 'inactive') && next === 'active' && mediaMode === 'video') {
+        setVideoMountNonce((n) => n + 1);
+      }
+      appStateRef.current = next;
+    });
+    return () => sub.remove();
+  }, [mediaMode]);
+
   // Native: eagerly load audio when the lesson starts in audio mode
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -204,7 +245,7 @@ export default function LearningDetailScreen() {
     } else {
       recordLastAccessed(user.id, module.id).catch(() => {});
     }
-  }, [module?.id, user?.id, catalogEpisodeKey]);
+  }, [module?.id, user?.id, catalogEpisodeKey]); // eslint-disable-line react-hooks/exhaustive-deps -- record once per lesson id
 
   const handleVideoEnded = () => {
     setIsPlaying(false);
@@ -419,7 +460,8 @@ export default function LearningDetailScreen() {
     setIsPlaying(false);
     setProgress(0);
     setError(null);
-    
+    setVideoMountNonce((n) => n + 1);
+
     if (Platform.OS === 'web') {
       webAudioRef.current?.pause();
     } else {
@@ -500,6 +542,7 @@ export default function LearningDetailScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={Platform.OS === 'android' ? false : undefined}
       >
         {/* Media Tabs — only when both video and podcast exist */}
         {hasVideo && hasAudio ? (
@@ -539,7 +582,7 @@ export default function LearningDetailScreen() {
             <View style={styles.videoContainer}>
               {Platform.OS === 'web'
                 ? React.createElement('video', {
-                    key: videoSrc,
+                    key: `${videoSrc}-${videoMountNonce}`,
                     ref: (el: HTMLVideoElement | null): void => { webVideoRef.current = el; },
                     src: videoSrc,
                     controls: true,
@@ -568,13 +611,15 @@ export default function LearningDetailScreen() {
                   })
                 : (
                   <Video
+                    key={`${videoSrc}-${videoMountNonce}`}
                     ref={videoRef}
                     source={{ uri: videoSrc }}
                     style={styles.video}
                     useNativeControls
                     resizeMode={ResizeMode.CONTAIN}
                     onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-                    onLoadStart={() => setIsLoading(true)}
+                    onLoadStart={() => { setIsLoading(true); setError(null); }}
+                    onReadyForDisplay={() => setIsLoading(false)}
                     onError={() => { setError('Unable to load video'); setIsLoading(false); }}
                   />
                 )
@@ -649,10 +694,9 @@ export default function LearningDetailScreen() {
                   setError(null);
                   setIsLoading(true);
                   if (mediaMode === 'video') {
+                    setVideoMountNonce((n) => n + 1);
                     if (Platform.OS === 'web' && webVideoRef.current) {
                       webVideoRef.current.load();
-                    } else {
-                      videoRef.current?.playAsync().catch(() => {});
                     }
                   } else {
                     switchToAudio();

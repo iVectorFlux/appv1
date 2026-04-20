@@ -304,7 +304,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set((state) => ({
         user: state.user ? { ...state.user, displayName } : null,
       }));
-    } catch (_) {
+    } catch {
       // Non-fatal
     }
   },
@@ -337,7 +337,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       } else {
         set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
       }
-    } catch (_) {
+    } catch {
       // Non-fatal; keep current state
     }
   },

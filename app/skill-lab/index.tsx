@@ -139,7 +139,6 @@ export default function SkillLabScreen() {
       {/* Skills — single column on phone; 3-up tiles on laptop web */}
       <View style={[styles.grid, isWebLaptop && styles.gridWebLaptop]}>
         {FUTURE_SKILLS.map((skill, idx) => {
-          const p = progress[skill.id];
           const sessions = sessionCountForSkill(skill.id);
           const hasPracticed = sessions > 0;
 

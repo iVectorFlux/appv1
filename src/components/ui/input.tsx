@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { TextInput, StyleSheet, View, Text, ViewStyle, TextStyle } from 'react-native';
+import { TextInput, StyleSheet, View, Text } from 'react-native';
 import { useColors, Spacing, Radius, Typography } from '@/constants/design-tokens';
 
 interface InputProps {

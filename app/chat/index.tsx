@@ -21,14 +21,12 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useColors,
   Spacing,
   Typography,
   Radius,
-  Glass,
 } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import {
@@ -444,7 +442,6 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
   const [inputText, setInputText] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -454,8 +451,7 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
   const loadHistory = useCallback(
     async (selectedMode: ChatMode) => {
       setMessages([introMessageForMode(selectedMode, displayName)]);
-      if (!user?.id) { setIsHistoryLoading(false); return; }
-      setIsHistoryLoading(true);
+      if (!user?.id) return;
       try {
         const history = await getChatHistoryWithTimeout(user.id, selectedMode, 30);
         if (history.length > 0) {
@@ -469,8 +465,8 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
             }))
           );
         }
-      } finally {
-        setIsHistoryLoading(false);
+      } catch {
+        /* non-fatal: keep intro */
       }
     },
     [user?.id, displayName]

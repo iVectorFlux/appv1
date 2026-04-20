@@ -16,7 +16,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
@@ -41,7 +40,6 @@ import type { EQDimension } from '@/types/eq-assessment';
 import type { EqScoreSnapshot } from '@/lib/home-assessment-summary';
 import type { GroundingMode } from '@/types/grounding';
 
-const { width: SCREEN_W } = Dimensions.get('window');
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const RECOVERY_TIMEOUT_MS = 8000;
 const EQ_SCORES_TIMEOUT_MS = 8000;
@@ -721,9 +719,8 @@ function SectionHeading({ icon, iconColor, title, colors }: {
 
 // ── Styles ────────────────────────────────────────────────────────────
 
-const createStyles = (colors: ReturnType<typeof useColors>) => {
-  const isDark = colors.glassTint === 'dark';
-  return StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>) =>
+  StyleSheet.create({
     container: { flex: 1 },
     content: { paddingBottom: 120, paddingHorizontal: Spacing.md },
     header: { paddingTop: Platform.OS === 'ios' ? 56 : Spacing.xl, marginBottom: Spacing.lg },
@@ -784,4 +781,3 @@ const createStyles = (colors: ReturnType<typeof useColors>) => {
     footer: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs, marginBottom: Spacing.md },
     footerText: { fontSize: 11, lineHeight: 16, color: colors.textMuted, textAlign: 'center' },
   });
-};

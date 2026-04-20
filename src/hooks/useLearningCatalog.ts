@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchLearningEpisodes, type LearningEpisode } from '@/services/learning-content-catalog';
 import { LEARNING_MODULES } from '@/data/learning-content';
 import { isSupabaseConfigured } from '@/lib/supabase';

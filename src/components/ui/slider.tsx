@@ -49,8 +49,6 @@ export function Slider({
     if (!trackLayoutRef.current) return;
     
     const { x: trackX, width: trackWidth } = trackLayoutRef.current;
-    const thumbSize = 24;
-    const padding = thumbSize / 2;
     const availableWidth = trackWidth;
     
     // Calculate position relative to track

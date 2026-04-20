@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import { saveRecoverySession } from '@/services/recovery-storage';
 import { GROUNDING_MODES } from '@/data/grounding-content';
@@ -85,7 +85,6 @@ export default function GroundingScreen() {
   const [stressLevel, setStressLevel] = useState<StressLevel>(3);
   const [emotionalTone, setEmotionalTone] = useState<EmotionalTone | null>(null);
   const [selectedMode, setSelectedMode] = useState<GroundingMode | null>(null);
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<BreathingTag | null>(null);
   const [sessionStart, setSessionStart] = useState<string>('');
   const [stressAfter, setStressAfter] = useState<StressLevel | null>(null);
@@ -203,7 +202,7 @@ export default function GroundingScreen() {
 
   // ═══════════════ SELECT ════════════════════════════════════
   if (screen === 'select') {
-    const tags: Array<{ id: BreathingTag; label: string; defaultStress: StressLevel }> = [
+    const tags: { id: BreathingTag; label: string; defaultStress: StressLevel }[] = [
       { id: 'anxiety', label: 'Anxiety', defaultStress: 4 },
       { id: 'calm', label: 'Calm', defaultStress: 2 },
       { id: 'reset', label: 'Reset', defaultStress: 3 },
@@ -247,7 +246,6 @@ export default function GroundingScreen() {
           key={mode}
           style={isRecommended ? { borderColor: accent + '50', borderWidth: 1.5 } : undefined}
           onPress={() => {
-            setSelectedScenarioId(selectedTag);
             setEmotionalTone(null);
             beginMode(mode);
           }}

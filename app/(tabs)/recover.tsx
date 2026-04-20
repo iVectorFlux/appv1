@@ -14,11 +14,9 @@ import {
   Animated,
   TextInput,
   Platform,
-  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Audio } from 'expo-av';
-import { Button } from '@/components/ui/button';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
@@ -36,8 +34,6 @@ const AFFIRMATIONS = [
   "You deserve lightness.",
   "Breathe in calm, breathe out what hurts.",
 ];
-
-const { height: SCREEN_H } = Dimensions.get('window');
 
 export default function RecoverScreen() {
   const router = useRouter();

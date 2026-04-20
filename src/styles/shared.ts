@@ -5,7 +5,7 @@
  * Use these factories to create consistent styles across screens.
  */
 
-import { StyleSheet, Platform, ViewStyle, TextStyle } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import type { ThemeColors } from '@/constants/themes';
 
