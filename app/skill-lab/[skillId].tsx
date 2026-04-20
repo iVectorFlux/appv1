@@ -37,6 +37,12 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { getSkillById } from '@/data/future-skills';
 import type { AtomicSkill, FutureSkill, PracticeMode } from '@/data/future-skills';
+import {
+  getHowToSolveLines,
+  getPracticeFieldCopy,
+  getOptionalSituationCopy,
+  normalizeSkillRouteParam,
+} from '@/data/skill-lab-practice-ui';
 import { saveSkillSession, recordScenarioAttempt } from '@/services/skills-storage';
 import { bumpOfflineSessionCount } from '@/services/skill-lab-offline-progress';
 import { buildVercelApiUrl } from '@/utils/vercel-api';
@@ -90,115 +96,6 @@ function parseFeedbackPayload(raw: Record<string, unknown>): Feedback {
     consequences: String(raw.consequences ?? ''),
     reflectionQuestion: String(raw.reflectionQuestion ?? ''),
   };
-}
-
-// Per-mode UI config
-interface ModeConfig {
-  scenarioLabel: string;
-  inputPlaceholder: string;
-  hint: string;
-  loadingText: string;
-}
-
-function getModeConfig(
-  mode: PracticeMode,
-  opts?: { skillId?: string; atomicSkillId?: string | null }
-): ModeConfig {
-  const { skillId, atomicSkillId } = opts ?? {};
-
-  switch (mode) {
-    case 'output_audit': {
-      // Scenario title reflects the exercise shape (API text differs per atomic for AI Literacy).
-      let scenarioLabel = 'Exercise';
-      if (skillId === 'ai_literacy') {
-        switch (atomicSkillId) {
-          case 'prompt_craft':
-            scenarioLabel = 'Weak prompt + AI reply';
-            break;
-          case 'output_evaluation':
-            scenarioLabel = 'AI output to evaluate';
-            break;
-          case 'ai_ethics':
-            scenarioLabel = 'AI / policy scenario';
-            break;
-          case 'tool_fluency':
-            scenarioLabel = 'Tool & workflow';
-            break;
-          default:
-            scenarioLabel = 'AI literacy exercise';
-        }
-      } else {
-        scenarioLabel = 'AI output to evaluate';
-      }
-      return {
-        scenarioLabel,
-        // Placeholder stays short — the task lives in the "question" line only (no duplicate audit essay).
-        inputPlaceholder: "Be specific — what you noticed, why it matters, what you'd change or verify.",
-        hint: 'Each sub-skill uses a different exercise. Pick a sub-skill, then start practice.',
-        loadingText: 'Generating your exercise...',
-      };
-    }
-    case 'open_reflection':
-      return {
-        scenarioLabel: 'Situation',
-        inputPlaceholder: "Share your honest thinking — what you notice, how you'd respond, and why.",
-        hint: 'Read the situation → reflect openly → get coaching on your response.',
-        loadingText: 'Generating your scenario...',
-      };
-    case 'generative_brainstorm':
-      return {
-        scenarioLabel: 'Creative Challenge',
-        inputPlaceholder: 'List your ideas — aim for at least 4. Range over polish. One should challenge an assumption.',
-        hint: 'Read the challenge → generate ideas (range over polish) → get feedback on originality.',
-        loadingText: 'Generating your creative challenge...',
-      };
-    case 'draft_and_refine':
-      return {
-        scenarioLabel: 'Communication Brief',
-        inputPlaceholder: 'Draft your message — email, Slack, memo, or opening line. Keep it under 150 words.',
-        hint: 'Read the brief → draft your message → get feedback on clarity, framing, and audience fit.',
-        loadingText: 'Generating your communication brief...',
-      };
-    default:
-      return {
-        scenarioLabel: 'Scenario',
-        inputPlaceholder: 'Short answer is fine — focus on your logic and trade-offs.',
-        hint: 'Scenario → pick a move → explain your reasoning → feedback, trade-offs, and a reflection prompt.',
-        loadingText: 'Generating your scenario...',
-      };
-  }
-}
-
-function getHowToSolveBullets(mode: PracticeMode, isDecisionMode: boolean): string[] {
-  if (isDecisionMode) {
-    return [
-      'Read the scenario for stakes, constraints, and who is affected.',
-      'Pick the option you would honestly take — not the one that sounds most polished in a panel interview.',
-      'In your reasoning, name trade-offs, risks, and what you would watch after you act.',
-    ];
-  }
-  switch (mode) {
-    case 'output_audit':
-      return [
-        'Separate what the text claims from what it proves — flag overconfidence, missing caveats, and weak sourcing.',
-        'Say what you would verify, and how, before trusting or sharing the output.',
-      ];
-    case 'generative_brainstorm':
-      return [
-        'Aim for range before polish — quantity helps you escape the first obvious idea.',
-        'Include one idea that challenges an assumption and one borrowed from a different domain.',
-      ];
-    case 'draft_and_refine':
-      return [
-        'State your goal in one line, then write for a sceptical reader in that room.',
-        'Keep the ask clear: one main request and one obvious next step.',
-      ];
-    default:
-      return [
-        'Name emotions and incentives for each side before you decide what you would say or do.',
-        'Ground your answer in the sub-skill you selected — reference a concrete detail from the scenario.',
-      ];
-  }
 }
 
 /** Fallback decision options shown if the API omits them. */
@@ -504,8 +401,8 @@ const stepperStyles = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SkillDetailScreen() {
-  const params = useLocalSearchParams<{ skillId: string; returnTo?: string | string[] }>();
-  const { skillId } = params;
+  const params = useLocalSearchParams<{ skillId: string | string[]; returnTo?: string | string[] }>();
+  const skillIdParam = normalizeSkillRouteParam(params.skillId);
   const router = useRouter();
   const colors = useColors();
   const { user } = useAuthStore();
@@ -519,7 +416,7 @@ export default function SkillDetailScreen() {
   }, [params.returnTo, router]);
 
   // Resolve skill — may be undefined; hooks still run unconditionally
-  const skill = getSkillById(skillId ?? '');
+  const skill = getSkillById(skillIdParam);
 
   const [selectedAtomicId, setSelectedAtomicId] = useState<string | null>(null);
   const [phase, setPhase] = useState<PracticePhase>('idle');
@@ -547,9 +444,10 @@ export default function SkillDetailScreen() {
   const styles = createStyles(colors);
 
   // Derived values — safe even when skill is null
-  const practiceMode = skill?.practiceMode ?? 'decision_simulator';
-  const modeConfig = getModeConfig(practiceMode, {
-    skillId: skill?.id,
+  const practiceMode: PracticeMode = skill?.practiceMode ?? 'open_reflection';
+  const modeConfig = getPracticeFieldCopy({
+    skillId: skill?.id ?? '',
+    practiceMode,
     atomicSkillId: selectedAtomicId,
   });
   const selectedAtomic = skill?.atomicSkills.find((a) => a.id === selectedAtomicId) ?? null;
@@ -770,6 +668,7 @@ export default function SkillDetailScreen() {
   const isPracticing = phase !== 'idle';
   const phaseSteps = isDecisionMode ? PHASE_STEPS_DECISION : PHASE_STEPS_OPEN;
   const maxCustomChars = 300;
+  const situationCopy = getOptionalSituationCopy(skill.id);
 
   return (
     <KeyboardAvoidingView
@@ -812,7 +711,9 @@ export default function SkillDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Sub-skills</Text>
             <Text style={styles.bodyTextMuted}>
-              Choose a sub-skill below — practice is tailored to that focus.
+              {selectedAtomic
+                ? `You’re practising “${selectedAtomic.name}”. Scenarios and tips below follow this focus.`
+                : 'Pick a sub-skill — scenarios, “how to solve,” and coaching all match that focus.'}
             </Text>
             <View style={styles.chipRow}>
               {skill.atomicSkills.map((a) => (
@@ -833,7 +734,12 @@ export default function SkillDetailScreen() {
                 {/* How to solve — numbered bullets with accent left border */}
                 <View style={[styles.howBox, { borderColor: colors.border, backgroundColor: colors.floating, borderLeftColor: skill.color, borderLeftWidth: 3 }]}>
                   <Text style={[styles.howTitle, { color: colors.textPrimary }]}>How to solve this well</Text>
-                  {getHowToSolveBullets(practiceMode, isDecisionMode).map((line, idx) => (
+                  {getHowToSolveLines({
+                    skillId: skill.id,
+                    atomicSkillId: selectedAtomicId,
+                    practiceMode,
+                    isDecisionMode,
+                  }).map((line, idx) => (
                     <View key={idx} style={styles.howBulletRow}>
                       <View style={[styles.howBulletNum, { backgroundColor: skill.color + '18' }]}>
                         <Text style={[styles.howBulletNumText, { color: skill.color }]}>{idx + 1}</Text>
@@ -851,7 +757,7 @@ export default function SkillDetailScreen() {
                 {/* Your situation (optional) — with character count */}
                 <Text style={[styles.customLabel, { color: colors.textPrimary }]}>Your situation (optional)</Text>
                 <Text style={[styles.customHint, { color: colors.textMuted }]}>
-                  Describe a real situation. The AI will anchor the scenario here when it fits.
+                  {situationCopy.hint}
                 </Text>
                 <View>
                   <TextInput
@@ -859,7 +765,7 @@ export default function SkillDetailScreen() {
                       styles.customInput,
                       { borderColor: colors.border, backgroundColor: colors.surface, color: colors.textPrimary },
                     ]}
-                    placeholder="Example: my manager challenged my timeline in front of the client…"
+                    placeholder={situationCopy.placeholder}
                     placeholderTextColor={colors.textMuted}
                     value={customProblemDraft}
                     onChangeText={(t) => setCustomProblemDraft(t.slice(0, maxCustomChars))}
@@ -1154,10 +1060,26 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     bodyTextMuted: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, marginBottom: Spacing.sm, lineHeight: Typography.fontSize.sm * 1.5 },
     whyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm },
     whyText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.5 },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: Spacing.sm },
-    atomicDesc: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, lineHeight: Typography.fontSize.sm * 1.5, fontStyle: 'italic' },
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'flex-start',
+      marginBottom: Spacing.sm,
+      gap: 0,
+    },
+    atomicDesc: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textSecondary,
+      lineHeight: Typography.fontSize.sm * 1.5,
+      fontStyle: 'italic',
+      marginTop: Spacing.sm,
+    },
     howBox: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, marginTop: Spacing.md, gap: Spacing.sm },
-    howTitle: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, marginBottom: 2 },
+    howTitle: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      marginBottom: Spacing.sm,
+    },
     howBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
     howBulletNum: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
     howBulletNumText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.bold },

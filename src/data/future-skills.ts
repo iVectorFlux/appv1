@@ -5,9 +5,9 @@
  * Each skill declares its practiceMode, which drives which AI workflow is used.
  *
  * Practice modes:
- *  - decision_simulator  → scenario → forced A–D choice → reasoning → feedback
+ *  - decision_simulator  → (supported by API/UI; not used in catalog — avoids forced A–D)
  *  - output_audit        → flawed AI output → learner evaluates/critiques it → feedback
- *  - open_reflection     → interpersonal/systemic situation → open-ended response → coaching
+ *  - open_reflection     → situation → full written response (analysis, trade-offs, reasoning) → coaching
  *  - generative_brainstorm → creative constraint → generate 4+ ideas → originality feedback
  *  - draft_and_refine    → communication brief → learner drafts a message → audience-fit feedback
  */
@@ -123,7 +123,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'With AI generating content at scale, the ability to distinguish good reasoning from plausible-sounding nonsense is a superpower.',
     icon: 'bulb-outline',
     color: '#F59E0B',
-    practiceMode: 'decision_simulator',
+    practiceMode: 'open_reflection',
     atomicSkills: [
       {
         id: 'bias_detection',
@@ -162,7 +162,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'Complex, novel problems are exactly what humans are still uniquely positioned to solve — if they have a structured approach.',
     icon: 'construct-outline',
     color: '#10B981',
-    practiceMode: 'decision_simulator',
+    practiceMode: 'open_reflection',
     atomicSkills: [
       {
         id: 'root_cause',
@@ -195,7 +195,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     why: 'The pace of change is accelerating. Adaptability is what separates people who grow through disruption from those who freeze.',
     icon: 'refresh-outline',
     color: '#14B8A6',
-    practiceMode: 'decision_simulator',
+    practiceMode: 'open_reflection',
     atomicSkills: [
       {
         id: 'cognitive_flexibility',
