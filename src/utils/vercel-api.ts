@@ -8,6 +8,7 @@
 
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import type { Big5EngineResult } from '@/services/big5-engine';
 
 function readConfiguredAppUrl(): string {
   const extra = Constants.expoConfig?.extra?.appUrl;
@@ -149,6 +150,67 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
     throw new Error(
       'Could not reach the chat server. If you use the app on a phone or simulator, set EXPO_PUBLIC_APP_URL in .env to your live site (https://….vercel.app), then rebuild.'
     );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+const BIG5_LEADERSHIP_TIMEOUT_MS = 60_000;
+
+/** POST /api/big5-leadership-insights — extended workplace / leadership narrative from Groq. */
+export async function requestBig5LeadershipInsights(payload: {
+  instrumentVersion: string;
+  engine: Big5EngineResult;
+  ruleBasedHeadline: string;
+  ruleBasedExecutiveSummary: string;
+}): Promise<{ report: string }> {
+  const url = buildVercelApiUrl('/api/big5-leadership-insights');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), BIG5_LEADERSHIP_TIMEOUT_MS);
+  try {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (fetchErr: unknown) {
+      if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+        throw fetchErr;
+      }
+      throw new Error(
+        'Could not reach the insights server. Set EXPO_PUBLIC_APP_URL to your deployed app URL if testing on device.'
+      );
+    }
+
+    const text = await res.text();
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      throw new Error(
+        res.ok ? 'Insights server returned invalid JSON.' : `Insights request failed (${res.status}).`
+      );
+    }
+
+    if (!res.ok) {
+      const msg = typeof parsed.error === 'string' ? parsed.error : `Request failed (${res.status})`;
+      throw new Error(msg);
+    }
+
+    if (typeof parsed.report !== 'string' || !parsed.report.trim()) {
+      throw new Error('The assistant returned an empty report. Please try again.');
+    }
+
+    return { report: parsed.report };
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error('The report took too long. Please try again.');
+    }
+    if (e instanceof Error) throw e;
+    throw new Error('Could not load leadership insights.');
   } finally {
     clearTimeout(timeoutId);
   }

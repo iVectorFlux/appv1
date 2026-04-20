@@ -8,7 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "compute-big5-norms": "node scripts/compute-big5-norms.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/lora": "^0.4.2",

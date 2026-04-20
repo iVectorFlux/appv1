@@ -2,7 +2,7 @@
  * Big Five personality assessment (IPIP 50-item markers) — from Profile.
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,9 @@ import { useAuthStore } from '@/stores/auth-store';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { BIG5_QUESTIONS, BIG5_LIKERT_LABELS, BIG5_INSTRUMENT_VERSION } from '@/data/big5-questions';
-import { computeBig5Scores, formatScore1dp, type Big5Scores } from '@/services/big5-scoring';
+import { formatScore1dp, type Big5Scores } from '@/services/big5-scoring';
+import { scoreBig5Assessment, type Big5EngineResult } from '@/services/big5-engine';
+import { requestBig5LeadershipInsights } from '@/utils/vercel-api';
 import { generateBig5Report } from '@/services/big5-report';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { saveBig5Assessment } from '@/services/big5-storage';
@@ -34,9 +36,21 @@ export default function Big5TestScreen() {
   const [index, setIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, number>>({});
   const [scores, setScores] = useState<Big5Scores | null>(null);
+  const [engineResult, setEngineResult] = useState<Big5EngineResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedToCloud, setSavedToCloud] = useState<boolean | null>(null);
+  const sessionStartRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (phase === 'test' && sessionStartRef.current === null) {
+      sessionStartRef.current = Date.now();
+    }
+    if (phase === 'intro') sessionStartRef.current = null;
+  }, [phase]);
 
   const st = createStyles(colors);
   const q = BIG5_QUESTIONS[index];
@@ -47,21 +61,26 @@ export default function Big5TestScreen() {
 
   const finish = useCallback(
     async (finalResponses: Record<string, number>) => {
-      let computed: Big5Scores;
+      const durationSeconds =
+        sessionStartRef.current != null ? (Date.now() - sessionStartRef.current) / 1000 : undefined;
+      let engine;
       try {
-        computed = computeBig5Scores(finalResponses);
+        engine = scoreBig5Assessment(finalResponses, { durationSeconds });
       } catch (e) {
         setSaveError(e instanceof Error ? e.message : 'Could not score responses.');
         return;
       }
-      setScores(computed);
+      setScores(engine.raw);
+      setEngineResult(engine);
+      setAiReport(null);
+      setAiError(null);
       setPhase('results');
       setSaving(true);
       setSaveError(null);
       setSavedToCloud(null);
       if (user?.id) {
         try {
-          const id = await saveBig5Assessment(user.id, finalResponses, computed, BIG5_INSTRUMENT_VERSION);
+          const id = await saveBig5Assessment(user.id, finalResponses, engine, BIG5_INSTRUMENT_VERSION);
           setSavedToCloud(id != null);
         } catch (e) {
           setSaveError(e instanceof Error ? e.message : 'Could not save results.');
@@ -74,6 +93,25 @@ export default function Big5TestScreen() {
     },
     [user?.id]
   );
+
+  const fetchLeadershipInsights = useCallback(async () => {
+    if (!engineResult || !report) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const { report: text } = await requestBig5LeadershipInsights({
+        instrumentVersion: BIG5_INSTRUMENT_VERSION,
+        engine: engineResult,
+        ruleBasedHeadline: report.headline,
+        ruleBasedExecutiveSummary: report.executiveSummary,
+      });
+      setAiReport(text);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Could not load AI insights.');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [engineResult, report]);
 
   const selectLikert = useCallback(
     (value: number) => {
@@ -99,6 +137,9 @@ export default function Big5TestScreen() {
     setIndex(0);
     setResponses({});
     setScores(null);
+    setEngineResult(null);
+    setAiReport(null);
+    setAiError(null);
     setSaveError(null);
     setSavedToCloud(null);
   }, []);
@@ -166,7 +207,7 @@ export default function Big5TestScreen() {
           </>
         )}
 
-        {phase === 'results' && scores && report && (
+        {phase === 'results' && scores && report && engineResult && (
           <>
             <Text style={st.resultsTitle}>Your Big Five report</Text>
             <Text style={st.headline}>{report.headline}</Text>
@@ -225,6 +266,39 @@ export default function Big5TestScreen() {
             })}
 
             <Text style={st.disclaimer}>{report.disclaimer}</Text>
+
+            <Text style={st.aiSectionTitle}>Leadership & workplace (AI)</Text>
+            <Text style={st.aiHint}>
+              Get a deeper take on how this profile may show up at work — teams, influence, and development. Sends your
+              scores, percentiles, and quality flags to our AI (not every individual answer). For reflection only; not for
+              hiring or selection.
+            </Text>
+            <TouchableOpacity
+              style={[st.aiPrimaryBtn, { backgroundColor: colors.accentIndigo }]}
+              onPress={() => void fetchLeadershipInsights()}
+              disabled={aiLoading}
+              activeOpacity={0.85}
+            >
+              {aiLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={20} color="#fff" />
+                  <Text style={st.aiPrimaryBtnText}>Generate AI leadership insights</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            {aiError ? <Text style={[st.aiError, { color: colors.destructive }]}>{aiError}</Text> : null}
+            {aiReport ? (
+              <GlassCard style={st.aiReportCard}>
+                <Text style={st.reportSectionLabel}>AI insights</Text>
+                {aiReport.split(/\n\n+/).map((para, i) => (
+                  <Text key={i} style={st.aiPara}>
+                    {para.replace(/^#{1,6}\s+/gm, '').trim()}
+                  </Text>
+                ))}
+              </GlassCard>
+            ) : null}
 
             <TouchableOpacity style={[st.secondaryBtn, { borderColor: colors.primary }]} onPress={resetTest}>
               <Text style={[st.secondaryBtnText, { color: colors.primary }]}>Retake assessment</Text>
@@ -390,6 +464,37 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       lineHeight: Typography.fontSize.xs * 1.5,
       marginTop: Spacing.md,
       marginBottom: Spacing.sm,
+    },
+    aiSectionTitle: {
+      fontSize: Typography.fontSize.base,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginTop: Spacing.lg,
+      marginBottom: Spacing.xs,
+    },
+    aiHint: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      lineHeight: Typography.fontSize.xs * 1.5,
+      marginBottom: Spacing.md,
+    },
+    aiPrimaryBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.sm,
+      borderRadius: Radius.lg,
+      paddingVertical: Spacing.md,
+      marginBottom: Spacing.sm,
+    },
+    aiPrimaryBtnText: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
+    aiError: { fontSize: Typography.fontSize.sm, marginBottom: Spacing.sm },
+    aiReportCard: { marginBottom: Spacing.md, marginTop: Spacing.sm },
+    aiPara: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textPrimary,
+      lineHeight: Typography.fontSize.sm * 1.55,
+      marginBottom: Spacing.md,
     },
     secondaryBtn: {
       borderWidth: 1.5,

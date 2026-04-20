@@ -5,13 +5,20 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { BIG5_INSTRUMENT_VERSION } from '@/data/big5-questions';
 import type { Big5Scores } from '@/services/big5-scoring';
+import type { Big5EngineResult, Big5ReliabilityResult, Big5ValidityFlags } from '@/services/big5-engine';
 
 export type Big5AssessmentRow = {
   id: string;
   user_id: string;
   instrument_version: string;
   responses: Record<string, number>;
+  /** Raw OCEAN means on 1–5 (same as historical `scores`). */
   scores: Big5Scores;
+  scores_normalized?: Big5Scores | null;
+  percentiles?: Big5Scores | null;
+  reliability?: Big5ReliabilityResult | null;
+  validity_flags?: Big5ValidityFlags | null;
+  duration_seconds?: number | null;
   completed_at: string;
   created_at: string;
 };
@@ -19,7 +26,7 @@ export type Big5AssessmentRow = {
 export async function saveBig5Assessment(
   userId: string,
   responses: Record<string, number>,
-  scores: Big5Scores,
+  engine: Big5EngineResult,
   instrumentVersion = BIG5_INSTRUMENT_VERSION
 ): Promise<string | null> {
   if (!isSupabaseConfigured()) {
@@ -33,7 +40,12 @@ export async function saveBig5Assessment(
       user_id: userId,
       instrument_version: instrumentVersion,
       responses,
-      scores: scores as unknown as Record<string, number>,
+      scores: engine.raw as unknown as Record<string, number>,
+      scores_normalized: engine.z_scores as unknown as Record<string, number>,
+      percentiles: engine.percentiles as unknown as Record<string, number>,
+      reliability: engine.reliability as unknown as Record<string, unknown>,
+      validity_flags: engine.validity as unknown as Record<string, unknown>,
+      duration_seconds: engine.duration_seconds,
       completed_at: new Date().toISOString(),
     })
     .select('id')
@@ -52,7 +64,9 @@ export async function getLatestBig5Assessment(userId: string): Promise<Big5Asses
 
   const { data, error } = await supabase
     .from('big5_assessments')
-    .select('id, user_id, instrument_version, responses, scores, completed_at, created_at')
+    .select(
+      'id, user_id, instrument_version, responses, scores, scores_normalized, percentiles, reliability, validity_flags, duration_seconds, completed_at, created_at'
+    )
     .eq('user_id', userId)
     .order('completed_at', { ascending: false })
     .limit(1)
@@ -71,6 +85,11 @@ export async function getLatestBig5Assessment(userId: string): Promise<Big5Asses
     instrument_version: data.instrument_version as string,
     responses: data.responses as Record<string, number>,
     scores: data.scores as Big5Scores,
+    scores_normalized: (data.scores_normalized as Big5Scores | null | undefined) ?? null,
+    percentiles: (data.percentiles as Big5Scores | null | undefined) ?? null,
+    reliability: (data.reliability as Big5ReliabilityResult | null | undefined) ?? null,
+    validity_flags: (data.validity_flags as Big5ValidityFlags | null | undefined) ?? null,
+    duration_seconds: (data.duration_seconds as number | null | undefined) ?? null,
     completed_at: data.completed_at as string,
     created_at: data.created_at as string,
   };
