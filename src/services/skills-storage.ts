@@ -40,6 +40,8 @@ export interface SkillSession {
   aiQuestion: string;
   userAnswer: string;
   aiFeedback: string;
+  /** Coach-assigned quality score 0–10 for this response. */
+  aiScore?: number;
   strengths?: string[];
   growthAreas?: string[];
   attemptNumber: number;
@@ -83,6 +85,10 @@ export async function saveSkillSession(session: SkillSession): Promise<boolean> 
     ai_question: session.aiQuestion,
     user_answer: session.userAnswer,
     ai_feedback: session.aiFeedback,
+    ai_score:
+      session.aiScore != null && Number.isFinite(session.aiScore)
+        ? Math.min(10, Math.max(0, Math.round(session.aiScore)))
+        : null,
     strengths: session.strengths ?? null,
     growth_areas: session.growthAreas ?? null,
     attempt_number: session.attemptNumber,
@@ -308,6 +314,10 @@ export async function getSkillSessions(
     aiQuestion: row.ai_question as string,
     userAnswer: row.user_answer as string,
     aiFeedback: row.ai_feedback as string,
+    aiScore:
+      row.ai_score != null && row.ai_score !== ''
+        ? Number(row.ai_score)
+        : undefined,
     strengths: (row.strengths as string[]) ?? [],
     growthAreas: (row.growth_areas as string[]) ?? [],
     attemptNumber: (row.attempt_number as number) ?? 1,

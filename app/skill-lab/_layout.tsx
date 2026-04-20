@@ -31,8 +31,6 @@ export default function SkillLabLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ presentation: 'card', animation: 'slide_from_right' }} />
-      <Stack.Screen name="practice-setup" options={{ presentation: 'card', animation: 'slide_from_right' }} />
-      <Stack.Screen name="journey-builder" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       <Stack.Screen name="[skillId]" options={{ presentation: 'card', animation: 'slide_from_right' }} />
     </Stack>
   );

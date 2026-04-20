@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { FUTURE_SKILLS } from '@/data/future-skills';
 import { getSkillsProgress } from '@/services/skills-storage';
 import type { SkillProgress } from '@/services/skills-storage';
+import { getOfflineSessionCounts } from '@/services/skill-lab-offline-progress';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 
 const STAGGER = 60;
@@ -37,15 +38,20 @@ export default function SkillLabScreen() {
   const isWebLaptop = useWebLaptopLayout();
   const { user } = useAuthStore();
   const [progress, setProgress] = useState<Record<string, SkillProgress>>({});
+  const [offlineBySkill, setOfflineBySkill] = useState<Record<string, number>>({});
 
   const headerFade = useRef(new Animated.Value(0)).current;
   const cardAnims = useRef(FUTURE_SKILLS.map(() => new Animated.Value(0))).current;
 
   const loadProgress = useCallback(() => {
     if (user?.id) {
-      getSkillsProgress(user.id).then(setProgress);
+      Promise.all([getSkillsProgress(user.id), getOfflineSessionCounts()]).then(([p, off]) => {
+        setProgress(p);
+        setOfflineBySkill(off);
+      });
     } else {
       setProgress({});
+      setOfflineBySkill({});
     }
   }, [user?.id]);
 
@@ -68,8 +74,17 @@ export default function SkillLabScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only entrance; refs stable
   }, []);
 
-  const skillsStarted = Object.values(progress).filter((p) => p.sessionsCompleted > 0).length;
-  const totalSessions = Object.values(progress).reduce((sum, p) => sum + p.sessionsCompleted, 0);
+  const sessionCountForSkill = useCallback(
+    (skillId: string) => {
+      const r = progress[skillId]?.sessionsCompleted ?? 0;
+      const o = offlineBySkill[skillId] ?? 0;
+      return r + o;
+    },
+    [progress, offlineBySkill]
+  );
+
+  const skillsStarted = FUTURE_SKILLS.filter((s) => sessionCountForSkill(s.id) > 0).length;
+  const totalSessions = FUTURE_SKILLS.reduce((sum, s) => sum + sessionCountForSkill(s.id), 0);
 
   const styles = createStyles(colors);
 
@@ -96,32 +111,6 @@ export default function SkillLabScreen() {
           </Text>
         </View>
       </Animated.View>
-
-      {/* Action pills */}
-      <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={[styles.actionPill, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '25' }]}
-          onPress={() => router.push('/skill-lab/practice-setup')}
-          activeOpacity={0.75}
-        >
-          <View style={[styles.actionPillIcon, { backgroundColor: colors.primary + '18' }]}>
-            <Ionicons name="person-outline" size={15} color={colors.primary} />
-          </View>
-          <Text style={[styles.actionPillText, { color: colors.primary }]}>Practice context</Text>
-          <Ionicons name="chevron-forward" size={14} color={colors.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionPill, { backgroundColor: colors.accentIndigo + '12', borderColor: colors.accentIndigo + '25' }]}
-          onPress={() => router.push('/skill-lab/journey-builder')}
-          activeOpacity={0.75}
-        >
-          <View style={[styles.actionPillIcon, { backgroundColor: colors.accentIndigo + '18' }]}>
-            <Ionicons name="map-outline" size={15} color={colors.accentIndigo} />
-          </View>
-          <Text style={[styles.actionPillText, { color: colors.accentIndigo }]}>Learning journey</Text>
-          <Ionicons name="chevron-forward" size={14} color={colors.accentIndigo} />
-        </TouchableOpacity>
-      </View>
 
       {/* Stats row */}
       <View style={styles.statsRow}>
@@ -151,7 +140,7 @@ export default function SkillLabScreen() {
       <View style={[styles.grid, isWebLaptop && styles.gridWebLaptop]}>
         {FUTURE_SKILLS.map((skill, idx) => {
           const p = progress[skill.id];
-          const sessions = p?.sessionsCompleted ?? 0;
+          const sessions = sessionCountForSkill(skill.id);
           const hasPracticed = sessions > 0;
 
           return (
@@ -211,7 +200,7 @@ export default function SkillLabScreen() {
                     <View style={[styles.progressBadge, { backgroundColor: colors.primary + '12' }]}>
                       <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
                       <Text style={[styles.progressText, { color: colors.primary }]}>
-                        {p.sessionsCompleted}
+                        {sessions}
                       </Text>
                     </View>
                   ) : (
@@ -281,33 +270,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
       lineHeight: Typography.fontSize.sm * 1.5,
-    },
-    actionRow: {
-      flexDirection: 'column',
-      paddingHorizontal: Spacing.md,
-      gap: Spacing.sm,
-      marginBottom: Spacing.lg,
-    },
-    actionPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-      borderWidth: 1,
-      borderRadius: Radius.md,
-      paddingVertical: Spacing.sm + 2,
-      paddingHorizontal: Spacing.md,
-    },
-    actionPillIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    actionPillText: {
-      flex: 1,
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.semibold,
     },
     statsRow: {
       flexDirection: 'row',

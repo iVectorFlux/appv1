@@ -38,13 +38,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { getSkillById } from '@/data/future-skills';
 import type { AtomicSkill, FutureSkill, PracticeMode } from '@/data/future-skills';
 import { saveSkillSession, recordScenarioAttempt } from '@/services/skills-storage';
-import {
-  DEFAULT_SKILL_PRACTICE_CONTEXT,
-  loadSkillPracticeContext,
-  isSkillPracticeContextFilled,
-  practiceContextForApi,
-  type SkillPracticeContext,
-} from '@/services/skill-practice-context';
+import { bumpOfflineSessionCount } from '@/services/skill-lab-offline-progress';
 import { buildVercelApiUrl } from '@/utils/vercel-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,12 +60,36 @@ interface DecisionOption {
 
 interface Feedback {
   feedback: string;
+  /** AI coach score 0–10 for this response. */
+  scoreOutOf10: number;
   strengths: string[];
   growthAreas: string[];
   refinementPrompt: string;
   nextScenarioAvailable: boolean;
   consequences: string;
   reflectionQuestion: string;
+}
+
+function parseFeedbackPayload(raw: Record<string, unknown>): Feedback {
+  const scoreRaw = raw.scoreOutOf10 ?? raw.score_out_of_10 ?? raw.score;
+  const n =
+    typeof scoreRaw === 'number'
+      ? scoreRaw
+      : typeof scoreRaw === 'string'
+        ? parseFloat(scoreRaw)
+        : NaN;
+  const scoreOutOf10 = Number.isNaN(n) ? 5 : Math.min(10, Math.max(0, Math.round(n)));
+
+  return {
+    scoreOutOf10,
+    feedback: String(raw.feedback ?? ''),
+    strengths: Array.isArray(raw.strengths) ? (raw.strengths as string[]) : [],
+    growthAreas: Array.isArray(raw.growthAreas) ? (raw.growthAreas as string[]) : [],
+    refinementPrompt: String(raw.refinementPrompt ?? ''),
+    nextScenarioAvailable: raw.nextScenarioAvailable !== false,
+    consequences: String(raw.consequences ?? ''),
+    reflectionQuestion: String(raw.reflectionQuestion ?? ''),
+  };
 }
 
 // Per-mode UI config
@@ -307,6 +325,13 @@ function FeedbackCard({
 }) {
   return (
     <View style={[fbStyles.card, { backgroundColor: colors.floating, borderColor: colors.border }]}>
+      <View style={[fbStyles.scoreRow, { borderColor: skill.color + '35', backgroundColor: skill.color + '10' }]}>
+        <Text style={[fbStyles.scoreLabel, { color: skill.color }]}>Score</Text>
+        <Text style={[fbStyles.scoreValue, { color: colors.textPrimary }]}>
+          {fb.scoreOutOf10}
+          <Text style={[fbStyles.scoreDenom, { color: colors.textMuted }]}>/10</Text>
+        </Text>
+      </View>
       <Text style={[fbStyles.feedbackText, { color: colors.textPrimary }]}>{fb.feedback}</Text>
 
       {fb.strengths.length > 0 && (
@@ -367,6 +392,18 @@ function FeedbackCard({
 
 const fbStyles = StyleSheet.create({
   card: { borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  scoreLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, letterSpacing: 0.3 },
+  scoreValue: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold },
+  scoreDenom: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
   feedbackText: { fontSize: Typography.fontSize.base, lineHeight: Typography.fontSize.base * 1.5 },
   section: { gap: 4 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: 2 },
@@ -497,7 +534,6 @@ export default function SkillDetailScreen() {
   const [attemptNumber, setAttemptNumber] = useState(1);
   const [roundsSaved, setRoundsSaved] = useState(0);
   const [practiceError, setPracticeError] = useState<string | null>(null);
-  const [practiceCtx, setPracticeCtx] = useState<SkillPracticeContext>({ ...DEFAULT_SKILL_PRACTICE_CONTEXT });
   const [customProblemDraft, setCustomProblemDraft] = useState('');
 
   const scrollRef = useRef<ScrollView>(null);
@@ -518,11 +554,6 @@ export default function SkillDetailScreen() {
   });
   const selectedAtomic = skill?.atomicSkills.find((a) => a.id === selectedAtomicId) ?? null;
   const isDecisionMode = practiceMode === 'decision_simulator';
-
-  // Load practice context
-  useEffect(() => {
-    loadSkillPracticeContext().then(setPracticeCtx);
-  }, []);
 
   // Keep ref in sync with state
   useEffect(() => { selectedAtomicIdRef.current = selectedAtomicId; }, [selectedAtomicId]);
@@ -551,9 +582,6 @@ export default function SkillDetailScreen() {
     }
 
     try {
-      const practiceContext = isSkillPracticeContextFilled(practiceCtx)
-        ? practiceContextForApi(practiceCtx)
-        : undefined;
       const customDraft = customProblemDraft.trim();
 
       const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
@@ -566,7 +594,6 @@ export default function SkillDetailScreen() {
           atomicSkillName: skill.atomicSkills.find((a) => a.id === atomicId)?.name ?? null,
           practiceMode,
           generateScenario: true,
-          ...(practiceContext ? { practiceContext } : {}),
           ...(customDraft ? { customProblemDraft: customDraft } : {}),
         }),
       });
@@ -612,7 +639,7 @@ export default function SkillDetailScreen() {
       setPracticeError(errMsg2);
       setPhase('idle');
     }
-  }, [skill, practiceMode, isDecisionMode, user?.id, practiceCtx, customProblemDraft]);
+  }, [skill, practiceMode, isDecisionMode, user?.id, customProblemDraft]);
 
 
   // ── Submit answer: get feedback ─────────────────────────────────────────────
@@ -651,7 +678,8 @@ export default function SkillDetailScreen() {
 
       if (!res.ok) throw new Error('API error');
 
-      const data = (await res.json()) as Feedback;
+      const rawFb = (await res.json()) as Record<string, unknown>;
+      const data = parseFeedbackPayload(rawFb);
       setFeedback(data);
       setPhase('feedback');
 
@@ -671,6 +699,7 @@ export default function SkillDetailScreen() {
           aiQuestion: practiceQuestion,
           userAnswer: answer,
           aiFeedback: data.feedback ?? '',
+          aiScore: data.scoreOutOf10,
           strengths: data.strengths ?? [],
           growthAreas: data.growthAreas ?? [],
           attemptNumber,
@@ -685,7 +714,11 @@ export default function SkillDetailScreen() {
             reflectionQuestion: data.reflectionQuestion,
           },
         });
-        if (saved) setRoundsSaved((n) => n + 1);
+        if (saved) {
+          setRoundsSaved((n) => n + 1);
+        } else {
+          void bumpOfflineSessionCount(skill.id);
+        }
       }
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
@@ -836,28 +869,6 @@ export default function SkillDetailScreen() {
                   <Text style={[styles.charCount, { color: customProblemDraft.length >= maxCustomChars ? colors.destructive : colors.textMuted }]}>
                     {customProblemDraft.length}/{maxCustomChars}
                   </Text>
-                </View>
-
-                {/* Context links — mini action cards */}
-                <View style={styles.contextLinks}>
-                  <TouchableOpacity
-                    style={[styles.contextCard, { borderColor: colors.border, backgroundColor: colors.floating }]}
-                    onPress={() => router.push('/skill-lab/practice-setup')}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name="person-outline" size={16} color={colors.primary} />
-                    <Text style={[styles.contextCardText, { color: colors.primary }]}>Practice context</Text>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.contextCard, { borderColor: colors.border, backgroundColor: colors.floating }]}
-                    onPress={() => router.push(`/skill-lab/journey-builder?skillId=${skill.id}` as never)}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name="map-outline" size={16} color={colors.primary} />
-                    <Text style={[styles.contextCardText, { color: colors.primary }]}>Learning journey</Text>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-                  </TouchableOpacity>
                 </View>
               </>
             )}
@@ -1163,17 +1174,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       lineHeight: Typography.fontSize.sm * 1.45,
     },
     charCount: { position: 'absolute', bottom: Spacing.sm, right: Spacing.md, fontSize: Typography.fontSize.micro },
-    contextLinks: { flexDirection: 'column', gap: Spacing.sm, marginTop: Spacing.md },
-    contextCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-      paddingVertical: Spacing.sm + 2,
-      paddingHorizontal: Spacing.md,
-      borderWidth: 1,
-      borderRadius: Radius.md,
-    },
-    contextCardText: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
     roundsBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.sm },
     roundsText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
     errorBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, padding: Spacing.sm, marginBottom: Spacing.sm },
