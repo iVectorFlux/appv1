@@ -1,7 +1,7 @@
 /**
  * Profile Screen — Glassmorphism v5
  *
- * User profile, dark mode toggle, EQ test, settings.
+ * User profile, dark mode toggle, settings. (EQ & Big Five live on Home.)
  */
 
 import React, { useEffect, useState } from 'react';
@@ -62,6 +62,7 @@ export default function ProfileScreen() {
           </View>
           <Text style={st.username}>{nameToShow}</Text>
           {user?.email ? <Text style={st.email}>{user.email}</Text> : null}
+          <Text style={st.homeHint}>EQ, Big Five, and your progress snapshot are on Home.</Text>
         </View>
 
         {/* Appearance */}
@@ -80,23 +81,6 @@ export default function ProfileScreen() {
                 trackColor={{ false: colors.surface, true: colors.primary }}
                 thumbColor="#fff"
               />
-            </View>
-          </GlassCard>
-        </View>
-
-        {/* EQ Assessment */}
-        <View style={st.section}>
-          <Text style={st.sectionTitle}>EQ Assessment</Text>
-          <GlassCard onPress={() => router.push('/full-eq-test')}>
-            <View style={st.settingRow}>
-              <View style={[st.eqIcon, { backgroundColor: colors.primary + '18' }]}>
-                <Ionicons name="analytics-outline" size={24} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={st.settingText}>Take Full EQ Test</Text>
-                <Text style={st.settingDesc}>60+ questions across 7 dimensions · ~25 min</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </View>
           </GlassCard>
         </View>
@@ -147,13 +131,20 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   avatar: { width: 80, height: 80, borderRadius: Radius.full, backgroundColor: colors.glass, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md, borderWidth: 2 },
   username: { fontSize: Typography.fontSize.xl, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, marginBottom: Spacing.xs, textTransform: 'capitalize' },
   email: { fontSize: Typography.fontSize.sm, color: colors.textSecondary },
+  homeHint: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    lineHeight: Typography.fontSize.xs * 1.45,
+  },
   section: { marginBottom: Spacing.xl },
   sectionTitle: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontWeight: Typography.fontWeight.semibold, marginBottom: Spacing.sm, letterSpacing: 0.3 },
   settingsList: { gap: Spacing.sm },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   settingText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontWeight: Typography.fontWeight.medium },
   settingDesc: { fontSize: Typography.fontSize.xs, color: colors.textSecondary, marginTop: 2 },
-  eqIcon: { width: 44, height: 44, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
   privacyContent: { alignItems: 'center', gap: Spacing.sm },
   privacyTitle: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, textAlign: 'center' },
   privacyText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, textAlign: 'center', lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm },
