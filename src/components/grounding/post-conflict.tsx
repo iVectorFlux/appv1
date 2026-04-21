@@ -136,8 +136,14 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
         <Text style={s.stepLabel}>
           {step === 'label' ? 'Step 1 of 4 · Name It' : step === 'locate' ? 'Step 2 of 4 · Locate It' : step === 'breathe' ? 'Step 3 of 4 · Release' : 'Step 4 of 4 · Reframe'}
         </Text>
-        <TouchableOpacity style={s.closeBtn} onPress={onExit} hitSlop={12}>
-          <Ionicons name="close" size={22} color={TEXT_MUTED} />
+        <TouchableOpacity
+          style={s.closeBtn}
+          onPress={onExit}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Exit exercise"
+        >
+          <Ionicons name="chevron-back" size={22} color={TEXT_MUTED} />
         </TouchableOpacity>
       </View>
 

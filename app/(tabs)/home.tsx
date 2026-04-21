@@ -50,7 +50,7 @@ export default function HomeScreen() {
     { key: 'learn', title: 'Learn EQ', icon: 'book-outline', accent: colors.accentIndigo, route: '/(tabs)/learn' },
     { key: 'companion', title: 'AI Companion', icon: 'chatbubble-ellipses-outline', accent: colors.accentTerracotta, route: '/(tabs)/companion' },
     { key: 'skill-lab', title: 'Skill Lab', icon: 'rocket-outline', accent: colors.accentSage, route: '/skill-lab' },
-    { key: 'recover', title: 'Recover', icon: 'leaf-outline', accent: colors.accentCalm, route: '/(tabs)/recover' },
+    { key: 'recover', title: 'Recover', icon: 'leaf-outline', accent: colors.accentCalm, route: '/grounding' },
   ];
 
   const assessmentActions = React.useMemo(

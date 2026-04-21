@@ -25,6 +25,7 @@ import { requestBig5LeadershipInsights } from '@/utils/vercel-api';
 import { generateBig5Report } from '@/services/big5-report';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { saveBig5Assessment } from '@/services/big5-storage';
+import { ScreenHeader } from '@/components/ui/screen-header';
 
 type Phase = 'intro' | 'test' | 'results';
 
@@ -144,6 +145,22 @@ export default function Big5TestScreen() {
     setSavedToCloud(null);
   }, []);
 
+  const handleHeaderBack = useCallback(() => {
+    if (phase === 'test') {
+      if (index > 0) {
+        goBackQuestion();
+        return;
+      }
+      setPhase('intro');
+      return;
+    }
+    if (phase === 'results') {
+      router.back();
+      return;
+    }
+    router.back();
+  }, [phase, index, goBackQuestion, router]);
+
   if (!isLoading && !isAuthenticated) {
     return <Redirect href="/(auth)/sign-in" />;
   }
@@ -151,13 +168,7 @@ export default function Big5TestScreen() {
   return (
     <GlassBackground>
       <ScrollView style={st.scroll} contentContainerStyle={st.content} keyboardShouldPersistTaps="handled">
-        <View style={st.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={st.backBtn} hitSlop={12}>
-            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={st.headerTitle}>Big Five</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <ScreenHeader title="Big Five" onBackPress={handleHeaderBack} showHomeButton backFallbackHref="/(tabs)/home" />
 
         {phase === 'intro' && (
           <>

@@ -35,6 +35,7 @@ import {
   recordAudioCompleted,
 } from '@/services/learning-progress';
 import { isIntroEpisodeTitle, resolveDetailModuleFromCatalogId } from '@/services/learning-content-catalog';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import {
   recordEpisodeLastAccessed,
   recordEpisodeVideoCompleted,
@@ -523,20 +524,12 @@ export default function LearningDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={handleBack}
-          style={styles.backButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerTitle}>
-          <Text style={styles.dimensionLabel}>{headerDimensionLabel}</Text>
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader
+        title={headerDimensionLabel}
+        onBackPress={handleBack}
+        showHomeButton
+        backFallbackHref="/(tabs)/learn"
+      />
 
       <ScrollView 
         style={styles.scrollView}

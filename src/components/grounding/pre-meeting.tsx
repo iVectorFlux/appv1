@@ -143,8 +143,14 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
         <Text style={s.stepLabel}>
           {step === 'breathe' ? 'Step 1 of 4 · Breath Downshift' : step === 'goal' ? 'Step 2 of 4 · Goal' : step === 'tone' ? 'Step 3 of 4 · Tone' : 'Step 4 of 4 · Anchor'}
         </Text>
-        <TouchableOpacity style={s.closeBtn} onPress={onExit} hitSlop={12}>
-          <Ionicons name="close" size={22} color={TEXT_MUTED} />
+        <TouchableOpacity
+          style={s.closeBtn}
+          onPress={onExit}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Exit exercise"
+        >
+          <Ionicons name="chevron-back" size={22} color={TEXT_MUTED} />
         </TouchableOpacity>
       </View>
 

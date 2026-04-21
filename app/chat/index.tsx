@@ -133,6 +133,20 @@ function parseInlineMarkdown(raw: string): TextSegment[] {
   return segments;
 }
 
+/** Inserts paragraph breaks before likely user-facing questions so they don’t run into prior sentences. */
+function formatAssistantDisplayText(raw: string): string {
+  let t = raw.trim();
+  t = t.replace(
+    /([.!?])\s+((?:What|How|Why|When|Where|Who|Which)\s+[^.?\n]*\?)/g,
+    '$1\n\n$2'
+  );
+  t = t.replace(
+    /([.!?])\s+((?:Can you|Could you|Would you|Should you|Is there|Are you|Do you|Does that|Have you)\b[^.?\n]*\?)/gi,
+    '$1\n\n$2'
+  );
+  return t;
+}
+
 function MarkdownText({ content, style }: { content: string; style?: object }) {
   const paragraphs = content.split(/\n+/);
   return (
@@ -320,10 +334,15 @@ const sgStyles = StyleSheet.create({
 // ── Message row ─────────────────────────────────────────────────────────
 
 function MessageRow({
-  message, modeColor, colors, isIntro, onGroundingPress, onLearnPress,
+  message, modeColor, colors, isIntro, chatMode, onGroundingPress, onLearnPress,
 }: {
-  message: Message; modeColor: string; colors: ReturnType<typeof useColors>; isIntro?: boolean;
-  onGroundingPress: (t: string) => void; onLearnPress: (skillId?: string | null) => void;
+  message: Message;
+  modeColor: string;
+  colors: ReturnType<typeof useColors>;
+  isIntro?: boolean;
+  chatMode: ChatMode;
+  onGroundingPress: (t: string) => void;
+  onLearnPress: (skillId?: string | null) => void;
 }) {
   const isUser = message.role === 'user';
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -357,7 +376,14 @@ function MessageRow({
       )}
       <View style={msgStyles.aiContent}>
         {(sg?.emotions?.length ?? 0) > 0 && <EmotionTags emotions={sg!.emotions!} colors={colors} />}
-        <MarkdownText content={message.content} style={[msgStyles.aiText, { color: colors.textPrimary }]} />
+        <MarkdownText
+          content={formatAssistantDisplayText(message.content)}
+          style={[
+            msgStyles.aiText,
+            chatMode === 'inner_ally' && msgStyles.aiTextInnerAlly,
+            { color: colors.textPrimary },
+          ]}
+        />
         {typeof sg?.reframe === 'string' && sg.reframe.trim().length > 0 && (
           <ReframeCard text={sg.reframe.trim()} colors={colors} modeColor={modeColor} />
         )}
@@ -413,6 +439,10 @@ const msgStyles = StyleSheet.create({
     fontSize: 15.5,
     lineHeight: 24,
     letterSpacing: 0.1,
+  },
+  aiTextInnerAlly: {
+    fontSize: 17,
+    lineHeight: 26,
   },
 });
 
@@ -681,6 +711,7 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
             modeColor={modeColor}
             colors={colors}
             isIntro={msg.id === 'intro'}
+            chatMode={mode}
             onGroundingPress={handleGroundingPress}
             onLearnPress={handleLearnPress}
           />

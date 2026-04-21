@@ -9,7 +9,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Platform,
   Animated,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -28,6 +27,7 @@ import { getSkillsProgress } from '@/services/skills-storage';
 import type { SkillProgress } from '@/services/skills-storage';
 import { getOfflineSessionCounts } from '@/services/skill-lab-offline-progress';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
+import { ScreenHeader } from '@/components/ui/screen-header';
 
 const STAGGER = 60;
 const FADE_MS = 350;
@@ -94,22 +94,16 @@ export default function SkillLabScreen() {
       contentContainerStyle={[styles.content, isWebLaptop && styles.contentWebLaptop]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerFade, transform: [{ translateY: headerFade.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <View style={styles.titleRow}>
-            <View style={[styles.headerIcon, { backgroundColor: colors.primary + '15' }]}>
-              <Ionicons name="rocket-outline" size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.title}>Skill Lab</Text>
-          </View>
-          <Text style={styles.subtitle}>
-            {`${FUTURE_SKILLS.length} skills that matter most in an AI-powered world — practice with AI coaching`}
-          </Text>
-        </View>
+      <ScreenHeader title="Skill Lab" backFallbackHref="/(tabs)/home" showHomeButton />
+      <Animated.View
+        style={[
+          styles.headerIntro,
+          { opacity: headerFade, transform: [{ translateY: headerFade.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] },
+        ]}
+      >
+        <Text style={styles.subtitle}>
+          {`${FUTURE_SKILLS.length} skills that matter most in an AI-powered world — practice with AI coaching`}
+        </Text>
       </Animated.View>
 
       {/* Stats row */}
@@ -233,37 +227,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       maxWidth: 1120,
       paddingHorizontal: Spacing.xl,
     },
-    header: {
-      paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
+    headerIntro: {
       paddingHorizontal: Spacing.md,
       paddingBottom: Spacing.md,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: Spacing.sm,
-    },
-    backBtn: {
-      marginTop: 2,
-    },
-    headerText: {
-      flex: 1,
-    },
-    titleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-      marginBottom: Spacing.xs,
-    },
-    headerIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    title: {
-      fontSize: Typography.fontSize['2xl'],
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
     },
     subtitle: {
       fontSize: Typography.fontSize.sm,

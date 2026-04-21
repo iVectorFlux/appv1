@@ -86,8 +86,14 @@ export function SensoryAnchor({ onComplete, onExit }: GroundingModeProps) {
       {/* Top bar */}
       <View style={s.topBar}>
         <Text style={s.stepLabel}>Step {currentIdx + 1} of {STEPS.length}</Text>
-        <TouchableOpacity style={s.closeBtn} onPress={onExit} hitSlop={12}>
-          <Ionicons name="close" size={22} color={TEXT_MUTED} />
+        <TouchableOpacity
+          style={s.closeBtn}
+          onPress={onExit}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Exit exercise"
+        >
+          <Ionicons name="chevron-back" size={22} color={TEXT_MUTED} />
         </TouchableOpacity>
       </View>
 

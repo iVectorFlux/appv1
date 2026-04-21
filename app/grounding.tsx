@@ -29,6 +29,7 @@ import { aiTechniqueToGroundingMode, type ChatReturnTarget } from '@/utils/chat-
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { TagChip } from '@/components/ui/tag-chip';
+import { ScreenHeader } from '@/components/ui/screen-header';
 
 import { QuickReset } from '@/components/grounding/quick-reset';
 import { SensoryAnchor } from '@/components/grounding/sensory-anchor';
@@ -62,7 +63,7 @@ const TECHNIQUE_ICONS: Record<string, string> = {
 const TECHNIQUE_DESCRIPTIONS: Record<string, string> = {
   quick_reset: '60 sec · Physiological sigh + grounding',
   sensory_anchor: '3-4 min · 5-4-3-2-1 senses',
-  box_breathing: '4-5 min · Square breath + release',
+  box_breathing: '4-5 min · Square rhythm breathing',
   pre_meeting: '2-3 min · Breath + intention',
   post_conflict: '4-6 min · Label + breathe + reframe',
 };
@@ -150,7 +151,7 @@ export default function GroundingScreen() {
   const exitGrounding = useCallback(() => {
     if (returnTarget === 'chat') { router.replace('/chat'); return; }
     if (returnTarget === 'assist') { router.replace('/(tabs)/companion'); return; }
-    router.replace('/(tabs)/recover');
+    router.replace('/(tabs)/home');
   }, [router, returnTarget]);
 
   const handleModeExit = useCallback(() => {
@@ -159,7 +160,14 @@ export default function GroundingScreen() {
   }, [returnTarget, exitGrounding, transitionTo]);
 
   const handleDone = useCallback(async () => {
-    if (!user?.id || !selectedMode) { exitGrounding(); return; }
+    if (!selectedMode) {
+      exitGrounding();
+      return;
+    }
+    if (!user?.id) {
+      setSaveError('Sign in to save this session to your account. You can still tap Leave anyway to exit.');
+      return;
+    }
     const session: GroundingSession = {
       mode: selectedMode,
       stressBefore: stressLevel,
@@ -174,17 +182,35 @@ export default function GroundingScreen() {
     setSaveError(null);
     setIsSaving(true);
     try {
-      await saveRecoverySession(user.id, session);
+      await saveRecoverySession(user.id, session, {
+        entry_tag: selectedTag,
+        return_to: returnTarget,
+      });
       exitGrounding();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('not configured') || msg.includes('Supabase')) { exitGrounding(); return; }
+      if (msg.includes('not configured') || msg.includes('Supabase')) {
+        exitGrounding();
+        return;
+      }
       console.error('[Grounding] Save failed:', e);
       setSaveError(msg || 'Could not save. Check connection and try again.');
     } finally {
       setIsSaving(false);
     }
-  }, [user, selectedMode, stressLevel, stressAfter, emotionalTone, completionPct, sessionStart, helpful, exitGrounding]);
+  }, [
+    user?.id,
+    selectedMode,
+    stressLevel,
+    stressAfter,
+    emotionalTone,
+    completionPct,
+    sessionStart,
+    helpful,
+    selectedTag,
+    returnTarget,
+    exitGrounding,
+  ]);
 
   const st = createStyles(colors);
 
@@ -215,17 +241,18 @@ export default function GroundingScreen() {
       { id: 'post_meeting', label: 'Post‑meeting', defaultStress: 2 },
     ];
 
+    /** Maps each "shift" chip to one of the five in-app techniques (quick reset, sensory, box, pre-meeting, post-conflict). */
     const recommendedByTag: Record<BreathingTag, GroundingMode> = {
       anxiety: 'quick_reset',
       calm: 'sensory_anchor',
       reset: 'quick_reset',
-      focus: 'sensory_anchor',
+      focus: 'box_breathing',
       stress: 'box_breathing',
-      panic: 'box_breathing',
+      panic: 'quick_reset',
       anger: 'post_conflict',
       conflict: 'post_conflict',
       pre_meeting: 'pre_meeting',
-      post_meeting: 'quick_reset',
+      post_meeting: 'sensory_anchor',
     };
 
     const accentForMode = (mode: GroundingMode) => {
@@ -266,12 +293,7 @@ export default function GroundingScreen() {
 
     return (
       <GlassBackground>
-        <View style={st.topBar}>
-          <Text style={st.topTitle}>Grounding</Text>
-          <TouchableOpacity style={st.closeBtn} onPress={exitGrounding} hitSlop={12}>
-            <Ionicons name="close" size={22} color={colors.textMuted} />
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader title="Grounding" onBackPress={exitGrounding} showHomeButton />
 
         <Animated.View style={[st.flexOne, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
           <ScrollView contentContainerStyle={st.selectScroll} showsVerticalScrollIndicator={false}>
@@ -424,10 +446,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     flexOne: { flex: 1 },
-
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
-    topTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading },
-    closeBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassBorder },
 
     selectScroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing['2xl'] },
     heading: { fontSize: 26, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.lg, letterSpacing: Typography.letterSpacing.snug, lineHeight: 34 },

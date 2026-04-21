@@ -400,8 +400,14 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
         <Text style={s.stepLabel}>
           {step === 'box_breathe' ? 'Step 1 of 3 · Box Breath' : step === 'identity' ? 'Step 2 of 3 · Identity Anchor' : 'Step 3 of 3 · Tension Release'}
         </Text>
-        <TouchableOpacity style={s.closeBtn} onPress={onExit} hitSlop={12}>
-          <Ionicons name="close" size={22} color={TEXT_MUTED} />
+        <TouchableOpacity
+          style={s.closeBtn}
+          onPress={onExit}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Exit exercise"
+        >
+          <Ionicons name="chevron-back" size={22} color={TEXT_MUTED} />
         </TouchableOpacity>
       </View>
 

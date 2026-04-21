@@ -172,10 +172,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="profile" options={{ tabBarButton: tabButton('person-outline') }} />
-      <Tabs.Screen name="eq" options={{ href: null }} />
-      <Tabs.Screen name="learn" options={{ href: null }} />
-      <Tabs.Screen name="recover" options={{ href: null }} />
-      <Tabs.Screen name="progress" options={{ href: null }} />
+      <Tabs.Screen name="eq" options={{ href: null, tabBarStyle: tabBarStyleHidden }} />
+      <Tabs.Screen name="learn" options={{ href: null, tabBarStyle: tabBarStyleHidden }} />
+      <Tabs.Screen name="recover" options={{ href: null, tabBarStyle: tabBarStyleHidden }} />
+      <Tabs.Screen name="progress" options={{ href: null, tabBarStyle: tabBarStyleHidden }} />
     </Tabs>
   );
 }

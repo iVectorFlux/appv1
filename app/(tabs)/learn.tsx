@@ -11,7 +11,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -19,6 +18,7 @@ import { useColors, Spacing, Typography, Radius } from '@/constants/design-token
 import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { DIMENSION_INFO } from '@/data/learning-content';
 import type { EQDimension } from '@/types/eq-assessment';
 import { useLearningCatalog } from '@/hooks/useLearningCatalog';
@@ -54,11 +54,8 @@ export default function LearnScreen() {
   return (
     <GlassBackground>
       <ScrollView style={st.container} contentContainerStyle={st.content}>
-        <View style={st.header}>
-          <TouchableOpacity onPress={() => router.back()} style={st.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="arrow-back" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <Text style={st.title}>Learn EQ</Text>
+        <ScreenHeader title="Learn EQ" backFallbackHref="/(tabs)/home" showHomeButton />
+        <View style={st.headerTextBlock}>
           <Text style={st.subtitle}>Build emotional intelligence with expert-led content</Text>
         </View>
 
@@ -154,9 +151,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1 },
     content: { paddingBottom: 120 },
-    header: { paddingHorizontal: Spacing.md, paddingTop: Platform.OS === 'ios' ? 56 : Spacing.lg, paddingBottom: Spacing.md },
-    backBtn: { marginBottom: Spacing.sm },
-    title: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, marginBottom: Spacing.xs },
+    headerTextBlock: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.lg },
     subtitle: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm },
     bannerCard: { marginHorizontal: Spacing.md, marginBottom: Spacing.md },
     bannerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
