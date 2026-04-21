@@ -57,22 +57,6 @@ export default function HomeScreen() {
     () =>
       [
         {
-          key: 'eq-check',
-          title: 'EQ Check-in',
-          subtitle: '5 quick questions · ~2 min',
-          icon: 'pulse-outline' as const,
-          accent: colors.accentWarmTan,
-          route: '/(tabs)/eq',
-        },
-        {
-          key: 'progress',
-          title: 'Progress',
-          subtitle: 'EQ, learning & Skill Lab',
-          icon: 'stats-chart-outline' as const,
-          accent: colors.accentTerracotta,
-          route: '/(tabs)/progress',
-        },
-        {
           key: 'full-eq',
           title: 'Full EQ test',
           subtitle: '60+ questions · ~25 min',
@@ -87,6 +71,22 @@ export default function HomeScreen() {
           icon: 'color-wand-outline' as const,
           accent: colors.accentIndigo,
           route: '/big5-test',
+        },
+        {
+          key: 'eq-check',
+          title: 'EQ Check-in',
+          subtitle: '5 quick questions · ~2 min',
+          icon: 'pulse-outline' as const,
+          accent: colors.accentWarmTan,
+          route: '/(tabs)/eq',
+        },
+        {
+          key: 'progress',
+          title: 'Progress',
+          subtitle: 'EQ, learning & Skill Lab',
+          icon: 'stats-chart-outline' as const,
+          accent: colors.accentTerracotta,
+          route: '/(tabs)/progress',
         },
       ] as const,
     [colors]
