@@ -91,9 +91,8 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
       : "Hey, I'm here for you. Share how you're feeling — I'll listen, reflect, and help you ground yourself.",
     placeholder: "What's on your mind?",
     suggestions: [
-      "I'm having a bad day",
-      "I feel overwhelmed right now",
-      "Help me calm down",
+      "I'm having a bad day — help me calm down",
+      'I have pre-meeting anxiety',
     ],
   },
   coach: {
@@ -105,9 +104,9 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
       : "Ready when you are. Ask about leadership, work skills, or growth — or learn something new step-by-step here (even when it is not in Skill Lab).",
     placeholder: 'Ask me anything...',
     suggestions: [
-      "How do I handle a difficult conversation?",
-      "Help me prepare for a presentation",
-      "I want to grow as a leader",
+      'How to regulate emotion at workplace',
+      'How to grow as a leader',
+      'Help me solve a problem',
     ],
   },
 };
@@ -550,7 +549,14 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
     setIsLoading(true);
 
     if (user?.id) {
-      saveChatMessage({ userId: user.id, mode, role: 'user', content: text });
+      saveChatMessage({
+        userId: user.id,
+        mode,
+        role: 'user',
+        content: text,
+        id: userMsg.id,
+        createdAt: userMsg.createdAt,
+      });
     }
 
     const history = messages
@@ -592,6 +598,8 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
           reply: data.reply,
           suggestion: { ...suggestion } as Record<string, unknown>,
           userMessageForJournal: text,
+          assistantMessageId: assistantMsg.id,
+          createdAt: assistantMsg.createdAt,
         });
       }
     } catch (e) {
