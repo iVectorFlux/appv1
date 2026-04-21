@@ -401,8 +401,18 @@ const stepperStyles = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SkillDetailScreen() {
-  const params = useLocalSearchParams<{ skillId: string | string[]; returnTo?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    skillId: string | string[];
+    returnTo?: string | string[];
+    /** Pre-select a sub-skill (e.g. from Skill Lab catalog). */
+    atomic?: string | string[];
+  }>();
   const skillIdParam = normalizeSkillRouteParam(params.skillId);
+  const atomicQs = (() => {
+    const a = params.atomic;
+    const s = Array.isArray(a) ? a[0] : a;
+    return typeof s === 'string' && s.length > 0 ? s : undefined;
+  })();
   const router = useRouter();
   const colors = useColors();
   const { user } = useAuthStore();
@@ -455,6 +465,14 @@ export default function SkillDetailScreen() {
 
   // Keep ref in sync with state
   useEffect(() => { selectedAtomicIdRef.current = selectedAtomicId; }, [selectedAtomicId]);
+
+  // Deep link: /skill-lab/[id]?atomic=subskill_id
+  useEffect(() => {
+    if (!skill || !atomicQs) return;
+    if (skill.atomicSkills.some((a) => a.id === atomicQs)) {
+      setSelectedAtomicId(atomicQs);
+    }
+  }, [skill, atomicQs]);
 
   // Fade-in animation on mount
   useEffect(() => {
@@ -697,17 +715,7 @@ export default function SkillDetailScreen() {
             </View>
           </View>
 
-          {/* About */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About this skill</Text>
-            <Text style={styles.bodyText}>{skill.description}</Text>
-            <View style={[styles.whyBox, { backgroundColor: skill.color + '10', borderColor: skill.color + '30' }]}>
-              <Ionicons name="information-circle-outline" size={16} color={skill.color} />
-              <Text style={[styles.whyText, { color: colors.textPrimary }]}>{skill.why}</Text>
-            </View>
-          </View>
-
-          {/* Sub-skills */}
+          {/* Sub-skills (first — pick a focus, then practice; About sits below Start) */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Sub-skills</Text>
             <Text style={styles.bodyTextMuted}>
@@ -792,7 +800,6 @@ export default function SkillDetailScreen() {
                 </View>
               )}
 
-              {/* Error banner */}
               {practiceError && (
                 <View style={[styles.errorBanner, { backgroundColor: colors.destructive + '14', borderColor: colors.destructive + '40' }]}>
                   <Ionicons name="alert-circle-outline" size={16} color={colors.destructive} />
@@ -834,6 +841,17 @@ export default function SkillDetailScreen() {
               ) : (
                 <Text style={styles.practiceHint}>{modeConfig.hint}</Text>
               )}
+            </View>
+          )}
+
+          {!isPracticing && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>About this skill</Text>
+              <Text style={styles.bodyText}>{skill.description}</Text>
+              <View style={[styles.whyBox, { backgroundColor: skill.color + '10', borderColor: skill.color + '30' }]}>
+                <Ionicons name="information-circle-outline" size={16} color={skill.color} />
+                <Text style={[styles.whyText, { color: colors.textPrimary }]}>{skill.why}</Text>
+              </View>
             </View>
           )}
 
