@@ -1,5 +1,5 @@
 /**
- * Profile Screen — Glassmorphism v5
+ * Profile Screen — Editorial wellness
  *
  * User profile, dark mode toggle, settings. (Assessment snapshot on Progress.)
  */

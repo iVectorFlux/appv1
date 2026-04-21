@@ -1,5 +1,5 @@
 /**
- * Tabs Layout — 3 icon-only tabs inside a floating glass capsule.
+ * Tabs Layout — 3 icon-only tabs inside a floating capsule.
  *
  * Home, AI Companion, Profile.
  * Hidden routes: learn, eq, recover, progress.

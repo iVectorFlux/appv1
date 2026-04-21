@@ -1,5 +1,5 @@
 /**
- * Progress & Report — Premium glassmorphism dashboard
+ * Progress & Report — Editorial wellness dashboard
  *
  * EQ score ring, dimension strength bars, episode progress bars,
  * skill lab visual cards, companion usage, and recovery stats.

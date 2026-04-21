@@ -1,5 +1,5 @@
 /**
- * Learn Screen — Glassmorphism v5
+ * Learn Screen — Editorial wellness
  *
  * Catalog from Supabase learning_content with frosted glass cards.
  */

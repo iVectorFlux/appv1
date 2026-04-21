@@ -28,19 +28,19 @@ export function GlassBackground({ children, style }: GlassBackgroundProps) {
         end={{ x: 1, y: 1 }}
       />
 
-      {/* Subtle secondary gradient for depth */}
+      {/* Warm editorial wash — sage / terracotta / sand at very low opacity */}
       <LinearGradient
         colors={[
-          isDark ? 'rgba(99,135,255,0.06)' : 'rgba(160,190,220,0.10)',
+          isDark ? 'rgba(61,139,110,0.07)' : 'rgba(196,164,132,0.08)',
           'transparent',
-          isDark ? 'rgba(74,222,128,0.04)' : 'rgba(160,210,180,0.06)',
+          isDark ? 'rgba(224,122,95,0.05)' : 'rgba(61,139,110,0.06)',
         ]}
         style={StyleSheet.absoluteFill}
-        start={{ x: 0.8, y: 0 }}
-        end={{ x: 0.2, y: 1 }}
+        start={{ x: 0.85, y: 0 }}
+        end={{ x: 0.15, y: 1 }}
       />
 
-      {/* Soft ambient glow spots — NOT bold colored circles */}
+      {/* Soft ambient glow — warm sand + forest (light), muted sage (dark) */}
       <View
         style={[
           styles.glow,
@@ -49,7 +49,7 @@ export function GlassBackground({ children, style }: GlassBackgroundProps) {
             height: SW * 0.7,
             top: -SW * 0.15,
             right: -SW * 0.2,
-            backgroundColor: isDark ? 'rgba(99,135,255,0.06)' : 'rgba(160,195,220,0.12)',
+            backgroundColor: isDark ? 'rgba(77,166,122,0.06)' : 'rgba(224,122,95,0.07)',
           },
         ]}
       />
@@ -61,7 +61,7 @@ export function GlassBackground({ children, style }: GlassBackgroundProps) {
             height: SW * 0.6,
             bottom: SH * 0.15,
             left: -SW * 0.15,
-            backgroundColor: isDark ? 'rgba(120,80,200,0.05)' : 'rgba(170,160,210,0.08)',
+            backgroundColor: isDark ? 'rgba(124,141,224,0.05)' : 'rgba(45,71,57,0.05)',
           },
         ]}
       />

@@ -1,39 +1,47 @@
 /**
- * Theme — visionOS-inspired glassmorphism (2026)
+ * Theme — Warm editorial wellness (2026)
  *
- * Light glass: soft pale backgrounds with frosted translucent cards.
- * Dark glass: deep blue-black with luminous frosted surfaces.
- * Primary: Forest Green (light) / Vibrant Green (dark).
+ * Primary: Forest Green. Accents: Terracotta, Sage, Warm Tan, Soft Indigo.
+ * Cream background, white cards, calm and focused.
  */
 
 import type { ColorMode } from '@/stores/theme-store';
 
 export interface ThemeColors {
+  // Backgrounds
   background: string;
+  /** Subtle mesh gradient (top-left) */
   backgroundGradientStart: string;
+  /** Subtle mesh gradient (bottom-right) */
   backgroundGradientEnd: string;
   surface: string;
   floating: string;
+  /** Subtle tinted card / section bg */
   surfaceAccent: string;
 
+  /** Card / chrome fill (may sit over blur on native) */
   glass: string;
   glassBorder: string;
   glassHighlight: string;
   glassTint: string;
 
+  // Primary (Forest Green)
   primary: string;
   primaryForeground: string;
   secondary: string;
   secondaryForeground: string;
 
+  // Text
   textPrimary: string;
   textSecondary: string;
   textMuted: string;
   textLight: string;
 
+  // Border
   border: string;
   borderLight: string;
 
+  // Semantic
   destructive: string;
   destructiveForeground: string;
   success: string;
@@ -42,6 +50,7 @@ export interface ThemeColors {
   warningForeground: string;
   inputBackground: string;
 
+  // Accent (editorial)
   accentTerracotta: string;
   accentSage: string;
   accentWarmTan: string;
@@ -53,37 +62,43 @@ export interface ThemeColors {
 }
 
 const FOREST = '#2D4739';
+const CREAM = '#FAF9F7';
 const WHITE = '#FFFFFF';
 const TERRACOTTA = '#E07A5F';
 const SAGE = '#3D8B6E';
 const WARM_TAN = '#C4A484';
 const SOFT_INDIGO = '#5C6BC0';
+const BODY_TEXT = '#666666';
+const MUTED = '#888888';
+const LIGHT_GRAY = '#AAAAAA';
+const BORDER = '#EDEAE6';
+const BG_ACCENT = '#F5EDE3';
 
 const lightTheme: ThemeColors = {
-  background: '#E4EBF5',
-  backgroundGradientStart: '#C9D6E8',
-  backgroundGradientEnd: '#D6DCED',
-  surface: 'rgba(255,255,255,0.50)',
-  floating: 'rgba(255,255,255,0.72)',
-  surfaceAccent: 'rgba(255,255,255,0.35)',
+  background: CREAM,
+  backgroundGradientStart: '#FCFAF8',
+  backgroundGradientEnd: '#F3EEE8',
+  surface: BG_ACCENT,
+  floating: WHITE,
+  surfaceAccent: BG_ACCENT,
 
-  glass: 'rgba(255,255,255,0.62)',
-  glassBorder: 'rgba(255,255,255,0.75)',
-  glassHighlight: 'rgba(255,255,255,0.92)',
+  glass: 'rgba(255,255,255,0.94)',
+  glassBorder: BORDER,
+  glassHighlight: 'rgba(45, 71, 57, 0.07)',
   glassTint: 'light',
 
   primary: FOREST,
   primaryForeground: WHITE,
-  secondary: '#4A5D52',
+  secondary: BODY_TEXT,
   secondaryForeground: WHITE,
 
-  textPrimary: '#14261C',
-  textSecondary: '#3D5548',
-  textMuted: '#7A8E84',
-  textLight: '#A8B8B0',
+  textPrimary: FOREST,
+  textSecondary: BODY_TEXT,
+  textMuted: MUTED,
+  textLight: LIGHT_GRAY,
 
-  border: 'rgba(0,0,0,0.06)',
-  borderLight: 'rgba(0,0,0,0.03)',
+  border: BORDER,
+  borderLight: 'rgba(237, 234, 230, 0.8)',
 
   destructive: TERRACOTTA,
   destructiveForeground: WHITE,
@@ -91,7 +106,7 @@ const lightTheme: ThemeColors = {
   successForeground: WHITE,
   warning: TERRACOTTA,
   warningForeground: WHITE,
-  inputBackground: 'rgba(255,255,255,0.8)',
+  inputBackground: WHITE,
 
   accentTerracotta: TERRACOTTA,
   accentSage: SAGE,
@@ -103,54 +118,48 @@ const lightTheme: ThemeColors = {
   accentWarm: TERRACOTTA,
 };
 
-/* ── Dark Theme ────────────────────────────────────────────
- * Deep blue-black background with luminous glass surfaces.
- * Vibrant accent colors tuned for visibility on dark canvas.
- * Inspired by visionOS dark, macOS Sonoma dark mode.
- * ────────────────────────────────────────────────────────── */
-
 const darkTheme: ThemeColors = {
-  background: '#0D1117',
-  backgroundGradientStart: '#161D2B',
-  backgroundGradientEnd: '#111822',
-  surface: 'rgba(255,255,255,0.07)',
-  floating: 'rgba(255,255,255,0.10)',
-  surfaceAccent: 'rgba(255,255,255,0.05)',
+  background: '#1A211E',
+  backgroundGradientStart: '#1E2622',
+  backgroundGradientEnd: '#171C1A',
+  surface: '#242D29',
+  floating: '#2D3732',
+  surfaceAccent: '#2D3732',
 
-  glass: 'rgba(255,255,255,0.09)',
-  glassBorder: 'rgba(255,255,255,0.14)',
-  glassHighlight: 'rgba(255,255,255,0.20)',
+  glass: 'rgba(45, 55, 50, 0.88)',
+  glassBorder: 'rgba(255,255,255,0.12)',
+  glassHighlight: 'rgba(255,255,255,0.10)',
   glassTint: 'dark',
 
-  primary: '#4ADE80',
-  primaryForeground: '#0D1117',
-  secondary: '#94A3B8',
-  secondaryForeground: '#0D1117',
+  primary: '#3D8B6E',
+  primaryForeground: WHITE,
+  secondary: '#94A39B',
+  secondaryForeground: '#1A211E',
 
-  textPrimary: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
-  textLight: '#475569',
+  textPrimary: '#F5F7F6',
+  textSecondary: '#B8C4BE',
+  textMuted: '#8A9A92',
+  textLight: '#6B7A72',
 
-  border: 'rgba(255,255,255,0.10)',
+  border: 'rgba(255,255,255,0.1)',
   borderLight: 'rgba(255,255,255,0.06)',
 
-  destructive: '#FB7185',
+  destructive: '#E07A5F',
   destructiveForeground: WHITE,
-  success: '#4ADE80',
-  successForeground: '#0D1117',
-  warning: '#FBBF24',
-  warningForeground: '#0D1117',
-  inputBackground: 'rgba(255,255,255,0.08)',
+  success: '#4DA67A',
+  successForeground: WHITE,
+  warning: '#E07A5F',
+  warningForeground: WHITE,
+  inputBackground: '#242D29',
 
-  accentTerracotta: '#FB923C',
-  accentSage: '#4ADE80',
-  accentWarmTan: '#FBBF24',
-  accentIndigo: '#818CF8',
-  accentCalm: '#4ADE80',
-  accentEnergy: '#FBBF24',
-  accentSoft: '#818CF8',
-  accentWarm: '#FB923C',
+  accentTerracotta: '#E07A5F',
+  accentSage: '#4DA67A',
+  accentWarmTan: '#D4B896',
+  accentIndigo: '#7C8DE0',
+  accentCalm: '#4DA67A',
+  accentEnergy: '#D4B896',
+  accentSoft: '#7C8DE0',
+  accentWarm: '#E07A5F',
 };
 
 export const emotionColors: Record<string, keyof ThemeColors> = {

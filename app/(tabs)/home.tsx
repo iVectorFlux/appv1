@@ -1,5 +1,5 @@
 /**
- * Home — Glassmorphic dashboard
+ * Home — Editorial wellness dashboard
  *
  * Explore grid first (Learn EQ, Companion, Skill Lab, Recover), then Assessments & progress.
  */

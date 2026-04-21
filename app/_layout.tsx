@@ -1,5 +1,5 @@
 /**
- * Root Layout — Glassmorphism v5
+ * Root Layout — Editorial wellness (2026)
  *
  * Web:
  * - Narrow (≤500): full viewport (phone in browser).

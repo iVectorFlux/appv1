@@ -8,7 +8,7 @@ import {
   type StyleProp,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { useColors, Radius, Glass } from '@/constants/design-tokens';
+import { useColors, Radius, Glass, Shadows } from '@/constants/design-tokens';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -29,15 +29,10 @@ export function GlassCard({
 }: GlassCardProps) {
   const colors = useColors();
 
-  const shadow: ViewStyle = Platform.OS === 'web'
-    ? ({ boxShadow: '0 2px 16px rgba(0,0,0,0.06), 0 0 1px rgba(0,0,0,0.08)' } as any)
-    : {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.07,
-        shadowRadius: 14,
-        elevation: 4,
-      };
+  const shadow: ViewStyle =
+    Platform.OS === 'web'
+      ? ({ ...(Shadows.glass as object) } as ViewStyle)
+      : (Shadows.glass as ViewStyle);
 
   const cardBase: ViewStyle = {
     borderRadius,
