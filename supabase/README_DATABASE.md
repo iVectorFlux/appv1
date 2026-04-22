@@ -1,4 +1,4 @@
-# EQ App — Database Design (First Principles)
+# EQ App - Database Design (First Principles)
 
 PostgreSQL schema for Supabase: **secure**, **scalable**, **fast**.
 
@@ -15,9 +15,9 @@ PostgreSQL schema for Supabase: **secure**, **scalable**, **fast**.
 - **Sensitive columns:** Release/meditation notes stored as `BYTEA` (encrypted). Encryption keys metadata only; actual keys stay on device (e.g. SecureStore).
 
 ### Scalability
-- **IDs:** `UUID` primary keys (`gen_random_uuid()`) — no guessability, safe for distributed clients, no single-node sequence bottleneck.
-- **Timestamps:** `TIMESTAMPTZ` everywhere — correct for multiple timezones and Supabase defaults.
-- **JSON:** `JSONB` for all JSON — indexed, queryable, efficient storage.
+- **IDs:** `UUID` primary keys (`gen_random_uuid()`) - no guessability, safe for distributed clients, no single-node sequence bottleneck.
+- **Timestamps:** `TIMESTAMPTZ` everywhere - correct for multiple timezones and Supabase defaults.
+- **JSON:** `JSONB` for all JSON - indexed, queryable, efficient storage.
 - **Onboarding multi-select:** Goals and context live in **one row per user** in `user_preferences` (columns `goals` and `context` as JSONB arrays). One query loads all preferences and goals; one upsert saves them. A GIN index on `goals` still allows queries like "users who selected goal X" (e.g. analytics). No separate `user_goals` / `user_background` tables.
 - **Indexes:** B-tree on `(user_id, created_at DESC)` for “my recent X” lists; partial indexes where useful (e.g. `WHERE is_deleted = FALSE`). GIN on `emotions` and on `user_preferences.goals` for containment queries.
 - **Partitioning (future):** For very large scale, `journal_entries` and `eq_check_ins` can be range-partitioned by `created_at` (e.g. monthly). Not required for initial launch.
@@ -39,7 +39,7 @@ PostgreSQL schema for Supabase: **secure**, **scalable**, **fast**.
 | Layer        | Tables |
 |-------------|--------|
 | **Identity** | `profiles` (extends `auth.users`) |
-| **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` — *00003 drops user_goals / user_background* |
+| **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` - *00003 drops user_goals / user_background* |
 | **Journal** | `journal_entries` (used); `encryption_keys`, `journal_tags`, `journal_entry_tags` (reserved) |
 | **EQ**      | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` (reserved) |
 | **Insights** | `insights`, `insight_actions` (reserved) |
@@ -53,18 +53,18 @@ PostgreSQL schema for Supabase: **secure**, **scalable**, **fast**.
 
 **One migration script:** Run **`supabase/migrations/00001_initial_schema.sql`** in the Supabase SQL Editor. It creates all tables (profiles, onboarding, journal, EQ, insights, recovery, learning, metrics), RLS, and triggers. Safe to re-run (uses `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS`, `DROP TRIGGER IF EXISTS`).
 
-### Option A — Supabase Dashboard
+### Option A - Supabase Dashboard
 1. Open your project → **SQL Editor** → **New query**.
 2. In your project folder, open **`supabase/migrations/00001_initial_schema.sql`**, select all, copy, paste into the editor, then **Run**.
 
-### Option B — Supabase CLI
+### Option B - Supabase CLI
 ```bash
 supabase link --project-ref YOUR_REF
 supabase db push
 ```
 (Migrations in `supabase/migrations/` are applied in order.)
 
-### Option C — One-off from shell
+### Option C - One-off from shell
 ```bash
 psql "$DATABASE_URL" -f supabase/migrations/00001_initial_schema.sql
 ```
@@ -82,10 +82,10 @@ Use the **connection string** (with password) only from a secure environment (e.
 
 ## 5. Migration order (dependency order)
 
-1. **00001_initial_schema.sql** — `profiles`, onboarding tables (`user_onboarding`, `user_goals`, `user_background`, `user_preferences`, `onboarding_emotional_check`), journal, EQ, insights, wellness, learning, metrics, RLS, triggers.
-2. **00002_profiles_last_login_and_user_sessions.sql** — Add `last_login_at` to profiles, add `user_sessions`.
-3. **00003_consolidate_onboarding_into_user_preferences.sql** — Add `goals` and `context` (JSONB) to `user_preferences`, migrate data from `user_goals` and `user_background`, drop those tables, add GIN index on `goals`.
-4. **00004_journal_encrypted_text_and_key_nullable.sql** — Store `journal_text_encrypted` as base64 TEXT (was BYTEA) for web client compatibility.
+1. **00001_initial_schema.sql** - `profiles`, onboarding tables (`user_onboarding`, `user_goals`, `user_background`, `user_preferences`, `onboarding_emotional_check`), journal, EQ, insights, wellness, learning, metrics, RLS, triggers.
+2. **00002_profiles_last_login_and_user_sessions.sql** - Add `last_login_at` to profiles, add `user_sessions`.
+3. **00003_consolidate_onboarding_into_user_preferences.sql** - Add `goals` and `context` (JSONB) to `user_preferences`, migrate data from `user_goals` and `user_background`, drop those tables, add GIN index on `goals`.
+4. **00004_journal_encrypted_text_and_key_nullable.sql** - Store `journal_text_encrypted` as base64 TEXT (was BYTEA) for web client compatibility.
 
 Run migrations in order in the Supabase SQL Editor (or `supabase db push`).
 

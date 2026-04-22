@@ -1,5 +1,5 @@
 /**
- * Skill Lab — landing (route: /skill-lab)
+ * Skill Lab - landing (route: /skill-lab)
  *
  * Main skills only as a grid of cards; tap a skill to open sub-skills + practice on the detail screen.
  */

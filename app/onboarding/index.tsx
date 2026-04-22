@@ -1,15 +1,13 @@
 /**
- * Onboarding — 6 steps (context + goal-first + feature spotlight)
+ * Onboarding - 4 steps
  *
  * 1. Welcome
  * 2. Name (optional)
- * 3. Context (optional) — life situation + interests for Skill Lab
- * 4. Primary goal
- * 5. Feature spotlight
- * 6. Emotion check → Home
+ * 3. Context (optional) - life situation; industry if employed; interests
+ * 4. Primary goal → save and Home
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -27,26 +25,23 @@ import {
   type LifeSituationId,
   LIFE_SITUATION_OPTIONS,
   INDUSTRY_OPTIONS,
-  WORK_SETTING_OPTIONS,
   type IndustryId,
-  type WorkSettingId,
 } from '@/services/profile-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { TagChip } from '@/components/ui/tag-chip';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
-import { emotionColors } from '@/constants/themes';
-import type { EmotionTag } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import { FUTURE_SKILLS } from '@/data/future-skills';
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 4;
+
+const WELCOME_EXPERIENCE_PILLS: { label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { label: 'Learn EQ', icon: 'book-outline' },
+  { label: 'AI Companion', icon: 'chatbubbles-outline' },
+  { label: 'Skill Lab', icon: 'school-outline' },
+];
 
 const DEFAULT_CHECK_IN_FREQUENCY = 'few_times_week' as const;
-
-const ONBOARDING_EMOTIONS: EmotionTag[] = [
-  'Happy', 'Calm', 'Anxious', 'Stressed', 'Sad', 'Tired',
-  'Relaxed', 'Overwhelmed', 'Content', 'Grateful', 'Frustrated', 'Hopeful',
-];
 
 type PrimaryGoalId = 'feel_better' | 'build_skills' | 'manage_stress' | 'ai_growth' | 'explore';
 
@@ -55,164 +50,14 @@ const PRIMARY_GOALS: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
-  { id: 'feel_better', label: 'Feel better day-to-day', icon: 'leaf-outline' },
-  { id: 'build_skills', label: 'Build emotional & professional skills', icon: 'trending-up-outline' },
-  { id: 'manage_stress', label: 'Manage stress & anxiety', icon: 'shield-checkmark-outline' },
-  { id: 'ai_growth', label: 'Grow with AI coaching', icon: 'sparkles-outline' },
+  { id: 'feel_better', label: 'Feel better day to day', icon: 'leaf-outline' },
+  { id: 'build_skills', label: 'Build emotional and professional skills', icon: 'trending-up-outline' },
+  { id: 'manage_stress', label: 'Manage stress and anxiety', icon: 'shield-checkmark-outline' },
+  { id: 'ai_growth', label: 'Grow with coaching support', icon: 'sparkles-outline' },
   { id: 'explore', label: 'Just exploring', icon: 'compass-outline' },
 ];
 
-type SpotlightItem = {
-  id: string;
-  title: string;
-  description: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  accentColor: 'primary' | 'accentEnergy' | 'accentCalm' | 'accentIndigo';
-  featured: boolean;
-};
-
-function spotlightForGoal(goal: PrimaryGoalId): SpotlightItem[] {
-  switch (goal) {
-    case 'feel_better':
-      return [
-        {
-          id: 'inner_ally',
-          title: 'AI Companion',
-          description: 'Talk things through with your Inner Ally — it listens, reflects, and helps ground you.',
-          icon: 'heart-outline',
-          accentColor: 'primary',
-          featured: true,
-        },
-        {
-          id: 'recover',
-          title: 'Recover & Grounding',
-          description: 'Breathing and regulation tools when things feel heavy.',
-          icon: 'leaf-outline',
-          accentColor: 'accentCalm',
-          featured: false,
-        },
-        {
-          id: 'learn',
-          title: 'Learn EQ',
-          description: 'Build emotional awareness with expert-led lessons.',
-          icon: 'library-outline',
-          accentColor: 'accentEnergy',
-          featured: false,
-        },
-      ];
-    case 'build_skills':
-      return [
-        {
-          id: 'skill_lab',
-          title: 'Skill Lab',
-          description: 'Practice real-world skills with AI coaching and feedback.',
-          icon: 'school-outline',
-          accentColor: 'accentIndigo',
-          featured: true,
-        },
-        {
-          id: 'learn',
-          title: 'Learn EQ',
-          description: 'Video and audio lessons on emotional intelligence topics.',
-          icon: 'library-outline',
-          accentColor: 'primary',
-          featured: false,
-        },
-        {
-          id: 'eq_test',
-          title: 'EQ assessment',
-          description: 'Deeper picture of your strengths and growth areas over time.',
-          icon: 'analytics-outline',
-          accentColor: 'accentEnergy',
-          featured: false,
-        },
-      ];
-    case 'manage_stress':
-      return [
-        {
-          id: 'recover',
-          title: 'Recover & Grounding',
-          description: 'Calm your nervous system with structured exercises.',
-          icon: 'leaf-outline',
-          accentColor: 'accentCalm',
-          featured: true,
-        },
-        {
-          id: 'inner_ally',
-          title: 'AI Companion',
-          description: 'Talk things through with a warm companion that listens first.',
-          icon: 'heart-outline',
-          accentColor: 'primary',
-          featured: false,
-        },
-        {
-          id: 'learn',
-          title: 'Learn EQ',
-          description: 'Understand stress patterns with expert guidance.',
-          icon: 'library-outline',
-          accentColor: 'accentEnergy',
-          featured: false,
-        },
-      ];
-    case 'ai_growth':
-      return [
-        {
-          id: 'ai_chat',
-          title: 'AI Companion',
-          description: 'Wellbeing support and professional coaching in one place.',
-          icon: 'chatbubbles-outline',
-          accentColor: 'primary',
-          featured: true,
-        },
-        {
-          id: 'skill_lab',
-          title: 'Skill Lab',
-          description: 'Hands-on practice for communication, thinking, and EQ.',
-          icon: 'school-outline',
-          accentColor: 'accentIndigo',
-          featured: false,
-        },
-        {
-          id: 'learn',
-          title: 'Learn EQ',
-          description: 'Structured lessons you can watch or listen to anytime.',
-          icon: 'library-outline',
-          accentColor: 'accentEnergy',
-          featured: false,
-        },
-      ];
-    case 'explore':
-    default:
-      return [
-        {
-          id: 'skill_lab',
-          title: 'Skill Lab',
-          description: 'Try AI-powered drills across emotional and workplace skills.',
-          icon: 'school-outline',
-          accentColor: 'accentIndigo',
-          featured: true,
-        },
-        {
-          id: 'ai_chat',
-          title: 'AI Companion',
-          description: 'Your Inner Ally and Coach for wellbeing and growth.',
-          icon: 'chatbubbles-outline',
-          accentColor: 'primary',
-          featured: false,
-        },
-        {
-          id: 'learn',
-          title: 'Learn EQ',
-          description: 'Browse lessons when you want to go deeper.',
-          icon: 'library-outline',
-          accentColor: 'accentEnergy',
-          featured: false,
-        },
-      ];
-  }
-}
-
-const STEPS_COMPLETED = ['welcome', 'name', 'goal', 'feature_spotlight', 'first_emotion'] as const;
+const STEPS_COMPLETED = ['welcome', 'name', 'context', 'goal'] as const;
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -222,29 +67,28 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(1);
   const [displayName, setDisplayName] = useState('');
   const [primaryGoalId, setPrimaryGoalId] = useState<PrimaryGoalId | null>(null);
-  const [selectedEmotion, setSelectedEmotion] = useState<EmotionTag | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [contextInterests, setContextInterests] = useState('');
   const [contextLifeSituation, setContextLifeSituation] = useState<LifeSituationId | null>(null);
   const [contextIndustry, setContextIndustry] = useState<IndustryId | null>(null);
-  const [contextWorkSetting, setContextWorkSetting] = useState<WorkSettingId | null>(null);
+
+  useEffect(() => {
+    if (contextLifeSituation !== 'employed') setContextIndustry(null);
+  }, [contextLifeSituation]);
 
   const canContinue = () => {
     if (step === 4) return primaryGoalId !== null;
-    if (step === 6) return selectedEmotion !== null;
     return true;
   };
 
   const handleContinue = () => {
-    if (!canContinue()) return;
-    if (step < TOTAL_STEPS) {
-      setStep(step + 1);
-    }
+    if (!canContinue() || step >= 4) return;
+    setStep((s) => s + 1);
   };
 
   const handleFinish = async () => {
-    if (!selectedEmotion || !primaryGoalId) return;
+    if (!primaryGoalId) return;
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -283,32 +127,13 @@ export default function OnboardingScreen() {
           }
           await refreshDisplayName();
         }
-        if (
-          isSupabaseConfigured() &&
-          (contextInterests.trim() ||
-            contextLifeSituation ||
-            contextIndustry ||
-            contextWorkSetting)
-        ) {
+        if (isSupabaseConfigured() && (contextInterests.trim() || contextLifeSituation)) {
           const r = await updateUserProfileContext(userId, {
             profileInterests: contextInterests.trim() || null,
             lifeSituation: contextLifeSituation,
-            industry: contextIndustry,
-            orgContext: contextWorkSetting,
+            industry: contextLifeSituation === 'employed' ? contextIndustry : null,
           });
           if (!r.ok) console.error('[Onboarding] profile context:', r.error);
-        }
-        try {
-          const { error: emotionErr } = await supabase.from('onboarding_emotional_check').insert({
-            user_id: userId,
-            question_id: 'onboarding_first_emotion',
-            value_type: 'emotion',
-            value_emotion: selectedEmotion,
-            order_index: 0,
-          });
-          if (emotionErr) console.error('[Onboarding] onboarding_emotional_check insert failed:', emotionErr.message);
-        } catch (e) {
-          console.error('[Onboarding] onboarding_emotional_check error:', e);
         }
       }
       await setOnboardingComplete([...STEPS_COMPLETED]);
@@ -328,24 +153,6 @@ export default function OnboardingScreen() {
     }
   };
 
-  const getEmotionColor = (emotion: EmotionTag): string => {
-    const colorKey = emotionColors[emotion] || 'primary';
-    return colors[colorKey as keyof typeof colors] as string;
-  };
-
-  const accentForSpotlight = (accent: SpotlightItem['accentColor']) => {
-    switch (accent) {
-      case 'accentEnergy':
-        return colors.accentEnergy;
-      case 'accentCalm':
-        return colors.accentCalm;
-      case 'accentIndigo':
-        return colors.accentIndigo;
-      default:
-        return colors.primary;
-    }
-  };
-
   const styles = createStyles(colors);
 
   if (showConfirmation) {
@@ -362,16 +169,13 @@ export default function OnboardingScreen() {
     );
   }
 
-  const spotlightItems =
-    primaryGoalId !== null ? spotlightForGoal(primaryGoalId) : [];
-
   const renderFixedButton = () => {
-    if (step === 6) {
+    if (step === 4) {
       return (
         <Button
           title="Continue"
-          onPress={handleFinish}
-          disabled={!selectedEmotion}
+          onPress={() => void handleFinish()}
+          disabled={!primaryGoalId}
           loading={loading}
           fullWidth
           size="lg"
@@ -419,20 +223,53 @@ export default function OnboardingScreen() {
               </View>
               <Text style={styles.headline}>Your personal growth companion</Text>
               <Text style={styles.subtext}>
-                Build emotional intelligence, get AI guidance, and track your growth — all in one place.
+                Grow EQ, think clearly under pressure, and build workplace-ready skills. Lessons, guided practice, and coaching in one app.
               </Text>
             </View>
 
-            <View style={styles.badgeRow}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Learn EQ</Text>
-              </View>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>AI Companion</Text>
-              </View>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Skill Lab</Text>
-              </View>
+            <Text style={styles.welcomeKicker}>Inside the app</Text>
+            <View style={styles.welcomePillRow}>
+              {WELCOME_EXPERIENCE_PILLS.map((p) => (
+                <View
+                  key={p.label}
+                  style={[
+                    styles.welcomePill,
+                    { backgroundColor: colors.surface, borderColor: colors.borderLight },
+                  ]}
+                >
+                  <Ionicons name={p.icon} size={15} color={colors.primary} style={styles.welcomePillIcon} />
+                  <Text style={styles.welcomePillText}>{p.label}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={[styles.welcomeKicker, { marginTop: Spacing['2xl'] }]}>Core skills you can build</Text>
+            <Text style={styles.coreSkillsIntro}>
+              Real scenarios in Skill Lab, from emotional intelligence and communication to critical thinking, problem solving, and using AI well.
+            </Text>
+            <View style={styles.coreGrid}>
+              {FUTURE_SKILLS.map((s) => (
+                <View
+                  key={s.id}
+                  style={[
+                    styles.coreCard,
+                    {
+                      backgroundColor: colors.glass,
+                      borderColor: colors.glassBorder,
+                    },
+                  ]}
+                >
+                  <View style={[styles.coreIconWrap, { backgroundColor: s.color + '18' }]}>
+                    <Ionicons name={s.icon as keyof typeof Ionicons.glyphMap} size={20} color={s.color} />
+                  </View>
+                  <Text style={[styles.coreName, { color: colors.textPrimary }]} numberOfLines={2}>
+                    {s.name}
+                  </Text>
+                  <Text style={[styles.coreTag, { color: colors.textSecondary }]} numberOfLines={2}>
+                    {s.tagline}
+                  </Text>
+                </View>
+              ))}
             </View>
 
             <View style={styles.privacyCard}>
@@ -445,7 +282,7 @@ export default function OnboardingScreen() {
         {step === 2 && (
           <View style={styles.screen}>
             <Text style={styles.screenTitle}>What should we call you?</Text>
-            <Text style={styles.screenSubtitle}>{"Optional — we'll use this in the app"}</Text>
+            <Text style={styles.screenSubtitle}>Optional. We will use this in the app.</Text>
             <Input
               value={displayName}
               onChangeText={setDisplayName}
@@ -479,46 +316,33 @@ export default function OnboardingScreen() {
                 );
               })}
             </View>
-            <Text style={styles.subLabel}>Industry (optional)</Text>
-            <View style={styles.chipRowWrap}>
-              {INDUSTRY_OPTIONS.map((o) => {
-                const on = contextIndustry === o.id;
-                return (
-                  <Pressable
-                    key={o.id}
-                    onPress={() => setContextIndustry((prev) => (prev === o.id ? null : o.id))}
-                    style={[
-                      styles.onboardChip,
-                      { borderColor: on ? colors.primary : colors.borderLight, backgroundColor: on ? colors.primary + '12' : colors.surface },
-                    ]}
-                  >
-                    <Text style={[styles.onboardChipText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={1}>
-                      {o.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={styles.subLabel}>Work or study context (optional)</Text>
-            <View style={styles.chipRowWrap}>
-              {WORK_SETTING_OPTIONS.map((o) => {
-                const on = contextWorkSetting === o.id;
-                return (
-                  <Pressable
-                    key={o.id}
-                    onPress={() => setContextWorkSetting((prev) => (prev === o.id ? null : o.id))}
-                    style={[
-                      styles.onboardChip,
-                      { borderColor: on ? colors.primary : colors.borderLight, backgroundColor: on ? colors.primary + '12' : colors.surface },
-                    ]}
-                  >
-                    <Text style={[styles.onboardChipText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={2}>
-                      {o.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            {contextLifeSituation === 'employed' && (
+              <>
+                <Text style={styles.subLabel}>Industry (optional)</Text>
+                <View style={styles.chipRowWrap}>
+                  {INDUSTRY_OPTIONS.map((o) => {
+                    const on = contextIndustry === o.id;
+                    return (
+                      <Pressable
+                        key={o.id}
+                        onPress={() => setContextIndustry((prev) => (prev === o.id ? null : o.id))}
+                        style={[
+                          styles.onboardChip,
+                          { borderColor: on ? colors.primary : colors.borderLight, backgroundColor: on ? colors.primary + '12' : colors.surface },
+                        ]}
+                      >
+                        <Text
+                          style={[styles.onboardChipText, { color: on ? colors.primary : colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          {o.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
             <Text style={styles.subLabel}>Interests or focus (optional)</Text>
             <Input
               value={contextInterests}
@@ -531,85 +355,55 @@ export default function OnboardingScreen() {
 
         {step === 4 && (
           <View style={styles.screen}>
-            <Text style={styles.screenTitle}>What matters most right now?</Text>
-            <Text style={styles.screenSubtitle}>{"Choose one — we'll highlight what fits you best"}</Text>
-            <View style={styles.options}>
+            <View style={styles.goalHeaderBlock}>
+              <Text style={styles.screenTitle}>What matters most right now?</Text>
+              <Text style={styles.goalStepSubtitle}>
+                Choose one. You can change this later from your profile.
+              </Text>
+            </View>
+            <View style={styles.goalList}>
               {PRIMARY_GOALS.map((g) => {
                 const selected = primaryGoalId === g.id;
                 return (
                   <Pressable
                     key={g.id}
                     onPress={() => setPrimaryGoalId(g.id)}
-                    style={[styles.optionCard, styles.optionCardFull, selected && styles.optionCardSelected]}
+                    style={({ pressed }) => [
+                      styles.goalOption,
+                      {
+                        borderColor: selected ? colors.primary : colors.borderLight,
+                        backgroundColor: selected ? colors.primary + '10' : colors.surface,
+                      },
+                      selected && styles.goalOptionSelected,
+                      pressed && styles.goalOptionPressed,
+                    ]}
+                    android_ripple={{ color: colors.primary + '24' }}
                   >
-                    <Ionicons
-                      name={g.icon}
-                      size={20}
-                      color={selected ? colors.primary : colors.textSecondary}
-                      style={styles.optionIcon}
-                    />
-                    <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{g.label}</Text>
+                    <View
+                      style={[
+                        styles.goalIconCircle,
+                        { backgroundColor: selected ? colors.primary + '20' : colors.glass },
+                      ]}
+                    >
+                      <Ionicons
+                        name={g.icon}
+                        size={22}
+                        color={selected ? colors.primary : colors.textSecondary}
+                      />
+                    </View>
+                    <Text
+                      style={[styles.goalLabel, selected && { color: colors.primary, fontWeight: Typography.fontWeight.semibold }]}
+                    >
+                      {g.label}
+                    </Text>
                     {selected ? (
-                      <Ionicons name="checkmark-circle" size={18} color={colors.primary} style={styles.optionCheck} />
-                    ) : null}
+                      <Ionicons name="checkmark-circle" size={22} color={colors.primary} style={styles.goalCheck} />
+                    ) : (
+                      <View style={styles.goalCheckSpacer} />
+                    )}
                   </Pressable>
                 );
               })}
-            </View>
-          </View>
-        )}
-
-        {step === 5 && primaryGoalId !== null && (
-          <View style={styles.screen}>
-            <Text style={styles.screenTitle}>{"Here's what you can try first"}</Text>
-            <Text style={styles.screenSubtitle}>You can explore everything from Home anytime</Text>
-            <View style={styles.spotlightList}>
-              {spotlightItems.map((item) => {
-                const accent = accentForSpotlight(item.accentColor);
-                return (
-                  <View
-                    key={item.id}
-                    style={[
-                      styles.spotlightCard,
-                      { borderLeftColor: accent },
-                      item.featured && { borderColor: colors.primary, borderWidth: 2 },
-                    ]}
-                  >
-                    {item.featured ? (
-                      <View style={[styles.featuredPill, { backgroundColor: colors.primary + '18' }]}>
-                        <Text style={[styles.featuredPillText, { color: colors.primary }]}>Featured for you</Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.spotlightRow}>
-                      <View style={[styles.spotlightIconWrap, { backgroundColor: accent + '22' }]}>
-                        <Ionicons name={item.icon} size={22} color={accent} />
-                      </View>
-                      <View style={styles.spotlightTextCol}>
-                        <Text style={styles.spotlightTitle}>{item.title}</Text>
-                        <Text style={styles.spotlightDesc}>{item.description}</Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {step === 6 && (
-          <View style={styles.screen}>
-            <Text style={styles.screenTitle}>How are you feeling right now?</Text>
-            <Text style={styles.screenSubtitle}>{"Pick one — there's no wrong answer"}</Text>
-            <View style={styles.emotionGrid}>
-              {ONBOARDING_EMOTIONS.map((emotion) => (
-                <TagChip
-                  key={emotion}
-                  label={emotion}
-                  selected={selectedEmotion === emotion}
-                  selectedColor={getEmotionColor(emotion)}
-                  onPress={() => setSelectedEmotion(emotion)}
-                />
-              ))}
             </View>
           </View>
         )}
@@ -705,25 +499,78 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       textAlign: 'center',
       paddingHorizontal: Spacing.sm,
     },
-    badgeRow: {
+    welcomeKicker: {
+      fontSize: Typography.fontSize.micro,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textMuted,
+      letterSpacing: 0.4,
+      marginBottom: Spacing.sm,
+    },
+    welcomePillRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: Spacing.sm,
-      marginBottom: Spacing['2xl'],
+      justifyContent: 'space-between',
+      gap: Spacing.xs,
+      marginBottom: 0,
     },
-    badge: {
-      backgroundColor: colors.surface,
-      paddingVertical: Spacing.sm,
-      paddingHorizontal: Spacing.lg,
+    welcomePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 10,
       borderRadius: Radius.full,
       borderWidth: 1,
-      borderColor: colors.borderLight,
+      flexGrow: 1,
+      flexBasis: 0,
+      minWidth: '30%',
+      justifyContent: 'center',
     },
-    badgeText: {
+    welcomePillIcon: {
+      marginRight: 5,
+    },
+    welcomePillText: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textPrimary,
+      fontWeight: Typography.fontWeight.semibold,
+    },
+    coreSkillsIntro: {
       fontSize: Typography.fontSize.sm,
       color: colors.textSecondary,
-      fontWeight: Typography.fontWeight.medium,
+      lineHeight: Typography.fontSize.sm * 1.5,
+      marginBottom: Spacing.lg,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    coreGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      marginBottom: Spacing['2xl'],
+    },
+    coreCard: {
+      width: '48%',
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      padding: Spacing.md,
+      marginBottom: Spacing.md,
+    },
+    coreIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.sm,
+    },
+    coreName: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      lineHeight: Typography.fontSize.sm * 1.35,
+      fontFamily: Typography.fontFamily.heading,
+      marginBottom: 4,
+    },
+    coreTag: {
+      fontSize: Typography.fontSize.micro,
+      lineHeight: Typography.fontSize.micro * 1.45,
       fontFamily: Typography.fontFamily.primary,
     },
     privacyCard: {
@@ -772,101 +619,58 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1,
     },
     onboardChipText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
-    options: {
-      gap: Spacing.sm,
-      marginBottom: Spacing.sm,
+    goalHeaderBlock: {
+      marginBottom: Spacing.lg,
     },
-    optionCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: Spacing.md,
-      paddingHorizontal: Spacing.md,
-      borderRadius: Radius.md,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-    },
-    optionCardSelected: {
-      backgroundColor: colors.primary + '12',
-      borderWidth: 2,
-      borderColor: colors.primary,
-    },
-    optionCardFull: {
-      minWidth: '100%',
-    },
-    optionIcon: {
-      marginRight: Spacing.sm,
-    },
-    optionLabel: {
-      flex: 1,
+    goalStepSubtitle: {
       fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
+      color: colors.textSecondary,
+      marginTop: Spacing.xs,
+      marginBottom: 0,
+      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
       fontFamily: Typography.fontFamily.primary,
     },
-    optionLabelSelected: {
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.primary,
-    },
-    optionCheck: {
-      marginLeft: Spacing.xs,
-    },
-    spotlightList: {
+    goalList: {
       gap: Spacing.md,
     },
-    spotlightCard: {
-      backgroundColor: colors.surface,
-      borderRadius: Radius.lg,
-      padding: Spacing.lg,
-      borderLeftWidth: 4,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-      ...(Platform.OS === 'web' ? { boxShadow: '0 1px 4px rgba(0,0,0,0.06)' } : Shadows.sm),
-    },
-    featuredPill: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: 4,
-      borderRadius: Radius.full,
-      marginBottom: Spacing.sm,
-    },
-    featuredPillText: {
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.semibold,
-      fontFamily: Typography.fontFamily.primary,
-    },
-    spotlightRow: {
+    goalOption: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
+      minHeight: 64,
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.lg,
+      borderRadius: Radius.lg,
+      borderWidth: 1.5,
+      ...(Platform.OS === 'web' ? { boxShadow: '0 1px 3px rgba(0,0,0,0.05)' } : Shadows.sm),
     },
-    spotlightIconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: Radius.md,
+    goalOptionSelected: {
+      borderWidth: 2,
+    },
+    goalOptionPressed: {
+      opacity: 0.9,
+    },
+    goalIconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: Spacing.md,
     },
-    spotlightTextCol: {
+    goalLabel: {
       flex: 1,
-    },
-    spotlightTitle: {
       fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.semibold,
+      lineHeight: Typography.fontSize.base * 1.35,
       color: colors.textPrimary,
-      marginBottom: 4,
-      fontFamily: Typography.fontFamily.heading,
-    },
-    spotlightDesc: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
       fontFamily: Typography.fontFamily.primary,
     },
-    emotionGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: Spacing.sm,
-      marginBottom: Spacing.lg,
+    goalCheck: {
+      marginLeft: Spacing.sm,
+    },
+    goalCheckSpacer: {
+      width: 22,
+      height: 22,
+      marginLeft: Spacing.sm,
     },
     confirmationWrap: {
       flex: 1,

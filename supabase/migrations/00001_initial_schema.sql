@@ -1,5 +1,5 @@
 -- =============================================================================
--- EQ APP — FULL DATABASE MIGRATION (Supabase / PostgreSQL)
+-- EQ APP - FULL DATABASE MIGRATION (Supabase / PostgreSQL)
 -- =============================================================================
 -- One script: all tables, RLS, triggers. Safe to re-run.
 --
@@ -7,7 +7,7 @@
 -- 1. In Cursor: open this file (supabase/migrations/00001_initial_schema.sql),
 --    select all, copy.
 -- 2. In browser: supabase.com → your project → SQL Editor → New query → paste → Run.
--- 3. Check Table Editor — you should see all tables.
+-- 3. Check Table Editor - you should see all tables.
 -- =============================================================================
 
 -- Enable required extensions (Supabase usually has these)
@@ -15,7 +15,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- =============================================================================
--- 1. PROFILES (extends auth.users — app-specific user data)
+-- 1. PROFILES (extends auth.users - app-specific user data)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS public.onboarding_emotional_check (
 CREATE INDEX IF NOT EXISTS idx_onboarding_emotional_user ON public.onboarding_emotional_check(user_id, order_index);
 
 -- =============================================================================
--- 3. JOURNAL (encrypted body only — metadata for insights)
+-- 3. JOURNAL (encrypted body only - metadata for insights)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.journal_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -224,7 +224,7 @@ CREATE INDEX IF NOT EXISTS idx_eq_scores_user_completed ON public.eq_scores(user
 CREATE INDEX IF NOT EXISTS idx_eq_scores_session ON public.eq_scores(session_id);
 
 -- =============================================================================
--- 5. INSIGHTS (derived from metadata only — never journal text)
+-- 5. INSIGHTS (derived from metadata only - never journal text)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.insights (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -335,7 +335,7 @@ CREATE TABLE IF NOT EXISTS public.learning_progress (
 CREATE INDEX IF NOT EXISTS idx_learning_progress_user ON public.learning_progress(user_id, last_accessed_at DESC NULLS LAST);
 
 -- =============================================================================
--- 8. USER METRICS (aggregates — optional, for dashboards)
+-- 8. USER METRICS (aggregates - optional, for dashboards)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS public.user_metrics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -369,7 +369,7 @@ CREATE TABLE IF NOT EXISTS public.user_sessions (
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_started ON public.user_sessions(user_id, started_at DESC);
 
 -- =============================================================================
--- ROW LEVEL SECURITY (RLS) — every table scoped by auth.uid()
+-- ROW LEVEL SECURITY (RLS) - every table scoped by auth.uid()
 -- =============================================================================
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_onboarding ENABLE ROW LEVEL SECURITY;

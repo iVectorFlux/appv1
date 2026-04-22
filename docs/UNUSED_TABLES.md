@@ -43,19 +43,19 @@ This document lists database tables that exist in the schema but are **not curre
 
 ## Currently Used Tables
 
-✅ **profiles** — User profile data (display_name, timezone, locale, last_login_at)  
-✅ **user_sessions** — Session tracking for time-on-app audit  
-✅ **user_onboarding** — Onboarding completion status  
-✅ **user_preferences** — User preferences (goals, check_in_frequency, reminders)  
-✅ **onboarding_emotional_check** — Baseline emotional check-in responses  
-✅ **journal_entries** — Journal entries (web + native via journal-storage)  
-✅ **eq_assessment_sessions** — EQ assessment sessions (check-ins and full tests)  
-✅ **eq_check_ins** — Individual question responses  
-✅ **eq_scores** — Final EQ scores and insights  
-✅ **learning_progress** — User progress on learning modules  
+✅ **profiles** - User profile data (display_name, timezone, locale, last_login_at)  
+✅ **user_sessions** - Session tracking for time-on-app audit  
+✅ **user_onboarding** - Onboarding completion status  
+✅ **user_preferences** - User preferences (goals, check_in_frequency, reminders)  
+✅ **onboarding_emotional_check** - Baseline emotional check-in responses  
+✅ **journal_entries** - Journal entries (web + native via journal-storage)  
+✅ **eq_assessment_sessions** - EQ assessment sessions (check-ins and full tests)  
+✅ **eq_check_ins** - Individual question responses  
+✅ **eq_scores** - Final EQ scores and insights  
+✅ **learning_progress** - User progress on learning modules  
 
 ## Notes
 
 - All unused tables have RLS (Row Level Security) enabled and policies set up
-- Tables are safe to leave in the schema — they don't impact performance if empty
+- Tables are safe to leave in the schema - they don't impact performance if empty
 - When implementing features that use these tables, ensure the app code matches the schema structure

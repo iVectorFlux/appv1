@@ -7,15 +7,15 @@
 --    - Add chat_message_id (nullable) to trace back to the originating chat turn
 --
 -- 2. skills_sessions
---    - Add duration_ms    — time from scenario load to feedback received
---    - Add practice_mode  — which workflow was used (decision_simulator etc.)
+--    - Add duration_ms    - time from scenario load to feedback received
+--    - Add practice_mode  - which workflow was used (decision_simulator etc.)
 --
 -- 3. skills_progress
---    - Add total_time_ms          — cumulative practice time per skill
---    - Add scenarios_attempted    — total scenario loads (including abandoned)
---    - Add top_strengths          — JSONB: most frequent strength tags across sessions
---    - Add top_growth_areas       — JSONB: most frequent growth area tags
---    - Add atomic_skill_breakdown — JSONB: { atomicSkillId: sessions_count }
+--    - Add total_time_ms          - cumulative practice time per skill
+--    - Add scenarios_attempted    - total scenario loads (including abandoned)
+--    - Add top_strengths          - JSONB: most frequent strength tags across sessions
+--    - Add top_growth_areas       - JSONB: most frequent growth area tags
+--    - Add atomic_skill_breakdown - JSONB: { atomicSkillId: sessions_count }
 --
 -- HOW TO RUN:
 -- Supabase dashboard → SQL Editor → paste this file → Run

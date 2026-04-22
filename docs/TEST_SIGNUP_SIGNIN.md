@@ -1,4 +1,4 @@
-# Test Sign Up & Sign In — Links & Database Connection
+# Test Sign Up & Sign In - Links & Database Connection
 
 ## 0. If you see "This site can't be reached" or "ERR_CONNECTION_REFUSED"
 
@@ -32,13 +32,13 @@ Then press **w** to open web, or open **http://localhost:8081** in your browser.
 
 ## 2. Is the database connected?
 
-### Supabase Auth (sign up / sign in) — **Yes, connected**
+### Supabase Auth (sign up / sign in) - **Yes, connected**
 
 - Your `.env` has `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` (anon key).
 - The app uses the Supabase client in `src/lib/supabase.ts` and the auth store calls `supabase.auth.signUp()` and `supabase.auth.signInWithPassword()`.
 - So **Auth is connected**: sign up and sign in hit your Supabase project. New users are stored in **Supabase Auth** (`auth.users`).
 
-### Supabase PostgreSQL (tables: profiles, journal, etc.) — **Depends on migration**
+### Supabase PostgreSQL (tables: profiles, journal, etc.) - **Depends on migration**
 
 - **Auth** works even if you never run the SQL migration: users go to `auth.users`.
 - **App tables** (e.g. `public.profiles`, `journal_entries`, `eq_scores`) exist only if you ran the migration.
@@ -76,7 +76,7 @@ Only real Supabase-authenticated users can sign in; there is no demo account.
 
 After signing up with a real email:
 
-1. **Supabase Dashboard** → **Authentication** → **Users** — you should see the new user.
-2. **Supabase Dashboard** → **Table Editor** → **profiles** — you should see a row for that user **if** you ran the migration (trigger creates it on sign up).
+1. **Supabase Dashboard** → **Authentication** → **Users** - you should see the new user.
+2. **Supabase Dashboard** → **Table Editor** → **profiles** - you should see a row for that user **if** you ran the migration (trigger creates it on sign up).
 
 If the migration was not run, you’ll see the user in Auth but not in `profiles`.

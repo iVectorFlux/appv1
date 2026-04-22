@@ -1,5 +1,5 @@
 /**
- * AudioRowCard — Editorial row (Journal, podcast list)
+ * AudioRowCard - Editorial row (Journal, podcast list)
  *
  * Icon left, title + subtitle, trailing chevron or play.
  */

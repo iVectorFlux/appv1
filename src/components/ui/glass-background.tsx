@@ -16,7 +16,7 @@ export function GlassBackground({ children, style }: GlassBackgroundProps) {
 
   return (
     <View style={[styles.container, style]}>
-      {/* Smooth mesh-style gradient — three stops for depth */}
+      {/* Smooth mesh-style gradient - three stops for depth */}
       <LinearGradient
         colors={[
           colors.backgroundGradientStart,
@@ -28,7 +28,7 @@ export function GlassBackground({ children, style }: GlassBackgroundProps) {
         end={{ x: 1, y: 1 }}
       />
 
-      {/* Warm editorial wash — sage / terracotta / sand at very low opacity */}
+      {/* Warm editorial wash - sage / terracotta / sand at very low opacity */}
       <LinearGradient
         colors={[
           isDark ? 'rgba(61,139,110,0.07)' : 'rgba(196,164,132,0.08)',
@@ -40,7 +40,7 @@ export function GlassBackground({ children, style }: GlassBackgroundProps) {
         end={{ x: 0.15, y: 1 }}
       />
 
-      {/* Soft ambient glow — warm sand + forest (light), muted sage (dark) */}
+      {/* Soft ambient glow - warm sand + forest (light), muted sage (dark) */}
       <View
         style={[
           styles.glow,

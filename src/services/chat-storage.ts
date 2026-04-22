@@ -1,5 +1,5 @@
 /**
- * Chat Storage — AI chat messages in AsyncStorage (always) and Supabase when configured.
+ * Chat Storage - AI chat messages in AsyncStorage (always) and Supabase when configured.
  *
  * Local copy keeps history available offline and when the cloud sync is unavailable.
  */
@@ -218,7 +218,7 @@ export async function getChatHistoryWithTimeout(
  * Saves when the model infers emotions, life contexts (work/family/etc.), or flags
  * the message as reflection-worthy. User text is stored as plain text with
  * encryption_key_id NULL (inner_ally source). Not written to onboarding_emotional_check
- * or eq_check_ins — those are separate flows.
+ * or eq_check_ins - those are separate flows.
  */
 export async function autoJournalFromChat({
   userId,

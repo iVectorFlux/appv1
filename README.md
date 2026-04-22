@@ -69,7 +69,7 @@ npm run web      # Web browser
 
 ### Supabase: create tables (required to see schema/tables)
 
-The app uses Supabase for auth and onboarding data. **The database schema is not created automatically** — you must run the SQL once in your Supabase project. The SQL lives in **your project folder**, not inside Supabase:
+The app uses Supabase for auth and onboarding data. **The database schema is not created automatically** - you must run the SQL once in your Supabase project. The SQL lives in **your project folder**, not inside Supabase:
 
 1. **In your computer:** In Cursor, in the left file tree, open **`supabase/migrations/00001_initial_schema.sql`** (it’s in the `supabase` folder of this repo). Select all (Cmd+A / Ctrl+A) and copy (Cmd+C / Ctrl+C).
 2. **In the browser:** Go to [supabase.com](https://supabase.com) → your project → **SQL Editor** → **New query**.
@@ -81,7 +81,7 @@ After it runs, open **Table Editor** in the left sidebar; you should see all tab
 
 ### Authentication
 
-- **Supabase Auth only** — real users only; no demo or local-only accounts.
+- **Supabase Auth only** - real users only; no demo or local-only accounts.
 - Session is managed by Supabase client (secure storage).
 - Zustand-based auth state management.
 
@@ -90,7 +90,7 @@ After it runs, open **Table Editor** in the left sidebar; you should see all tab
 ### Implemented Features
 
 #### Authentication
-- [x] Supabase Auth (email + password) — real users only
+- [x] Supabase Auth (email + password) - real users only
 - [x] Session managed by Supabase client
 - [x] Zustand-based auth state management
 

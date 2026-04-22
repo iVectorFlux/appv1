@@ -1,5 +1,5 @@
 /**
- * Design System Tokens — 2026 editorial wellness
+ * Design System Tokens - 2026 editorial wellness
  *
  * Bento-friendly spacing, 8px base, DM Sans typography.
  * Use useColors() for theme-aware colors.

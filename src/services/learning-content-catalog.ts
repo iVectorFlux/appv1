@@ -203,8 +203,8 @@ export function episodeToDetailModule(ep: LearningEpisode): LearningModule {
     description: ep.description || dimInfo.description,
     audioUrl: ep.audioUrl ?? '',
     videoUrl: ep.videoUrl ?? '',
-    audioDuration: ep.audioUrl ? 'Podcast' : '—',
-    videoDuration: ep.videoUrl ? 'Video' : '—',
+    audioDuration: ep.audioUrl ? 'Podcast' : 'None',
+    videoDuration: ep.videoUrl ? 'Video' : 'None',
     icon: ep.icon,
     color: ep.color,
     keyTakeaways: ep.description

@@ -20,7 +20,7 @@ UPDATE public.learning_content SET sort_order = 40
 UPDATE public.learning_content SET sort_order = 50
   WHERE eq_type = 'B2C' AND episode_title = 'Why before willpower';
 
--- ─── B2B professional (100–999) — same order as original seed file ─────────
+-- ─── B2B professional (100–999) - same order as original seed file ─────────
 UPDATE public.learning_content SET sort_order = 100
   WHERE eq_type = 'B2B' AND episode_title = 'Name it to tame it';
 UPDATE public.learning_content SET sort_order = 110

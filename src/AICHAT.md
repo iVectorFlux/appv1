@@ -1,4 +1,4 @@
-AI Chat on the Platform — Plan
+AI Chat on the Platform - Plan
 1. What it does
 Chat-first flow: User types (or speaks) how they feel or what’s going on. The AI helps them explore it and can turn that into a Reflect-style check-in (emotions, energy, pleasantness, reasons) and/or a journal entry.
 Guidance: AI suggests next steps (e.g. “Try a quick breath reset”, “Name what you’re feeling”, “Want to save this as a reflection?”), points to Recover techniques when relevant, and stays within wellbeing/EQ framing (no therapy/clinical claims).
@@ -30,7 +30,7 @@ Tone: Supportive, normalizing, short; avoid clinical/diagnostic language; escala
 5. Voice (speaking and converse)
 Input: Mic → speech-to-text (e.g. Expo Audio + Whisper, or device STT). Send text to the same chat API so one backend handles text and voice.
 Output: Optional “Read reply aloud” (TTS). Use device TTS or a cloud TTS API; same reply text, no extra AI call.
-UX: One chat thread; toggle or hold-to-talk for voice input; optional speaker icon to play the last reply. No separate “voice app”—just another input/output mode for the same chat.
+UX: One chat thread; toggle or hold-to-talk for voice input; optional speaker icon to play the last reply. No separate “voice app” - just another input/output mode for the same chat.
 6. Technical shape (without building yet)
 Chat API: Backend (e.g. Supabase Edge Function or your API) that:
 Accepts userId, messages[], optional voiceTranscript.
@@ -50,4 +50,4 @@ Crisis: If the model or a keyword layer detects self-harm or crisis language, re
 Phase 1 – Text chat only: Chat UI, backend calls LLM, replies + optional “suggested check-in” (emotions/energy/pleasantness/reasons). User confirms → one Reflect entry (and optional journal) via existing APIs. No voice.
 Phase 2 – Guidance: Stronger prompts and structured suggestions for Recover/Learn links; optional suggested prompts on empty state.
 Phase 3 – Voice: STT for input, TTS for “read reply aloud,” reusing the same chat API and data model.
-You can later add a “Conversation” or “Chat” tab, or an entry point from Home/Reflect (“Talk it through instead”), and keep this plan as the single source of how AI chat, emotion check-ins, journal, and voice fit together—all in chat, no MD file.
+You can later add a “Conversation” or “Chat” tab, or an entry point from Home/Reflect (“Talk it through instead”), and keep this plan as the single source of how AI chat, emotion check-ins, journal, and voice fit together - all in chat, no MD file.

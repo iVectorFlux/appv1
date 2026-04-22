@@ -1,9 +1,9 @@
 /**
- * Box breathing — 4-5 min
+ * Box breathing - 4-5 min
  *
  * Steps:
- *  1. Box breathing 4-4-4-4 (4 cycles) — luminous square + edge glow
- *  2. Identity anchor — name / date / location
+ *  1. Box breathing 4-4-4-4 (4 cycles) - luminous square + edge glow
+ *  2. Identity anchor - name / date / location
  *  3. Progressive muscle tension release (clench + release × 3)
  *
  * Dark immersive background with glowing animated square.

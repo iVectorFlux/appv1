@@ -6,7 +6,7 @@
  * Usage:
  *   node scripts/compute-big5-norms.mjs --input path/to/big_five_scores.csv [--country India] [--out src/data/big5-population-norms.json]
  *
- * Omit --country for global norms (all rows). Country match is case-insensitive trimmed substring or exact — we use exact case-insensitive equality on the CSV `country` field.
+ * Omit --country for global norms (all rows). Country match is case-insensitive trimmed substring or exact - we use exact case-insensitive equality on the CSV `country` field.
  */
 
 import fs from 'fs';
@@ -161,7 +161,7 @@ async function main() {
       country_filter: countryFilter,
       scale_mapping: 'In-app 1–5 norms: mean_15 = 1 + 4 * mean_01, std_15 = 4 * std_01 (linear stretch from dataset scale).',
       instrument_note:
-        'Sample used full IPIP-NEO-300; app uses IPIP 50-item markers — interpret percentiles as approximate.',
+        'Sample used full IPIP-NEO-300; app uses IPIP 50-item markers - interpret percentiles as approximate.',
     },
     population_mean,
     population_std,

@@ -143,7 +143,7 @@ function DimensionBar({ label, score, maxScore = 100, color, icon, colors }: {
 
   useEffect(() => {
     Animated.timing(barAnim, { toValue: pct, duration: 800, useNativeDriver: false }).start();
-  }, [pct]);
+  }, [pct, barAnim]);
 
   const barWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 

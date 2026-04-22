@@ -233,7 +233,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   logout: async () => {
     const userId = get().user?.id;
     // 1) Global: revoke refresh token on server (may fail offline).
-    // 2) Local: always remove session from storage — required on RN/Expo when global fails
+    // 2) Local: always remove session from storage - required on RN/Expo when global fails
     //    or storage would still rehydrate the user on next getSession().
     try {
       const { error: g } = await supabase.auth.signOut({ scope: 'global' });

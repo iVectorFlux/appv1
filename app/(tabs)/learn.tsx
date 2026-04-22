@@ -1,5 +1,5 @@
 /**
- * Learn Screen — Editorial wellness
+ * Learn Screen - Editorial wellness
  *
  * Catalog from Supabase learning_content with frosted glass cards.
  */
@@ -21,7 +21,7 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { DIMENSION_INFO } from '@/data/learning-content';
 import type { EQDimension } from '@/types/eq-assessment';
-import { useLearningCatalog } from '@/hooks/useLearningCatalog';
+import { useLearningCatalog, type LearningCatalogAudienceFilter } from '@/hooks/useLearningCatalog';
 import { isIntroEpisodeTitle } from '@/services/learning-content-catalog';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
@@ -32,7 +32,8 @@ const DIMENSION_FILTERS: (EQDimension | 'all')[] = [
 export default function LearnScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { episodes, loading, error, reload, emptyRemote } = useLearningCatalog();
+  const [audience, setAudience] = useState<LearningCatalogAudienceFilter>('B2C');
+  const { episodes, loading, error, reload, emptyRemote } = useLearningCatalog(audience);
   const [selectedDimension, setSelectedDimension] = useState<EQDimension | 'all'>('all');
 
   const baseEpisodes = useMemo(() => (loading ? [] : episodes), [loading, episodes]);
@@ -44,6 +45,13 @@ export default function LearnScreen() {
   const getDimensionName = (dim: EQDimension | 'all') => dim === 'all' ? 'All skills' : DIMENSION_INFO[dim].name;
   const getEpisodeSubtitle = (title: string, dimension: EQDimension) =>
     isIntroEpisodeTitle(title) ? 'Introduction' : DIMENSION_INFO[dimension].name;
+
+  const audienceLabel: Record<LearningCatalogAudienceFilter, string> = {
+    B2C: 'Personal',
+    B2B: 'Workplace',
+    all: 'All',
+  };
+  const AUDIENCE_OPTIONS: LearningCatalogAudienceFilter[] = ['B2C', 'B2B', 'all'];
 
   const handleOpenEpisode = (routeId: string) => {
     router.push(`/learning-detail?id=${encodeURIComponent(routeId)}`);
@@ -88,6 +96,23 @@ export default function LearnScreen() {
           </View>
         ) : (
           <>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={st.audienceFilterRow}
+            >
+              {AUDIENCE_OPTIONS.map((a) => (
+                <TouchableOpacity
+                  key={a}
+                  onPress={() => setAudience(a)}
+                  style={[st.filterChip, audience === a && st.filterChipSelected]}
+                >
+                  <Text style={[st.filterChipText, audience === a && st.filterChipTextSelected]}>
+                    {audienceLabel[a]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -159,6 +184,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     retryText: { fontSize: Typography.fontSize.sm, color: colors.primary, fontWeight: '600' },
     loadingBlock: { paddingVertical: Spacing['2xl'], alignItems: 'center', gap: Spacing.md },
     loadingHint: { fontSize: Typography.fontSize.sm, color: colors.textMuted },
+    audienceFilterRow: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, gap: Spacing.sm },
     filterContainer: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.md, gap: Spacing.sm },
     filterChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.full, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassBorder },
     filterChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },

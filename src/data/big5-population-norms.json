@@ -4,7 +4,7 @@
     "n": 307313,
     "country_filter": null,
     "scale_mapping": "In-app 1–5 norms: mean_15 = 1 + 4 * mean_01, std_15 = 4 * std_01 (linear stretch from dataset scale).",
-    "instrument_note": "Sample used full IPIP-NEO-300; app uses IPIP 50-item markers — interpret percentiles as approximate."
+    "instrument_note": "Sample used full IPIP-NEO-300; app uses IPIP 50-item markers - interpret percentiles as approximate."
   },
   "population_mean": {
     "openness": 3.935765,

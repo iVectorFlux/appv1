@@ -37,7 +37,7 @@ export async function saveRecoverySession(
   }
   if (!authSession?.user) {
     const err = new Error('Not signed in. Sign in again to save your recovery session.');
-    console.error('[Recovery Storage] No auth session — insert would fail RLS');
+    console.error('[Recovery Storage] No auth session - insert would fail RLS');
     throw err;
   }
   if (authSession.user.id !== userId) {

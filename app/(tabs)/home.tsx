@@ -1,5 +1,5 @@
 /**
- * Home — Glassmorphic dashboard
+ * Home - Glassmorphic dashboard
  *
  * Explore grid first (Learn EQ, Companion, Skill Lab, Recover), then Assessments & progress.
  */
@@ -71,14 +71,6 @@ export default function HomeScreen() {
           icon: 'color-wand-outline' as const,
           accent: colors.accentIndigo,
           route: '/big5-test',
-        },
-        {
-          key: 'eq-check',
-          title: 'EQ Check-in',
-          subtitle: '5 quick questions · ~2 min',
-          icon: 'pulse-outline' as const,
-          accent: colors.accentWarmTan,
-          route: '/(tabs)/eq',
         },
         {
           key: 'progress',
@@ -193,7 +185,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Assessments & progress — after Explore */}
+        {/* Assessments & progress - after Explore */}
         <Animated.View style={[st.assessSection, { opacity: assessAnim }]}>
           <Text style={st.sectionHeading}>Assessments & progress</Text>
           <View style={st.assessGrid}>

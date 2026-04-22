@@ -1,4 +1,4 @@
-# Schema & codebase review — what’s used vs unused
+# Schema & codebase review - what’s used vs unused
 
 Reserved/unused schema (EQ, insights, recovery, etc.) is **for future use**; this doc is for clarity and cleanup only.
 
@@ -6,7 +6,7 @@ This reflects a full pass over the database schema (Supabase + SQLite) and app c
 
 ---
 
-## 1. Supabase (PostgreSQL) — usage
+## 1. Supabase (PostgreSQL) - usage
 
 ### Used in app (read/write)
 
@@ -28,7 +28,7 @@ This reflects a full pass over the database schema (Supabase + SQLite) and app c
 
 ### Not used in app (reserved / legacy)
 
-- **Dropped by migration 00003:** `user_goals`, `user_background` — data moved into `user_preferences.goals` and `user_preferences.context`. Do not reference in code.
+- **Dropped by migration 00003:** `user_goals`, `user_background` - data moved into `user_preferences.goals` and `user_preferences.context`. Do not reference in code.
 - **Never read or written by app:**  
   `encryption_keys`, `journal_tags`, `journal_entry_tags`,  
   `eq_assessment_sessions`, `eq_check_ins`, `eq_scores`,  
@@ -40,7 +40,7 @@ These tables exist in the schema for future features (EQ sync, insights engine, 
 
 ---
 
-## 2. SQLite (native only) — usage
+## 2. SQLite (native only) - usage
 
 ### Used in app
 
@@ -61,20 +61,20 @@ The `users` table was only referenced by FK from the unused tables; nothing inse
 
 ---
 
-## 3. Types (`src/types/index.ts`) — usage
+## 3. Types (`src/types/index.ts`) - usage
 
 ### Legacy / deprecated (tables dropped)
 
-- **`UserGoal`**, **`UserBackground`** — Supabase tables were dropped in 00003; data lives in `user_preferences.goals` and `user_preferences.context`. These types are kept for reference but are deprecated; prefer `UserPreferences.goals` / `context` shapes.
+- **`UserGoal`**, **`UserBackground`** - Supabase tables were dropped in 00003; data lives in `user_preferences.goals` and `user_preferences.context`. These types are kept for reference but are deprecated; prefer `UserPreferences.goals` / `context` shapes.
 
 ### Used by app or Supabase shape
 
-- **Journal:** `JournalEntry`, `JournalEntrySource`, `EmotionTag`, `EnergyLevel` — used by reflect, journal screens, journal-storage.
-- **Auth/Profile:** `User`, `AuthState` — auth-store, profile, onboarding.
-- **Onboarding:** `UserPreferences`, `UserOnboarding`, `OnboardingEmotionalCheck`, `CheckInFrequency`, `OnboardingEmotionalValueType` — onboarding and auth-store.
-- **Insights (type only):** `Insight`, `InsightType`, `InsightCategory` — used by SQLite insight functions; those functions are unused, but types may be used when you add Supabase insights.
-- **Recover/Meditation:** `RecoverySession`, `MeditationSession`, `RecoveryType` — only as type definitions; no Supabase or SQLite read/write in app yet.
-- **Wellbeing:** `WellbeingPattern` — not referenced in code; reserved for future pattern detection.
+- **Journal:** `JournalEntry`, `JournalEntrySource`, `EmotionTag`, `EnergyLevel` - used by reflect, journal screens, journal-storage.
+- **Auth/Profile:** `User`, `AuthState` - auth-store, profile, onboarding.
+- **Onboarding:** `UserPreferences`, `UserOnboarding`, `OnboardingEmotionalCheck`, `CheckInFrequency`, `OnboardingEmotionalValueType` - onboarding and auth-store.
+- **Insights (type only):** `Insight`, `InsightType`, `InsightCategory` - used by SQLite insight functions; those functions are unused, but types may be used when you add Supabase insights.
+- **Recover/Meditation:** `RecoverySession`, `MeditationSession`, `RecoveryType` - only as type definitions; no Supabase or SQLite read/write in app yet.
+- **Wellbeing:** `WellbeingPattern` - not referenced in code; reserved for future pattern detection.
 
 ---
 
@@ -89,4 +89,4 @@ The `users` table was only referenced by FK from the unused tables; nothing inse
 ## 5. Summary
 
 - **Journal** is the only feature that uses both Supabase (web) and SQLite (native) for persistence; everything else that is persisted today uses Supabase only (profiles, onboarding, sessions, learning_progress).
-- **EQ, insights, recovery, meditation, metrics, tags, encryption_keys** exist in Supabase schema but have no app read/write yet; SQLite had duplicate unused tables/functions — those are removed so the codebase matches what is actually used.
+- **EQ, insights, recovery, meditation, metrics, tags, encryption_keys** exist in Supabase schema but have no app read/write yet; SQLite had duplicate unused tables/functions - those are removed so the codebase matches what is actually used.

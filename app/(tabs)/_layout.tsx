@@ -1,5 +1,5 @@
 /**
- * Tabs Layout — 3 icon-only tabs inside a floating capsule.
+ * Tabs Layout - 3 icon-only tabs inside a floating capsule.
  *
  * Home, AI Companion, Profile.
  * Hidden routes: learn, eq, recover, progress.
@@ -44,7 +44,7 @@ function TabButton({ icon, focused, colors, onPress, onLongPress }: TabButtonPro
       speed: 18,
       bounciness: focused ? 8 : 4,
     }).start();
-  }, [focused]);
+  }, [focused, anim]);
 
   const pillScale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
   const pillOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
@@ -141,15 +141,19 @@ export default function TabsLayout() {
     </View>
   );
 
-  const tabButton = (icon: keyof typeof Ionicons.glyphMap) => (props: Record<string, unknown>) => (
-    <TabButton
-      icon={icon}
-      focused={!!(props.accessibilityState as { selected?: boolean } | undefined)?.selected}
-      colors={colors}
-      onPress={props.onPress as () => void}
-      onLongPress={props.onLongPress as () => void}
-    />
-  );
+  const tabButton = (icon: keyof typeof Ionicons.glyphMap) => {
+    const TabBarButton = (props: Record<string, unknown>) => (
+      <TabButton
+        icon={icon}
+        focused={!!(props.accessibilityState as { selected?: boolean } | undefined)?.selected}
+        colors={colors}
+        onPress={props.onPress as () => void}
+        onLongPress={props.onLongPress as () => void}
+      />
+    );
+    TabBarButton.displayName = `TabBarButton(${String(icon)})`;
+    return TabBarButton;
+  };
 
   return (
     <Tabs

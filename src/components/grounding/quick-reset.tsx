@@ -1,5 +1,5 @@
 /**
- * Quick Reset — Mode 1 (60 seconds, auto-complete)
+ * Quick Reset - Mode 1 (60 seconds, auto-complete)
  *
  * Steps:
  *  1. Physiological sigh breathing with multi-ring orb (3 cycles ≈ 30s)
@@ -65,7 +65,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
   const [breathCycle, setBreathCycle] = useState(0);
   const [countdown, setCountdown]   = useState(0);
 
-  // Orb animations — 5 concentric rings
+  // Orb animations - 5 concentric rings
   const orbScale    = useRef(new Animated.Value(1)).current;
   const orbOpacity  = useRef(new Animated.Value(0.5)).current;
   const ring4Pulse  = useRef(new Animated.Value(1)).current;
@@ -231,7 +231,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
           <>
             {/* 5-Ring Breathing Orb */}
             <View style={s.orbWrap}>
-              {/* Ring 5 — outermost, slowest pulse */}
+              {/* Ring 5 - outermost, slowest pulse */}
               <Animated.View
                 style={[
                   s.ring5,

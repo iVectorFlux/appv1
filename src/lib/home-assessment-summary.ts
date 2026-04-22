@@ -34,5 +34,5 @@ export function latestOverall(scores: EqScoreSnapshot[]): EqScoreSnapshot | null
 }
 
 export function assessmentTypeLabel(t: 'check_in' | 'full_test'): string {
-  return t === 'check_in' ? 'Check-in' : 'Full test';
+  return t === 'check_in' ? 'Check in' : 'Full test';
 }

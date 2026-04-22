@@ -1,5 +1,5 @@
 /**
- * Big Five — IPIP 50-item structure (Goldberg, 1992), plain-language wording.
+ * Big Five - IPIP 50-item structure (Goldberg, 1992), plain-language wording.
  * Sentences are written for broad readability (simple words, few idioms, inclusive tone).
  * Scoring keys (+/−) and order match the standard IPIP marker set.
  *

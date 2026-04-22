@@ -1,5 +1,5 @@
 /**
- * Big Five scoring — IPIP 50 markers, means on 1–5 per trait.
+ * Big Five scoring - IPIP 50 markers, means on 1–5 per trait.
  * Emotional Stability items are averaged, then Neuroticism = 6 − ES (same 1–5 scale).
  */
 

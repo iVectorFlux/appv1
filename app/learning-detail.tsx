@@ -102,7 +102,7 @@ export default function LearningDetailScreen() {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  /** Bumps when screen refocuses or app returns foreground — remounts native <Video> to recover stuck decoders. */
+  /** Bumps when screen refocuses or app returns foreground - remounts native <Video> to recover stuck decoders. */
   const [videoMountNonce, setVideoMountNonce] = useState(0);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
@@ -110,7 +110,7 @@ export default function LearningDetailScreen() {
   const videoRef = useRef<Video>(null);
   // native audio ref
   const audioRef = useRef<Audio.Sound | null>(null);
-  // Web: direct HTML element refs — bypassing expo-av shim which has broken web wiring
+  // Web: direct HTML element refs - bypassing expo-av shim which has broken web wiring
   const webVideoRef = useRef<HTMLVideoElement | null>(null);
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -401,7 +401,7 @@ export default function LearningDetailScreen() {
           }
         }
       } else if (module?.audioUrl?.trim()) {
-        // Still initializing — show loading so the user knows it's working
+        // Still initializing - show loading so the user knows it's working
         setIsLoading(true);
       }
     }
@@ -537,7 +537,7 @@ export default function LearningDetailScreen() {
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={Platform.OS === 'android' ? false : undefined}
       >
-        {/* Media Tabs — only when both video and podcast exist */}
+        {/* Media Tabs - only when both video and podcast exist */}
         {hasVideo && hasAudio ? (
           <View style={styles.mediaTabs}>
             <TouchableOpacity
@@ -820,7 +820,7 @@ const createStyles = (
   mediaTabTextActive: {
     color: colors.primaryForeground,
   },
-  // Media Container — horizontal padding must match `mediaHorizontalPaddingTotal` passed into layout math
+  // Media Container - horizontal padding must match `mediaHorizontalPaddingTotal` passed into layout math
   mediaContainer: {
     paddingHorizontal: mediaHorizontalPaddingTotal / 2,
     marginBottom: Spacing.xl,

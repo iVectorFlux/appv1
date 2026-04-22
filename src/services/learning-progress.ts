@@ -38,7 +38,7 @@ export async function upsertLearningProgress(
   const { error } = await supabase.from('learning_progress').upsert(payload, {
     onConflict: 'user_id,module_id',
   });
-  // 409 Conflict: unique (23505) or FK (23503) — don't break UI
+  // 409 Conflict: unique (23505) or FK (23503) - don't break UI
   if (error) {
     const code = (error as { code?: string }).code;
     if (code === '23505' || code === '23503') return;

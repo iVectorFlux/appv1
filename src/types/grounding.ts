@@ -52,7 +52,7 @@ export interface GroundingSession {
   durationMs: number;
   startedAt: string;       // ISO string
   completedAt: string | null;
-  /** User answered "Did it help?" — Yes (true) or Not really (false). Null if skipped. */
+  /** User answered "Did it help?" - Yes (true) or Not really (false). Null if skipped. */
   helpful: boolean | null;
 }
 

@@ -1,8 +1,11 @@
 /**
  * Learning Content Data
- * 
+ *
  * Audio podcasts and video lessons for each EQ dimension.
  * Content hosted on S3.
+ *
+ * Full DB-shaped catalog (B2C + B2B): `learning-content-rows.json` with hierarchy in
+ * `learning-content-tree.ts` (domain → competency → episode).
  */
 
 import type { EQDimension } from '@/types/eq-assessment';
@@ -22,7 +25,7 @@ export interface LearningModule {
   keyTakeaways: string[];
 }
 
-// S3 bucket (us-west-1) — same host as DB-seeded assets
+// S3 bucket (us-west-1) - same host as DB-seeded assets
 const S3_BASE = 'https://lumi6eq.s3.us-west-1.amazonaws.com/applearningfiles';
 
 export const LEARNING_MODULES: LearningModule[] = [

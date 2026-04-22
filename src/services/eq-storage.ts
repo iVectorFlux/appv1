@@ -238,19 +238,33 @@ export async function getEQScores(
     `)
     .eq('user_id', userId)
     .order('completed_at', { ascending: false })
-    .limit(limit);
+    // Fetch extra rows: we only return full_test sessions in the app (check-in data may still exist in DB).
+    .limit(Math.min(500, Math.max(limit * 30, 120)));
 
   if (error) {
     console.error('[EQ Storage] Failed to fetch scores:', error);
     throw new Error(error.message || 'Could not load EQ assessments');
   }
 
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    sessionId: row.session_id,
-    completedAt: row.completed_at,
-    overallScore: row.overall_score,
-    dimensionScores: row.dimension_scores,
-    assessmentType: row.eq_assessment_sessions?.assessment_type || 'check_in',
-  }));
+  const rows = (data || []).map((row: {
+    id: string;
+    session_id: string;
+    completed_at: string;
+    overall_score: number;
+    dimension_scores: Record<string, number>;
+    eq_assessment_sessions: { assessment_type: string } | { assessment_type: string }[] | null;
+  }) => {
+    const rel = row.eq_assessment_sessions;
+    const at = Array.isArray(rel) ? rel[0]?.assessment_type : rel?.assessment_type;
+    return {
+      id: row.id,
+      sessionId: row.session_id,
+      completedAt: row.completed_at,
+      overallScore: row.overall_score,
+      dimensionScores: row.dimension_scores,
+      assessmentType: (at === 'full_test' || at === 'check_in' ? at : 'full_test') as 'check_in' | 'full_test',
+    };
+  });
+  // App UI only uses full-length EQ test results; check-in rows may still exist in the database.
+  return rows.filter((r) => r.assessmentType === 'full_test').slice(0, limit);
 }

@@ -1,5 +1,5 @@
 /**
- * Sensory Anchor — Mode 2 (5-4-3-2-1, 3-4 min)
+ * Sensory Anchor - Mode 2 (5-4-3-2-1, 3-4 min)
  *
  * 5 sequential full-screen cards: See 5 → Touch 4 → Hear 3 → Smell 2 → Taste 1
  *

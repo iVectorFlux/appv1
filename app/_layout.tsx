@@ -1,10 +1,10 @@
 /**
- * Root Layout — Editorial wellness (2026)
+ * Root Layout - Editorial wellness (2026)
  *
  * Web:
  * - Narrow (≤500): full viewport (phone in browser).
  * - Medium (501–1023): centered phone frame (current “app preview”).
- * - Laptop (≥1024): full window, no frame — desktop experience.
+ * - Laptop (≥1024): full window, no frame - desktop experience.
  */
 
 import { Stack } from 'expo-router';

@@ -1,5 +1,5 @@
 /**
- * Recover tab — opens the Grounding hub directly (same exercises as /grounding).
+ * Recover tab - opens the Grounding hub directly (same exercises as /grounding).
  */
 
 import { Redirect } from 'expo-router';

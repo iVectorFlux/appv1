@@ -1,5 +1,5 @@
 /**
- * Big Five — extended scoring: population z-scores / percentiles, validity flags,
+ * Big Five - extended scoring: population z-scores / percentiles, validity flags,
  * and reliability estimates (reference α × session quality). Norms are placeholders
  * until calibrated from your own user base.
  */

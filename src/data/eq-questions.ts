@@ -1353,7 +1353,7 @@ export const CONSISTENCY_PROBE_QUESTIONS: ConsistencyProbeQuestion[] = [
     pairedWithId: 'cp_011',
     expectedCorrelation: 'negative',
   },
-  // Pair 7: Orthogonal (same polarity, positive correlation) — catches straight-lining / acquiescence
+  // Pair 7: Orthogonal (same polarity, positive correlation) - catches straight-lining / acquiescence
   {
     id: 'cp_013',
     type: 'consistency_probe',
@@ -1724,32 +1724,6 @@ export function shuffleArray<T>(array: T[]): T[] {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
-}
-
-/**
- * Select questions for a check-in session
- */
-export function selectCheckInQuestions(): EQQuestion[] {
-  const questions: EQQuestion[] = [];
-  
-  // 1 forced choice
-  const fc = shuffleArray(FORCED_CHOICE_QUESTIONS);
-  questions.push(fc[0]);
-  
-  // 2 likert (balanced reverse keying)
-  const lkNormal = shuffleArray(LIKERT_QUESTIONS.filter(q => !q.reverseKeyed));
-  const lkReverse = shuffleArray(LIKERT_QUESTIONS.filter(q => q.reverseKeyed));
-  questions.push(lkNormal[0], lkReverse[0]);
-  
-  // 1 emotion vocabulary
-  const ev = shuffleArray(EMOTION_VOCABULARY_QUESTIONS);
-  questions.push(ev[0]);
-  
-  // 1 physiological proxy
-  const pp = shuffleArray(PHYSIOLOGICAL_PROXY_QUESTIONS);
-  questions.push(pp[0]);
-  
-  return shuffleArray(questions);
 }
 
 /**

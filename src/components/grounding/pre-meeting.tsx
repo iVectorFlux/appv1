@@ -1,10 +1,10 @@
 /**
- * Pre-Meeting Reset — Mode 4 (2-3 min)
+ * Pre-Meeting Reset - Mode 4 (2-3 min)
  *
  * Steps:
- *  1. Breath downshift — 3 breaths (4-2-6) with glowing orb
- *  2. Goal framing — "What is your goal?"
- *  3. Tone priming — tag selection
+ *  1. Breath downshift - 3 breaths (4-2-6) with glowing orb
+ *  2. Goal framing - "What is your goal?"
+ *  3. Tone priming - tag selection
  *  4. Posture cue + anchor sentence
  *
  * Dark immersive background, atmospheric orb, clean card-like inputs.

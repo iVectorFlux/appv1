@@ -1,5 +1,5 @@
 /**
- * Groq (OpenAI-compatible) — serverless only. Env: GROQ_API_KEY, optional GROQ_MODEL.
+ * Groq (OpenAI-compatible) - serverless only. Env: GROQ_API_KEY, optional GROQ_MODEL.
  * Lives under api/_lib so Vercel bundles it with functions (underscore = not a route).
  */
 

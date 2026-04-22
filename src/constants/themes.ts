@@ -1,5 +1,5 @@
 /**
- * Theme — Warm editorial wellness (2026)
+ * Theme - Warm editorial wellness (2026)
  *
  * Primary: Forest Green. Accents: Terracotta, Sage, Warm Tan, Soft Indigo.
  * Cream background, white cards, calm and focused.

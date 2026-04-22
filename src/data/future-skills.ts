@@ -5,7 +5,7 @@
  * Each skill declares its practiceMode, which drives which AI workflow is used.
  *
  * Practice modes:
- *  - decision_simulator  → (supported by API/UI; not used in catalog — avoids forced A–D)
+ *  - decision_simulator  → (supported by API/UI; not used in catalog - avoids forced A–D)
  *  - output_audit        → flawed AI output → learner evaluates/critiques it → feedback
  *  - open_reflection     → situation → full written response (analysis, trade-offs, reasoning) → coaching
  *  - generative_brainstorm → creative constraint → generate 4+ ideas → originality feedback
@@ -44,7 +44,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     tagline: 'Lead with awareness',
     description:
       'Recognise your own emotions and those of others, and use that awareness to navigate relationships and decisions effectively.',
-    why: 'EQ is increasingly cited as the differentiator between average and exceptional leaders — and it can\'t be automated.',
+    why: "EQ is increasingly cited as the differentiator between average and exceptional leaders, and it can't be automated.",
     icon: 'heart-outline',
     color: '#EC4899',
     practiceMode: 'open_reflection',
@@ -86,7 +86,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     name: 'AI Literacy',
     tagline: 'Work with AI, not against it',
     description:
-      'Understand how AI systems work, when to trust them, and how to get the most out of them — without being replaced by them.',
+      'Understand how AI systems work, when to trust them, and how to get the most out of them, without being replaced by them.',
     why: 'AI is reshaping every industry. People who can direct, question, and evaluate AI tools will consistently outperform those who can\'t.',
     icon: 'hardware-chip-outline',
     color: '#6366F1',
@@ -119,7 +119,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     name: 'Critical Thinking',
     tagline: 'Question before you accept',
     description:
-      'Evaluate arguments, detect logical gaps, and form well-reasoned conclusions — especially in a world of information overload.',
+      'Evaluate arguments, detect logical gaps, and form well-reasoned conclusions, especially in a world of information overload.',
     why: 'With AI generating content at scale, the ability to distinguish good reasoning from plausible-sounding nonsense is a superpower.',
     icon: 'bulb-outline',
     color: '#F59E0B',
@@ -159,7 +159,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     tagline: 'Find the real problem first',
     description:
       'Move from vague challenges to clear solutions by diagnosing root causes, generating options, and testing your way forward.',
-    why: 'Complex, novel problems are exactly what humans are still uniquely positioned to solve — if they have a structured approach.',
+    why: 'Complex, novel problems are exactly what humans are still uniquely positioned to solve, if they have a structured approach.',
     icon: 'construct-outline',
     color: '#10B981',
     practiceMode: 'open_reflection',
@@ -225,7 +225,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     tagline: 'Make new connections',
     description:
       'Generate novel ideas, reframe problems, and combine things in ways that haven\'t been tried before.',
-    why: 'Creativity is cited repeatedly as a top skill by future-of-work researchers — and it\'s something AI augments but can\'t replace.',
+    why: "Creativity is cited repeatedly as a top skill by future-of-work researchers, and it is something AI augments but can't replace.",
     icon: 'color-wand-outline',
     color: '#F97316',
     practiceMode: 'generative_brainstorm',
@@ -258,7 +258,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     tagline: 'See the whole picture',
     description:
       'Understand how parts of a system interact, anticipate second-order effects, and design interventions that don\'t create new problems.',
-    why: 'Today\'s challenges — organisational, social, technological — are complex systems. Reductionist thinking alone won\'t solve them.',
+    why: "Today's challenges, whether organisational, social, or technological, are complex systems. Reductionist thinking alone will not solve them.",
     icon: 'git-network-outline',
     color: '#06B6D4',
     practiceMode: 'open_reflection',
@@ -290,7 +290,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
     name: 'Communication & Influence',
     tagline: 'Ideas are nothing without buy-in',
     description:
-      'Convey ideas clearly, listen deeply, and bring others along — whether you\'re presenting to a board or writing a Slack message.',
+      "Convey ideas clearly, listen deeply, and bring others along, whether you are presenting to a board or writing a Slack message.",
     why: 'The best ideas fail without effective communication. This skill amplifies everything else you do.',
     icon: 'chatbubbles-outline',
     color: '#EF4444',
@@ -304,7 +304,7 @@ export const FUTURE_SKILLS: FutureSkill[] = [
       {
         id: 'active_listening',
         name: 'Active Listening',
-        description: 'Listen to understand, not just to respond — and make others feel heard.',
+        description: 'Listen to understand, not just to respond, and make others feel heard.',
       },
       {
         id: 'framing',

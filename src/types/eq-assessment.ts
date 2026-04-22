@@ -444,7 +444,7 @@ export interface EQAssessmentSession {
 }
 
 // =============================================================================
-// CHECK-IN VS FULL TEST CONFIGURATION
+// FULL TEST CONFIGURATION
 // =============================================================================
 
 export interface AssessmentConfig {
@@ -469,23 +469,6 @@ export interface AssessmentConfig {
   // Scoring adjustments
   minQuestionsForValidScore: number;
 }
-
-export const CHECK_IN_CONFIG: AssessmentConfig = {
-  type: 'check_in',
-  questionCounts: {
-    forced_choice: 1,
-    likert: 2,
-    emotion_vocabulary: 1,
-    meta_eq: 0,
-    physiological_proxy: 1,
-    consistency_probe: 0,
-    ranking_allocation: 0,
-    sjt_decision: 0,
-    emotion_perception: 0,
-  },
-  estimatedMinutes: 2,
-  minQuestionsForValidScore: 3,
-};
 
 export const FULL_TEST_CONFIG: AssessmentConfig = {
   type: 'full_test',

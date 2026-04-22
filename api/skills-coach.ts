@@ -1,5 +1,5 @@
 /**
- * Skills Coach API — POST /api/skills-coach
+ * Skills Coach API - POST /api/skills-coach
  *
  * Supports five practice modes, each with its own scenario + feedback prompts:
  *
@@ -80,7 +80,7 @@ LEARNER CONTEXT (use to choose setting, stakes, and characters; do not read thes
 ${ctxBlock}
 
 VARIETY AND DE-DUPLICATION:
-- Vary industries and contexts: consider healthcare, education, nonprofit, logistics, creative work, public sector, manufacturing, retail, family business, or volunteer settings when they fit the learner context — avoid defaulting to a generic "big tech steering committee" pattern unless the context clearly fits.
+- Vary industries and contexts: consider healthcare, education, nonprofit, logistics, creative work, public sector, manufacturing, retail, family business, or volunteer settings when they fit the learner context - avoid defaulting to a generic "big tech steering committee" pattern unless the context clearly fits.
 - Make this scenario feel meaningfully different from a bland default office meeting.
 
 ${custom ? `CUSTOM SITUATION FROM THE LEARNER (anchor the scenario primarily here; replace real names with roles or initials only):
@@ -96,7 +96,7 @@ If the situation is only a weak match for this skill or sub-skill, still return 
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildDecisionSimulatorPrompt(skillName: string, atomicSkillName?: string): string {
-  const focus = atomicSkillName ? `${skillName} — specifically "${atomicSkillName}"` : skillName;
+  const focus = atomicSkillName ? `${skillName} - specifically "${atomicSkillName}"` : skillName;
   return `You are designing a SHORT practice session for the skill: "${focus}".
 
 This is a decision simulator. The learner must COMMIT to one option before explaining their reasoning.
@@ -105,7 +105,7 @@ Output a realistic workplace scenario (2-4 sentences, specific not generic).
 
 Then output EXACTLY 4 mutually exclusive options the learner might choose. Each option is a different plausible path with different trade-offs. Labels must be concrete actions or stances, not vague descriptions.
 
-Then output a reasoningPrompt: ONE sentence asking them to explain their reasoning using the specific skill "${focus}". Do NOT ask them to choose — they already chose. Ask only for reasoning.
+Then output a reasoningPrompt: ONE sentence asking them to explain their reasoning using the specific skill "${focus}". Do NOT ask them to choose - they already chose. Ask only for reasoning.
 
 JSON only, no markdown:
 {
@@ -124,7 +124,7 @@ Use ids exactly a, b, c, d in order.`;
 
 /**
  * output_audit: each atomic under AI Literacy must be a DIFFERENT exercise shape.
- * Do NOT copy example "question" text from this file — the model must invent a fresh,
+ * Do NOT copy example "question" text from this file - the model must invent a fresh,
  * short (1–2 sentence) task line each time, matched to the sub-skill.
  */
 function buildOutputAuditPrompt(
@@ -133,7 +133,7 @@ function buildOutputAuditPrompt(
   atomicSkillId?: string,
   atomicSkillName?: string
 ): string {
-  const focus = atomicSkillName ? `${skillName} — "${atomicSkillName}"` : skillName;
+  const focus = atomicSkillName ? `${skillName} - "${atomicSkillName}"` : skillName;
 
   const jsonShape = `JSON only, no markdown, exactly two keys "scenario" and "question":
 {
@@ -148,11 +148,11 @@ CRITICAL for "question": write ONE or TWO short sentences unique to THIS exercis
 
 The "scenario" field must contain TWO labeled parts in plain text:
 (1) A weak or vague USER PROMPT someone might send to an AI (1-3 sentences).
-(2) A MEDIOCRE AI REPLY that follows from that bad prompt (2-4 sentences) — shallow, generic, or guessing.
+(2) A MEDIOCRE AI REPLY that follows from that bad prompt (2-4 sentences) - shallow, generic, or guessing.
 
 Flaws should mainly be fixable by improving the USER PROMPT (missing context, unclear goal, no constraints, wrong format request).
 
-The "question" must ask ONLY about improving the prompt: what is wrong with how the user asked, and how would they rewrite the prompt (not a full essay — concise).
+The "question" must ask ONLY about improving the prompt: what is wrong with how the user asked, and how would they rewrite the prompt (not a full essay - concise).
 
 ${jsonShape}`;
   }
@@ -172,7 +172,7 @@ ${jsonShape}`;
 
 The "scenario" is AI-generated or policy-style workplace text (3-6 sentences) that embeds 2-3 ethical risks among: demographic bias, privacy/PII mishandling, surveillance, intellectual property, misinformation, automation harm, or dual-use / misuse. Keep flaws plausible, not cartoonish.
 
-The "question" must ask specifically about ETHICAL risks and safeguards — not generic "is it accurate".
+The "question" must ask specifically about ETHICAL risks and safeguards - not generic "is it accurate".
 
 ${jsonShape}`;
   }
@@ -182,16 +182,16 @@ ${jsonShape}`;
 
 The "scenario" describes a real task and how someone plans to use AI tools (3-5 sentences). Include a poor fit: wrong tool for the job, redundant tools, missing human step, API/data leakage risk, or workflow that won't scale. Do not name real vendors as villains; keep it generic ("a chat assistant", "an image model", "a code copilot").
 
-The "question" must ask which tool choice or workflow they'd change and why — trade-offs included.
+The "question" must ask which tool choice or workflow they'd change and why - trade-offs included.
 
 ${jsonShape}`;
   }
 
-  // AI Literacy — full skill (no sub-skill): rotate emphasis each generation
+  // AI Literacy - full skill (no sub-skill): rotate emphasis each generation
   if (skillId === 'ai_literacy' && !atomicSkillId) {
     return `You are designing an AI LITERACY practice for the FULL skill "${skillName}" (no single sub-skill).
 
-Pick ONE emphasis at random for THIS JSON only: (A) weak user prompt + mediocre reply — ask how to fix the prompt, OR (B) flawed AI output only — ask for output critique, OR (C) ethical risk in AI use — ask for ethics/guardrails, OR (D) wrong tool/workflow — ask what they'd use instead.
+Pick ONE emphasis at random for THIS JSON only: (A) weak user prompt + mediocre reply - ask how to fix the prompt, OR (B) flawed AI output only - ask for output critique, OR (C) ethical risk in AI use - ask for ethics/guardrails, OR (D) wrong tool/workflow - ask what they'd use instead.
 
 State the emphasis in the "question" in one short phrase so the learner knows what lens to use.
 
@@ -209,7 +209,7 @@ ${jsonShape}`;
 }
 
 function buildOpenReflectionPrompt(skillName: string, atomicSkillName?: string): string {
-  const focus = atomicSkillName ? `${skillName} — specifically "${atomicSkillName}"` : skillName;
+  const focus = atomicSkillName ? `${skillName} - specifically "${atomicSkillName}"` : skillName;
   const lower = skillName.toLowerCase();
   const atomicLower = (atomicSkillName ?? '').toLowerCase();
 
@@ -223,9 +223,9 @@ function buildOpenReflectionPrompt(skillName: string, atomicSkillName?: string):
     const firstPrinciples = atomicLower.includes('first principle');
     return `You are designing a CRITICAL THINKING exercise for: "${focus}".
 
-Create a realistic workplace or decision situation (4-7 sentences) where the obvious move relies on analogy, habit, or authority — and a stronger approach requires unpacking assumptions and reasoning from fundamentals.
+Create a realistic workplace or decision situation (4-7 sentences) where the obvious move relies on analogy, habit, or authority - and a stronger approach requires unpacking assumptions and reasoning from fundamentals.
 
-The learner must answer in full prose — NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written analysis only.
+The learner must answer in full prose - NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written analysis only.
 
 Then write ONE question that requires them to: (1) name the main hidden assumptions or weak analogies, (2) separate what counts as a foundational fact vs what needs evidence, (3) reason step-by-step toward a conclusion, naming trade-offs and what would change their mind.
 ${firstPrinciples ? '\nBecause this sub-skill is first principles: explicitly ask them to strip the problem to basic truths before rebuilding the argument.' : ''}
@@ -233,53 +233,53 @@ ${firstPrinciples ? '\nBecause this sub-skill is first principles: explicitly as
 JSON only, no markdown:
 {
   "scenario": "[The situation]",
-  "question": "[One analytical question — free text only, no multiple choice]"
+  "question": "[One analytical question - free text only, no multiple choice]"
 }`;
   }
 
   if (isProblemSolving) {
     return `You are designing a PROBLEM SOLVING exercise for: "${focus}".
 
-Create a messy but realistic problem (4-7 sentences) — unclear scope, conflicting signals, or pressure to jump to a fix.
+Create a messy but realistic problem (4-7 sentences) - unclear scope, conflicting signals, or pressure to jump to a fix.
 
-The learner must answer in full prose — NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written response only.
+The learner must answer in full prose - NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written response only.
 
 Then write ONE question that asks them to: (1) reframe what the real problem might be vs symptoms, (2) state a root-cause hypothesis and what they'd verify, (3) propose options with trade-offs and the smallest next test or experiment.
 
 JSON only, no markdown:
 {
   "scenario": "[The situation]",
-  "question": "[One question — structured written answer, no multiple choice]"
+  "question": "[One question - structured written answer, no multiple choice]"
 }`;
   }
 
   if (isAdaptability) {
     return `You are designing an ADAPTABILITY exercise for: "${focus}".
 
-Create a situation (4-7 sentences) where priorities shift, information is incomplete, or a plan is suddenly wrong — something that rewards updating one's model and acting anyway.
+Create a situation (4-7 sentences) where priorities shift, information is incomplete, or a plan is suddenly wrong - something that rewards updating one's model and acting anyway.
 
-The learner must answer in full prose — NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written response only.
+The learner must answer in full prose - NEVER ask them to pick A/B/C/D or "which option". The question must ask for a written response only.
 
-Then write ONE question that asks them to: (1) name what changed and what is still unknown, (2) how they'd adjust their approach or mental model, (3) concrete next steps — not generic positivity.
+Then write ONE question that asks them to: (1) name what changed and what is still unknown, (2) how they'd adjust their approach or mental model, (3) concrete next steps - not generic positivity.
 
 JSON only, no markdown:
 {
   "scenario": "[The situation]",
-  "question": "[One question — free text only, no multiple choice]"
+  "question": "[One question - free text only, no multiple choice]"
 }`;
   }
 
   if (isEQ) {
     return `You are designing an emotional intelligence reflection exercise for: "${focus}".
 
-Create a short, realistic workplace situation (3-5 sentences) with genuine emotional complexity — a conflict, misunderstanding, power dynamic, someone under pressure, or a moment requiring empathy. Make it feel real and human, not textbook.
+Create a short, realistic workplace situation (3-5 sentences) with genuine emotional complexity - a conflict, misunderstanding, power dynamic, someone under pressure, or a moment requiring empathy. Make it feel real and human, not textbook.
 
 Then write a reflection question that asks the learner to: (1) name the emotions present, (2) consider the other person's perspective, and (3) describe how they would respond.
 
 JSON only, no markdown:
 {
   "scenario": "[The interpersonal situation]",
-  "question": "What emotions do you notice in this situation — yours and theirs? What might be driving their behaviour? How would you respond, and why?"
+  "question": "What emotions do you notice in this situation - yours and theirs? What might be driving their behaviour? How would you respond, and why?"
 }`;
   }
 
@@ -293,7 +293,7 @@ Then write a question asking the learner to: (1) identify the feedback loops or 
 JSON only, no markdown:
 {
   "scenario": "[The organisational/social situation]",
-  "question": "What feedback loops or second-order effects can you identify? If you intervened at one point, what would ripple outward — and what signals would tell you whether it's working?"
+  "question": "What feedback loops or second-order effects can you identify? If you intervened at one point, what would ripple outward - and what signals would tell you whether it's working?"
 }`;
   }
 
@@ -302,7 +302,7 @@ JSON only, no markdown:
 
 Create a realistic workplace situation (3-5 sentences) that calls for this skill in a non-obvious way.
 
-Then write a focused open question that asks the learner to apply "${focus}" specifically — not just describe what happened.
+Then write a focused open question that asks the learner to apply "${focus}" specifically - not just describe what happened.
 
 JSON only, no markdown:
 {
@@ -312,7 +312,7 @@ JSON only, no markdown:
 }
 
 function buildGenerativeBrainstormPrompt(skillName: string, atomicSkillName?: string): string {
-  const focus = atomicSkillName ? `${skillName} — specifically "${atomicSkillName}"` : skillName;
+  const focus = atomicSkillName ? `${skillName} - specifically "${atomicSkillName}"` : skillName;
   return `You are designing a creative brainstorming exercise for the skill: "${focus}".
 
 Create a specific, constrained creative challenge (2-3 sentences). The challenge should have a real tension or constraint that makes obvious solutions unhelpful. It should be grounded in a workplace or everyday context.
@@ -322,22 +322,22 @@ Then write a question that asks the learner to generate at least 4 distinct idea
 JSON only, no markdown:
 {
   "scenario": "[The creative challenge with constraint]",
-  "question": "Generate at least 4 distinct ideas. Prioritise range over polish — include one that challenges an obvious assumption, and one inspired by a completely different domain or field."
+  "question": "Generate at least 4 distinct ideas. Prioritise range over polish - include one that challenges an obvious assumption, and one inspired by a completely different domain or field."
 }`;
 }
 
 function buildDraftAndRefinePrompt(skillName: string, atomicSkillName?: string): string {
-  const focus = atomicSkillName ? `${skillName} — specifically "${atomicSkillName}"` : skillName;
+  const focus = atomicSkillName ? `${skillName} - specifically "${atomicSkillName}"` : skillName;
   return `You are designing a communication drafting exercise for the skill: "${focus}".
 
-Create a realistic communication brief (3-5 sentences) with a specific audience, goal, and context. The brief should include a real tension — a sceptical audience, a sensitive topic, a difficult ask, or a high-stakes moment. Make the context specific enough that generic messages won't work.
+Create a realistic communication brief (3-5 sentences) with a specific audience, goal, and context. The brief should include a real tension - a sceptical audience, a sensitive topic, a difficult ask, or a high-stakes moment. Make the context specific enough that generic messages won't work.
 
-Then write a drafting question that asks the learner to write a short message (email, Slack, memo, or presentation opening — their choice) that achieves the goal and fits the audience. Remind them to keep it focused (under 150 words) and audience-aware.
+Then write a drafting question that asks the learner to write a short message (email, Slack, memo, or presentation opening - their choice) that achieves the goal and fits the audience. Remind them to keep it focused (under 150 words) and audience-aware.
 
 JSON only, no markdown:
 {
-  "scenario": "[The communication brief — audience, goal, context, tension]",
-  "question": "Draft your message (email, Slack, memo — your choice of format). Keep it under 150 words. Show you understand your audience and the tension in this situation."
+  "scenario": "[The communication brief - audience, goal, context, tension]",
+  "question": "Draft your message (email, Slack, memo - your choice of format). Keep it under 150 words. Show you understand your audience and the tension in this situation."
 }`;
 }
 
@@ -356,13 +356,13 @@ function buildDecisionFeedbackPrompt(
   userAnswer: string,
   attemptNumber: number
 ): string {
-  const focus = atomicSkillName ? `${skillName} — "${atomicSkillName}"` : skillName;
+  const focus = atomicSkillName ? `${skillName} - "${atomicSkillName}"` : skillName;
   const isRetry = attemptNumber > 1;
   const optionsBlock = decisionOptions.map((o) => `- ${o.id}: ${o.label}`).join('\n');
 
   return `You are an expert coach evaluating a DECISION + REASONING practice for: "${focus}".
 
-The learner committed to one option before writing. Evaluate whether their reasoning shows real use of the skill — NOT polished writing, NOT sounding smart without decision logic.
+The learner committed to one option before writing. Evaluate whether their reasoning shows real use of the skill - NOT polished writing, NOT sounding smart without decision logic.
 
 Scenario:
 ${scenario}
@@ -370,7 +370,7 @@ ${scenario}
 Options they could choose:
 ${optionsBlock}
 
-They CHOSE: ${selectedDecisionId} — "${selectedLabel}"
+They CHOSE: ${selectedDecisionId} - "${selectedLabel}"
 
 Reasoning prompt they answered:
 ${reasoningPrompt}
@@ -378,13 +378,13 @@ ${reasoningPrompt}
 Their written reasoning (attempt ${attemptNumber}):
 ${userAnswer}
 
-${isRetry ? 'This is a retry — acknowledge persistence; focus on reasoning quality.' : ''}
+${isRetry ? 'This is a retry - acknowledge persistence; focus on reasoning quality.' : ''}
 
 Rules:
-- Reward clear decision logic, trade-off awareness, and skill-specific thinking — not verbosity or tone.
+- Reward clear decision logic, trade-off awareness, and skill-specific thinking - not verbosity or tone.
 - strengths must reference what they actually did well in their reasoning.
 - growthAreas: where their reasoning skipped steps, ignored trade-offs, or missed the skill.
-- consequences: 2-4 short lines (use \\n between lines). Plausible downstream effects of THEIR chosen option — upsides, risks, second-order effects. Frame as simulation ("Often…", "One risk is…").
+- consequences: 2-4 short lines (use \\n between lines). Plausible downstream effects of THEIR chosen option - upsides, risks, second-order effects. Frame as simulation ("Often…", "One risk is…").
 - reflectionQuestion: ONE sharp meta question (e.g. "What assumption in your reasoning is most likely wrong?"). No fluff.
 - refinementPrompt: one actionable micro-prompt for next time.
 
@@ -400,7 +400,7 @@ JSON only:
   "nextScenarioAvailable": true
 }
 
-scoreOutOf10: integer 0-10 for how well their reasoning demonstrates the target skill (specificity, trade-offs, skill use — not polish).`;
+scoreOutOf10: integer 0-10 for how well their reasoning demonstrates the target skill (specificity, trade-offs, skill use - not polish).`;
 }
 
 function buildOpenFeedbackPrompt(
@@ -412,27 +412,27 @@ function buildOpenFeedbackPrompt(
   userAnswer: string,
   attemptNumber: number
 ): string {
-  const focus = atomicSkillName ? `${skillName} — "${atomicSkillName}"` : skillName;
+  const focus = atomicSkillName ? `${skillName} - "${atomicSkillName}"` : skillName;
   const isRetry = attemptNumber > 1;
 
   const openReflectionInstruction = (() => {
     const ln = skillName.toLowerCase();
     if (ln.includes('critical thinking')) {
-      return `The learner wrote a free-form analytical response (no multiple choice). Evaluate clarity of reasoning, assumptions they surfaced, logical structure, evidence-mindedness, and genuine use of the sub-skill — not verbosity or rhetorical polish.`;
+      return `The learner wrote a free-form analytical response (no multiple choice). Evaluate clarity of reasoning, assumptions they surfaced, logical structure, evidence-mindedness, and genuine use of the sub-skill - not verbosity or rhetorical polish.`;
     }
     if (ln.includes('problem solving')) {
-      return `The learner wrote a structured response about a messy problem. Evaluate problem framing, root-cause thinking, quality of options and trade-offs, and whether their next step is concrete — not buzzwords.`;
+      return `The learner wrote a structured response about a messy problem. Evaluate problem framing, root-cause thinking, quality of options and trade-offs, and whether their next step is concrete - not buzzwords.`;
     }
     if (ln.includes('adaptability')) {
-      return `The learner described how they would adapt under change or ambiguity. Evaluate flexibility of thinking, honesty about unknowns, and concrete actions — not generic resilience clichés.`;
+      return `The learner described how they would adapt under change or ambiguity. Evaluate flexibility of thinking, honesty about unknowns, and concrete actions - not generic resilience clichés.`;
     }
     if (ln.includes('systems')) {
-      return `The learner analysed a systemic situation. Evaluate whether they identified loops, second-order effects, dependencies, or patterns in a substantive way — not vague "big picture" language.`;
+      return `The learner analysed a systemic situation. Evaluate whether they identified loops, second-order effects, dependencies, or patterns in a substantive way - not vague "big picture" language.`;
     }
     if (ln.includes('emotional')) {
-      return `The learner responded to an open reflective situation. Evaluate the depth of their emotional/systemic awareness, whether they considered multiple perspectives, and whether their response shows real skill — not just empathy-sounding language.`;
+      return `The learner responded to an open reflective situation. Evaluate the depth of their emotional/systemic awareness, whether they considered multiple perspectives, and whether their response shows real skill - not just empathy-sounding language.`;
     }
-    return `The learner responded in writing to an open prompt. Evaluate depth, specificity, and use of the target sub-skill — not length or tone.`;
+    return `The learner responded in writing to an open prompt. Evaluate depth, specificity, and use of the target sub-skill - not length or tone.`;
   })();
 
   const modeInstructions: Record<string, string> = {
@@ -445,8 +445,8 @@ function buildOpenFeedbackPrompt(
   const consequencesInstruction: Record<string, string> = {
     output_audit: 'consequences: 2-3 lines on what could go wrong if the AI output was used as-is without their suggested fixes. Use \\n between lines.',
     open_reflection: 'consequences: 2-3 lines on what might realistically happen if they responded the way they described. Frame as plausible outcomes, not judgement. Use \\n between lines.',
-    generative_brainstorm: 'consequences: 2-3 lines on what the most promising idea(s) could unlock — and what gaps remain in their ideation. Use \\n between lines.',
-    draft_and_refine: 'consequences: 2-3 lines on how the audience is likely to receive this draft — what will land, what might not. Use \\n between lines.',
+    generative_brainstorm: 'consequences: 2-3 lines on what the most promising idea(s) could unlock - and what gaps remain in their ideation. Use \\n between lines.',
+    draft_and_refine: 'consequences: 2-3 lines on how the audience is likely to receive this draft - what will land, what might not. Use \\n between lines.',
   };
 
   const instruction = modeInstructions[practiceMode] ?? modeInstructions.open_reflection;
@@ -465,10 +465,10 @@ ${question}
 Their response (attempt ${attemptNumber}):
 ${userAnswer}
 
-${isRetry ? 'This is a retry — acknowledge persistence; focus on quality improvement.' : ''}
+${isRetry ? 'This is a retry - acknowledge persistence; focus on quality improvement.' : ''}
 
 Rules:
-- strengths: what they actually did well — be specific, reference their words.
+- strengths: what they actually did well - be specific, reference their words.
 - growthAreas: where they were shallow, missed something important, or could go deeper.
 - ${consequenceRule}
 - reflectionQuestion: ONE sharp question that pushes their thinking further. No fluff.
@@ -486,7 +486,7 @@ JSON only:
   "nextScenarioAvailable": true
 }
 
-scoreOutOf10: integer 0-10 for how well the response meets the exercise (accuracy, depth, skill use — not length).`;
+scoreOutOf10: integer 0-10 for how well the response meets the exercise (accuracy, depth, skill use - not length).`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

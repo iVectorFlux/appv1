@@ -1,5 +1,5 @@
 /**
- * SectionHeaderCard — Editorial section header
+ * SectionHeaderCard - Editorial section header
  *
  * Icon left, title (17px semibold) + subtitle (13px). Used for "Learn", "Insights", etc.
  */

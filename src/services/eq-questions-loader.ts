@@ -5,7 +5,7 @@
 
 import { supabase } from '@/lib/supabase';
 import type { EQQuestion } from '@/types/eq-assessment';
-import { FULL_TEST_CONFIG, CHECK_IN_CONFIG } from '@/types/eq-assessment';
+import { FULL_TEST_CONFIG } from '@/types/eq-assessment';
 
 export interface EqQuestionRow {
   id: string;
@@ -82,45 +82,12 @@ export function selectFullTestFromPool(pool: EQQuestion[]): EQQuestion[] {
 }
 
 /**
- * Select check-in question set from a pool, using CHECK_IN_CONFIG counts.
- */
-export function selectCheckInFromPool(pool: EQQuestion[]): EQQuestion[] {
-  const counts = CHECK_IN_CONFIG.questionCounts;
-  const byType = new Map<string, EQQuestion[]>();
-  for (const q of pool) {
-    const list = byType.get(q.type) || [];
-    list.push(q);
-    byType.set(q.type, list);
-  }
-  const out: EQQuestion[] = [];
-  const types = [
-    'forced_choice', 'likert', 'emotion_vocabulary', 'meta_eq', 'physiological_proxy',
-    'consistency_probe', 'ranking_allocation', 'sjt_decision', 'emotion_perception',
-  ] as const;
-  for (const t of types) {
-    const n = counts[t] ?? 0;
-    const list = byType.get(t) || [];
-    out.push(...shuffle(list).slice(0, n));
-  }
-  return shuffle(out);
-}
-
-/**
  * Load full-test questions from DB; returns null if table empty/error (use in-code fallback).
  */
 export async function loadFullTestQuestions(): Promise<EQQuestion[] | null> {
   const pool = await loadEqQuestionsFromDb();
   if (!pool || pool.length === 0) return null;
   return selectFullTestFromPool(pool);
-}
-
-/**
- * Load check-in questions from DB; returns null if table empty/error (use in-code fallback).
- */
-export async function loadCheckInQuestions(): Promise<EQQuestion[] | null> {
-  const pool = await loadEqQuestionsFromDb();
-  if (!pool || pool.length === 0) return null;
-  return selectCheckInFromPool(pool);
 }
 
 /**

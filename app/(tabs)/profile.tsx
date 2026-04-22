@@ -1,5 +1,5 @@
 /**
- * Profile — name, optional learner context (Skill Lab), appearance, sign out.
+ * Profile - name, optional learner context (Skill Lab), appearance, sign out.
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -142,7 +142,7 @@ export default function ProfileScreen() {
                 );
               })}
             </View>
-            <Input label="Interests (optional)" value={interests} onChangeText={setInterests} placeholder="Short note — e.g. leadership, exams" autoCapitalize="sentences" autoCorrect />
+            <Input label="Interests (optional)" value={interests} onChangeText={setInterests} placeholder="Short note, for example leadership, exams" autoCapitalize="sentences" autoCorrect />
             <Text style={st.fieldLabel}>Industry</Text>
             <View style={st.chipWrap}>
               {INDUSTRY_OPTIONS.map((o) => {

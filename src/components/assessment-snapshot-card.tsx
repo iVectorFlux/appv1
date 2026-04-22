@@ -1,20 +1,22 @@
 /**
  * Last completed EQ and Big Five scores (Progress home block).
- * Retake anytime — we always show the most recent result when present.
+ * Retake anytime - we always show the most recent result when present.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassCard } from '@/components/ui/glass-card';
+import { ShimmerCardBlock } from '@/components/ui/shimmer';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
-import { assessmentTypeLabel, formatShortDate } from '@/lib/home-assessment-summary';
+import { formatShortDate } from '@/lib/home-assessment-summary';
 import { formatBig5ScoresLine } from '@/services/profile-context';
 import type { Big5Scores } from '@/services/big5-scoring';
 
 export type LastEqSnapshot = {
   overallScore: number;
-  assessmentType: 'check_in' | 'full_test';
+  /** Full multi-section EQ test (quick check-in flow removed from the app). */
+  assessmentType: 'full_test';
   completedAt: string;
 } | null;
 
@@ -41,11 +43,8 @@ export function AssessmentSnapshotCard({
 
   if (loading) {
     return (
-      <GlassCard borderRadius={Radius.lg} style={st.card}>
-        <View style={st.loadingRow}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={st.muted}>Loading assessments…</Text>
-        </View>
+      <GlassCard borderRadius={Radius.lg} style={st.cardShimmerShell}>
+        <ShimmerCardBlock variant="assessment" />
       </GlassCard>
     );
   }
@@ -59,15 +58,13 @@ export function AssessmentSnapshotCard({
           {lastEq ? (
             <Text style={st.body}>
               <Text style={st.em}>Last score {lastEq.overallScore}</Text>
-              {' · '}
-              {assessmentTypeLabel(lastEq.assessmentType)}
               {formatShortDate(lastEq.completedAt) ? ` · ${formatShortDate(lastEq.completedAt)}` : ''}
             </Text>
           ) : (
-            <Text style={st.body}>Not taken yet — start a check-in or full test when you are ready.</Text>
+            <Text style={st.body}>Not taken yet. Complete the full EQ test when you are ready.</Text>
           )}
           <TouchableOpacity onPress={onPressEq} style={st.linkRow} activeOpacity={0.7} accessibilityRole="button">
-            <Text style={st.link}>{lastEq ? 'Retake or continue' : 'Start EQ'}</Text>
+            <Text style={st.link}>{lastEq ? 'Retake full test' : 'Start full EQ test'}</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.primary} />
           </TouchableOpacity>
         </View>
@@ -89,7 +86,7 @@ export function AssessmentSnapshotCard({
               ) : null}
             </>
           ) : (
-            <Text style={st.body}>Not taken yet — about 5–10 minutes for a trait snapshot.</Text>
+            <Text style={st.body}>Not taken yet. Allow about 5 to 10 minutes for a trait snapshot.</Text>
           )}
           <TouchableOpacity onPress={onPressBig5} style={st.linkRow} activeOpacity={0.7} accessibilityRole="button">
             <Text style={st.link}>{lastBig5 ? 'Retake test' : 'Start Big Five'}</Text>
@@ -104,13 +101,7 @@ export function AssessmentSnapshotCard({
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     card: { padding: Spacing.md },
-    loadingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-      paddingVertical: Spacing.xs,
-    },
-    muted: { fontSize: Typography.fontSize.sm, color: colors.textMuted },
+    cardShimmerShell: { padding: 0, overflow: 'hidden' },
     row: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
     kicker: {
       fontSize: Typography.fontSize.micro,

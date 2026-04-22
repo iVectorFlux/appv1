@@ -49,13 +49,13 @@ export default function ConfirmEmailScreen() {
           Open your inbox and click the link to verify. Once you've verified, you'll be able to sign in and we'll take you through a quick setup.
         </Text>
         <Text style={styles.hint}>
-          Can't find the email? Check your spam or junk folder—sometimes it ends up there.
+          Can't find the email? Check your spam or junk folder. Sometimes it ends up there.
         </Text>
         <Text style={styles.hint}>
           After you click the link, come back here and sign in. You'll then complete a short onboarding and see your profile.
         </Text>
         <Button
-          title="I've verified — Sign in"
+          title="I've verified, sign in"
           onPress={() => router.replace('/(auth)/sign-in')}
           fullWidth
           size="lg"

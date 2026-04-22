@@ -1,5 +1,5 @@
 /**
- * GET /api/health — readiness check
+ * GET /api/health - readiness check
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';

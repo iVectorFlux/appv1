@@ -1,5 +1,5 @@
 /**
- * Optional learner context on `profiles` — used for Skill Lab scenario generation
+ * Optional learner context on `profiles` - used for Skill Lab scenario generation
  * and shown on the Profile screen.
  */
 

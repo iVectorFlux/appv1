@@ -2,9 +2,9 @@
 -- AI CHAT MESSAGES + FUTURE SKILLS (migration 00007)
 -- =============================================================================
 -- Tables:
---   ai_chat_messages  — stores chat turns for Inner Ally and Coach modes
---   skills_sessions   — stores AI practice question/answer/feedback rounds
---   skills_progress   — aggregated per-user per-skill progress
+--   ai_chat_messages  - stores chat turns for Inner Ally and Coach modes
+--   skills_sessions   - stores AI practice question/answer/feedback rounds
+--   skills_progress   - aggregated per-user per-skill progress
 -- All tables use RLS: user can only read/write their own rows.
 -- =============================================================================
 

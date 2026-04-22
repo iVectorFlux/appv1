@@ -380,7 +380,7 @@ export default function GroundingScreen() {
           {showStressSection && (
             <GlassCard style={{ marginTop: Spacing.xl, width: '100%' }}>
               <Text style={st.stressCardTitle}>How's your stress now?</Text>
-              <Text style={st.stressCardHint}>Tap a number — 1 is low, 5 is high</Text>
+              <Text style={st.stressCardHint}>Tap a number. 1 is low, 5 is high</Text>
               <View style={st.stressRow}>
                 {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
                   const isSelected = stressAfter === level;

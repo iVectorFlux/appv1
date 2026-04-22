@@ -1,5 +1,5 @@
 /**
- * FeatureCard — Bento feature card (6-col)
+ * FeatureCard - Bento feature card (6-col)
  *
  * White/bg-accent, 24px radius, badge + title + subtitle + meta, icon right.
  */

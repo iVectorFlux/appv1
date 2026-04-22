@@ -1,5 +1,5 @@
 /**
- * ModuleCard — Bento grid card (stats / competency / course)
+ * ModuleCard - Bento grid card (stats / competency / course)
  *
  * White bg, 24px radius, 24px padding. Icon, label, large number or title, subtitle.
  * Horizontal variant: icon + title + subtitle + trailing chevron for list rows.

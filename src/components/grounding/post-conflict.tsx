@@ -1,11 +1,11 @@
 /**
- * Post-Conflict Reset — Mode 5 (4-6 min)
+ * Post-Conflict Reset - Mode 5 (4-6 min)
  *
  * Steps:
- *  1. Label emotion — selection buttons with glow
- *  2. Locate in body — body area tags
- *  3. Breath release — 3 slow breaths with atmospheric orb
- *  4. Fact vs interpretation — two text prompts
+ *  1. Label emotion - selection buttons with glow
+ *  2. Locate in body - body area tags
+ *  3. Breath release - 3 slow breaths with atmospheric orb
+ *  4. Fact vs interpretation - two text prompts
  *
  * Dark immersive background, slower pacing, atmospheric orb.
  */
@@ -248,7 +248,7 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
               <TextInput
                 value={factText}
                 onChangeText={setFactText}
-                placeholder="Just the facts — no judgment"
+                placeholder="Just the facts, no judgment"
                 placeholderTextColor={TEXT_MUTED}
                 style={s.input}
                 multiline

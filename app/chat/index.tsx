@@ -2,7 +2,7 @@
  * AI Companion Chat
  *
  * Two modes: Inner Ally (wellbeing) and Coach (growth).
- * Minimal design inspired by Claude iOS — AI messages as plain text,
+ * Minimal design inspired by Claude iOS - AI messages as plain text,
  * refined input pill, no chrome.
  */
 
@@ -87,11 +87,11 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
     icon: 'heart-outline',
     color: '#C45C5C',
     intro: (name) => name
-      ? `Hey ${name}, I'm here for you. Share how you're feeling — I'll listen, reflect, and help you ground yourself.`
-      : "Hey, I'm here for you. Share how you're feeling — I'll listen, reflect, and help you ground yourself.",
+      ? `Hey ${name}, I'm here for you. Share how you're feeling. I'll listen, reflect, and help you ground yourself.`
+      : "Hey, I'm here for you. Share how you're feeling. I'll listen, reflect, and help you ground yourself.",
     placeholder: "What's on your mind?",
     suggestions: [
-      "I'm having a bad day — help me calm down",
+      "I'm having a bad day. Help me calm down",
       'I have pre-meeting anxiety',
     ],
   },
@@ -100,8 +100,8 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
     icon: 'briefcase-outline',
     color: '#3D8B6E',
     intro: (name) => name
-      ? `Hey ${name}, ready when you are. Ask about leadership, work skills, or growth — or learn something new step-by-step right here (even when it is not in Skill Lab).`
-      : "Ready when you are. Ask about leadership, work skills, or growth — or learn something new step-by-step here (even when it is not in Skill Lab).",
+      ? `Hey ${name}, ready when you are. Ask about leadership, work skills, or growth, or learn something new step by step right here (even when it is not in Skill Lab).`
+      : "Ready when you are. Ask about leadership, work skills, or growth, or learn something new step by step here (even when it is not in Skill Lab).",
     placeholder: 'Ask me anything...',
     suggestions: [
       'How to regulate emotion at workplace',
@@ -352,7 +352,7 @@ function MessageRow({
       Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 300, easing: Easing.out(Easing.quad), useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
   const sg = message.suggestion;
 
@@ -774,7 +774,7 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
               },
             ]}
           >
-            {/* Centered placeholder overlay — iOS multiline can't center text natively */}
+            {/* Centered placeholder overlay - iOS multiline can't center text natively */}
             {inputText.length === 0 && !inputFocused && (
               <View pointerEvents="none" style={st.placeholderWrap}>
                 <Text style={[st.placeholderText, { color: colors.textMuted }]}>{MODE_CONFIG[mode].placeholder}</Text>

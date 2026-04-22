@@ -10,7 +10,7 @@
 
 1. **In Cursor:** Open **`supabase/migrations/00001_initial_schema.sql`**, select all (Cmd+A / Ctrl+A), copy (Cmd+C / Ctrl+C).
 2. **In browser:** [supabase.com](https://supabase.com) → your project → **SQL Editor** → **New query** → paste → **Run**.
-3. Check **Table Editor** in the left sidebar — you should see all tables.
+3. Check **Table Editor** in the left sidebar - you should see all tables.
 
 The script is re-runnable (uses `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS`, `DROP TRIGGER IF EXISTS`). If you already ran **00001** before `last_login_at` and `user_sessions` were added, run **`00002_profiles_last_login_and_user_sessions.sql`**; then run **`00003_consolidate_onboarding_into_user_preferences.sql`** to move goals/context into `user_preferences` (JSONB) and drop `user_goals` / `user_background`.
 
@@ -25,11 +25,11 @@ The script is re-runnable (uses `CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EX
 | **Identity / audit** | `profiles` (includes `last_login_at`), `user_sessions` (time-on-app) | Yes |
 | **Onboarding** | `user_onboarding`, `user_preferences` (goals + context as JSONB), `onboarding_emotional_check` | Yes |
 | **Journal** | `journal_entries` | Yes (web + native via journal-storage / database) |
-| **Journal (reserved)** | `encryption_keys`, `journal_tags`, `journal_entry_tags` | No — reserved for future |
-| **EQ** | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` | Yes — saves check-ins and full test results |
-| **Insights** | `insights`, `insight_actions` | No — reserved for future |
-| **Wellness** | `recovery_sessions`, `meditation_sessions` | No — reserved for future |
+| **Journal (reserved)** | `encryption_keys`, `journal_tags`, `journal_entry_tags` | No - reserved for future |
+| **EQ** | `eq_assessment_sessions`, `eq_check_ins`, `eq_scores` | Yes - saves check-ins and full test results |
+| **Insights** | `insights`, `insight_actions` | No - reserved for future |
+| **Wellness** | `recovery_sessions`, `meditation_sessions` | No - reserved for future |
 | **Learning** | `learning_modules` (FK target), `learning_progress` | learning_progress: Yes; learning_modules: FK only |
-| **Metrics** | `user_metrics` | No — reserved for future |
+| **Metrics** | `user_metrics` | No - reserved for future |
 
 See **docs/SCHEMA_REVIEW.md** for a full used-vs-unused review.

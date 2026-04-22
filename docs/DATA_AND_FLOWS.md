@@ -1,4 +1,4 @@
-# EQ App — Tables, Sign Up/Sign In, Onboarding, Scores & Journal
+# EQ App - Tables, Sign Up/Sign In, Onboarding, Scores & Journal
 
 This doc answers: **what tables exist**, **how sign up/sign in works**, **what onboarding asks**, **where EQ scores are stored**, and **where journal history is stored**.
 
@@ -43,18 +43,18 @@ So: **identity** is in **Supabase Auth**; **app profile** is in **`public.profil
 
 ---
 
-## 3. Onboarding options — are they saved on the platform?
+## 3. Onboarding options - are they saved on the platform?
 
 **Schema:** Yes. The platform stores onboarding in a **consolidated** way (one row per user for preferences and goals):
 
-- **user_onboarding** — Whether onboarding was started/completed and which steps were done (`steps_completed` JSONB).
-- **user_preferences** — One row per user: **goals** (JSONB array of goal ids from the “goal” step), **context** (JSONB, optional), **check_in_frequency**, reminder_enabled, reminder_times, reminder_days. No separate `user_goals` or `user_background` tables.
-- **onboarding_emotional_check** — One row per emotional baseline question answered.
+- **user_onboarding** - Whether onboarding was started/completed and which steps were done (`steps_completed` JSONB).
+- **user_preferences** - One row per user: **goals** (JSONB array of goal ids from the “goal” step), **context** (JSONB, optional), **check_in_frequency**, reminder_enabled, reminder_times, reminder_days. No separate `user_goals` or `user_background` tables.
+- **onboarding_emotional_check** - One row per emotional baseline question answered.
 
 **App today:** The app has a 5-screen onboarding flow that writes to Supabase. On completion the app calls:
 
 - `supabase.from('user_onboarding').upsert(...)` (completed_at, steps_completed)
-- `supabase.from('user_preferences').upsert(...)` with **goals** as a JSONB array (e.g. `["manage_stress","improve_relationships"]`) and check_in_frequency — **one upsert** instead of multiple inserts.
+- `supabase.from('user_preferences').upsert(...)` with **goals** as a JSONB array (e.g. `["manage_stress","improve_relationships"]`) and check_in_frequency - **one upsert** instead of multiple inserts.
 - `supabase.from('onboarding_emotional_check').insert(...)` for emotional baseline answers
 - `profiles.display_name` is updated when provided in onboarding.
 
@@ -67,20 +67,20 @@ So: **identity** is in **Supabase Auth**; **app profile** is in **`public.profil
 
 Defined in **`app/onboarding/index.tsx`** (WHY_OPTIONS, FREQUENCY_OPTIONS, CONTEXT_OPTIONS, emotional check). Five screens:
 
-### Step 1 — Goal (one or more)
+### Step 1 - Goal (one or more)
 
 - **user_preferences.goals** (JSONB array):  
   `manage_stress` · `improve_relationships` · `build_self_awareness` · `improve_focus` · `emotional_regulation` · `other` (with optional custom_text). Stored as one array per user, e.g. `["manage_stress","improve_relationships"]`.
 
-### Step 2 — Frequency (check-in)
+### Step 2 - Frequency (check-in)
 
 - **user_preferences.check_in_frequency**:  
   Daily · A few times a week · About once a week · When I get a reminder · No reminders.  
 - Plus reminder_enabled, reminder_times (e.g. 09:00, 21:00), reminder_days (0–6).
 
-### Step 3 — Emotional check (baseline)
+### Step 3 - Emotional check (baseline)
 
-- **onboarding_emotional_check** — 5 questions, one row per answer:
+- **onboarding_emotional_check** - 5 questions, one row per answer:
 
 | # | question_id | Question | Type | Stored as |
 |---|-------------|----------|------|-----------|
@@ -101,9 +101,9 @@ So: **goals** → `user_preferences.goals` (JSONB array), **frequency** → `use
   - Insert one row into **eq_scores** for that session.
 
 - **Where (tables):**
-  - **eq_assessment_sessions** — One row per test/check-in: `id`, `user_id`, `status`, `assessment_type`, `started_at`, `completed_at`, `overall_score`, `dimension_scores`, etc.
-  - **eq_check_ins** — One row per question: `session_id`, `question_id`, `response` (JSONB), `score`, `order_index`.
-  - **eq_scores** — One row per completed assessment: `session_id` (unique), `user_id`, `completed_at`, `overall_score`, `dimension_scores`, `quality_indicators`, `strengths`, `growth_areas`, `insights` (all JSONB).
+  - **eq_assessment_sessions** - One row per test/check-in: `id`, `user_id`, `status`, `assessment_type`, `started_at`, `completed_at`, `overall_score`, `dimension_scores`, etc.
+  - **eq_check_ins** - One row per question: `session_id`, `question_id`, `response` (JSONB), `score`, `order_index`.
+  - **eq_scores** - One row per completed assessment: `session_id` (unique), `user_id`, `completed_at`, `overall_score`, `dimension_scores`, `quality_indicators`, `strengths`, `growth_areas`, `insights` (all JSONB).
 
 So the **score** is stored in **eq_scores** (and duplicated on the session row in **eq_assessment_sessions** for convenience). The app currently uses **SQLite** on native for EQ (see `src/services/database.ts`); to store scores on the platform you’d add Supabase calls when completing an assessment (update `eq_assessment_sessions`, insert `eq_scores`, and insert `eq_check_ins` for each answer).
 

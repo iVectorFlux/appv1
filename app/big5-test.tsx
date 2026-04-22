@@ -1,5 +1,5 @@
 /**
- * Big Five personality assessment (IPIP 50-item markers) — from Profile.
+ * Big Five personality assessment (IPIP 50-item markers) - from Profile.
  */
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -174,11 +174,11 @@ export default function Big5TestScreen() {
           <>
             <Text style={st.lead}>
               Fifty short statements about how you usually think, feel, and act. For each one, say how much it sounds
-              like you — from not like you at all to very much like you.
+              like you, from not like you at all to very much like you.
             </Text>
             <GlassCard>
               <Text style={st.body}>
-                This is for self-insight, not a clinical diagnosis. Allow about 10–15 minutes. You can retake anytime;
+                This is for self-insight, not a clinical diagnosis. Allow about 10 to 15 minutes. You can retake anytime;
                 each completion is saved separately.
               </Text>
             </GlassCard>
@@ -255,7 +255,7 @@ export default function Big5TestScreen() {
             </GlassCard>
 
             <Text style={st.detailedHeading}>Detailed breakdown</Text>
-            <Text style={st.resultsSub}>Each score is an average on a 1–5 scale (higher = more of that trait).</Text>
+            <Text style={st.resultsSub}>Each score is an average on a 1 to 5 scale (higher = more of that trait).</Text>
 
             {report.domains.map((d) => {
               const pct = ((d.score - 1) / 4) * 100;
@@ -280,7 +280,7 @@ export default function Big5TestScreen() {
 
             <Text style={st.aiSectionTitle}>Leadership & workplace (AI)</Text>
             <Text style={st.aiHint}>
-              Get a deeper take on how this profile may show up at work — teams, influence, and development. Sends your
+              Get a deeper take on how this profile may show up at work: teams, influence, and development. Sends your
               scores, percentiles, and quality flags to our AI (not every individual answer). For reflection only; not for
               hiring or selection.
             </Text>

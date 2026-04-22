@@ -58,7 +58,7 @@ export interface JournalEntry {
   energyLevel?: EnergyLevel; // 1-5 scale (reflect)
   pleasantness?: number; // 0-100 (reflect)
   reasons?: string[]; // Optional reason tags (reflect)
-  reason?: string; // Optional context (structured) — deprecated in favor of reasons
+  reason?: string; // Optional context (structured) - deprecated in favor of reasons
 
   // Private journal text (encrypted, local only). Empty string for reflect-only when user skips writing.
   journalTextEncrypted: string;

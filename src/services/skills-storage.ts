@@ -1,12 +1,12 @@
 /**
- * Skills Storage — Skill Lab sessions and progress
+ * Skills Storage - Skill Lab sessions and progress
  *
  * Works with skills_sessions and skills_progress tables (migrations 00007–00009).
  *
  * Per-session data saved:
  *   skill_id, atomic_skill_id, scenario, ai_question, user_answer, ai_feedback,
  *   strengths, growth_areas, attempt_number, duration_ms, practice_mode,
- *   session_metadata (JSONB — decision options, chosen path, consequences, etc.)
+ *   session_metadata (JSONB - decision options, chosen path, consequences, etc.)
  *
  * Aggregated per-skill analytics updated on every save:
  *   sessions_completed, scenarios_attempted, total_time_ms,
@@ -73,7 +73,7 @@ export interface SkillProgress {
  */
 export async function saveSkillSession(session: SkillSession): Promise<boolean> {
   if (!isSupabaseConfigured()) {
-    console.warn('[SkillsStorage] Supabase not configured — session not saved.');
+    console.warn('[SkillsStorage] Supabase not configured - session not saved.');
     return false;
   }
 
@@ -122,7 +122,7 @@ export async function saveSkillSession(session: SkillSession): Promise<boolean> 
 
 /**
  * Updates aggregates after a saved session row.
- * `scenarios_attempted` is only incremented in `recordScenarioAttempt` (each scenario start), not here — avoids double-counting.
+ * `scenarios_attempted` is only incremented in `recordScenarioAttempt` (each scenario start), not here - avoids double-counting.
  * Returns new sessions_completed total, or null on failure.
  */
 async function upsertSkillProgressAfterSession(session: SkillSession): Promise<number | null> {
@@ -200,7 +200,7 @@ async function syncSkillLabToLearningProgress(
  * Deduplicates, increments counts for repeated tags, and caps at maxKeep.
  *
  * Stored format: flat string array ordered by frequency (index 0 = most common).
- * Simple approach — no separate count map needed for display purposes.
+ * Simple approach - no separate count map needed for display purposes.
  */
 function mergeTagFrequency(existing: string[], incoming: string[], maxKeep: number): string[] {
   const countMap: Record<string, number> = {};

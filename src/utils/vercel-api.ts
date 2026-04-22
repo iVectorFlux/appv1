@@ -2,7 +2,7 @@
  * Base URL for Vercel-hosted `/api/*` routes.
  *
  * - Deployed web (e.g. *.vercel.app): uses same origin automatically.
- * - Local Expo web (localhost): Metro has NO /api — set EXPO_PUBLIC_APP_URL to your Vercel URL.
+ * - Local Expo web (localhost): Metro has NO /api - set EXPO_PUBLIC_APP_URL to your Vercel URL.
  * - Native: set EXPO_PUBLIC_APP_URL and rebuild, or dev points at Metro (no API).
  */
 
@@ -47,14 +47,14 @@ export function getVercelApiBase(): string {
   return `http://${host}`;
 }
 
-/** Local Expo web cannot hit /api on Metro — fail fast with setup instructions. */
+/** Local Expo web cannot hit /api on Metro - fail fast with setup instructions. */
 function assertLocalWebCanReachApi(): void {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return;
   const h = window.location.hostname;
   if (h !== 'localhost' && h !== '127.0.0.1') return;
   if (readConfiguredAppUrl()) return;
   throw new Error(
-    'You are on Expo web at localhost — Metro does not serve /api/chat. Add this to your .env file (use your real Vercel URL):\n\nEXPO_PUBLIC_APP_URL=https://YOUR_PROJECT.vercel.app\n\nThen restart Expo with a clean cache: npx expo start -c\n\nOr test chat on the deployed site in the browser (same-origin /api works there).'
+    'You are on Expo web at localhost, and Metro does not serve /api/chat. Add this to your .env file (use your real Vercel URL):\n\nEXPO_PUBLIC_APP_URL=https://YOUR_PROJECT.vercel.app\n\nThen restart Expo with a clean cache: npx expo start -c\n\nOr test chat on the deployed site in the browser (same-origin /api works there).'
   );
 }
 
@@ -85,7 +85,7 @@ export type ChatApiSuccess = {
 };
 
 /**
- * POST /api/chat — throws Error with a user-visible message on failure.
+ * POST /api/chat - throws Error with a user-visible message on failure.
  */
 const CHAT_FETCH_TIMEOUT_MS = 55_000;
 
@@ -113,7 +113,7 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
     }
 
     // Keep the same AbortSignal active until the body is read. Clearing the timeout right after
-    // `fetch` resolves leaves `res.text()` with no deadline — hung streams keep Assist stuck on “thinking”.
+    // `fetch` resolves leaves `res.text()` with no deadline - hung streams keep Assist stuck on “thinking”.
     const text = await res.text();
     let parsed: Record<string, unknown>;
     try {
@@ -157,7 +157,7 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
 
 const BIG5_LEADERSHIP_TIMEOUT_MS = 60_000;
 
-/** POST /api/big5-leadership-insights — extended workplace / leadership narrative from Groq. */
+/** POST /api/big5-leadership-insights - extended workplace / leadership narrative from Groq. */
 export async function requestBig5LeadershipInsights(payload: {
   instrumentVersion: string;
   engine: Big5EngineResult;

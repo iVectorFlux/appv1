@@ -26,7 +26,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
     duration: '~1 min',
     durationMs: 60_000,
     icon: 'flash-outline',
-    description: 'Reduces CO₂ imbalance and drives rapid vagal activation. Best for acute stress spikes—works in under 60 seconds.',
+    description: 'Reduces CO₂ imbalance and drives rapid vagal activation. Best for acute stress spikes. Works in under 60 seconds.',
     mechanism: 'Mild–moderate sympathetic activation; muscular tension',
   },
   {
@@ -56,7 +56,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
     duration: '2-3 min',
     durationMs: 150_000,
     icon: 'briefcase-outline',
-    description: 'Downshifts arousal, aligns intention, sets tone and posture. Builds stable calm before high-stakes situations—calm as regulated activation, not absence of activation.',
+    description: 'Downshifts arousal, aligns intention, sets tone and posture. Builds stable calm before high-stakes situations. Calm here means regulated activation, not absence of activation.',
     mechanism: 'Performance stress; elevated arousal without danger',
   },
   {

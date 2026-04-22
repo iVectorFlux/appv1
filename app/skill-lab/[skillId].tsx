@@ -1,5 +1,5 @@
 /**
- * Skill Lab — skill detail + AI practice
+ * Skill Lab - skill detail + AI practice
  *
  * Routes each skill to its own practice mode:
  *   decision_simulator  → scenario → A–D choice → reasoning → feedback
@@ -108,7 +108,7 @@ const FALLBACK_DECISION_OPTIONS: DecisionOption[] = [
   { id: 'd', label: 'Align stakeholders first, then decide together' },
 ];
 
-/** Client fallback if the model omits "question" — matches API branches per atomic. */
+/** Client fallback if the model omits "question" - matches API branches per atomic. */
 function fallbackOutputAuditQuestion(skillId: string, atomicSkillId: string | null): string {
   if (skillId !== 'ai_literacy') {
     return 'What issues do you notice, and what would you change or verify before using this?';
@@ -123,7 +123,7 @@ function fallbackOutputAuditQuestion(skillId: string, atomicSkillId: string | nu
     case 'tool_fluency':
       return 'Is this the right tool and workflow for the task? What would you use instead or add, and why?';
     default:
-      return 'Using prompt quality, output accuracy, ethics, or tool fit — explain what needs fixing and how.';
+      return 'Using prompt quality, output accuracy, ethics, or tool fit, explain what needs fixing and how.';
   }
 }
 
@@ -427,7 +427,7 @@ export default function SkillDetailScreen() {
     router.back();
   }, [params.returnTo, router]);
 
-  // Resolve skill — may be undefined; hooks still run unconditionally
+  // Resolve skill - may be undefined; hooks still run unconditionally
   const skill = getSkillById(skillIdParam);
 
   const [selectedAtomicId, setSelectedAtomicId] = useState<string | null>(null);
@@ -447,7 +447,7 @@ export default function SkillDetailScreen() {
   const [learnerContext, setLearnerContext] = useState<UserProfileContext | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
-  /** Timestamp when the current scenario started loading — used for duration_ms. */
+  /** Timestamp when the current scenario started loading - used for duration_ms. */
   const scenarioStartedAt = useRef<number>(0);
   /** Keep a ref in sync with selectedAtomicId to avoid stale closures in startPractice. */
   const selectedAtomicIdRef = useRef<string | null>(null);
@@ -456,7 +456,7 @@ export default function SkillDetailScreen() {
 
   const styles = createStyles(colors);
 
-  // Derived values — safe even when skill is null
+  // Derived values - safe even when skill is null
   const practiceMode: PracticeMode = skill?.practiceMode ?? 'open_reflection';
   const modeConfig = getPracticeFieldCopy({
     skillId: skill?.id ?? '',
@@ -688,7 +688,7 @@ export default function SkillDetailScreen() {
     startPractice();
   }, [startPractice]);
 
-  // ── Early return for missing skill — AFTER all hooks have run ──────────────
+  // ── Early return for missing skill - AFTER all hooks have run ──────────────
   if (!skill) {
     return (
       <View style={styles.errorContainer}>
@@ -735,13 +735,13 @@ export default function SkillDetailScreen() {
             </View>
           </View>
 
-          {/* Sub-skills (first — pick a focus, then practice; About sits below Start) */}
+          {/* Sub-skills (first - pick a focus, then practice; About sits below Start) */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Sub-skills</Text>
             <Text style={styles.bodyTextMuted}>
               {selectedAtomic
                 ? `You’re practising “${selectedAtomic.name}”. Scenarios and tips below follow this focus.`
-                : 'Pick a sub-skill — scenarios, “how to solve,” and coaching all match that focus.'}
+                : 'Pick a sub-skill. Scenarios, “how to solve,” and coaching all match that focus.'}
             </Text>
             <View style={styles.chipRow}>
               {skill.atomicSkills.map((a) => (
@@ -759,7 +759,7 @@ export default function SkillDetailScreen() {
               <>
                 <Text style={styles.atomicDesc}>{selectedAtomic.description}</Text>
 
-                {/* How to solve — numbered bullets with accent left border */}
+                {/* How to solve - numbered bullets with accent left border */}
                 <View style={[styles.howBox, { borderColor: colors.border, backgroundColor: colors.floating, borderLeftColor: skill.color, borderLeftWidth: 3 }]}>
                   <Text style={[styles.howTitle, { color: colors.textPrimary }]}>How to solve this well</Text>
                   {getHowToSolveLines({
@@ -782,7 +782,7 @@ export default function SkillDetailScreen() {
                   </Text>
                 </View>
 
-                {/* Your situation (optional) — with character count */}
+                {/* Your situation (optional) - with character count */}
                 <Text style={[styles.customLabel, { color: colors.textPrimary }]}>Your situation (optional)</Text>
                 <Text style={[styles.customHint, { color: colors.textMuted }]}>
                   {situationCopy.hint}
@@ -929,7 +929,7 @@ export default function SkillDetailScreen() {
                   {phase === 'choosing_decision' && isDecisionMode && (
                     <>
                       <Text style={[styles.decisionStepTitle, { color: colors.textPrimary }]}>
-                        Your move — pick one
+                        Your move. Pick one
                       </Text>
                       <Text style={[styles.decisionHint, { color: colors.textSecondary }]}>
                         You'll explain your reasoning next. Choose the path you'd actually take.

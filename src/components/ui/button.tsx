@@ -1,5 +1,5 @@
 /**
- * Button — Editorial wellness
+ * Button - Editorial wellness
  * Primary: Forest. Secondary: border + body text. Ghost: transparent.
  */
 

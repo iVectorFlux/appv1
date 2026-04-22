@@ -1,5 +1,5 @@
 /**
- * HeroCard — Main check-in CTA
+ * HeroCard - Main check-in CTA
  *
  * Forest background. Subtitle, meta, and a white CTA button.
  * Greeting and title are rendered by the parent above the card.
