@@ -19,6 +19,7 @@ import {
   Easing,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
@@ -37,7 +38,10 @@ import { BoxBreathing } from '@/components/grounding/box-breathing';
 import { PreMeeting } from '@/components/grounding/pre-meeting';
 import { PostConflict } from '@/components/grounding/post-conflict';
 import { GuidedBreathSession } from '@/components/grounding/guided-breath-session';
-import { BREATH_TECHNIQUE_MODES, emotionalToneFromBreathToneParam } from '@/data/breathing-techniques';
+import {
+  BREATH_TECHNIQUE_MODES,
+  emotionalToneFromBreathToneParam,
+} from '@/data/breathing-techniques';
 
 type ScreenState = 'select' | 'active' | 'complete';
 type BreathingTag =
@@ -148,12 +152,12 @@ export default function GroundingScreen() {
   const handleModeComplete = useCallback(
     (pct: number) => {
       setCompletionPct(pct);
-      const skipStressRate = selectedMode === 'pre_meeting';
-      setStressAfter(selectedMode && !skipStressRate ? stressLevel : null);
+      // Fresh "after" rating — pre-filling matched "before" and hid that Done needed a thumbs choice too.
+      setStressAfter(null);
       setHelpful(null);
       transitionTo('complete');
     },
-    [selectedMode, stressLevel, transitionTo],
+    [transitionTo],
   );
 
   const exitGrounding = useCallback(() => {
@@ -173,7 +177,7 @@ export default function GroundingScreen() {
       return;
     }
     if (!user?.id) {
-      setSaveError('Sign in to save this session to your account. You can still tap Leave anyway to exit.');
+      exitGrounding();
       return;
     }
     const session: GroundingSession = {
@@ -220,6 +224,7 @@ export default function GroundingScreen() {
     exitGrounding,
   ]);
 
+  const insets = useSafeAreaInsets();
   const st = createStyles(colors);
 
   // ═══════════════ ACTIVE ════════════════════════════════════
@@ -371,13 +376,22 @@ export default function GroundingScreen() {
 
   // ═══════════════ COMPLETE ══════════════════════════════════
   const delta = stressAfter != null ? stressLevel - stressAfter : 0;
-  const modeLabel = GROUNDING_MODES.find((m) => m.id === selectedMode)?.label ?? '';
-  const showStressSection = selectedMode && selectedMode !== 'pre_meeting';
+  const modeLabel =
+    GROUNDING_MODES.find((m) => m.id === selectedMode)?.label ??
+    BREATH_TECHNIQUE_MODES.find((m) => m.id === selectedMode)?.label ??
+    '';
+  const showStressSection = Boolean(selectedMode && selectedMode !== 'pre_meeting');
+  const canComplete =
+    !user?.id ||
+    (helpful != null && (!showStressSection || stressAfter != null));
 
   return (
     <GlassBackground>
       <ScrollView
-        contentContainerStyle={st.completeScrollContent}
+        contentContainerStyle={[
+          st.completeScrollContent,
+          { paddingBottom: Spacing['3xl'] + insets.bottom },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -409,6 +423,9 @@ export default function GroundingScreen() {
               <Text style={[st.thumbText, helpful === false && st.thumbTextActive]}>Not really</Text>
             </TouchableOpacity>
           </View>
+          {helpful == null ? (
+            <Text style={st.completeHint}>Tap Yes or Not really — then you can save.</Text>
+          ) : null}
 
           {showStressSection && (
             <GlassCard style={{ marginTop: Spacing.xl, width: '100%' }}>
@@ -434,6 +451,9 @@ export default function GroundingScreen() {
                 <Text style={st.stressCaption}>Low</Text>
                 <Text style={st.stressCaption}>High</Text>
               </View>
+              {stressAfter == null ? (
+                <Text style={st.stressInlineHint}>Choose a level to finish.</Text>
+              ) : null}
             </GlassCard>
           )}
 
@@ -458,14 +478,22 @@ export default function GroundingScreen() {
             </View>
           ) : null}
 
+          {!user?.id ? (
+            <Text style={st.completeHintMuted}>Sign in to save sessions to your account. Done returns home.</Text>
+          ) : null}
+
           <TouchableOpacity
             style={[
               st.primaryBtn,
-              { marginTop: Spacing.xl, alignSelf: 'stretch', opacity: helpful == null || isSaving ? 0.6 : 1 },
+              {
+                marginTop: Spacing.lg,
+                alignSelf: 'stretch',
+                opacity: !canComplete || isSaving ? 0.55 : 1,
+              },
             ]}
             onPress={handleDone}
             activeOpacity={0.85}
-            disabled={helpful == null || isSaving}
+            disabled={!canComplete || isSaving}
           >
             <Text style={st.primaryBtnText}>{isSaving ? 'Saving…' : 'Done'}</Text>
           </TouchableOpacity>
@@ -519,7 +547,31 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     thumbBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     thumbText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.semibold },
     thumbTextActive: { color: colors.primaryForeground },
-
+    completeHint: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: Spacing.md,
+      paddingHorizontal: Spacing.lg,
+      lineHeight: 18,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    completeHintMuted: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: Spacing.md,
+      lineHeight: 18,
+      fontFamily: Typography.fontFamily.primary,
+    },
+    stressInlineHint: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.primary,
+      textAlign: 'center',
+      marginTop: Spacing.sm,
+      fontWeight: Typography.fontWeight.medium,
+      fontFamily: Typography.fontFamily.primary,
+    },
     stressCardTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs, textAlign: 'center' },
     stressCardHint: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginBottom: Spacing.md, textAlign: 'center' },
     stressRow: { flexDirection: 'row', gap: Spacing.sm },

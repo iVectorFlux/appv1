@@ -20,6 +20,7 @@ import {
 import { PhotonBreathCluster } from '@/components/grounding/photon-breath-cluster';
 
 const BG = '#0C1222';
+const SURFACE_SEG = 'rgba(255,255,255,0.06)';
 const TEXT_PRIMARY = '#E2E8F0';
 const TEXT_MUTED = '#94A3B8';
 
@@ -241,13 +242,21 @@ export function GuidedBreathSession({
       </View>
 
       {phaseTotal > 0 ? (
-        <View style={s.stepStrip}>
-          <View style={s.phaseBarOuter} accessibilityRole="progressbar" accessibilityValue={{ now: phaseCurrent, min: 1, max: phaseTotal }}>
-            <View style={[s.phaseBarInner, { width: `${(100 * phaseCurrent) / phaseTotal}%` }]} />
-          </View>
-          <Text style={s.stepCount} accessibilityLiveRegion="polite">
-            {phaseCurrent} / {phaseTotal}
+        <View style={s.topStepBlock} accessibilityRole="summary" accessibilityLabel={`Step ${phaseCurrent} of ${phaseTotal}`}>
+          <Text style={s.stepMeta} accessibilityLiveRegion="polite">
+            Step {phaseCurrent} of {phaseTotal}
           </Text>
+          <View style={s.phaseSegRow}>
+            {Array.from({ length: phaseTotal }, (_, i) => (
+              <View
+                key={i}
+                style={[
+                  s.phaseSeg,
+                  i < phaseCurrent && { backgroundColor: currentStep.color },
+                ]}
+              />
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -263,10 +272,17 @@ export function GuidedBreathSession({
             orb={currentStep.orb}
             accent={currentStep.color}
           />
-          {tick > 0 && currentStep.durationMs >= 3000 ? <Text style={s.countBig}>{tick}</Text> : null}
         </View>
 
-        <Text style={[s.phaseMain, { color: currentStep.color }]}>{currentStep.label}</Text>
+        <Text style={s.phaseLine} accessibilityRole="text">
+          <Text style={[s.phaseLabel, { color: currentStep.color }]}>{currentStep.label}</Text>
+          {tick > 0 && currentStep.durationMs >= 3000 ? (
+            <>
+              <Text style={s.phaseSep}> · </Text>
+              <Text style={[s.phaseTick, { color: currentStep.color }]}>{tick}</Text>
+            </>
+          ) : null}
+        </Text>
       </View>
     </View>
   );
@@ -303,34 +319,29 @@ const s = StyleSheet.create({
     fontFamily: Typography.fontFamily.heading,
     lineHeight: 20,
   },
-  stepStrip: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.xs,
+  topStepBlock: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
     paddingBottom: Spacing.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
   },
-  phaseBarOuter: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
-  },
-  phaseBarInner: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#38BDF8',
-  },
-  stepCount: {
-    fontSize: 12,
-    fontVariant: ['tabular-nums'],
+  stepMeta: {
+    fontSize: Typography.fontSize.sm,
     color: TEXT_MUTED,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    minWidth: 52,
-    textAlign: 'right',
+    fontFamily: Typography.fontFamily.primary,
+    fontWeight: Typography.fontWeight.medium,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  phaseSegRow: {
+    flexDirection: 'row',
+    gap: 3,
+    alignItems: 'center',
+  },
+  phaseSeg: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: SURFACE_SEG,
   },
   progressOuter: {
     marginTop: Spacing.sm,
@@ -346,17 +357,25 @@ const s = StyleSheet.create({
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.lg },
   orbSlot: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
-  countBig: {
-    position: 'absolute',
-    fontSize: 44,
-    fontWeight: Typography.fontWeight.bold,
-    color: 'rgba(255,255,255,0.2)',
-    fontVariant: ['tabular-nums'],
+  phaseLine: {
+    marginTop: Spacing.md,
+    textAlign: 'center',
   },
-  phaseMain: {
-    fontSize: 26,
+  phaseLabel: {
+    fontSize: 28,
     fontWeight: Typography.fontWeight.semibold,
     fontFamily: Typography.fontFamily.heading,
-    marginBottom: Spacing.xs,
+  },
+  phaseSep: {
+    fontSize: 28,
+    fontWeight: Typography.fontWeight.medium,
+    color: TEXT_MUTED,
+    fontFamily: Typography.fontFamily.heading,
+  },
+  phaseTick: {
+    fontSize: 28,
+    fontWeight: Typography.fontWeight.bold,
+    fontVariant: ['tabular-nums'],
+    fontFamily: Typography.fontFamily.heading,
   },
 });

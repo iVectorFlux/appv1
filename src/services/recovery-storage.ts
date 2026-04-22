@@ -111,7 +111,11 @@ export async function saveRecoverySession(
       }
       lastErr = e2 ? new Error(e2.message) : lastErr;
     } else if (error) {
-      lastErr = new Error(error.message);
+      const hint =
+        error.code === '42501' || /row-level security|rls|permission denied/i.test(error.message ?? '')
+          ? ' If this persists, apply migration 00024_recovery_sessions_insert_rls.sql (INSERT policy).'
+          : '';
+      lastErr = new Error((error.message ?? 'Insert failed') + hint);
       console.warn(`[Recovery Storage] insert attempt ${attempt}/${SAVE_RETRIES}:`, error.code, error.message);
     }
 

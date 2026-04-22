@@ -1,6 +1,6 @@
 /**
- * Many small bright photons, driven by one progress value so motion matches
- * the real breath phase (e.g. full 4s inhale easing out at the end, full 7s exhale easing into rest).
+ * Scattered bright photons (cloud, not a ring): each dot has its own angle + depth,
+ * driven by one `master` value so timing matches the real breath phase.
  */
 
 import React, { useEffect, useRef, useMemo } from 'react';
@@ -24,15 +24,41 @@ const PHOTON_COLORS = [
   '#39FF14',
   '#FF9E00',
   '#00D4FF',
+  '#FDBA74',
+  '#FDA4AF',
 ];
 
-/** Hundreds of tiny points — one shared animation driver for performance. */
-const N = 120;
-const PHOTON_DIAM = 3;
+/** Deterministic 0–1 from an index (stable scatter, no Math.random per frame). */
+function hash01(n: number): number {
+  const x = Math.sin(n * 12.9898) * 43758.5453123;
+  return x - Math.floor(x);
+}
+
+const N = 130;
+const PHOTON_DIAM = 5;
 const PHOTON_R = PHOTON_DIAM / 2;
 const CORE = 110;
-const R_MIN = 8;
-const R_MAX = 90;
+const R_MAX = 92;
+
+type ScatterSpec = {
+  theta: number;
+  rInner: number;
+  rOuter: number;
+  jx: number;
+  jy: number;
+};
+
+function buildScatterSpecs(count: number): ScatterSpec[] {
+  return Array.from({ length: count }, (_, i) => {
+    const theta = hash01(i * 7919) * Math.PI * 2;
+    const reach = 0.28 + hash01(i * 21341 + 17) * 0.72;
+    const rInner = 1.2 + hash01(i * 1543 + 3) * 16;
+    const rOuter = R_MAX * reach;
+    const jx = (hash01(i * 9007 + 5) - 0.5) * 18;
+    const jy = (hash01(i * 4729 + 11) - 0.5) * 18;
+    return { theta, rInner, rOuter, jx, jy };
+  });
+}
 
 type Props = {
   visualKey: string;
@@ -44,15 +70,7 @@ type Props = {
 export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Props) {
   const master = useRef(new Animated.Value(0)).current;
 
-  const angles = useMemo(
-    () =>
-      Array.from({ length: N }, (_, i) => {
-        const base = (i / N) * Math.PI * 2;
-        const wobble = ((i * 17) % 360) * (Math.PI / 180) * 0.04;
-        return base + wobble;
-      }),
-    []
-  );
+  const scatter = useMemo(() => buildScatterSpecs(N), []);
 
   useEffect(() => {
     const d = Math.max(200, durationMs);
@@ -149,19 +167,22 @@ export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Prop
   return (
     <View style={styles.wrap}>
       <View style={[styles.coreGlow, { backgroundColor: accent + '44' }]} />
-      {angles.map((angle, i) => {
+      {scatter.map((spec, i) => {
+        const { theta, rInner, rOuter, jx, jy } = spec;
         const c = PHOTON_COLORS[i % PHOTON_COLORS.length]!;
+        const cos = Math.cos(theta);
+        const sin = Math.sin(theta);
         const tx = master.interpolate({
           inputRange: [0, 1],
-          outputRange: [Math.cos(angle) * R_MIN, Math.cos(angle) * R_MAX],
+          outputRange: [cos * rInner + jx * 0.35, cos * rOuter + jx],
         });
         const ty = master.interpolate({
           inputRange: [0, 1],
-          outputRange: [Math.sin(angle) * R_MIN, Math.sin(angle) * R_MAX],
+          outputRange: [sin * rInner + jy * 0.35, sin * rOuter + jy],
         });
         const sc = master.interpolate({
           inputRange: [0, 1],
-          outputRange: [0.55, 1.15],
+          outputRange: [0.5, 1.12],
         });
         return (
           <Animated.View
@@ -196,17 +217,17 @@ const styles = StyleSheet.create({
   },
   coreGlow: {
     position: 'absolute',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    left: CORE - 18,
-    top: CORE - 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    left: CORE - 19,
+    top: CORE - 19,
   },
   photon: {
     position: 'absolute',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.85,
-    shadowRadius: 4,
+    shadowOpacity: 0.88,
+    shadowRadius: 5,
     elevation: 6,
   },
 });
