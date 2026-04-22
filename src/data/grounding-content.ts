@@ -13,12 +13,14 @@
  */
 
 import type { GroundingModeConfig, EmotionalTone } from '@/types/grounding';
+import { BREATH_TECHNIQUE_MODES } from '@/data/breathing-techniques';
 
 // ============================================================================
 // MODE CONFIGURATIONS
 // ============================================================================
 
 export const GROUNDING_MODES: GroundingModeConfig[] = [
+  ...BREATH_TECHNIQUE_MODES,
   {
     id: 'quick_reset',
     label: 'Physiological sigh',

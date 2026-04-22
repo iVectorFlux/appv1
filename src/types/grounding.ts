@@ -11,11 +11,19 @@
 // ============================================================================
 
 export type GroundingMode =
-  | 'quick_reset'      // ~60s
-  | 'sensory_anchor'   // 3-4 min
-  | 'box_breathing'    // 4-5 min
-  | 'pre_meeting'      // 2-3 min
-  | 'post_conflict';   // 4-6 min
+  | 'quick_reset' // ~60s · sigh + anchor + feet
+  | 'sensory_anchor' // 3-4 min
+  | 'box_breathing' // 4-5 min · full protocol
+  | 'pre_meeting' // 2-3 min
+  | 'post_conflict' // 4-6 min
+  /** Standalone breath exercises (recommended set). */
+  | 'breath_physiological_sigh'
+  | 'breath_box'
+  | 'breath_478'
+  | 'breath_coherent'
+  | 'breath_extended_exhale'
+  | 'breath_bellows'
+  | 'breath_resonant';
 
 // ============================================================================
 // STATE DETECTION

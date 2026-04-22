@@ -36,6 +36,8 @@ import { SensoryAnchor } from '@/components/grounding/sensory-anchor';
 import { BoxBreathing } from '@/components/grounding/box-breathing';
 import { PreMeeting } from '@/components/grounding/pre-meeting';
 import { PostConflict } from '@/components/grounding/post-conflict';
+import { GuidedBreathSession } from '@/components/grounding/guided-breath-session';
+import { BREATH_TECHNIQUE_MODES } from '@/data/breathing-techniques';
 
 type ScreenState = 'select' | 'active' | 'complete';
 type BreathingTag =
@@ -52,21 +54,15 @@ type BreathingTag =
 
 const STRESS_COLORS = ['#60A5FA', '#34D399', '#FBBF24', '#F97316', '#FB923C'];
 
-const TECHNIQUE_ICONS: Record<string, string> = {
-  quick_reset: 'flash-outline',
-  sensory_anchor: 'eye-outline',
-  box_breathing: 'cube-outline',
-  pre_meeting: 'briefcase-outline',
-  post_conflict: 'heart-outline',
-};
+function techniqueSubtitle(mode: GroundingMode): string {
+  const cfg = GROUNDING_MODES.find((m) => m.id === mode);
+  if (!cfg) return '';
+  return `${cfg.duration} · ${cfg.subtitle}`;
+}
 
-const TECHNIQUE_DESCRIPTIONS: Record<string, string> = {
-  quick_reset: '60 sec · Physiological sigh + grounding',
-  sensory_anchor: '3-4 min · 5-4-3-2-1 senses',
-  box_breathing: '4-5 min · Square rhythm breathing',
-  pre_meeting: '2-3 min · Breath + intention',
-  post_conflict: '4-6 min · Label + breathe + reframe',
-};
+function isBreathMode(mode: GroundingMode | null): boolean {
+  return mode != null && mode.startsWith('breath_');
+}
 
 function parseReturnTo(raw: string | string[] | undefined): ChatReturnTarget | null {
   const v = Array.isArray(raw) ? raw[0] : raw;
@@ -141,7 +137,8 @@ export default function GroundingScreen() {
   const handleModeComplete = useCallback(
     (pct: number) => {
       setCompletionPct(pct);
-      setStressAfter(selectedMode && selectedMode !== 'pre_meeting' ? stressLevel : null);
+      const skipStressRate = selectedMode === 'pre_meeting';
+      setStressAfter(selectedMode && !skipStressRate ? stressLevel : null);
       setHelpful(null);
       transitionTo('complete');
     },
@@ -217,6 +214,9 @@ export default function GroundingScreen() {
   // ═══════════════ ACTIVE ════════════════════════════════════
   if (screen === 'active' && selectedMode) {
     const modeProps = { stressLevel, emotionalTone, onComplete: handleModeComplete, onExit: handleModeExit };
+    if (isBreathMode(selectedMode)) {
+      return <GuidedBreathSession {...modeProps} mode={selectedMode} />;
+    }
     switch (selectedMode) {
       case 'quick_reset': return <QuickReset {...modeProps} />;
       case 'sensory_anchor': return <SensoryAnchor {...modeProps} />;
@@ -241,21 +241,28 @@ export default function GroundingScreen() {
       { id: 'post_meeting', label: 'Post‑meeting', defaultStress: 2 },
     ];
 
-    /** Maps each "shift" chip to one of the five in-app techniques (quick reset, sensory, box, pre-meeting, post-conflict). */
+    /** Maps each emotion / situation chip to a recommended technique (breath set + programs). */
     const recommendedByTag: Record<BreathingTag, GroundingMode> = {
-      anxiety: 'quick_reset',
-      calm: 'sensory_anchor',
-      reset: 'quick_reset',
-      focus: 'box_breathing',
-      stress: 'box_breathing',
-      panic: 'quick_reset',
-      anger: 'post_conflict',
+      anxiety: 'breath_box',
+      calm: 'breath_resonant',
+      reset: 'breath_physiological_sigh',
+      focus: 'breath_coherent',
+      stress: 'breath_box',
+      panic: 'breath_physiological_sigh',
+      anger: 'breath_extended_exhale',
       conflict: 'post_conflict',
       pre_meeting: 'pre_meeting',
-      post_meeting: 'sensory_anchor',
+      post_meeting: 'breath_coherent',
     };
 
     const accentForMode = (mode: GroundingMode) => {
+      if (mode === 'breath_physiological_sigh') return '#6EA8FE';
+      if (mode === 'breath_box') return '#34D399';
+      if (mode === 'breath_478') return '#818CF8';
+      if (mode === 'breath_coherent') return '#2DD4BF';
+      if (mode === 'breath_extended_exhale') return '#FB923C';
+      if (mode === 'breath_bellows') return '#F59E0B';
+      if (mode === 'breath_resonant') return '#C084FC';
       if (mode === 'quick_reset') return colors.accentWarm;
       if (mode === 'box_breathing') return colors.primary;
       if (mode === 'sensory_anchor') return colors.accentCalm;
@@ -263,7 +270,26 @@ export default function GroundingScreen() {
       return colors.accentSoft;
     };
 
+    const programModes = GROUNDING_MODES.filter((m) => !m.id.startsWith('breath_'));
+
     const recommendedMode = selectedTag ? recommendedByTag[selectedTag] : null;
+
+    const emotionalToneFromTag = (tag: BreathingTag | null): EmotionalTone | null => {
+      if (!tag) return null;
+      const map: Partial<Record<BreathingTag, EmotionalTone>> = {
+        anxiety: 'anxious',
+        stress: 'tense',
+        panic: 'panicked',
+        anger: 'angry',
+        conflict: 'overwhelmed',
+        calm: 'restless',
+        reset: 'scattered',
+        focus: 'restless',
+        pre_meeting: 'tense',
+        post_meeting: 'tense',
+      };
+      return map[tag] ?? null;
+    };
 
     const renderTechniqueCard = (mode: GroundingMode, isRecommended: boolean) => {
       const cfg = GROUNDING_MODES.find((m) => m.id === mode);
@@ -273,17 +299,17 @@ export default function GroundingScreen() {
           key={mode}
           style={isRecommended ? { borderColor: accent + '50', borderWidth: 1.5 } : undefined}
           onPress={() => {
-            setEmotionalTone(null);
+            setEmotionalTone(emotionalToneFromTag(selectedTag));
             beginMode(mode);
           }}
         >
-          <View style={st.techniqueRow}>
+            <View style={st.techniqueRow}>
             <View style={[st.techniqueIconWrap, { backgroundColor: accent }]}>
-              <Ionicons name={(TECHNIQUE_ICONS[mode] ?? cfg?.icon ?? 'leaf-outline') as any} size={22} color="#fff" />
+              <Ionicons name={(cfg?.icon ?? 'leaf-outline') as keyof typeof Ionicons.glyphMap} size={22} color="#fff" />
             </View>
             <View style={st.techniqueTextWrap}>
               <Text style={st.techniqueTitle}>{cfg?.label ?? mode}</Text>
-              <Text style={st.techniqueDesc}>{TECHNIQUE_DESCRIPTIONS[mode] ?? ''}</Text>
+              <Text style={st.techniqueDesc}>{techniqueSubtitle(mode)}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </View>
@@ -326,9 +352,14 @@ export default function GroundingScreen() {
               </>
             )}
 
-            <Text style={st.sectionLabel}>All techniques</Text>
+            <Text style={st.sectionLabel}>Breathing (recommended set)</Text>
             <View style={st.techniqueList}>
-              {GROUNDING_MODES.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
+              {BREATH_TECHNIQUE_MODES.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
+            </View>
+
+            <Text style={st.sectionLabel}>Programs</Text>
+            <View style={st.techniqueList}>
+              {programModes.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
             </View>
           </ScrollView>
         </Animated.View>
