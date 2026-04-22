@@ -1,29 +1,23 @@
 /**
- * Guided standalone breath sessions (7 recommended techniques).
- * Dark immersive UI: orb (most patterns) or brisk counter (bellows).
+ * Combined regulation breathing: extended exhale + coherent + 4-7-8.
+ * Segment order follows EmotionalTone (e.g. anger → extended exhale first).
  */
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  Easing,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Spacing, Typography } from '@/constants/design-tokens';
-import type { GroundingMode, GroundingModeProps } from '@/types/grounding';
+import type { GroundingMode, GroundingModeProps, EmotionalTone } from '@/types/grounding';
 import {
-  getGuidedBreathDefinition,
-  type BreathPhaseStep,
   BREATH_TECHNIQUE_MODES,
+  buildSegmentsForBreathMode,
+  breathSessionTotalMs,
+  isGuidedBreathMode,
+  type BreathPhaseStep,
+  type BreathSegment,
 } from '@/data/breathing-techniques';
-
-const useND = Platform.OS !== 'web';
+import { PhotonBreathCluster } from '@/components/grounding/photon-breath-cluster';
 
 const BG = '#0C1222';
 const TEXT_PRIMARY = '#E2E8F0';
@@ -31,85 +25,40 @@ const TEXT_MUTED = '#94A3B8';
 
 export type GuidedBreathSessionProps = GroundingModeProps & { mode: GroundingMode };
 
-function titleForMode(m: GroundingMode): string {
-  return BREATH_TECHNIQUE_MODES.find((x) => x.id === m)?.label ?? 'Breathing';
+function flowTitle(mode: GroundingMode): string {
+  return BREATH_TECHNIQUE_MODES.find((x) => x.id === mode)?.label ?? 'Breathing';
 }
 
-function animateOrbForStep(
-  step: BreathPhaseStep,
-  scale: Animated.Value,
+function scheduleStepEnd(
   durationMs: number,
+  cancelledRef: React.MutableRefObject<boolean>,
   onEnd: () => void
-): void {
-  const d = Math.max(300, durationMs);
-  switch (step.orb) {
-    case 'expand':
-      Animated.timing(scale, {
-        toValue: 1.34,
-        duration: d,
-        easing: Easing.inOut(Easing.cubic),
-        useNativeDriver: useND,
-      }).start(({ finished }) => finished && onEnd());
-      break;
-    case 'contract':
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: d,
-        easing: Easing.inOut(Easing.cubic),
-        useNativeDriver: useND,
-      }).start(({ finished }) => finished && onEnd());
-      break;
-    case 'holdHigh': {
-      const up = Math.min(500, d * 0.12);
-      Animated.timing(scale, {
-        toValue: 1.38,
-        duration: up,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: useND,
-      }).start(() => {
-        Animated.timing(scale, {
-          toValue: 1.38,
-          duration: Math.max(0, d - up),
-          useNativeDriver: useND,
-        }).start(({ finished }) => finished && onEnd());
-      });
-      break;
-    }
-    case 'holdLow': {
-      const up = Math.min(500, d * 0.12);
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: up,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: useND,
-      }).start(() => {
-        Animated.timing(scale, {
-          toValue: 1,
-          duration: Math.max(0, d - up),
-          useNativeDriver: useND,
-        }).start(({ finished }) => finished && onEnd());
-      });
-      break;
-    }
-    case 'pulse':
-      Animated.sequence([
-        Animated.timing(scale, {
-          toValue: 1.14,
-          duration: d * 0.45,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: useND,
-        }),
-        Animated.timing(scale, {
-          toValue: 1.02,
-          duration: d * 0.55,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: useND,
-        }),
-      ]).start(({ finished }) => finished && onEnd());
-      break;
-    default:
-      onEnd();
+): ReturnType<typeof setTimeout> {
+  return setTimeout(() => {
+    if (cancelledRef.current) return;
+    onEnd();
+  }, Math.max(80, durationMs));
+}
+
+function totalGuidedPhaseSteps(segments: BreathSegment[]): number {
+  return segments.reduce((sum, seg) => sum + seg.steps.length * seg.cycles, 0);
+}
+
+/** 1-based index of the phase currently on screen. */
+function currentGuidedPhaseStep(
+  segments: BreathSegment[],
+  segmentIndex: number,
+  cycle: number,
+  stepIndex: number
+): number {
+  let n = 0;
+  for (let s = 0; s < segmentIndex; s++) {
+    const seg = segments[s]!;
+    n += seg.steps.length * seg.cycles;
   }
+  const cur = segments[segmentIndex];
+  if (!cur) return 1;
+  return n + cycle * cur.steps.length + stepIndex + 1;
 }
 
 export function GuidedBreathSession({
@@ -117,39 +66,58 @@ export function GuidedBreathSession({
   onComplete,
   onExit,
   stressLevel: _stressLevel,
-  emotionalTone: _emotionalTone,
+  emotionalTone,
 }: GuidedBreathSessionProps) {
-  const def = getGuidedBreathDefinition(mode);
-  const title = titleForMode(mode);
+  const segments = useMemo(
+    () => (isGuidedBreathMode(mode) ? buildSegmentsForBreathMode(mode, emotionalTone ?? null) : []),
+    [mode, emotionalTone]
+  );
+  const totalMs = useMemo(
+    () => (isGuidedBreathMode(mode) ? breathSessionTotalMs(mode, emotionalTone ?? null) : 1),
+    [mode, emotionalTone]
+  );
 
-  const scale = useRef(new Animated.Value(1)).current;
   const progress = useRef(new Animated.Value(0)).current;
   const cancelled = useRef(false);
+  const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startRef = useRef(Date.now());
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const segmentsRef = useRef(segments);
+  segmentsRef.current = segments;
 
+  const [segmentIndex, setSegmentIndex] = useState(0);
   const [cycle, setCycle] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
   const [tick, setTick] = useState(0);
 
-  const totalMs = useMemo(() => {
-    if (!def) return 1;
-    return def.steps.reduce((a, s) => a + s.durationMs, 0) * def.cycles;
-  }, [def]);
+  const currentSegment: BreathSegment | undefined = segments[segmentIndex];
+  const currentStep: BreathPhaseStep | null =
+    currentSegment && currentSegment.steps[stepIndex] ? currentSegment.steps[stepIndex]! : null;
 
-  const currentStep: BreathPhaseStep | null = def ? def.steps[stepIndex] ?? null : null;
+  const phaseTotal = useMemo(() => totalGuidedPhaseSteps(segments), [segments]);
+  const phaseCurrent = useMemo(
+    () =>
+      segments.length > 0
+        ? currentGuidedPhaseStep(segments, segmentIndex, cycle, stepIndex)
+        : 0,
+    [segments, segmentIndex, cycle, stepIndex]
+  );
 
   useEffect(() => {
+    if (!isGuidedBreathMode(mode)) return;
     cancelled.current = false;
     startRef.current = Date.now();
-    const definition = getGuidedBreathDefinition(mode);
-    if (!definition) {
+    const segs = segmentsRef.current;
+    if (segs.length === 0) {
       onCompleteRef.current(0);
       return;
     }
 
-    scale.setValue(1);
+    if (stepTimerRef.current) {
+      clearTimeout(stepTimerRef.current);
+      stepTimerRef.current = null;
+    }
     progress.setValue(0);
     Animated.timing(progress, {
       toValue: 100,
@@ -158,40 +126,65 @@ export function GuidedBreathSession({
       useNativeDriver: false,
     }).start();
 
-    const playFrom = (c: number, si: number) => {
+    const finish = () => {
       if (cancelled.current) return;
-      setCycle(c);
-      setStepIndex(si);
-      const step = definition.steps[si];
-      if (!step) {
-        onCompleteRef.current(Math.min(100, Math.round(((Date.now() - startRef.current) / totalMs) * 100)));
+      onCompleteRef.current(Math.min(100, Math.round(((Date.now() - startRef.current) / totalMs) * 100)));
+    };
+
+    const playFrom = (segIdx: number, c: number, si: number) => {
+      if (cancelled.current) return;
+      const seg = segs[segIdx];
+      if (!seg) {
+        finish();
         return;
       }
-      animateOrbForStep(step, scale, step.durationMs, () => {
+      setSegmentIndex(segIdx);
+      setCycle(c);
+      setStepIndex(si);
+      const step = seg.steps[si];
+      if (!step) {
+        finish();
+        return;
+      }
+      if (stepTimerRef.current) {
+        clearTimeout(stepTimerRef.current);
+        stepTimerRef.current = null;
+      }
+      stepTimerRef.current = scheduleStepEnd(step.durationMs, cancelled, () => {
+        stepTimerRef.current = null;
         if (cancelled.current) return;
         const nextSi = si + 1;
-        if (nextSi >= definition.steps.length) {
+        if (nextSi >= seg.steps.length) {
           const nextC = c + 1;
-          if (nextC >= definition.cycles) {
-            onCompleteRef.current(Math.min(100, Math.round(((Date.now() - startRef.current) / totalMs) * 100)));
-            return;
+          if (nextC >= seg.cycles) {
+            const nextSeg = segIdx + 1;
+            if (nextSeg >= segs.length) {
+              finish();
+              return;
+            }
+            playFrom(nextSeg, 0, 0);
+          } else {
+            playFrom(segIdx, nextC, 0);
           }
-          playFrom(nextC, 0);
         } else {
-          playFrom(c, nextSi);
+          playFrom(segIdx, c, nextSi);
         }
       });
     };
 
-    playFrom(0, 0);
+    playFrom(0, 0, 0);
 
     return () => {
       cancelled.current = true;
+      if (stepTimerRef.current) {
+        clearTimeout(stepTimerRef.current);
+        stepTimerRef.current = null;
+      }
     };
-  }, [mode, scale, progress, totalMs]);
+  }, [mode, emotionalTone, progress, totalMs]);
 
   useEffect(() => {
-    if (!currentStep || def?.uiVariant === 'bellows') return;
+    if (!currentStep) return;
     const sec = Math.ceil(currentStep.durationMs / 1000);
     setTick(sec);
     const iv = setInterval(() => {
@@ -202,12 +195,12 @@ export function GuidedBreathSession({
       clearInterval(iv);
       clearTimeout(t);
     };
-  }, [currentStep, def?.uiVariant, cycle, stepIndex]);
+  }, [currentStep, segmentIndex, cycle, stepIndex]);
 
-  if (!def || !currentStep) {
+  if (!isGuidedBreathMode(mode)) {
     return (
       <View style={s.container}>
-        <Text style={s.error}>This breathing mode is not available.</Text>
+        <Text style={s.error}>This breathing session is not available.</Text>
         <TouchableOpacity onPress={onExit} style={s.btn}>
           <Text style={s.btnText}>Leave</Text>
         </TouchableOpacity>
@@ -215,9 +208,16 @@ export function GuidedBreathSession({
     );
   }
 
-  const isBellows = def.uiVariant === 'bellows';
-  const globalIndex = cycle * def.steps.length + stepIndex + 1;
-  const globalTotal = def.cycles * def.steps.length;
+  if (!currentSegment || !currentStep) {
+    return (
+      <View style={s.container}>
+        <Text style={s.error}>Nothing to play.</Text>
+        <TouchableOpacity onPress={onExit} style={s.btn}>
+          <Text style={s.btnText}>Leave</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const progressWidth = progress.interpolate({
     inputRange: [0, 100],
@@ -234,52 +234,39 @@ export function GuidedBreathSession({
         <TouchableOpacity onPress={onExit} hitSlop={16} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={TEXT_PRIMARY} />
         </TouchableOpacity>
-        <Text style={s.headerTitle} numberOfLines={1}>
-          {title}
+        <Text style={s.headerTitle} numberOfLines={2}>
+          {flowTitle(mode)}
         </Text>
         <View style={{ width: 40 }} />
       </View>
+
+      {phaseTotal > 0 ? (
+        <View style={s.stepStrip}>
+          <View style={s.phaseBarOuter} accessibilityRole="progressbar" accessibilityValue={{ now: phaseCurrent, min: 1, max: phaseTotal }}>
+            <View style={[s.phaseBarInner, { width: `${(100 * phaseCurrent) / phaseTotal}%` }]} />
+          </View>
+          <Text style={s.stepCount} accessibilityLiveRegion="polite">
+            {phaseCurrent} / {phaseTotal}
+          </Text>
+        </View>
+      ) : null}
 
       <View style={s.progressOuter}>
         <Animated.View style={[s.progressInner, { width: progressWidth }]} />
       </View>
 
       <View style={s.center}>
-        {!isBellows ? (
-          <View style={s.orbSlot}>
-            <Animated.View
-              style={[
-                s.orbOuter,
-                {
-                  borderColor: currentStep.color + '44',
-                  backgroundColor: currentStep.color + '10',
-                  transform: [{ scale }],
-                },
-              ]}
-            >
-              <View style={[s.orbInner, { borderColor: currentStep.color + '66' }]} />
-            </Animated.View>
-            {tick > 0 && currentStep.durationMs >= 3000 ? (
-              <Text style={s.countBig}>{tick}</Text>
-            ) : null}
-          </View>
-        ) : (
-          <View style={s.bellowsWrap}>
-            <Text style={s.bellowsCount}>{globalIndex}</Text>
-            <Text style={s.bellowsOf}>of {globalTotal}</Text>
-            <View style={[s.bellowsPulse, { borderColor: currentStep.color + '55', backgroundColor: currentStep.color + '18' }]} />
-          </View>
-        )}
+        <View style={s.orbSlot}>
+          <PhotonBreathCluster
+            visualKey={`${segmentIndex}-${cycle}-${stepIndex}-${currentStep.key}`}
+            durationMs={currentStep.durationMs}
+            orb={currentStep.orb}
+            accent={currentStep.color}
+          />
+          {tick > 0 && currentStep.durationMs >= 3000 ? <Text style={s.countBig}>{tick}</Text> : null}
+        </View>
 
         <Text style={[s.phaseMain, { color: currentStep.color }]}>{currentStep.label}</Text>
-        <Text style={s.phaseSub}>{currentStep.sub}</Text>
-        {!isBellows ? (
-          <Text style={s.cycleHint}>
-            Cycle {cycle + 1} of {def.cycles}
-          </Text>
-        ) : (
-          <Text style={s.cycleHint}>Stay light in the shoulders · stop if dizzy</Text>
-        )}
       </View>
     </View>
   );
@@ -310,10 +297,40 @@ const s = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: Typography.fontSize.base,
+    fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
     color: TEXT_PRIMARY,
     fontFamily: Typography.fontFamily.heading,
+    lineHeight: 20,
+  },
+  stepStrip: {
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  phaseBarOuter: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  phaseBarInner: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#38BDF8',
+  },
+  stepCount: {
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    color: TEXT_MUTED,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    minWidth: 52,
+    textAlign: 'right',
   },
   progressOuter: {
     marginTop: Spacing.sm,
@@ -328,22 +345,7 @@ const s = StyleSheet.create({
     backgroundColor: '#38BDF8',
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.lg },
-  orbSlot: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
-  orbOuter: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbInner: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 1.5,
-    opacity: 0.9,
-  },
+  orbSlot: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
   countBig: {
     position: 'absolute',
     fontSize: 44,
@@ -357,16 +359,4 @@ const s = StyleSheet.create({
     fontFamily: Typography.fontFamily.heading,
     marginBottom: Spacing.xs,
   },
-  phaseSub: {
-    fontSize: Typography.fontSize.sm,
-    color: TEXT_MUTED,
-    textAlign: 'center',
-    maxWidth: 300,
-    lineHeight: 22,
-  },
-  cycleHint: { marginTop: Spacing.lg, fontSize: Typography.fontSize.xs, color: TEXT_MUTED, letterSpacing: 0.3 },
-  bellowsWrap: { alignItems: 'center', marginBottom: Spacing.xl },
-  bellowsCount: { fontSize: 56, fontWeight: Typography.fontWeight.bold, color: TEXT_PRIMARY, fontVariant: ['tabular-nums'] },
-  bellowsOf: { fontSize: Typography.fontSize.sm, color: TEXT_MUTED, marginBottom: Spacing.md },
-  bellowsPulse: { width: 100, height: 100, borderRadius: 50, borderWidth: 2 },
 });

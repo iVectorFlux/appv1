@@ -1,9 +1,10 @@
 /**
- * Standalone breathing library (recommended set).
- * Used by Grounding hub + GuidedBreathSession; keys are GroundingMode values.
+ * Single guided flow: extended exhale + coherent (5-5) + 4-7-8.
+ * Order shifts with emotional tone (e.g. anger → extended first).
+ * Physiological sigh and full box program stay on quick_reset / box_breathing.
  */
 
-import type { GroundingMode, GroundingModeConfig } from '@/types/grounding';
+import type { GroundingMode, GroundingModeConfig, EmotionalTone } from '@/types/grounding';
 
 export type BreathOrbHint = 'expand' | 'contract' | 'holdHigh' | 'holdLow' | 'pulse';
 
@@ -16,218 +17,195 @@ export type BreathPhaseStep = {
   orb: BreathOrbHint;
 };
 
-export type GuidedBreathDefinition = {
-  modeId: GroundingMode;
+export type BreathSegment = {
+  id: 'extended' | 'coherent' | 'four78';
+  label: string;
+  /** Shown under the segment title — best-matching feelings */
+  emotionGuide: string;
   cycles: number;
   steps: BreathPhaseStep[];
-  /** Bellows uses a counter-style UI instead of a slow orb. */
-  uiVariant: 'orb' | 'bellows';
 };
-
-export const BREATH_TECHNIQUE_MODES: GroundingModeConfig[] = [
-  {
-    id: 'breath_physiological_sigh',
-    label: 'Physiological sigh',
-    subtitle: 'Fastest calm-down',
-    duration: '~1 min',
-    durationMs: 60_000,
-    icon: 'pulse-outline',
-    description:
-      'Inhale, a quick top-up inhale, then a long exhale. Best for acute stress spikes; supports the fastest shift toward parasympathetic tone.',
-    mechanism: 'Acute stress spike; sympathetic surge',
-  },
-  {
-    id: 'breath_box',
-    label: 'Box breathing',
-    subtitle: 'Stabilization',
-    duration: '~2.5 min',
-    durationMs: 160_000,
-    icon: 'cube-outline',
-    description:
-      'Equal inhale, hold, exhale, hold empty (4-4-4-4). Builds rhythm and perceived control during anxiety or emotional imbalance.',
-    mechanism: 'Anxiety; emotional imbalance; cognitive narrowing',
-  },
-  {
-    id: 'breath_478',
-    label: '4–7–8 breathing',
-    subtitle: 'Deep calm / sleep',
-    duration: '~2 min',
-    durationMs: 120_000,
-    icon: 'moon-outline',
-    description:
-      'Inhale 4, hold 7, exhale 8. Strong parasympathetic bias—useful when thoughts race or you are winding down for sleep.',
-    mechanism: 'Overthinking; sleep onset; rumination',
-  },
-  {
-    id: 'breath_coherent',
-    label: 'Coherent breathing',
-    subtitle: 'Focus & HRV',
-    duration: '~2 min',
-    durationMs: 120_000,
-    icon: 'analytics-outline',
-    description:
-      'Smooth 5-second inhale and 5-second exhale (~0.1 Hz). Supports steady attention before cognitive work or meetings.',
-    mechanism: 'Cognitive work; meetings; performance focus',
-  },
-  {
-    id: 'breath_extended_exhale',
-    label: 'Extended exhale',
-    subtitle: 'Anger control',
-    duration: '~1.5 min',
-    durationMs: 90_000,
-    icon: 'water-outline',
-    description:
-      'Shorter inhale, longer exhale (4 in / 7 out). Emphasizes down-regulation when frustration or anger is hot.',
-    mechanism: 'Anger; frustration; mobilized arousal',
-  },
-  {
-    id: 'breath_bellows',
-    label: 'Bellows breath',
-    subtitle: 'Energy boost',
-    duration: '~45 sec',
-    durationMs: 45_000,
-    icon: 'flash-outline',
-    description:
-      'Short, brisk cycles to increase alertness when you feel sluggish or low-energy (brief sympathetic activation).',
-    mechanism: 'Low energy; sluggishness; afternoon dip',
-  },
-  {
-    id: 'breath_resonant',
-    label: 'Resonant breathing',
-    subtitle: 'Resilience baseline',
-    duration: '~2 min',
-    durationMs: 120_000,
-    icon: 'infinite-outline',
-    description:
-      '~5.5 s inhale / ~5.5 s exhale (~6 breaths/min). A gentle daily practice to support HRV and emotional stability over time.',
-    mechanism: 'Daily training; baseline regulation',
-  },
-];
 
 const S = (ms: number) => ms;
 
-const BOX_MS = S(4000);
-
-export const GUIDED_BREATH_BY_MODE: Record<string, GuidedBreathDefinition> = {
-  breath_physiological_sigh: {
-    modeId: 'breath_physiological_sigh',
-    cycles: 6,
-    uiVariant: 'orb',
-    steps: [
-      {
-        key: 'in1',
-        label: 'Inhale',
-        sub: 'Through your nose',
-        durationMs: S(2000),
-        color: '#6EA8FE',
-        orb: 'expand',
-      },
-      {
-        key: 'in2',
-        label: 'Top-up inhale',
-        sub: 'Small second sip of air',
-        durationMs: S(2000),
-        color: '#A78BFA',
-        orb: 'holdHigh',
-      },
-      {
-        key: 'out',
-        label: 'Long exhale',
-        sub: 'Slowly through your mouth',
-        durationMs: S(6000),
-        color: '#F97316',
-        orb: 'contract',
-      },
-    ],
-  },
-  breath_box: {
-    modeId: 'breath_box',
-    cycles: 6,
-    uiVariant: 'orb',
-    steps: [
-      { key: 'in', label: 'Inhale', sub: '4 seconds', durationMs: BOX_MS, color: '#6EA8FE', orb: 'expand' },
-      { key: 'hold1', label: 'Hold', sub: 'Gentle, no strain', durationMs: BOX_MS, color: '#A78BFA', orb: 'holdHigh' },
-      { key: 'out', label: 'Exhale', sub: 'Let it go evenly', durationMs: BOX_MS, color: '#34D399', orb: 'contract' },
-      { key: 'hold2', label: 'Hold empty', sub: 'Soft pause', durationMs: BOX_MS, color: '#94A3B8', orb: 'holdLow' },
-    ],
-  },
-  breath_478: {
-    modeId: 'breath_478',
-    cycles: 4,
-    uiVariant: 'orb',
-    steps: [
-      { key: 'in', label: 'Inhale', sub: '4 seconds', durationMs: S(4000), color: '#818CF8', orb: 'expand' },
-      { key: 'hold', label: 'Hold', sub: 'Hold full lungs — 7 seconds', durationMs: S(7000), color: '#A78BFA', orb: 'holdHigh' },
-      { key: 'out', label: 'Exhale', sub: '8 seconds, unhurried', durationMs: S(8000), color: '#38BDF8', orb: 'contract' },
-    ],
-  },
-  breath_coherent: {
-    modeId: 'breath_coherent',
-    cycles: 6,
-    uiVariant: 'orb',
-    steps: [
-      { key: 'in', label: 'Inhale', sub: '5 seconds · smooth', durationMs: S(5000), color: '#2DD4BF', orb: 'expand' },
-      { key: 'out', label: 'Exhale', sub: '5 seconds · smooth', durationMs: S(5000), color: '#14B8A6', orb: 'contract' },
-    ],
-  },
-  breath_extended_exhale: {
-    modeId: 'breath_extended_exhale',
-    cycles: 6,
-    uiVariant: 'orb',
-    steps: [
-      { key: 'in', label: 'Inhale', sub: '4 seconds', durationMs: S(4000), color: '#7DD3FC', orb: 'expand' },
-      { key: 'out', label: 'Long exhale', sub: '7 seconds · longer than in', durationMs: S(7000), color: '#FB923C', orb: 'contract' },
-    ],
-  },
-  breath_bellows: {
-    modeId: 'breath_bellows',
-    cycles: 24,
-    uiVariant: 'bellows',
-    steps: [
-      {
-        key: 'ex',
-        label: 'Sharp exhale',
-        sub: 'Through the nose, belly snaps in',
-        durationMs: S(550),
-        color: '#F59E0B',
-        orb: 'contract',
-      },
-      {
-        key: 'in',
-        label: 'Quick inhale',
-        sub: 'Passive, natural',
-        durationMs: S(750),
-        color: '#FBBF24',
-        orb: 'expand',
-      },
-    ],
-  },
-  breath_resonant: {
-    modeId: 'breath_resonant',
-    cycles: 7,
-    uiVariant: 'orb',
-    steps: [
-      {
-        key: 'in',
-        label: 'Inhale',
-        sub: '~5.5 s · nasal, easy',
-        durationMs: S(5500),
-        color: '#C084FC',
-        orb: 'expand',
-      },
-      {
-        key: 'out',
-        label: 'Exhale',
-        sub: '~5.5 s · easy',
-        durationMs: S(5500),
-        color: '#E879F9',
-        orb: 'contract',
-      },
-    ],
-  },
+const SEGMENT_EXTENDED: BreathSegment = {
+  id: 'extended',
+  label: 'Extended exhale',
+  emotionGuide: 'Anger · frustration · feeling “too fired up”',
+  cycles: 6,
+  steps: [
+    { key: 'in', label: 'Inhale', sub: '4 seconds', durationMs: S(4000), color: '#7DD3FC', orb: 'expand' },
+    { key: 'out', label: 'Long exhale', sub: '7 seconds · longer than in', durationMs: S(7000), color: '#FB923C', orb: 'contract' },
+  ],
 };
 
-export function getGuidedBreathDefinition(mode: GroundingMode): GuidedBreathDefinition | null {
-  const def = GUIDED_BREATH_BY_MODE[mode];
-  return def ?? null;
+const SEGMENT_COHERENT: BreathSegment = {
+  id: 'coherent',
+  label: 'Coherent breathing',
+  emotionGuide: 'Focus · scattered mind · steady rhythm before work',
+  cycles: 6,
+  steps: [
+    { key: 'in', label: 'Inhale', sub: '5 seconds · smooth', durationMs: S(5000), color: '#2DD4BF', orb: 'expand' },
+    { key: 'out', label: 'Exhale', sub: '5 seconds · smooth', durationMs: S(5000), color: '#14B8A6', orb: 'contract' },
+  ],
+};
+
+const SEGMENT_478: BreathSegment = {
+  id: 'four78',
+  label: '4-7-8 breathing',
+  emotionGuide: 'Overthinking · winding down · sleep prep',
+  cycles: 4,
+  steps: [
+    { key: 'in', label: 'Inhale', sub: '4 seconds', durationMs: S(4000), color: '#818CF8', orb: 'expand' },
+    { key: 'hold', label: 'Hold', sub: 'Hold full lungs — 7 seconds', durationMs: S(7000), color: '#A78BFA', orb: 'holdHigh' },
+    { key: 'out', label: 'Exhale', sub: '8 seconds, unhurried', durationMs: S(8000), color: '#38BDF8', orb: 'contract' },
+  ],
+};
+
+/** Full guided sequence (extended + coherent + 4-7-8, order by mood). */
+export const BREATH_REGULATION_MODE_ID: GroundingMode = 'breath_regulation_flow';
+
+export const BREATH_COHERENT_MODE_ID: GroundingMode = 'breath_coherent';
+
+export const BREATH_EXTENDED_EXHALE_MODE_ID: GroundingMode = 'breath_extended_exhale';
+
+export function isGuidedBreathMode(mode: GroundingMode): boolean {
+  return (
+    mode === BREATH_REGULATION_MODE_ID ||
+    mode === BREATH_COHERENT_MODE_ID ||
+    mode === BREATH_EXTENDED_EXHALE_MODE_ID
+  );
+}
+
+/** Segments played for this hub / deep-link mode (tone only affects the full regulation flow). */
+export function buildSegmentsForBreathMode(mode: GroundingMode, tone: EmotionalTone | null): BreathSegment[] {
+  if (mode === BREATH_REGULATION_MODE_ID) return buildRegulationFlowSegments(tone);
+  if (mode === BREATH_COHERENT_MODE_ID) return [SEGMENT_COHERENT];
+  if (mode === BREATH_EXTENDED_EXHALE_MODE_ID) return [SEGMENT_EXTENDED];
+  return [];
+}
+
+export function breathSessionTotalMs(mode: GroundingMode, tone: EmotionalTone | null): number {
+  return buildSegmentsForBreathMode(mode, tone).reduce((a, s) => a + segmentMs(s), 0);
+}
+
+export type RegulationFlowDefinition = {
+  modeId: GroundingMode;
+  segments: BreathSegment[];
+};
+
+function segmentMs(seg: BreathSegment): number {
+  return seg.steps.reduce((a, s) => a + s.durationMs, 0) * seg.cycles;
+}
+
+/** Build ordered segments for the combined flow from EmotionalTone (hub chips) or URL tone. */
+export function buildRegulationFlowSegments(tone: EmotionalTone | null): BreathSegment[] {
+  const extended = SEGMENT_EXTENDED;
+  const coherent = SEGMENT_COHERENT;
+  const four = SEGMENT_478;
+
+  switch (tone) {
+    case 'angry':
+    case 'restless':
+      return [extended, coherent, four];
+    case 'anxious':
+    case 'tense':
+    case 'scattered':
+      return [coherent, extended, four];
+    case 'panicked':
+    case 'overwhelmed':
+      return [coherent, extended, four];
+    case 'sad':
+    case 'numb':
+      return [coherent, extended, four];
+    default:
+      return [coherent, extended, four];
+  }
+}
+
+export function regulationFlowTotalMs(tone: EmotionalTone | null): number {
+  return buildRegulationFlowSegments(tone).reduce((a, s) => a + segmentMs(s), 0);
+}
+
+export const BREATH_TECHNIQUE_MODES: GroundingModeConfig[] = [
+  {
+    id: BREATH_EXTENDED_EXHALE_MODE_ID,
+    label: 'Extended exhale',
+    subtitle: '',
+    duration: '~1 min',
+    durationMs: segmentMs(SEGMENT_EXTENDED),
+    icon: 'flame-outline',
+    description: 'Longer exhale than inhale to cue the nervous system to downshift. Common when anger or frustration runs hot.',
+    mechanism: 'Anger · frustration · irritability',
+  },
+  {
+    id: BREATH_COHERENT_MODE_ID,
+    label: 'Coherent breathing',
+    subtitle: '',
+    duration: '~1 min',
+    durationMs: segmentMs(SEGMENT_COHERENT),
+    icon: 'pulse-outline',
+    description: 'Smooth equal inhales and exhales (here 5-5) to steady heart rate variability and attention.',
+    mechanism: 'Focus · anxiety · scattered mind',
+  },
+  {
+    id: BREATH_REGULATION_MODE_ID,
+    label: 'Calm breath sequence',
+    subtitle: '',
+    duration: '~4 min',
+    durationMs: regulationFlowTotalMs(null),
+    icon: 'fitness-outline',
+    description:
+      'Extended exhale, coherent 5-5, then 4-7-8 in one session. Order shifts with how you feel (e.g. anger starts with extended exhale).',
+    mechanism: 'Mixed stress, wind-down, or when one pattern is not enough',
+  },
+];
+
+/** Map Inner Ally / chat emotion strings to a URL `tone=` param (subset of EmotionalTone + aliases). */
+export function breathToneParamFromEmotions(emotions?: string[]): string | undefined {
+  const list = (emotions ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (
+    list.some((e) =>
+      ['angry', 'anger', 'furious', 'frustrated', 'frustration', 'rage', 'irritated', 'mad'].includes(e)
+    )
+  ) {
+    return 'angry';
+  }
+  if (list.some((e) => ['panicked', 'panic'].includes(e))) return 'panicked';
+  if (list.some((e) => ['anxious', 'anxiety', 'worried', 'nervous'].includes(e))) return 'anxious';
+  if (list.some((e) => ['overwhelmed', 'overwhelm'].includes(e))) return 'overwhelmed';
+  if (list.some((e) => ['stressed', 'stress', 'tense'].includes(e))) return 'tense';
+  if (list.some((e) => ['sad', 'hurt', 'grief', 'depressed'].includes(e))) return 'sad';
+  if (list.some((e) => ['scattered', 'distracted', 'can\'t focus', 'cant focus'].includes(e))) return 'scattered';
+  if (list.some((e) => ['numb', 'empty', 'flat'].includes(e))) return 'numb';
+  if (list.some((e) => ['restless', 'wired', 'agitated'].includes(e))) return 'restless';
+  return undefined;
+}
+
+/** Parse `tone` query from /grounding into EmotionalTone when valid. */
+export function emotionalToneFromBreathToneParam(raw: string | undefined): EmotionalTone | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const t = raw.trim().toLowerCase();
+  const allowed = new Set<EmotionalTone>([
+    'anxious',
+    'overwhelmed',
+    'angry',
+    'panicked',
+    'scattered',
+    'tense',
+    'numb',
+    'sad',
+    'restless',
+  ]);
+  if (allowed.has(t as EmotionalTone)) return t as EmotionalTone;
+  if (t === 'frustrated' || t === 'frustration') return 'angry';
+  if (t === 'stress') return 'tense';
+  return null;
+}
+
+export function getRegulationFlowDefinition(tone: EmotionalTone | null): RegulationFlowDefinition {
+  return {
+    modeId: BREATH_REGULATION_MODE_ID,
+    segments: buildRegulationFlowSegments(tone),
+  };
 }

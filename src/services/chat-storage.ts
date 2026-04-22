@@ -58,6 +58,11 @@ async function appendLocalMessage(userId: string, mode: ChatMode, message: ChatM
   await writeLocalMessages(userId, mode, prev);
 }
 
+/** Wipe on-device history for a mode (Companion tab uses this for a fresh Inner Ally each visit). */
+export async function clearLocalChatHistory(userId: string, mode: ChatMode): Promise<void> {
+  await writeLocalMessages(userId, mode, []);
+}
+
 /** Dedupe overlapping local + server copies; prefer rows with richer metadata / stable server ids. */
 function mergeChatMessagesDeduped(a: ChatMessage[], b: ChatMessage[]): ChatMessage[] {
   const keyOf = (m: ChatMessage) =>

@@ -69,13 +69,16 @@ STEP 1 - Your **first** assistant reply in this thread:
 
 STEP 2 - Your **second and later** assistant replies (there is already at least one prior assistant message in this thread):
 - **Offer grounding when it fits**: If the conversation includes **distress or tension** (e.g. sad, bad day, anxious, overwhelmed, stressed, frustrated, worried, angry, hopeless, wired, can't sleep, stuck, "idk" after sharing something hard) - set "groundingOptions" to **exactly one** allowed ID and add **one short sentence** in the body inviting them to try it (optional: one question on its own line per FORMATTING).
-- **Rotate techniques - do not default to box_breathing every reply.** Pick the ID that best matches what they said: **physiological_sigh** or **quick_reset** when rushed, panicky, or wired; **body_scan** when they mention body tension, feeling numb, or stuck in their head; **release** after conflict, argument, or heavy venting; **box_breathing** when they need a **steady, structured rhythm** or prolonged stress (not for every vague "stressed"). If two fit, prefer **quick_reset** or **body_scan** over box_breathing to keep variety across the thread.
+- **Rotate techniques - do not default to box_breathing every reply.** Pick the ID that best matches what they said: **physiological_sigh** or **quick_reset** when rushed, panicky, or wired; **breath_extended_exhale** when **anger, frustration, or irritability** is the main ask (standalone long-exhale practice); **breath_coherent** for **focus, scattered mind, or steady rhythm** (5-5 coherent breathing only); **breath_regulation_flow** when they need the **full guided sequence** (extended + coherent + 4-7-8, order adapts to mood — anxiety, stress, overthinking, winding down); **body_scan** when they mention body tension, feeling numb, or stuck in their head; **release** after conflict, argument, or heavy venting; **box_breathing** when they need a **steady square rhythm** or prolonged stress (not for every vague "stressed"). If two fit, prefer **quick_reset**, **breath_extended_exhale**, **breath_coherent**, **breath_regulation_flow**, or **body_scan** over repeating box_breathing every time.
 - **Do not** push grounding on **purely positive or neutral** threads (celebration, small talk, good news only) unless they asked for a technique - use "groundingOptions": [] there.
 - **Mandatory**: If you name any technique in the body (box breathing, sigh, scan, etc.), you **must** put the matching ID in "groundingOptions" - never describe a technique with "groundingOptions": [].
 
 STEP 3 - Learning pathway (optional): only when clearly relevant.
 
 GROUNDING TECHNIQUES - only these exact string IDs (snake_case) for "groundingOptions":
+- "breath_extended_exhale" - **only** long-exhale cycles (anger, frustration, “too fired up”).
+- "breath_coherent" - **only** smooth 5-5 rhythm (focus, scattered mind, steady nerves).
+- "breath_regulation_flow" - **full** guided session: extended exhale + coherent 5-5 + 4-7-8; app **reorders** parts by mood (e.g. anger starts with extended exhale). Broader anxiety / stress / wind-down when a single pattern is not enough — not for pure panic spike (prefer quick_reset first).
 - "box_breathing" - structured 4-count square breathing (use when a **steady rhythm** fits; not your automatic choice)
 - "physiological_sigh" / "quick_reset" - fast nervous-system downshift (use one of these, not both in one reply)
 - "body_scan" - gentle attention through the body
@@ -206,6 +209,9 @@ const ALLOWED_LIFE_CONTEXTS = new Set([
 
 /** Must match INNER_ALLY_SYSTEM_PROMPT and chat-suggestion-navigation AI_TO_MODE. */
 const ALLOWED_INNER_ALLY_GROUNDING_IDS = new Set([
+  'breath_regulation_flow',
+  'breath_coherent',
+  'breath_extended_exhale',
   'box_breathing',
   'body_scan',
   'release',
@@ -223,6 +229,13 @@ const GROUNDING_ID_ALIASES: Record<string, string> = {
   'body-scan': 'body_scan',
   quickreset: 'quick_reset',
   'quick-reset': 'quick_reset',
+  regulationbreathing: 'breath_regulation_flow',
+  'regulation-breathing': 'breath_regulation_flow',
+  combinedbreathing: 'breath_regulation_flow',
+  coherentbreathing: 'breath_coherent',
+  'coherent-breathing': 'breath_coherent',
+  extendedexhale: 'breath_extended_exhale',
+  'extended-exhale': 'breath_extended_exhale',
 };
 
 function resolveInnerAllyGroundingId(raw: string): string | null {

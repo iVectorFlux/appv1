@@ -10,14 +10,26 @@ const AI_TO_MODE: Record<string, GroundingMode> = {
   box_breathing: 'box_breathing',
   body_scan: 'sensory_anchor',
   release: 'post_conflict',
-  four_seven_eight: 'breath_478',
-  breathing_478: 'breath_478',
+  /** Combined flow (extended + coherent + 4-7-8) */
+  breath_regulation_flow: 'breath_regulation_flow',
+  regulation_breathing: 'breath_regulation_flow',
+  combined_breathing: 'breath_regulation_flow',
+  calm_breathing: 'breath_regulation_flow',
+  /** Model may still output these — route to the single combined session */
+  four_seven_eight: 'breath_regulation_flow',
+  breathing_478: 'breath_regulation_flow',
   coherent_breathing: 'breath_coherent',
   extended_exhale: 'breath_extended_exhale',
-  bellows_breath: 'breath_bellows',
-  resonant_breathing: 'breath_resonant',
-  breath_physiological_sigh: 'breath_physiological_sigh',
-  breath_box: 'breath_box',
+  bellows_breath: 'breath_regulation_flow',
+  resonant_breathing: 'breath_coherent',
+  breath_478: 'breath_regulation_flow',
+  breath_coherent: 'breath_coherent',
+  breath_extended_exhale: 'breath_extended_exhale',
+  breath_bellows: 'breath_regulation_flow',
+  breath_resonant: 'breath_regulation_flow',
+  /** Legacy duplicate ids → original programs */
+  breath_physiological_sigh: 'quick_reset',
+  breath_box: 'box_breathing',
 };
 
 export function aiTechniqueToGroundingMode(technique: string): GroundingMode | null {

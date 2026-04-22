@@ -37,7 +37,7 @@ import { BoxBreathing } from '@/components/grounding/box-breathing';
 import { PreMeeting } from '@/components/grounding/pre-meeting';
 import { PostConflict } from '@/components/grounding/post-conflict';
 import { GuidedBreathSession } from '@/components/grounding/guided-breath-session';
-import { BREATH_TECHNIQUE_MODES } from '@/data/breathing-techniques';
+import { BREATH_TECHNIQUE_MODES, emotionalToneFromBreathToneParam } from '@/data/breathing-techniques';
 
 type ScreenState = 'select' | 'active' | 'complete';
 type BreathingTag =
@@ -57,6 +57,9 @@ const STRESS_COLORS = ['#60A5FA', '#34D399', '#FBBF24', '#F97316', '#FB923C'];
 function techniqueSubtitle(mode: GroundingMode): string {
   const cfg = GROUNDING_MODES.find((m) => m.id === mode);
   if (!cfg) return '';
+  if (mode.startsWith('breath_')) {
+    return cfg.duration;
+  }
   return `${cfg.duration} · ${cfg.subtitle}`;
 }
 
@@ -72,7 +75,11 @@ function parseReturnTo(raw: string | string[] | undefined): ChatReturnTarget | n
 
 export default function GroundingScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ mode?: string | string[]; returnTo?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    mode?: string | string[];
+    returnTo?: string | string[];
+    tone?: string | string[];
+  }>();
   const colors = useColors();
   const { user } = useAuthStore();
 
@@ -102,10 +109,14 @@ export default function GroundingScreen() {
     const resolved = aiTechniqueToGroundingMode(modeParam);
     if (!resolved) return;
     deepLinkedRef.current = true;
+    const toneRaw = params.tone;
+    const toneStr = Array.isArray(toneRaw) ? toneRaw[0] : toneRaw;
+    const fromUrl = emotionalToneFromBreathToneParam(typeof toneStr === 'string' ? toneStr : undefined);
+    if (fromUrl) setEmotionalTone(fromUrl);
     setSelectedMode(resolved);
     setSessionStart(new Date().toISOString());
     setScreen('active');
-  }, [params.mode]);
+  }, [params.mode, params.tone]);
 
   const transitionTo = useCallback(
     (next: ScreenState) => {
@@ -241,28 +252,24 @@ export default function GroundingScreen() {
       { id: 'post_meeting', label: 'Post‑meeting', defaultStress: 2 },
     ];
 
-    /** Maps each emotion / situation chip to a recommended technique (breath set + programs). */
+    /** Maps each emotion / situation chip to a recommended technique (original programs + new breath add-ons). */
     const recommendedByTag: Record<BreathingTag, GroundingMode> = {
-      anxiety: 'breath_box',
-      calm: 'breath_resonant',
-      reset: 'breath_physiological_sigh',
+      anxiety: 'breath_regulation_flow',
+      calm: 'breath_regulation_flow',
+      reset: 'quick_reset',
       focus: 'breath_coherent',
-      stress: 'breath_box',
-      panic: 'breath_physiological_sigh',
+      stress: 'breath_regulation_flow',
+      panic: 'quick_reset',
       anger: 'breath_extended_exhale',
       conflict: 'post_conflict',
       pre_meeting: 'pre_meeting',
-      post_meeting: 'breath_coherent',
+      post_meeting: 'breath_regulation_flow',
     };
 
     const accentForMode = (mode: GroundingMode) => {
-      if (mode === 'breath_physiological_sigh') return '#6EA8FE';
-      if (mode === 'breath_box') return '#34D399';
-      if (mode === 'breath_478') return '#818CF8';
+      if (mode === 'breath_regulation_flow') return '#38BDF8';
       if (mode === 'breath_coherent') return '#2DD4BF';
       if (mode === 'breath_extended_exhale') return '#FB923C';
-      if (mode === 'breath_bellows') return '#F59E0B';
-      if (mode === 'breath_resonant') return '#C084FC';
       if (mode === 'quick_reset') return colors.accentWarm;
       if (mode === 'box_breathing') return colors.primary;
       if (mode === 'sensory_anchor') return colors.accentCalm;
@@ -282,7 +289,6 @@ export default function GroundingScreen() {
         panic: 'panicked',
         anger: 'angry',
         conflict: 'overwhelmed',
-        calm: 'restless',
         reset: 'scattered',
         focus: 'restless',
         pre_meeting: 'tense',
@@ -352,14 +358,10 @@ export default function GroundingScreen() {
               </>
             )}
 
-            <Text style={st.sectionLabel}>Breathing (recommended set)</Text>
-            <View style={st.techniqueList}>
-              {BREATH_TECHNIQUE_MODES.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
-            </View>
-
             <Text style={st.sectionLabel}>Programs</Text>
             <View style={st.techniqueList}>
               {programModes.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
+              {BREATH_TECHNIQUE_MODES.map((m) => renderTechniqueCard(m.id, recommendedMode === m.id))}
             </View>
           </ScrollView>
         </Animated.View>

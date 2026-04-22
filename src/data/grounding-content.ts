@@ -20,11 +20,10 @@ import { BREATH_TECHNIQUE_MODES } from '@/data/breathing-techniques';
 // ============================================================================
 
 export const GROUNDING_MODES: GroundingModeConfig[] = [
-  ...BREATH_TECHNIQUE_MODES,
   {
     id: 'quick_reset',
     label: 'Physiological sigh',
-    subtitle: 'Fast nervous system reset',
+    subtitle: 'Fast nervous-system reset',
     duration: '~1 min',
     durationMs: 60_000,
     icon: 'flash-outline',
@@ -44,7 +43,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   {
     id: 'box_breathing',
     label: 'Box breathing',
-    subtitle: 'Respiration + cognition + muscle',
+    subtitle: 'Steady square rhythm',
     duration: '4-5 min',
     durationMs: 270_000,
     icon: 'shield-outline',
@@ -71,6 +70,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
     description: 'Labeling reduces amygdala activation; body localization increases interoceptive awareness; fact vs story breaks cognitive distortion. Converts emotion into structure and reality check.',
     mechanism: 'Post-event processing; unresolved emotional load; anger (mobilization + narrative justification)',
   },
+  ...BREATH_TECHNIQUE_MODES,
 ];
 
 // ============================================================================

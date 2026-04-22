@@ -1,7 +1,7 @@
 /**
  * Grounding Module Types
  *
- * Types for the 5 grounding modes, state detection,
+ * Types for grounding programs (5) plus optional guided breath mode ids,
  * and session tracking. Used by grounding components,
  * the entry screen, and recovery storage.
  */
@@ -16,14 +16,12 @@ export type GroundingMode =
   | 'box_breathing' // 4-5 min · full protocol
   | 'pre_meeting' // 2-3 min
   | 'post_conflict' // 4-6 min
-  /** Standalone breath exercises (recommended set). */
-  | 'breath_physiological_sigh'
-  | 'breath_box'
-  | 'breath_478'
+  /** Combined extended exhale + coherent + 4-7-8 (order follows emotional tone). */
+  | 'breath_regulation_flow'
+  /** Resonant 5-5 rhythm only — focus, steady attention. */
   | 'breath_coherent'
-  | 'breath_extended_exhale'
-  | 'breath_bellows'
-  | 'breath_resonant';
+  /** Longer exhale cycles only — anger, frustration, “too fired up”. */
+  | 'breath_extended_exhale';
 
 // ============================================================================
 // STATE DETECTION

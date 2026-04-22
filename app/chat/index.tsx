@@ -20,6 +20,7 @@ import {
   Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -34,16 +35,20 @@ import {
   getChatHistoryWithTimeout,
   getChatSessionMessages,
   persistAssistantTurnAfterReply,
+  clearLocalChatHistory,
 } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
 import { isSkillLabSkillId } from '@/data/future-skills';
 import { requestChatCompletion } from '@/utils/vercel-api';
+import { breathToneParamFromEmotions } from '@/data/breathing-techniques';
 import { ChatHistoryPanel } from '@/components/chat/chat-history-panel';
 
 interface ChatScreenProps {
   asTab?: boolean;
   /** When true (tab bar hidden on Companion), show Home in header and use safe-area-only bottom inset */
   hideBottomTabBar?: boolean;
+  /** Companion tab: each visit starts a new Inner Ally thread (no restored transcript). */
+  resetInnerAllySessionOnFocus?: boolean;
 }
 
 interface Message {
@@ -65,11 +70,14 @@ interface ChatSuggestion {
 }
 
 const GROUNDING_LABELS: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  box_breathing:      { label: 'Box Breathing',      icon: 'square-outline' },
+  breath_regulation_flow: { label: 'Calm breath sequence', icon: 'fitness-outline' },
+  breath_coherent: { label: 'Coherent breathing', icon: 'pulse-outline' },
+  breath_extended_exhale: { label: 'Extended exhale', icon: 'flame-outline' },
+  box_breathing:      { label: 'Box breathing', icon: 'square-outline' },
   body_scan:          { label: 'Body Scan',           icon: 'body-outline' },
   release:            { label: 'Release Exercise',    icon: 'hand-left-outline' },
   physiological_sigh: { label: 'Physiological Sigh', icon: 'leaf-outline' },
-  quick_reset:        { label: 'Quick Reset',         icon: 'refresh-outline' },
+  quick_reset:        { label: 'Physiological sigh', icon: 'refresh-outline' },
 };
 
 interface ModeConfig {
@@ -249,7 +257,17 @@ function ReframeCard({ text, colors, modeColor }: { text: string; colors: Return
   );
 }
 
-function GroundingCard({ options, colors, onPress }: { options: string[]; colors: ReturnType<typeof useColors>; onPress: (t: string) => void }) {
+function GroundingCard({
+  options,
+  colors,
+  sourceEmotions,
+  onPress,
+}: {
+  options: string[];
+  colors: ReturnType<typeof useColors>;
+  sourceEmotions?: string[];
+  onPress: (t: string, emotions?: string[]) => void;
+}) {
   return (
     <View style={sgStyles.groundingWrap}>
       <Text style={[sgStyles.groundingLabel, { color: colors.textMuted }]}>Try a grounding technique</Text>
@@ -270,7 +288,7 @@ function GroundingCard({ options, colors, onPress }: { options: string[]; colors
                     : 'rgba(0,0,0,0.08)',
                 },
               ]}
-              onPress={() => onPress(opt)}
+              onPress={() => onPress(opt, sourceEmotions)}
               activeOpacity={0.7}
             >
               <View style={[sgStyles.chipIcon, { backgroundColor: colors.primary + '18' }]}>
@@ -340,7 +358,7 @@ function MessageRow({
   colors: ReturnType<typeof useColors>;
   isIntro?: boolean;
   chatMode: ChatMode;
-  onGroundingPress: (t: string) => void;
+  onGroundingPress: (t: string, emotions?: string[]) => void;
   onLearnPress: (skillId?: string | null) => void;
 }) {
   const isUser = message.role === 'user';
@@ -387,7 +405,12 @@ function MessageRow({
           <ReframeCard text={sg.reframe.trim()} colors={colors} modeColor={modeColor} />
         )}
         {(sg?.groundingOptions?.length ?? 0) > 0 && (
-          <GroundingCard options={sg!.groundingOptions!} colors={colors} onPress={onGroundingPress} />
+          <GroundingCard
+            options={sg!.groundingOptions!}
+            colors={colors}
+            sourceEmotions={sg?.emotions}
+            onPress={onGroundingPress}
+          />
         )}
         {sg?.learningPathway && (
           <LearnCard pathway={sg.learningPathway} colors={colors} onPress={() => onLearnPress(sg?.skillId)} />
@@ -457,7 +480,11 @@ function introMessageForMode(selectedMode: ChatMode, name?: string): Message {
   };
 }
 
-export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps = {}) {
+export default function ChatScreen({
+  asTab,
+  hideBottomTabBar,
+  resetInnerAllySessionOnFocus,
+}: ChatScreenProps = {}) {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -480,6 +507,10 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
   const loadHistory = useCallback(
     async (selectedMode: ChatMode) => {
       setMessages([introMessageForMode(selectedMode, displayName)]);
+      if (resetInnerAllySessionOnFocus && selectedMode === 'inner_ally') {
+        if (user?.id) await clearLocalChatHistory(user.id, 'inner_ally');
+        return;
+      }
       if (!user?.id) return;
       try {
         const history = await getChatHistoryWithTimeout(user.id, selectedMode, 30);
@@ -498,10 +529,20 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
         /* non-fatal: keep intro */
       }
     },
-    [user?.id, displayName]
+    [user?.id, displayName, resetInnerAllySessionOnFocus]
   );
 
-  useEffect(() => { loadHistory(mode); }, [mode, loadHistory]);
+  useEffect(() => {
+    loadHistory(mode);
+  }, [mode, loadHistory]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!resetInnerAllySessionOnFocus || mode !== 'inner_ally') return;
+      if (user?.id) void clearLocalChatHistory(user.id, 'inner_ally');
+      setMessages([introMessageForMode('inner_ally', displayName)]);
+    }, [resetInnerAllySessionOnFocus, mode, user?.id, displayName])
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
@@ -622,8 +663,10 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
     }
   };
 
-  const handleGroundingPress = (technique: string) => {
-    router.push(`/grounding?mode=${encodeURIComponent(technique)}&returnTo=chat`);
+  const handleGroundingPress = (technique: string, emotions?: string[]) => {
+    const tone = breathToneParamFromEmotions(emotions);
+    const toneQs = tone ? `&tone=${encodeURIComponent(tone)}` : '';
+    router.push(`/grounding?mode=${encodeURIComponent(technique)}&returnTo=chat${toneQs}`);
   };
 
   const handleLearnPress = (skillId?: string | null) => {
