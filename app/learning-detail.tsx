@@ -520,7 +520,11 @@ export default function LearningDetailScreen() {
   const showAudioPlayer = hasAudio && !showVideoPlayer;
 
   const dimensionInfo = DIMENSION_INFO[module.dimension];
-  const headerDimensionLabel = isIntroEpisodeTitle(module.title) ? module.subtitle : dimensionInfo.name;
+  const headerDimensionLabel = isIntroEpisodeTitle(module.title)
+    ? module.subtitle
+    : module.catalogEqType === 'B2B' && module.subtitle.includes(' · ')
+      ? module.subtitle.split(' · ')[0]!
+      : dimensionInfo.name;
 
   return (
     <View style={styles.container}>

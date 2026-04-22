@@ -5,6 +5,7 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { EQDimension } from '@/types/eq-assessment';
 import { DIMENSION_INFO, LEARNING_MODULES, type LearningModule } from '@/data/learning-content';
+import { b2bEpisodeSubtitle } from '@/data/learning-b2b-taxonomy';
 
 export type LearningAudience = 'B2C' | 'B2B';
 
@@ -223,7 +224,11 @@ export async function fetchLearningContentRowById(id: string): Promise<LearningC
 /** Build LearningModule shape for the detail screen (static + DB). */
 export function episodeToDetailModule(ep: LearningEpisode): LearningModule {
   const dimInfo = DIMENSION_INFO[ep.dimension];
-  const subtitle = isIntroEpisodeTitle(ep.title) ? 'Introduction' : dimInfo.name;
+  const subtitle = isIntroEpisodeTitle(ep.title)
+    ? 'Introduction'
+    : ep.eqType === 'B2B'
+      ? b2bEpisodeSubtitle(ep.domain, ep.competency)
+      : dimInfo.name;
   return {
     id: ep.routeId,
     dimension: ep.dimension,
@@ -239,6 +244,7 @@ export function episodeToDetailModule(ep: LearningEpisode): LearningModule {
     keyTakeaways: ep.description
       ? ep.description.split(/(?<=[.!?])\s+/).slice(0, 4).filter(Boolean)
       : [],
+    catalogEqType: ep.eqType,
   };
 }
 

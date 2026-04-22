@@ -23,6 +23,8 @@ export interface LearningModule {
   icon: string;
   color: string;
   keyTakeaways: string[];
+  /** Set when this row is built from `learning_content` (see episodeToDetailModule). */
+  catalogEqType?: 'B2C' | 'B2B';
 }
 
 // S3 bucket (us-west-1) - same host as DB-seeded assets

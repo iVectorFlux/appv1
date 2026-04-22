@@ -4,7 +4,13 @@
  * B2C uses different domain names (e.g. SELF_REGULATION_DOMAIN) — this file is B2B-only.
  */
 
-import type { LearningEpisode } from '@/services/learning-content-catalog';
+/** Minimal shape for ordering workplace episodes (avoids importing the catalog service). */
+export type B2bPillarSortable = {
+  domain: string;
+  competency: string;
+  sortOrder: number;
+  title: string;
+};
 
 export const B2B_DOMAIN_ORDER = [
   'SELF_AWARENESS_DOMAIN',
@@ -100,7 +106,7 @@ export function b2bEpisodeSubtitle(domain: string, competency: string): string {
 }
 
 /** Workplace tab: self-awareness → self-management → social awareness → relationship management, then by competency, then by curriculum. */
-export function sortB2bEpisodesInPillarOrder(episodes: LearningEpisode[]): LearningEpisode[] {
+export function sortB2bEpisodesInPillarOrder<T extends B2bPillarSortable>(episodes: T[]): T[] {
   return [...episodes].sort((a, b) => {
     const da = b2bDomainIndex(a.domain);
     const db = b2bDomainIndex(b.domain);
