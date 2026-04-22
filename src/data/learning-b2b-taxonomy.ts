@@ -72,6 +72,33 @@ export function b2bCompetencyIndex(domainKey: string, competencyKey: string): nu
   return j === -1 ? 999 : j;
 }
 
+/** Normalise CSV/Supabase `domain` / `competency` keys for comparison with taxonomy constants. */
+export function normalizeB2bCatalogKey(value: string): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+    .replace(/_+/g, '_');
+}
+
+function titleCaseFromKey(key: string): string {
+  return key
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/** One-line subtitle for Workplace lessons: pillar · competency (not B2C EQ dimensions). */
+export function b2bEpisodeSubtitle(domain: string, competency: string): string {
+  const d = normalizeB2bCatalogKey(domain);
+  const c = normalizeB2bCatalogKey(competency);
+  const domainLabel =
+    d in B2B_DOMAIN_LABELS ? B2B_DOMAIN_LABELS[d as B2BDomainKey] : titleCaseFromKey(d.replace(/_DOMAIN$/i, ''));
+  const compLabel = B2B_COMPETENCY_LABELS[c] ?? titleCaseFromKey(c);
+  return `${domainLabel} · ${compLabel}`;
+}
+
 /** Workplace tab: self-awareness → self-management → social awareness → relationship management, then by competency, then by curriculum. */
 export function sortB2bEpisodesInPillarOrder(episodes: LearningEpisode[]): LearningEpisode[] {
   return [...episodes].sort((a, b) => {

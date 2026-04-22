@@ -4,7 +4,7 @@
  * Catalog from Supabase learning_content with frosted glass cards.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -22,7 +22,14 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { DIMENSION_INFO } from '@/data/learning-content';
 import type { EQDimension } from '@/types/eq-assessment';
 import { useLearningCatalog, type LearningCatalogAudienceFilter } from '@/hooks/useLearningCatalog';
-import { isIntroEpisodeTitle } from '@/services/learning-content-catalog';
+import {
+  B2B_DOMAIN_LABELS,
+  B2B_DOMAIN_ORDER,
+  b2bEpisodeSubtitle,
+  normalizeB2bCatalogKey,
+  type B2BDomainKey,
+} from '@/data/learning-b2b-taxonomy';
+import { isIntroEpisodeTitle, type LearningEpisode } from '@/services/learning-content-catalog';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 const DIMENSION_FILTERS: (EQDimension | 'all')[] = [
@@ -35,16 +42,31 @@ export default function LearnScreen() {
   const [audience, setAudience] = useState<LearningCatalogAudienceFilter>('B2C');
   const { episodes, loading, error, reload, emptyRemote } = useLearningCatalog(audience);
   const [selectedDimension, setSelectedDimension] = useState<EQDimension | 'all'>('all');
+  const [selectedB2bDomain, setSelectedB2bDomain] = useState<B2BDomainKey | 'all'>('all');
+
+  useEffect(() => {
+    if (audience !== 'B2B') setSelectedB2bDomain('all');
+  }, [audience]);
 
   const baseEpisodes = useMemo(() => (loading ? [] : episodes), [loading, episodes]);
   const filteredEpisodes = useMemo(() => {
+    if (audience === 'B2B') {
+      let list = baseEpisodes;
+      if (selectedB2bDomain !== 'all') {
+        list = list.filter((e) => normalizeB2bCatalogKey(e.domain) === selectedB2bDomain);
+      }
+      return list;
+    }
     if (selectedDimension === 'all') return baseEpisodes;
     return baseEpisodes.filter((e) => e.dimension === selectedDimension);
-  }, [baseEpisodes, selectedDimension]);
+  }, [audience, baseEpisodes, selectedB2bDomain, selectedDimension]);
 
   const getDimensionName = (dim: EQDimension | 'all') => dim === 'all' ? 'All skills' : DIMENSION_INFO[dim].name;
-  const getEpisodeSubtitle = (title: string, dimension: EQDimension) =>
-    isIntroEpisodeTitle(title) ? 'Introduction' : DIMENSION_INFO[dimension].name;
+  const getEpisodeSubtitle = (ep: LearningEpisode) => {
+    if (isIntroEpisodeTitle(ep.title)) return 'Introduction';
+    if (ep.eqType === 'B2B') return b2bEpisodeSubtitle(ep.domain, ep.competency);
+    return DIMENSION_INFO[ep.dimension].name;
+  };
 
   const audienceLabel: Record<LearningCatalogAudienceFilter, string> = {
     B2C: 'Personal',
@@ -118,17 +140,46 @@ export default function LearnScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={st.filterContainer}
             >
-              {DIMENSION_FILTERS.map((dim) => (
-                <TouchableOpacity
-                  key={dim}
-                  onPress={() => setSelectedDimension(dim)}
-                  style={[st.filterChip, selectedDimension === dim && st.filterChipSelected]}
-                >
-                  <Text style={[st.filterChipText, selectedDimension === dim && st.filterChipTextSelected]}>
-                    {getDimensionName(dim)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {audience === 'B2B' ? (
+                <>
+                  <TouchableOpacity
+                    onPress={() => setSelectedB2bDomain('all')}
+                    style={[st.filterChip, selectedB2bDomain === 'all' && st.filterChipSelected]}
+                  >
+                    <Text style={[st.filterChipText, selectedB2bDomain === 'all' && st.filterChipTextSelected]}>
+                      All pillars
+                    </Text>
+                  </TouchableOpacity>
+                  {B2B_DOMAIN_ORDER.map((domainKey) => (
+                    <TouchableOpacity
+                      key={domainKey}
+                      onPress={() => setSelectedB2bDomain(domainKey)}
+                      style={[st.filterChip, selectedB2bDomain === domainKey && st.filterChipSelected]}
+                    >
+                      <Text
+                        style={[
+                          st.filterChipText,
+                          selectedB2bDomain === domainKey && st.filterChipTextSelected,
+                        ]}
+                      >
+                        {B2B_DOMAIN_LABELS[domainKey]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              ) : (
+                DIMENSION_FILTERS.map((dim) => (
+                  <TouchableOpacity
+                    key={dim}
+                    onPress={() => setSelectedDimension(dim)}
+                    style={[st.filterChip, selectedDimension === dim && st.filterChipSelected]}
+                  >
+                    <Text style={[st.filterChipText, selectedDimension === dim && st.filterChipTextSelected]}>
+                      {getDimensionName(dim)}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
             </ScrollView>
 
             <View style={st.episodeList}>
@@ -143,7 +194,7 @@ export default function LearnScreen() {
                       </View>
                       <View style={st.episodeText}>
                         <Text style={st.episodeTitle} numberOfLines={2}>{ep.title}</Text>
-                        <Text style={st.episodeSubtitle}>{getEpisodeSubtitle(ep.title, ep.dimension)}</Text>
+                        <Text style={st.episodeSubtitle}>{getEpisodeSubtitle(ep)}</Text>
                         <View style={st.metaRow}>
                           {ep.videoUrl && (
                             <View style={st.metaItem}>
