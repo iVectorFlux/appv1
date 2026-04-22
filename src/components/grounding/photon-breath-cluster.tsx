@@ -1,5 +1,6 @@
 /**
- * Bright “photon” particles: burst outward (ease-out at end of inhale), collapse to a point on exhale.
+ * Many small bright photons, driven by one progress value so motion matches
+ * the real breath phase (e.g. full 4s inhale easing out at the end, full 7s exhale easing into rest).
  */
 
 import React, { useEffect, useRef, useMemo } from 'react';
@@ -25,10 +26,13 @@ const PHOTON_COLORS = [
   '#00D4FF',
 ];
 
-const N = 14;
+/** Hundreds of tiny points — one shared animation driver for performance. */
+const N = 120;
+const PHOTON_DIAM = 3;
+const PHOTON_R = PHOTON_DIAM / 2;
 const CORE = 110;
-const R_MIN = 10;
-const R_MAX = 88;
+const R_MIN = 8;
+const R_MAX = 90;
 
 type Props = {
   visualKey: string;
@@ -38,108 +42,126 @@ type Props = {
 };
 
 export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Props) {
-  const progress = useRef(Array.from({ length: N }, () => new Animated.Value(0.12))).current;
+  const master = useRef(new Animated.Value(0)).current;
 
-  const angles = useMemo(() => Array.from({ length: N }, (_, i) => (i / N) * Math.PI * 2), []);
+  const angles = useMemo(
+    () =>
+      Array.from({ length: N }, (_, i) => {
+        const base = (i / N) * Math.PI * 2;
+        const wobble = ((i * 17) % 360) * (Math.PI / 180) * 0.04;
+        return base + wobble;
+      }),
+    []
+  );
 
   useEffect(() => {
-    const d = Math.max(320, durationMs);
-    progress.forEach((p) => p.setValue(0.12));
+    const d = Math.max(200, durationMs);
+    master.stopAnimation();
 
-    const staggerMs = orb === 'contract' || orb === 'holdLow' ? 30 : 46;
+    const easeExpand = Easing.out(Easing.cubic);
+    const easeContract = Easing.out(Easing.cubic);
 
-    const toExpand = orb === 'holdHigh' ? 1.08 : 1.36;
-    const toCollapse = 0.1;
+    let run: Animated.CompositeAnimation;
 
-    const burstOut = () =>
-      Animated.stagger(
-        staggerMs,
-        progress.map((p) =>
-          Animated.timing(p, {
-            toValue: toExpand,
-            duration: d * 0.58,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: useND,
-          })
-        )
-      );
-
-    const pullIn = () => {
-      progress.forEach((p) => p.setValue(1.28));
-      return Animated.stagger(
-        staggerMs * 0.75,
-        progress.map((p) =>
-          Animated.timing(p, {
-            toValue: toCollapse,
-            duration: d * 0.52,
-            easing: Easing.in(Easing.quad),
-            useNativeDriver: useND,
-          })
-        )
-      );
-    };
-
-    const shimmer = () =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.parallel(
-            progress.map((p) =>
-              Animated.timing(p, {
-                toValue: 1.06,
-                duration: d * 0.2,
-                easing: Easing.inOut(Easing.sin),
-                useNativeDriver: useND,
-              })
-            )
-          ),
-          Animated.parallel(
-            progress.map((p) =>
-              Animated.timing(p, {
-                toValue: 0.94,
-                duration: d * 0.2,
-                easing: Easing.inOut(Easing.sin),
-                useNativeDriver: useND,
-              })
-            )
-          ),
-        ]),
-        { iterations: Math.min(12, Math.max(3, Math.floor(d / 350))) }
-      );
-
-    let run: Animated.CompositeAnimation | null = null;
-    if (orb === 'expand' || orb === 'holdHigh') {
-      run = burstOut();
-    } else if (orb === 'contract' || orb === 'holdLow') {
-      run = pullIn();
+    if (orb === 'expand') {
+      master.setValue(0);
+      run = Animated.timing(master, {
+        toValue: 1,
+        duration: d,
+        easing: easeExpand,
+        useNativeDriver: useND,
+      });
+    } else if (orb === 'contract') {
+      master.setValue(1);
+      run = Animated.timing(master, {
+        toValue: 0,
+        duration: d,
+        easing: easeContract,
+        useNativeDriver: useND,
+      });
+    } else if (orb === 'holdHigh') {
+      const reach = Math.min(550, d * 0.14);
+      master.setValue(0);
+      run = Animated.sequence([
+        Animated.timing(master, {
+          toValue: 1,
+          duration: reach,
+          easing: easeExpand,
+          useNativeDriver: useND,
+        }),
+        Animated.timing(master, {
+          toValue: 1,
+          duration: Math.max(0, d - reach),
+          useNativeDriver: useND,
+        }),
+      ]);
+    } else if (orb === 'holdLow') {
+      const reach = Math.min(550, d * 0.14);
+      master.setValue(1);
+      run = Animated.sequence([
+        Animated.timing(master, {
+          toValue: 0,
+          duration: reach,
+          easing: easeContract,
+          useNativeDriver: useND,
+        }),
+        Animated.timing(master, {
+          toValue: 0,
+          duration: Math.max(0, d - reach),
+          useNativeDriver: useND,
+        }),
+      ]);
     } else if (orb === 'pulse') {
-      run = shimmer();
+      master.setValue(0.5);
+      run = Animated.loop(
+        Animated.sequence([
+          Animated.timing(master, {
+            toValue: 1,
+            duration: d * 0.48,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: useND,
+          }),
+          Animated.timing(master, {
+            toValue: 0.5,
+            duration: d * 0.52,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: useND,
+          }),
+        ]),
+        { iterations: Math.min(16, Math.max(4, Math.floor(d / 400))) }
+      );
     } else {
-      run = burstOut();
+      master.setValue(0);
+      run = Animated.timing(master, {
+        toValue: 1,
+        duration: d,
+        easing: easeExpand,
+        useNativeDriver: useND,
+      });
     }
 
     run.start();
     return () => {
       run.stop();
     };
-  }, [visualKey, durationMs, orb, progress]);
+  }, [visualKey, durationMs, orb, master]);
 
   return (
     <View style={styles.wrap}>
       <View style={[styles.coreGlow, { backgroundColor: accent + '44' }]} />
       {angles.map((angle, i) => {
         const c = PHOTON_COLORS[i % PHOTON_COLORS.length]!;
-        const p = progress[i]!;
-        const tx = p.interpolate({
-          inputRange: [0.08, 1.45],
+        const tx = master.interpolate({
+          inputRange: [0, 1],
           outputRange: [Math.cos(angle) * R_MIN, Math.cos(angle) * R_MAX],
         });
-        const ty = p.interpolate({
-          inputRange: [0.08, 1.45],
+        const ty = master.interpolate({
+          inputRange: [0, 1],
           outputRange: [Math.sin(angle) * R_MIN, Math.sin(angle) * R_MAX],
         });
-        const sc = p.interpolate({
-          inputRange: [0.08, 1.45],
-          outputRange: [0.45, 1.28],
+        const sc = master.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.55, 1.15],
         });
         return (
           <Animated.View
@@ -148,11 +170,11 @@ export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Prop
             style={[
               styles.photon,
               {
-                left: CORE - 6,
-                top: CORE - 6,
-                width: 12,
-                height: 12,
-                borderRadius: 6,
+                left: CORE - PHOTON_R,
+                top: CORE - PHOTON_R,
+                width: PHOTON_DIAM,
+                height: PHOTON_DIAM,
+                borderRadius: PHOTON_R,
                 backgroundColor: c,
                 shadowColor: c,
                 transform: [{ translateX: tx }, { translateY: ty }, { scale: sc }],
@@ -174,17 +196,17 @@ const styles = StyleSheet.create({
   },
   coreGlow: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    left: CORE - 20,
-    top: CORE - 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    left: CORE - 18,
+    top: CORE - 18,
   },
   photon: {
     position: 'absolute',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOpacity: 0.85,
+    shadowRadius: 4,
+    elevation: 6,
   },
 });
