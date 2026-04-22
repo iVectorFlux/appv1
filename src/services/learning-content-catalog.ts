@@ -52,6 +52,35 @@ export function episodeKeyFromRow(row: Pick<LearningContentRow, 'eq_type' | 'dom
   return groupKey(row);
 }
 
+/**
+ * S3 "console" open-object URLs are HTML pages, not media. Map to a normal HTTPS object URL
+ * (virtual-hosted style) so expo-av and browser video/audio can play.
+ * Pass-through for already-correct s3 / CloudFront links.
+ */
+export function normalizeS3MediaUrl(url: string | null | undefined): string | null {
+  const t = url?.trim();
+  if (!t) return null;
+  if (!t.includes('console.aws.amazon.com') || !t.toLowerCase().includes('prefix=')) {
+    return t;
+  }
+  try {
+    const u = new URL(t);
+    const parts = u.hostname.split('.');
+    // {bucket}.s3.{region}.console.aws.amazon.com
+    if (parts.length < 6 || parts[1] !== 's3' || parts[3] !== 'console') {
+      return t;
+    }
+    const bucket = parts[0]!;
+    const region = parts[2]!;
+    const prefix = u.searchParams.get('prefix');
+    if (!prefix) return t;
+    const key = prefix.replace(/^\/+/, '');
+    return `https://${bucket}.s3.${region}.amazonaws.com/${encodeURI(key)}`;
+  } catch {
+    return t;
+  }
+}
+
 /** B2C intro lesson shown as "Introduction" in Learn / detail (video + audio). */
 const INTRO_EPISODE_TITLES = new Set(['Emotional intelligence importance']);
 
@@ -125,8 +154,8 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
     const dimension = mapLearningRowToDimension(anchor.domain, anchor.competency);
     const info = DIMENSION_INFO[dimension];
     const sortOrder = Math.min(...group.map((r) => r.sort_order ?? 100));
-    const videoUrl = video?.s3_link?.trim() || null;
-    const audioUrl = audio?.s3_link?.trim() || null;
+    const videoUrl = normalizeS3MediaUrl(video?.s3_link);
+    const audioUrl = normalizeS3MediaUrl(audio?.s3_link);
     out.push({
       episodeKey: groupKey(anchor),
       eqType,

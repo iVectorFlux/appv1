@@ -7,6 +7,7 @@ import {
 import { LEARNING_MODULES } from '@/data/learning-content';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { readCacheJson, writeCacheJson, cacheSegments } from '@/lib/async-data-cache';
+import { sortB2bEpisodesInPillarOrder } from '@/data/learning-b2b-taxonomy';
 
 const CATALOG_LANG = 'en';
 
@@ -19,8 +20,12 @@ export function useLearningCatalog(audience: LearningCatalogAudienceFilter = 'B2
   const [emptyRemote, setEmptyRemote] = useState(false);
 
   const episodes = useMemo(() => {
-    if (audience === 'all') return allEpisodes;
-    return allEpisodes.filter((ep) => ep.eqType === audience);
+    let list =
+      audience === 'all' ? allEpisodes : allEpisodes.filter((ep) => ep.eqType === audience);
+    if (audience === 'B2B' && list.length > 0) {
+      list = sortB2bEpisodesInPillarOrder(list);
+    }
+    return list;
   }, [allEpisodes, audience]);
 
   const load = useCallback(async () => {

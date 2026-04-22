@@ -1,8 +1,10 @@
 /**
  * Domain → competency → episode hierarchy for bundled learning_content export.
  * B2C and B2B use different domain names (e.g. SELF_REGULATION_DOMAIN vs SELF_MANAGEMENT_DOMAIN).
+ * B2B uses the four-pillar model in `learning-b2b-taxonomy` (4 domains, 12 competencies) for order and labels.
  */
-import type { LearningAudience } from '@/services/learning-content-catalog';
+import { b2bCompetencyIndex, b2bDomainIndex, B2B_COMPETENCY_LABELS, B2B_DOMAIN_LABELS, type B2BDomainKey } from '@/data/learning-b2b-taxonomy';
+import { normalizeS3MediaUrl, type LearningAudience } from '@/services/learning-content-catalog';
 import rawRows from './learning-content-rows.json';
 
 export type LearningContentJsonRow = {
@@ -160,8 +162,23 @@ export function buildLearningContentAudienceTree(
     d.competencies.set(ep.competency, cList);
   }
 
+  const isB2B = audience === 'B2B';
+  const domainOrder = (a: { key: string; minSort: number }, b: { key: string; minSort: number }) => {
+    if (isB2B) {
+      const byPillar = b2bDomainIndex(a.key) - b2bDomainIndex(b.key);
+      if (byPillar !== 0) return byPillar;
+    }
+    return a.minSort - b.minSort || a.key.localeCompare(b.key);
+  };
+  const competencyLabel = (domainKey: string, compKey: string) =>
+    isB2B && B2B_COMPETENCY_LABELS[compKey] ? B2B_COMPETENCY_LABELS[compKey] : labelCompetency(compKey);
+  const domainLabel = (domainKey: string) =>
+    isB2B && domainKey in B2B_DOMAIN_LABELS
+      ? B2B_DOMAIN_LABELS[domainKey as B2BDomainKey]
+      : labelDomain(domainKey);
+
   const domains: StructuredDomain[] = [...domainMap.values()]
-    .sort((a, b) => a.minSort - b.minSort || a.key.localeCompare(b.key))
+    .sort(domainOrder)
     .map((d) => {
       const competencies: StructuredCompetency[] = [...d.competencies.entries()]
         .map(([compKey, eps]) => {
@@ -170,27 +187,32 @@ export function buildLearningContentAudienceTree(
             const video = group.find((x) => x.content_type === 'video');
             const audio = group.find((x) => x.content_type === 'audio');
             const u = (s: string | null | undefined) => (s?.trim() ? s.trim() : null);
+            const aUrl = audio ? normalizeS3MediaUrl(audio.s3_link) ?? u(audio.s3_link) : null;
+            const vUrl = video ? normalizeS3MediaUrl(video.s3_link) ?? u(video.s3_link) : null;
             return {
               title,
               description: desc,
               sortOrder: sort,
-              audio:
-                audio?.s3_link && u(audio.s3_link) ? { id: audio.id, url: u(audio.s3_link)! } : null,
-              video:
-                video?.s3_link && u(video.s3_link) ? { id: video.id, url: u(video.s3_link)! } : null,
+              audio: aUrl ? { id: audio!.id, url: aUrl } : null,
+              video: vUrl ? { id: video!.id, url: vUrl } : null,
             };
           });
-          return { key: compKey, label: labelCompetency(compKey), episodes };
+          return { key: compKey, label: competencyLabel(d.key, compKey), episodes };
         })
-        .sort(
-          (a, b) =>
+        .sort((a, b) => {
+          if (isB2B) {
+            const byTax = b2bCompetencyIndex(d.key, a.key) - b2bCompetencyIndex(d.key, b.key);
+            if (byTax !== 0) return byTax;
+          }
+          return (
             Math.min(...a.episodes.map((e) => e.sortOrder)) - Math.min(...b.episodes.map((e) => e.sortOrder)) ||
-            a.key.localeCompare(b.key),
-        );
+            a.key.localeCompare(b.key)
+          );
+        });
 
       return {
         key: d.key,
-        label: labelDomain(d.key),
+        label: domainLabel(d.key),
         minSortOrder: d.minSort,
         competencies,
       };
