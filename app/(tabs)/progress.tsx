@@ -1,5 +1,5 @@
 /**
- * Progress & Report — Last EQ & Big Five scores, learning / Skill Lab activity.
+ * Progress & Report - Last EQ & Big Five scores, learning / Skill Lab activity.
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -10,7 +10,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  ActivityIndicator,
   RefreshControl,
   Animated,
 } from 'react-native';
@@ -28,16 +27,26 @@ import {
   skillDisplayName,
   type InsightsLearningBundle,
 } from '@/services/insights-learning-bundle';
+import { readCacheJson, writeCacheJson, cacheSegments } from '@/lib/async-data-cache';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { AssessmentSnapshotCard } from '@/components/assessment-snapshot-card';
+import { ShimmerCardBlock, ShimmerBox } from '@/components/ui/shimmer';
 import type { EQDimension } from '@/types/eq-assessment';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const EQ_SCORES_TIMEOUT_MS = 8000;
 const LEARNING_BUNDLE_TIMEOUT_MS = 10000;
 const SAFETY_TIMEOUT_MS = 20000;
+
+type EqScoreRow = Awaited<ReturnType<typeof getEQScores>>[number];
+
+function isValidInsightsBundle(b: unknown): b is InsightsLearningBundle {
+  if (!b || typeof b !== 'object') return false;
+  const o = b as Record<string, unknown>;
+  return typeof o.assistInnerAllyMessages === 'number' && Array.isArray(o.catalogDetails) && o.skillProgress !== undefined;
+}
 
 const SCORE_RING_SIZE = 140;
 const SCORE_RING_STROKE = 10;
@@ -270,11 +279,14 @@ function useProgressData() {
     }
 
     cancelledRef.current = false;
-    setLearningHydrated(false);
-    setLoadingEq(isSupabaseConfigured());
-    setLoadingLearning(isSupabaseConfigured());
     setErrorEq(null);
     setErrorLearning(null);
+    setLoadingEq(isSupabaseConfigured());
+    setLoadingLearning(isSupabaseConfigured());
+    setLearningHydrated(false);
+
+    let hadEqCache = false;
+    let hadBundleCache = false;
 
     const safetyTimer = setTimeout(() => {
       if (!cancelledRef.current) {
@@ -284,30 +296,100 @@ function useProgressData() {
       }
     }, SAFETY_TIMEOUT_MS);
 
-    if (isSupabaseConfigured()) {
+    (async () => {
+      if (!isSupabaseConfigured() || cancelledRef.current) {
+        if (!isSupabaseConfigured()) {
+          setLoadingEq(false);
+          setLoadingLearning(false);
+          setBig5Latest(null);
+          setLearningHydrated(true);
+        }
+        return;
+      }
+
+      try {
+        const [cachedEq, cachedBig5, cachedBundle] = await Promise.all([
+          readCacheJson<EqScoreRow[]>(cacheSegments.eqScores(user.id)),
+          readCacheJson<Big5AssessmentRow | { __noRow: true }>(cacheSegments.big5Latest(user.id)),
+          readCacheJson<InsightsLearningBundle>(cacheSegments.insightsLearningBundle(user.id)),
+        ]);
+        if (cancelledRef.current) return;
+
+        if (cachedEq !== null && Array.isArray(cachedEq)) {
+          setEqScores(cachedEq);
+          setLoadingEq(false);
+          hadEqCache = true;
+        }
+        if (cachedBig5 !== null && cachedBig5 !== undefined) {
+          if ('__noRow' in cachedBig5 && (cachedBig5 as { __noRow?: boolean }).__noRow) {
+            setBig5Latest(null);
+          } else {
+            setBig5Latest(cachedBig5 as Big5AssessmentRow);
+          }
+        }
+        if (isValidInsightsBundle(cachedBundle)) {
+          setLearningBundle(cachedBundle);
+          setLearningHydrated(true);
+          setLoadingLearning(false);
+          hadBundleCache = true;
+        } else {
+          setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE);
+        }
+      } catch {
+        if (!cancelledRef.current) {
+          setLoadingEq(true);
+          setLoadingLearning(true);
+        }
+      }
+
+      if (cancelledRef.current) return;
+
       withTimeout(getEQScores(user.id, 60), EQ_SCORES_TIMEOUT_MS)
-        .then((s) => { if (!cancelledRef.current) setEqScores(s || []); })
-        .catch((e) => { if (!cancelledRef.current) { setEqScores([]); setErrorEq(e?.message || 'Could not load EQ data.'); } })
+        .then((s) => {
+          if (cancelledRef.current) return;
+          const list = s || [];
+          setEqScores(list);
+          void writeCacheJson(cacheSegments.eqScores(user.id), list);
+        })
+        .catch((e) => {
+          if (!cancelledRef.current) {
+            if (!hadEqCache) {
+              setEqScores([]);
+              setErrorEq(e?.message || 'Could not load EQ data.');
+            }
+          }
+        })
         .finally(() => { if (!cancelledRef.current) setLoadingEq(false); });
 
       getLatestBig5Assessment(user.id)
         .then((row) => {
-          if (!cancelledRef.current) setBig5Latest(row);
+          if (cancelledRef.current) return;
+          setBig5Latest(row);
+          if (row) {
+            void writeCacheJson(cacheSegments.big5Latest(user.id), row);
+          } else {
+            void writeCacheJson(cacheSegments.big5Latest(user.id), { __noRow: true } as { __noRow: true });
+          }
         })
-        .catch(() => {
-          if (!cancelledRef.current) setBig5Latest(null);
-        });
+        .catch(() => { if (!cancelledRef.current) setBig5Latest(null); });
 
       withTimeout(loadInsightsLearningBundle(user.id), LEARNING_BUNDLE_TIMEOUT_MS)
-        .then((b) => { if (!cancelledRef.current) setLearningBundle(b); })
-        .catch((e) => { if (!cancelledRef.current) { setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE); setErrorLearning(e?.message || 'Could not load learning data.'); } })
+        .then((b) => {
+          if (cancelledRef.current) return;
+          setLearningBundle(b);
+          void writeCacheJson(cacheSegments.insightsLearningBundle(user.id), b);
+        })
+        .catch((e) => {
+          if (cancelledRef.current) return;
+          if (hadBundleCache) {
+            setErrorLearning(null);
+            return;
+          }
+          setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE);
+          setErrorLearning(e?.message || 'Could not load learning data.');
+        })
         .finally(() => { if (!cancelledRef.current) { setLoadingLearning(false); setLearningHydrated(true); } });
-    } else {
-      setLoadingEq(false);
-      setBig5Latest(null);
-      setLoadingLearning(false);
-      setLearningHydrated(true);
-    }
+    })();
 
     return () => { cancelledRef.current = true; clearTimeout(safetyTimer); };
   }, [user?.id, refreshTrigger, authLoading]);
@@ -315,8 +397,6 @@ function useProgressData() {
   const eqSummary = useMemo(() => {
     if (eqScores.length === 0) return null;
     const n = eqScores.length;
-    const checkIns = eqScores.filter((s) => s.assessmentType === 'check_in');
-    const fullTests = eqScores.filter((s) => s.assessmentType === 'full_test');
     const latest = eqScores[0];
     const now = Date.now();
     const last7 = eqScores.filter((s) => now - new Date(s.completedAt).getTime() < 7 * ONE_DAY_MS).length;
@@ -327,7 +407,7 @@ function useProgressData() {
     dimEntries.sort((a, b) => (b[1] as number) - (a[1] as number));
     const allDimensions = dimEntries.map(([k, v]) => ({ key: k, label: dimensionLabel(k), score: v as number, color: dimensionColor(k), icon: dimensionIcon(k) }));
     const topDimensions = allDimensions.slice(0, 3);
-    return { total: n, checkInCount: checkIns.length, fullTestCount: fullTests.length, latestOverall: latest.overallScore, avgOverall, last7, allDimensions, topDimensions };
+    return { total: n, latestOverall: latest.overallScore, avgOverall, last7, allDimensions, topDimensions };
   }, [eqScores]);
 
   const learningSummary = useMemo(() => {
@@ -382,10 +462,10 @@ export default function ProgressScreen() {
 
   const lastEq = useMemo(() => {
     const s = d.eqScores[0];
-    if (!s) return null;
+    if (!s || s.assessmentType !== 'full_test') return null;
     return {
       overallScore: s.overallScore,
-      assessmentType: s.assessmentType,
+      assessmentType: 'full_test' as const,
       completedAt: s.completedAt,
     };
   }, [d.eqScores]);
@@ -415,14 +495,37 @@ export default function ProgressScreen() {
             loading={loadingAssessments}
             lastEq={lastEq}
             lastBig5={lastBig5}
-            onPressEq={() => router.push('/(tabs)/eq')}
+            onPressEq={() => router.push('/full-eq-test')}
             onPressBig5={() => router.push('/big5-test')}
           />
         </View>
 
-        {/* ── EQ dimension detail (latest attempt) ── */}
+        {/* ── EQ dimension detail (latest full test) ── */}
         <View style={st.section}>
-          {d.loadingEq ? null : d.eqSummary ? (
+          {d.loadingEq ? (
+            <>
+              <GlassCard style={{ marginTop: 0 }}>
+                <ShimmerCardBlock variant="eqPanel" />
+              </GlassCard>
+              <GlassCard style={{ marginTop: Spacing.sm }}>
+                <View style={{ padding: 16, gap: 12 }}>
+                  <ShimmerBox height={14} width="55%" borderRadius={6} />
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <ShimmerBox width={28} height={28} borderRadius={8} />
+                      <View style={{ flex: 1, gap: 6 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <ShimmerBox height={12} width="40%" borderRadius={5} />
+                          <ShimmerBox height={12} width={32} borderRadius={5} />
+                        </View>
+                        <ShimmerBox height={6} width="100%" borderRadius={3} />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </GlassCard>
+            </>
+          ) : d.eqSummary ? (
             <>
               <GlassCard>
                 <View style={st.heroRow}>
@@ -472,9 +575,9 @@ export default function ProgressScreen() {
                 </GlassCard>
               )}
 
-              <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.primary }]} onPress={() => router.push('/(tabs)/eq')} activeOpacity={0.85}>
-                <Ionicons name="pulse-outline" size={18} color={colors.primaryForeground} />
-                <Text style={[st.ctaBtnText, { color: colors.primaryForeground }]}>Take EQ Check-in</Text>
+              <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.primary }]} onPress={() => router.push('/full-eq-test')} activeOpacity={0.85}>
+                <Ionicons name="analytics-outline" size={18} color={colors.primaryForeground} />
+                <Text style={[st.ctaBtnText, { color: colors.primaryForeground }]}>Take full EQ test</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -483,13 +586,13 @@ export default function ProgressScreen() {
                 <View style={[st.emptyIcon, { backgroundColor: colors.primary + '14' }]}>
                   <Ionicons name="analytics-outline" size={28} color={colors.primary} />
                 </View>
-                <Text style={[st.emptyTitle, { color: colors.textPrimary }]}>No EQ scores yet</Text>
+                <Text style={[st.emptyTitle, { color: colors.textPrimary }]}>No full EQ test yet</Text>
                 <Text style={[st.emptyBody, { color: colors.textSecondary }]}>
-                  Complete your first check-in to unlock your EQ dashboard with scores, dimensions, and progress tracking.
+                  Complete the full EQ test to unlock your dashboard with scores, dimensions, and progress tracking.
                 </Text>
-                <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.primary, alignSelf: 'stretch' }]} onPress={() => router.push('/(tabs)/eq')} activeOpacity={0.85}>
-                  <Ionicons name="pulse-outline" size={18} color={colors.primaryForeground} />
-                  <Text style={[st.ctaBtnText, { color: colors.primaryForeground }]}>Start EQ Check-in</Text>
+                <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.primary, alignSelf: 'stretch' }]} onPress={() => router.push('/full-eq-test')} activeOpacity={0.85}>
+                  <Ionicons name="analytics-outline" size={18} color={colors.primaryForeground} />
+                  <Text style={[st.ctaBtnText, { color: colors.primaryForeground }]}>Start full EQ test</Text>
                 </TouchableOpacity>
               </View>
             </GlassCard>
@@ -502,10 +605,7 @@ export default function ProgressScreen() {
           <SectionHeading icon="school-outline" iconColor={colors.accentIndigo} title="Learning" colors={colors} />
           {d.loadingLearning ? (
             <GlassCard>
-              <View style={st.loadingRow}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={st.loadingText}>Loading learning activity…</Text>
-              </View>
+              <ShimmerCardBlock variant="learning" />
             </GlassCard>
           ) : d.learningHydrated && d.learningSummary.emptyLearning ? (
             <GlassCard>
@@ -653,8 +753,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     modeChipText: { fontSize: 12, fontWeight: '600' },
     modeChipCount: { fontSize: 11, fontWeight: '500' },
 
-    loadingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-    loadingText: { fontSize: 13, color: colors.textSecondary },
     errorText: { fontSize: 11, color: colors.destructive, marginTop: 4 },
 
     footer: { marginTop: Spacing.md, paddingHorizontal: Spacing.xs, marginBottom: Spacing.md },
