@@ -170,6 +170,7 @@ export async function saveChatMessage(message: ChatMessage): Promise<void> {
     role: full.role,
     content: full.content,
     metadata: full.metadata ?? null,
+    ...(full.createdAt ? { created_at: full.createdAt } : {}),
   });
 
   if (error) {
@@ -272,18 +273,21 @@ export async function persistAssistantTurnAfterReply(params: {
   createdAt?: string;
 }): Promise<void> {
   const createdAt = params.createdAt ?? new Date().toISOString();
+  const localId = params.assistantMessageId ?? generateLocalId();
+
+  // Same order as saveChatMessage: local first so a force-quit after the API returns
+  // still leaves the assistant turn on disk when Supabase is slow or unreachable.
+  await appendLocalMessage(params.userId, params.mode, {
+    id: localId,
+    userId: params.userId,
+    mode: params.mode,
+    role: 'assistant',
+    content: params.reply,
+    metadata: { suggestion: params.suggestion },
+    createdAt,
+  });
 
   if (!isSupabaseConfigured()) {
-    const id = params.assistantMessageId ?? generateLocalId();
-    await appendLocalMessage(params.userId, params.mode, {
-      id,
-      userId: params.userId,
-      mode: params.mode,
-      role: 'assistant',
-      content: params.reply,
-      metadata: { suggestion: params.suggestion },
-      createdAt,
-    });
     if (params.mode === 'inner_ally') {
       const raw = params.suggestion;
       const emotions = Array.isArray(raw.emotions)
@@ -312,25 +316,27 @@ export async function persistAssistantTurnAfterReply(params: {
       role: 'assistant',
       content: params.reply,
       metadata: { suggestion: params.suggestion },
+      created_at: createdAt,
     })
     .select('id')
     .single();
-
-  const assistantMsgId = !error && data ? (data as { id?: string }).id : params.assistantMessageId ?? generateLocalId();
 
   if (error) {
     console.error('[ChatStorage] Failed to save assistant message to Supabase:', error);
   }
 
-  await appendLocalMessage(params.userId, params.mode, {
-    id: assistantMsgId,
-    userId: params.userId,
-    mode: params.mode,
-    role: 'assistant',
-    content: params.reply,
-    metadata: { suggestion: params.suggestion },
-    createdAt,
-  });
+  const serverAssistantId = !error && data ? (data as { id?: string }).id : undefined;
+  if (serverAssistantId && serverAssistantId !== localId) {
+    const all = await readLocalMessages(params.userId, params.mode);
+    const idx = all.findIndex(
+      (m) => m.role === 'assistant' && m.id === localId && m.content === params.reply
+    );
+    if (idx >= 0) {
+      const prev = all[idx]!;
+      all[idx] = { ...prev, id: serverAssistantId };
+      await writeLocalMessages(params.userId, params.mode, all);
+    }
+  }
 
   if (error || params.mode !== 'inner_ally') return;
 
@@ -348,7 +354,7 @@ export async function persistAssistantTurnAfterReply(params: {
     emotions,
     lifeContexts,
     suggestSaveAsReflection: Boolean(raw.suggestSaveAsReflection),
-    chatMessageId: !error && data ? (data as { id: string }).id : undefined,
+    chatMessageId: serverAssistantId,
   });
 }
 

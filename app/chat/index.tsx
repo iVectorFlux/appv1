@@ -592,15 +592,19 @@ export default function ChatScreen({ asTab, hideBottomTabBar }: ChatScreenProps 
       setIsLoading(false);
 
       if (user?.id) {
-        void persistAssistantTurnAfterReply({
-          userId: user.id,
-          mode,
-          reply: data.reply,
-          suggestion: { ...suggestion } as Record<string, unknown>,
-          userMessageForJournal: text,
-          assistantMessageId: assistantMsg.id,
-          createdAt: assistantMsg.createdAt,
-        });
+        try {
+          await persistAssistantTurnAfterReply({
+            userId: user.id,
+            mode,
+            reply: data.reply,
+            suggestion: { ...suggestion } as Record<string, unknown>,
+            userMessageForJournal: text,
+            assistantMessageId: assistantMsg.id,
+            createdAt: assistantMsg.createdAt,
+          });
+        } catch (persistErr) {
+          console.error('[Chat] Failed to persist assistant turn:', persistErr);
+        }
       }
     } catch (e) {
       const detail = e instanceof Error ? e.message : 'Something went wrong.';
