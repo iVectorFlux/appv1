@@ -22,7 +22,15 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { updateUserProfileContext, type LifeSituationId, LIFE_SITUATION_OPTIONS } from '@/services/profile-context';
+import {
+  updateUserProfileContext,
+  type LifeSituationId,
+  LIFE_SITUATION_OPTIONS,
+  INDUSTRY_OPTIONS,
+  WORK_SETTING_OPTIONS,
+  type IndustryId,
+  type WorkSettingId,
+} from '@/services/profile-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -219,6 +227,8 @@ export default function OnboardingScreen() {
   const [loading, setLoading] = useState(false);
   const [contextInterests, setContextInterests] = useState('');
   const [contextLifeSituation, setContextLifeSituation] = useState<LifeSituationId | null>(null);
+  const [contextIndustry, setContextIndustry] = useState<IndustryId | null>(null);
+  const [contextWorkSetting, setContextWorkSetting] = useState<WorkSettingId | null>(null);
 
   const canContinue = () => {
     if (step === 4) return primaryGoalId !== null;
@@ -273,10 +283,18 @@ export default function OnboardingScreen() {
           }
           await refreshDisplayName();
         }
-        if (isSupabaseConfigured() && (contextInterests.trim() || contextLifeSituation)) {
+        if (
+          isSupabaseConfigured() &&
+          (contextInterests.trim() ||
+            contextLifeSituation ||
+            contextIndustry ||
+            contextWorkSetting)
+        ) {
           const r = await updateUserProfileContext(userId, {
             profileInterests: contextInterests.trim() || null,
             lifeSituation: contextLifeSituation,
+            industry: contextIndustry,
+            orgContext: contextWorkSetting,
           });
           if (!r.ok) console.error('[Onboarding] profile context:', r.error);
         }
@@ -457,6 +475,46 @@ export default function OnboardingScreen() {
                     ]}
                   >
                     <Text style={[styles.onboardChipText, { color: on ? colors.primary : colors.textSecondary }]}>{o.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.subLabel}>Industry (optional)</Text>
+            <View style={styles.chipRowWrap}>
+              {INDUSTRY_OPTIONS.map((o) => {
+                const on = contextIndustry === o.id;
+                return (
+                  <Pressable
+                    key={o.id}
+                    onPress={() => setContextIndustry((prev) => (prev === o.id ? null : o.id))}
+                    style={[
+                      styles.onboardChip,
+                      { borderColor: on ? colors.primary : colors.borderLight, backgroundColor: on ? colors.primary + '12' : colors.surface },
+                    ]}
+                  >
+                    <Text style={[styles.onboardChipText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={1}>
+                      {o.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.subLabel}>Work or study context (optional)</Text>
+            <View style={styles.chipRowWrap}>
+              {WORK_SETTING_OPTIONS.map((o) => {
+                const on = contextWorkSetting === o.id;
+                return (
+                  <Pressable
+                    key={o.id}
+                    onPress={() => setContextWorkSetting((prev) => (prev === o.id ? null : o.id))}
+                    style={[
+                      styles.onboardChip,
+                      { borderColor: on ? colors.primary : colors.borderLight, backgroundColor: on ? colors.primary + '12' : colors.surface },
+                    ]}
+                  >
+                    <Text style={[styles.onboardChipText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={2}>
+                      {o.label}
+                    </Text>
                   </Pressable>
                 );
               })}

@@ -26,8 +26,12 @@ import {
   getUserProfileContext,
   updateUserProfileContext,
   LIFE_SITUATION_OPTIONS,
+  INDUSTRY_OPTIONS,
+  WORK_SETTING_OPTIONS,
   type UserProfileContext,
   type LifeSituationId,
+  type IndustryId,
+  type WorkSettingId,
 } from '@/services/profile-context';
 
 export default function ProfileScreen() {
@@ -41,9 +45,9 @@ export default function ProfileScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [interests, setInterests] = useState('');
-  const [industry, setIndustry] = useState('');
+  const [industry, setIndustry] = useState<IndustryId | null>(null);
   const [professionalRole, setProfessionalRole] = useState('');
-  const [orgContext, setOrgContext] = useState('');
+  const [workSetting, setWorkSetting] = useState<WorkSettingId | null>(null);
   const [lifeSituation, setLifeSituation] = useState<LifeSituationId | null>(null);
 
   const load = useCallback(async () => {
@@ -58,9 +62,9 @@ export default function ProfileScreen() {
     try {
       const ctx = await getUserProfileContext(user.id);
       setInterests(ctx.profileInterests ?? '');
-      setIndustry(ctx.industry ?? '');
+      setIndustry(ctx.industry);
       setProfessionalRole(ctx.professionalRole ?? '');
-      setOrgContext(ctx.orgContext ?? '');
+      setWorkSetting(ctx.orgContext);
       setLifeSituation(ctx.lifeSituation);
     } catch {
       setLoadError('Could not load your profile context.');
@@ -81,7 +85,7 @@ export default function ProfileScreen() {
       lifeSituation,
       industry,
       professionalRole,
-      orgContext,
+      orgContext: workSetting,
     } satisfies Partial<UserProfileContext>);
     setSaving(false);
     if (!res.ok) setLoadError(res.error ?? 'Could not save.');
@@ -135,16 +139,42 @@ export default function ProfileScreen() {
                 );
               })}
             </View>
-            <Input label="Interests" value={interests} onChangeText={setInterests} placeholder="e.g. leadership, public speaking, data" autoCapitalize="sentences" autoCorrect />
-            <Input label="Industry or field" value={industry} onChangeText={setIndustry} placeholder="e.g. Health care, education" autoCapitalize="words" />
-            <Input label="Role or title" value={professionalRole} onChangeText={setProfessionalRole} placeholder="e.g. Product manager, intern" autoCapitalize="words" />
-            <Input
-              label="Work setting (optional)"
-              value={orgContext}
-              onChangeText={setOrgContext}
-              placeholder="e.g. remote team, early-stage startup"
-              autoCapitalize="sentences"
-            />
+            <Input label="Interests (optional)" value={interests} onChangeText={setInterests} placeholder="Short note — e.g. leadership, exams" autoCapitalize="sentences" autoCorrect />
+            <Text style={st.fieldLabel}>Industry</Text>
+            <View style={st.chipWrap}>
+              {INDUSTRY_OPTIONS.map((o) => {
+                const on = industry === o.id;
+                return (
+                  <Pressable
+                    key={o.id}
+                    onPress={() => setIndustry((prev) => (prev === o.id ? null : o.id))}
+                    style={[st.chip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + '14' : colors.surface }]}
+                  >
+                    <Text style={[st.chipText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={1}>
+                      {o.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={st.fieldLabel}>Work or study context</Text>
+            <View style={st.chipWrap}>
+              {WORK_SETTING_OPTIONS.map((o) => {
+                const on = workSetting === o.id;
+                return (
+                  <Pressable
+                    key={o.id}
+                    onPress={() => setWorkSetting((prev) => (prev === o.id ? null : o.id))}
+                    style={[st.chip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + '14' : colors.surface }]}
+                  >
+                    <Text style={[st.chipText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={2}>
+                      {o.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Input label="Role or title (optional)" value={professionalRole} onChangeText={setProfessionalRole} placeholder="e.g. Product manager" autoCapitalize="words" />
             <View style={st.saveRow}>
               <Button title="Save profile context" onPress={saveContext} loading={saving} disabled={!isSupabaseConfigured() || !user?.id} />
             </View>

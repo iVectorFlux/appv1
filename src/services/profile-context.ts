@@ -16,12 +16,106 @@ export const LIFE_SITUATION_OPTIONS: { id: LifeSituationId; label: string }[] = 
   { id: 'other', label: 'Other' },
 ];
 
+/** Stable ids stored in `profiles.industry` (no free-text to reduce friction). */
+export type IndustryId =
+  | 'tech'
+  | 'health_care'
+  | 'education'
+  | 'finance'
+  | 'retail_hospitality'
+  | 'manufacturing'
+  | 'public_sector'
+  | 'nonprofit'
+  | 'creative_media'
+  | 'legal'
+  | 'construction'
+  | 'agriculture'
+  | 'other_field'
+  | 'prefer_not_say';
+
+export const INDUSTRY_OPTIONS: { id: IndustryId; label: string }[] = [
+  { id: 'tech', label: 'Technology' },
+  { id: 'health_care', label: 'Health care' },
+  { id: 'education', label: 'Education' },
+  { id: 'finance', label: 'Finance & insurance' },
+  { id: 'retail_hospitality', label: 'Retail & hospitality' },
+  { id: 'manufacturing', label: 'Manufacturing' },
+  { id: 'public_sector', label: 'Public sector' },
+  { id: 'nonprofit', label: 'Nonprofit' },
+  { id: 'creative_media', label: 'Creative & media' },
+  { id: 'legal', label: 'Legal' },
+  { id: 'construction', label: 'Construction' },
+  { id: 'agriculture', label: 'Agriculture' },
+  { id: 'other_field', label: 'Another field' },
+  { id: 'prefer_not_say', label: 'Prefer not to say' },
+];
+
+/** Stored in `profiles.org_context` (work environment / org type). */
+export type WorkSettingId =
+  | 'remote'
+  | 'hybrid'
+  | 'on_site'
+  | 'small_team'
+  | 'midsize_org'
+  | 'large_enterprise'
+  | 'startup'
+  | 'solopreneur'
+  | 'classroom_campus'
+  | 'other_setting'
+  | 'prefer_not_say_work';
+
+export const WORK_SETTING_OPTIONS: { id: WorkSettingId; label: string }[] = [
+  { id: 'remote', label: 'Mostly remote' },
+  { id: 'hybrid', label: 'Hybrid' },
+  { id: 'on_site', label: 'Mostly on-site' },
+  { id: 'small_team', label: 'Small team' },
+  { id: 'midsize_org', label: 'Midsize org' },
+  { id: 'large_enterprise', label: 'Large enterprise' },
+  { id: 'startup', label: 'Early-stage / startup' },
+  { id: 'solopreneur', label: 'Solo / independent' },
+  { id: 'classroom_campus', label: 'Classroom or campus' },
+  { id: 'other_setting', label: 'Another context' },
+  { id: 'prefer_not_say_work', label: 'Prefer not to say' },
+];
+
+const INDUSTRY_ID_SET = new Set<string>(INDUSTRY_OPTIONS.map((o) => o.id));
+const WORK_SETTING_ID_SET = new Set<string>(WORK_SETTING_OPTIONS.map((o) => o.id));
+
+export function parseIndustryId(raw: string | null | undefined): IndustryId | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const t = raw.trim();
+  if (INDUSTRY_ID_SET.has(t)) return t as IndustryId;
+  // Legacy: match label (case-insensitive) from older free-text saves
+  const fromLabel = INDUSTRY_OPTIONS.find((o) => o.label.toLowerCase() === t.toLowerCase());
+  return fromLabel?.id ?? null;
+}
+
+export function parseWorkSettingId(raw: string | null | undefined): WorkSettingId | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const t = raw.trim();
+  if (WORK_SETTING_ID_SET.has(t)) return t as WorkSettingId;
+  const fromLabel = WORK_SETTING_OPTIONS.find((o) => o.label.toLowerCase() === t.toLowerCase());
+  return fromLabel?.id ?? null;
+}
+
+export function industryLabel(id: IndustryId | null | undefined): string | null {
+  if (!id) return null;
+  return INDUSTRY_OPTIONS.find((o) => o.id === id)?.label ?? null;
+}
+
+export function workSettingLabel(id: WorkSettingId | null | undefined): string | null {
+  if (!id) return null;
+  return WORK_SETTING_OPTIONS.find((o) => o.id === id)?.label ?? null;
+}
+
 export interface UserProfileContext {
   profileInterests: string | null;
   lifeSituation: LifeSituationId | null;
-  industry: string | null;
+  /** Canonical id from `INDUSTRY_OPTIONS` (column `industry` in DB). */
+  industry: IndustryId | null;
   professionalRole: string | null;
-  orgContext: string | null;
+  /** Canonical id from `WORK_SETTING_OPTIONS` (column `org_context` in DB). */
+  orgContext: WorkSettingId | null;
 }
 
 const EMPTY: UserProfileContext = {
@@ -56,9 +150,9 @@ export async function getUserProfileContext(userId: string): Promise<UserProfile
   return {
     profileInterests: (data.profile_interests as string | null) ?? null,
     lifeSituation: parseLifeSituation(data.life_situation as string | null | undefined),
-    industry: (data.industry as string | null) ?? null,
+    industry: parseIndustryId(data.industry as string | null | undefined),
     professionalRole: (data.professional_role as string | null) ?? null,
-    orgContext: (data.org_context as string | null) ?? null,
+    orgContext: parseWorkSettingId(data.org_context as string | null | undefined),
   };
 }
 
@@ -73,9 +167,9 @@ export async function updateUserProfileContext(
   const row: Record<string, string | null> = {};
   if (ctx.profileInterests !== undefined) row.profile_interests = ctx.profileInterests?.trim() || null;
   if (ctx.lifeSituation !== undefined) row.life_situation = ctx.lifeSituation ?? null;
-  if (ctx.industry !== undefined) row.industry = ctx.industry?.trim() || null;
+  if (ctx.industry !== undefined) row.industry = ctx.industry ?? null;
   if (ctx.professionalRole !== undefined) row.professional_role = ctx.professionalRole?.trim() || null;
-  if (ctx.orgContext !== undefined) row.org_context = ctx.orgContext?.trim() || null;
+  if (ctx.orgContext !== undefined) row.org_context = ctx.orgContext ?? null;
 
   if (Object.keys(row).length === 0) return { ok: true };
 
@@ -107,16 +201,17 @@ export function buildPracticeContextWire(
     const label = LIFE_SITUATION_OPTIONS.find((o) => o.id === ctx.lifeSituation)?.label ?? ctx.lifeSituation;
     bits.push(`Situation: ${label}`);
   }
-  if (ctx.orgContext?.trim()) bits.push(`Work setting: ${ctx.orgContext.trim()}`);
+  const workLbl = workSettingLabel(ctx.orgContext);
+  if (workLbl) bits.push(`Work setting: ${workLbl}`);
 
   const hasAny =
-    bits.length > 0 || ctx.industry?.trim() || ctx.professionalRole?.trim() || ctx.lifeSituation;
+    bits.length > 0 || industryLabel(ctx.industry) || ctx.professionalRole?.trim() || ctx.lifeSituation;
   if (!hasAny) return undefined;
 
   return {
     background: bits.length ? bits.join(' | ') : undefined,
     roleTitle: ctx.professionalRole?.trim() || undefined,
-    industry: ctx.industry?.trim() || undefined,
+    industry: industryLabel(ctx.industry) || undefined,
     seniority: ctx.lifeSituation
       ? LIFE_SITUATION_OPTIONS.find((o) => o.id === ctx.lifeSituation)?.label
       : undefined,
