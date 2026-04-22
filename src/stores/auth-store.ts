@@ -232,22 +232,29 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   logout: async () => {
     const userId = get().user?.id;
-    // Clear Supabase session first — do not await endSession before signOut: DB/RLS slowness
-    // or failures would block sign-out and leave the user stuck signed in.
+    // 1) Global: revoke refresh token on server (may fail offline).
+    // 2) Local: always remove session from storage — required on RN/Expo when global fails
+    //    or storage would still rehydrate the user on next getSession().
     try {
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
-      if (error) console.warn('[Auth] signOut:', error.message);
-      set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
-      if (userId) void endSession(userId).catch(() => {});
-    } catch (error) {
-      console.error('Logout failed:', error);
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch {
-        /* ignore */
-      }
-      set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
+      const { error: g } = await supabase.auth.signOut({ scope: 'global' });
+      if (g) console.warn('[Auth] signOut global:', g.message);
+    } catch (e) {
+      console.warn('[Auth] signOut global exception:', e);
     }
+    try {
+      const { error: l } = await supabase.auth.signOut({ scope: 'local' });
+      if (l) console.warn('[Auth] signOut local:', l.message);
+    } catch (e) {
+      console.warn('[Auth] signOut local exception:', e);
+    }
+    set({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      hasCompletedOnboarding: null,
+      needsEmailConfirmation: false,
+    });
+    if (userId) void endSession(userId).catch(() => {});
   },
 
   refreshOnboardingStatus: async () => {

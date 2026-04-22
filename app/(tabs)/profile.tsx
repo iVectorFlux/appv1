@@ -96,9 +96,12 @@ export default function ProfileScreen() {
     setSigningOut(true);
     try {
       await logout();
-      router.replace('/');
+    } catch (e) {
+      console.error('[Profile] Logout error:', e);
     } finally {
       setSigningOut(false);
+      // Reset stack to sign-in; avoids index redirect races with Supabase session cleanup.
+      router.replace('/(auth)/sign-in');
     }
   };
 

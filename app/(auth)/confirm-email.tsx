@@ -20,8 +20,13 @@ export default function ConfirmEmailScreen() {
   const colors = useColors();
 
   const handleSignOut = async () => {
-    await logout();
-    router.replace('/');
+    try {
+      await logout();
+    } catch {
+      /* ignore */
+    } finally {
+      router.replace('/(auth)/sign-in');
+    }
   };
 
   const styles = createStyles(colors);
