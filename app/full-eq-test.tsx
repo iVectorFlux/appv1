@@ -1169,25 +1169,29 @@ export default function FullEQTestScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header: left / right rails keep Home + close on the right; progress is truly centered */}
       <View style={styles.testHeader}>
-        {currentIndex > 0 ? (
-          <TouchableOpacity
-            onPress={handleBack}
-            style={styles.backButton}
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.closeButton} />
-        )}
-        <Text style={styles.testHeaderText}>
-          {currentIndex + 1} / {questions.length}
-        </Text>
-        <View style={styles.headerRight}>
+        <View style={styles.headerSideLeft}>
+          {currentIndex > 0 ? (
+            <TouchableOpacity
+              onPress={handleBack}
+              style={styles.backButton}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.headerSpacer} />
+          )}
+        </View>
+        <View style={styles.headerProgressOverlay} pointerEvents="none">
+          <Text style={styles.testHeaderText}>
+            {currentIndex + 1} / {questions.length}
+          </Text>
+        </View>
+        <View style={styles.headerSideRight}>
           <TouchableOpacity
             onPress={() => router.replace('/(tabs)/home')}
             style={styles.closeButton}
@@ -1202,6 +1206,7 @@ export default function FullEQTestScreen() {
             style={styles.closeButton}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             activeOpacity={0.7}
+            accessibilityLabel="Exit test"
           >
             <Ionicons name="close" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -1353,14 +1358,35 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   // Test Header
   testHeader: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     paddingTop: Platform.OS === 'ios' ? 50 : Spacing.xl,
+    minHeight: 52,
   },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  headerSideLeft: {
+    flex: 1,
+    zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  headerSideRight: {
+    flex: 1,
+    zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: Spacing.xs,
+  },
+  headerSpacer: { width: 44, height: 44 },
+  headerProgressOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   closeButton: {
     width: 44,
     height: 44,
