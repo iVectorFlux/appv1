@@ -23,6 +23,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
@@ -536,6 +537,7 @@ export default function EQCheckInScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="EQ Check-in" backFallbackHref="/(tabs)/home" showHomeButton />
       {/* Progress bar */}
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: `${progress}%` }]} />

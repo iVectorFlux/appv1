@@ -1,11 +1,12 @@
 /**
- * Onboarding — 5 steps (goal-first, feature spotlight)
+ * Onboarding — 6 steps (context + goal-first + feature spotlight)
  *
- * 1. Welcome — tagline + pillar badges + privacy note
+ * 1. Welcome
  * 2. Name (optional)
- * 3. Primary goal (single select)
- * 4. Feature spotlight (adapts to goal)
- * 5. How are you feeling? → confirmation → Home
+ * 3. Context (optional) — life situation + interests for Skill Lab
+ * 4. Primary goal
+ * 5. Feature spotlight
+ * 6. Emotion check → Home
  */
 
 import React, { useState } from 'react';
@@ -20,7 +21,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { updateUserProfileContext, type LifeSituationId, LIFE_SITUATION_OPTIONS } from '@/services/profile-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -29,7 +31,7 @@ import { emotionColors } from '@/constants/themes';
 import type { EmotionTag } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 const DEFAULT_CHECK_IN_FREQUENCY = 'few_times_week' as const;
 
@@ -215,10 +217,12 @@ export default function OnboardingScreen() {
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionTag | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [contextInterests, setContextInterests] = useState('');
+  const [contextLifeSituation, setContextLifeSituation] = useState<LifeSituationId | null>(null);
 
   const canContinue = () => {
-    if (step === 3) return primaryGoalId !== null;
-    if (step === 5) return selectedEmotion !== null;
+    if (step === 4) return primaryGoalId !== null;
+    if (step === 6) return selectedEmotion !== null;
     return true;
   };
 
@@ -268,6 +272,13 @@ export default function OnboardingScreen() {
             console.error('[Onboarding] profiles error:', e);
           }
           await refreshDisplayName();
+        }
+        if (isSupabaseConfigured() && (contextInterests.trim() || contextLifeSituation)) {
+          const r = await updateUserProfileContext(userId, {
+            profileInterests: contextInterests.trim() || null,
+            lifeSituation: contextLifeSituation,
+          });
+          if (!r.ok) console.error('[Onboarding] profile context:', r.error);
         }
         try {
           const { error: emotionErr } = await supabase.from('onboarding_emotional_check').insert({
@@ -337,7 +348,7 @@ export default function OnboardingScreen() {
     primaryGoalId !== null ? spotlightForGoal(primaryGoalId) : [];
 
   const renderFixedButton = () => {
-    if (step === 5) {
+    if (step === 6) {
       return (
         <Button
           title="Continue"
@@ -428,6 +439,40 @@ export default function OnboardingScreen() {
 
         {step === 3 && (
           <View style={styles.screen}>
+            <Text style={styles.screenTitle}>A bit of context (optional)</Text>
+            <Text style={styles.screenSubtitle}>
+              Helps Skill Lab and coaching feel more relevant. Skip anything you prefer not to share.
+            </Text>
+            <Text style={styles.subLabel}>Life situation</Text>
+            <View style={styles.chipRowWrap}>
+              {LIFE_SITUATION_OPTIONS.map((o) => {
+                const on = contextLifeSituation === o.id;
+                return (
+                  <Pressable
+                    key={o.id}
+                    onPress={() => setContextLifeSituation((prev) => (prev === o.id ? null : o.id))}
+                    style={[
+                      styles.onboardChip,
+                      { borderColor: on ? colors.primary : colors.borderLight, backgroundColor: on ? colors.primary + '12' : colors.surface },
+                    ]}
+                  >
+                    <Text style={[styles.onboardChipText, { color: on ? colors.primary : colors.textSecondary }]}>{o.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.subLabel}>Interests or focus (optional)</Text>
+            <Input
+              value={contextInterests}
+              onChangeText={setContextInterests}
+              placeholder="e.g. public speaking, leading a team, studying for exams"
+              autoCapitalize="sentences"
+            />
+          </View>
+        )}
+
+        {step === 4 && (
+          <View style={styles.screen}>
             <Text style={styles.screenTitle}>What matters most right now?</Text>
             <Text style={styles.screenSubtitle}>{"Choose one — we'll highlight what fits you best"}</Text>
             <View style={styles.options}>
@@ -456,7 +501,7 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {step === 4 && primaryGoalId !== null && (
+        {step === 5 && primaryGoalId !== null && (
           <View style={styles.screen}>
             <Text style={styles.screenTitle}>{"Here's what you can try first"}</Text>
             <Text style={styles.screenSubtitle}>You can explore everything from Home anytime</Text>
@@ -493,7 +538,7 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <View style={styles.screen}>
             <Text style={styles.screenTitle}>How are you feeling right now?</Text>
             <Text style={styles.screenSubtitle}>{"Pick one — there's no wrong answer"}</Text>
@@ -655,6 +700,20 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: Spacing.lg,
       fontFamily: Typography.fontFamily.primary,
     },
+    subLabel: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.sm,
+    },
+    chipRowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.lg },
+    onboardChip: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+    },
+    onboardChipText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
     options: {
       gap: Spacing.sm,
       marginBottom: Spacing.sm,

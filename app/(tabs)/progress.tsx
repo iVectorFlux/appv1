@@ -1,8 +1,5 @@
 /**
- * Progress & Report — Editorial wellness dashboard
- *
- * EQ score ring, dimension strength bars, episode progress bars,
- * skill lab visual cards, companion usage, and recovery stats.
+ * Progress & Report — Last EQ & Big Five scores, learning / Skill Lab activity.
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -20,13 +17,11 @@ import {
 import { useRouter } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
-import { GROUNDING_MODES } from '@/data/grounding-content';
 import { DIMENSION_INFO } from '@/data/learning-content';
 import { useAuthStore } from '@/stores/auth-store';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { getRecoverySessions } from '@/services/recovery-storage';
 import { getEQScores } from '@/services/eq-storage';
-import { getLatestBig5Assessment } from '@/services/big5-storage';
+import { getLatestBig5Assessment, type Big5AssessmentRow } from '@/services/big5-storage';
 import {
   EMPTY_INSIGHTS_LEARNING_BUNDLE,
   loadInsightsLearningBundle,
@@ -35,13 +30,11 @@ import {
 } from '@/services/insights-learning-bundle';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { AssessmentSnapshotCard } from '@/components/assessment-snapshot-card';
 import type { EQDimension } from '@/types/eq-assessment';
-import type { EqScoreSnapshot } from '@/lib/home-assessment-summary';
-import type { GroundingMode } from '@/types/grounding';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const RECOVERY_TIMEOUT_MS = 8000;
 const EQ_SCORES_TIMEOUT_MS = 8000;
 const LEARNING_BUNDLE_TIMEOUT_MS = 10000;
 const SAFETY_TIMEOUT_MS = 20000;
@@ -68,13 +61,6 @@ function dimensionColor(key: string): string {
 
 function dimensionIcon(key: string): keyof typeof Ionicons.glyphMap {
   return (DIMENSION_INFO[key as EQDimension]?.icon ?? 'ellipse-outline') as keyof typeof Ionicons.glyphMap;
-}
-
-function formatDate(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function extractEpisodeName(key: string): string {
@@ -261,18 +247,15 @@ function useProgressData() {
   const { user, isLoading: authLoading } = useAuthStore();
 
   const [eqScores, setEqScores] = useState<Awaited<ReturnType<typeof getEQScores>>>([]);
-  const [big5CompletedAt, setBig5CompletedAt] = useState<string | null>(null);
-  const [recoverySessions, setRecoverySessions] = useState<Awaited<ReturnType<typeof getRecoverySessions>>>([]);
+  const [big5Latest, setBig5Latest] = useState<Big5AssessmentRow | null>(null);
   const [learningBundle, setLearningBundle] = useState<InsightsLearningBundle>(EMPTY_INSIGHTS_LEARNING_BUNDLE);
   const [learningHydrated, setLearningHydrated] = useState(false);
 
   const [loadingEq, setLoadingEq] = useState(false);
   const [loadingLearning, setLoadingLearning] = useState(false);
-  const [loadingRecover, setLoadingRecover] = useState(false);
 
   const [errorEq, setErrorEq] = useState<string | null>(null);
   const [errorLearning, setErrorLearning] = useState<string | null>(null);
-  const [errorRecover, setErrorRecover] = useState<string | null>(null);
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const cancelledRef = useRef(false);
@@ -280,8 +263,7 @@ function useProgressData() {
   useEffect(() => {
     if (authLoading || !user?.id) {
       setEqScores([]);
-      setBig5CompletedAt(null);
-      setRecoverySessions([]);
+      setBig5Latest(null);
       setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE);
       setLearningHydrated(false);
       return;
@@ -291,16 +273,13 @@ function useProgressData() {
     setLearningHydrated(false);
     setLoadingEq(isSupabaseConfigured());
     setLoadingLearning(isSupabaseConfigured());
-    setLoadingRecover(isSupabaseConfigured());
     setErrorEq(null);
     setErrorLearning(null);
-    setErrorRecover(null);
 
     const safetyTimer = setTimeout(() => {
       if (!cancelledRef.current) {
         setLoadingEq(false);
         setLoadingLearning(false);
-        setLoadingRecover(false);
         setLearningHydrated(true);
       }
     }, SAFETY_TIMEOUT_MS);
@@ -313,26 +292,20 @@ function useProgressData() {
 
       getLatestBig5Assessment(user.id)
         .then((row) => {
-          if (!cancelledRef.current) setBig5CompletedAt(row?.completed_at ?? null);
+          if (!cancelledRef.current) setBig5Latest(row);
         })
         .catch(() => {
-          if (!cancelledRef.current) setBig5CompletedAt(null);
+          if (!cancelledRef.current) setBig5Latest(null);
         });
 
       withTimeout(loadInsightsLearningBundle(user.id), LEARNING_BUNDLE_TIMEOUT_MS)
         .then((b) => { if (!cancelledRef.current) setLearningBundle(b); })
         .catch((e) => { if (!cancelledRef.current) { setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE); setErrorLearning(e?.message || 'Could not load learning data.'); } })
         .finally(() => { if (!cancelledRef.current) { setLoadingLearning(false); setLearningHydrated(true); } });
-
-      withTimeout(getRecoverySessions(user.id, 50), RECOVERY_TIMEOUT_MS)
-        .then((s) => { if (!cancelledRef.current) setRecoverySessions(s || []); })
-        .catch((e) => { if (!cancelledRef.current) { setRecoverySessions([]); setErrorRecover(e?.message || 'Could not load recovery data.'); } })
-        .finally(() => { if (!cancelledRef.current) setLoadingRecover(false); });
     } else {
       setLoadingEq(false);
-      setBig5CompletedAt(null);
+      setBig5Latest(null);
       setLoadingLearning(false);
-      setLoadingRecover(false);
       setLearningHydrated(true);
     }
 
@@ -357,13 +330,6 @@ function useProgressData() {
     return { total: n, checkInCount: checkIns.length, fullTestCount: fullTests.length, latestOverall: latest.overallScore, avgOverall, last7, allDimensions, topDimensions };
   }, [eqScores]);
 
-  const assistActivity = useMemo(() => {
-    if (!learningHydrated) return null;
-    const b = learningBundle;
-    if (b.assistInnerAllyMessages === 0 && b.assistCoachMessages === 0) return null;
-    return { inner: b.assistInnerAllyMessages, coach: b.assistCoachMessages, total: b.assistInnerAllyMessages + b.assistCoachMessages, lastAt: b.lastAssistMessageAt };
-  }, [learningHydrated, learningBundle]);
-
   const learningSummary = useMemo(() => {
     const b = learningBundle;
     const skillList = Object.values(b.skillProgress);
@@ -385,38 +351,19 @@ function useProgressData() {
     };
   }, [learningBundle]);
 
-  const recoverySummary = useMemo(() => {
-    if (recoverySessions.length === 0) return null;
-    const n = recoverySessions.length;
-    const byMode: Record<GroundingMode, number> = {} as Record<GroundingMode, number>;
-    recoverySessions.forEach((s) => { byMode[s.mode] = (byMode[s.mode] ?? 0) + 1; });
-    const sorted = (Object.entries(byMode) as [GroundingMode, number][]).sort((a, b) => b[1] - a[1]);
-    const topModes = sorted.slice(0, 3).map(([id, count]) => ({
-      id,
-      label: GROUNDING_MODES.find((m) => m.id === id)?.label ?? id,
-      count,
-    }));
-    const last7 = recoverySessions.filter((s) => Date.now() - new Date(s.startedAt).getTime() < 7 * ONE_DAY_MS).length;
-    return { count: n, topModes, last7 };
-  }, [recoverySessions]);
-
   return {
     user,
     authLoading,
     eqScores,
     eqSummary,
-    assistActivity,
     learningHydrated,
     learningSummary,
-    recoverySummary,
+    big5Latest,
     loadingEq,
     loadingLearning,
-    loadingRecover,
     errorEq,
     errorLearning,
-    errorRecover,
     supabaseOn: isSupabaseConfigured(),
-    big5CompletedAt,
     retry: () => setRefreshTrigger((t) => t + 1),
   };
 }
@@ -433,15 +380,23 @@ export default function ProgressScreen() {
   const onRefresh = () => { setRefreshing(true); d.retry(); setTimeout(() => setRefreshing(false), 500); };
   const st = createStyles(colors);
 
-  const eqSnapshots: EqScoreSnapshot[] = useMemo(
-    () =>
-      d.eqScores.map((s) => ({
-        completedAt: s.completedAt,
-        overallScore: s.overallScore,
-        assessmentType: s.assessmentType,
-      })),
-    [d.eqScores]
-  );
+  const lastEq = useMemo(() => {
+    const s = d.eqScores[0];
+    if (!s) return null;
+    return {
+      overallScore: s.overallScore,
+      assessmentType: s.assessmentType,
+      completedAt: s.completedAt,
+    };
+  }, [d.eqScores]);
+
+  const lastBig5 = useMemo(() => {
+    const row = d.big5Latest;
+    if (!row?.scores) return null;
+    return { scores: row.scores, completedAt: row.completed_at };
+  }, [d.big5Latest]);
+
+  const loadingAssessments = d.loadingEq;
 
   return (
     <GlassBackground>
@@ -451,30 +406,23 @@ export default function ProgressScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={st.header}>
-          <Text style={st.title}>Your Progress</Text>
-          <Text style={st.subtitle}>Track your emotional intelligence growth</Text>
-        </View>
+        <ScreenHeader title="Your Progress" backFallbackHref="/(tabs)/home" showHomeButton />
+        <Text style={st.subtitle}>Assessments and learning activity</Text>
 
         <View style={st.section}>
-          <Text style={st.snapshotSectionTitle}>Assessment snapshot</Text>
+          <Text style={st.snapshotSectionTitle}>Assessments</Text>
           <AssessmentSnapshotCard
-            loading={d.loadingEq}
-            snapshots={eqSnapshots}
-            big5CompletedAt={d.big5CompletedAt}
+            loading={loadingAssessments}
+            lastEq={lastEq}
+            lastBig5={lastBig5}
+            onPressEq={() => router.push('/(tabs)/eq')}
+            onPressBig5={() => router.push('/big5-test')}
           />
         </View>
 
-        {/* ── EQ Score Hero ──────────────────────────── */}
+        {/* ── EQ dimension detail (latest attempt) ── */}
         <View style={st.section}>
-          {d.loadingEq ? (
-            <GlassCard>
-              <View style={st.loadingRow}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={st.loadingText}>Loading EQ results…</Text>
-              </View>
-            </GlassCard>
-          ) : d.eqSummary ? (
+          {d.loadingEq ? null : d.eqSummary ? (
             <>
               <GlassCard>
                 <View style={st.heroRow}>
@@ -548,25 +496,6 @@ export default function ProgressScreen() {
           )}
           {d.errorEq ? <Text style={st.errorText}>{d.errorEq}</Text> : null}
         </View>
-
-        {/* ── AI Companion ───────────────────────────── */}
-        {d.assistActivity && (
-          <View style={st.section}>
-            <SectionHeading icon="chatbubble-ellipses-outline" iconColor={colors.accentTerracotta} title="AI Companion" colors={colors} />
-            <GlassCard>
-              <View style={st.statsRow}>
-                <StatPill icon="heart-outline" value={d.assistActivity.inner} label="Inner Ally" color={colors.accentSage} colors={colors} />
-                <View style={[st.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
-                <StatPill icon="rocket-outline" value={d.assistActivity.coach} label="Coach" color={colors.accentIndigo} colors={colors} />
-                <View style={[st.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
-                <StatPill icon="chatbubbles-outline" value={d.assistActivity.total} label="Total" color={colors.accentTerracotta} colors={colors} />
-              </View>
-              {formatDate(d.assistActivity.lastAt) && (
-                <Text style={[st.metaFooter, { color: colors.textMuted }]}>Last message · {formatDate(d.assistActivity.lastAt)}</Text>
-              )}
-            </GlassCard>
-          </View>
-        )}
 
         {/* ── Learning & Skill Lab ───────────────────── */}
         <View style={st.section}>
@@ -644,54 +573,6 @@ export default function ProgressScreen() {
           {d.errorLearning ? <Text style={st.errorText}>{d.errorLearning}</Text> : null}
         </View>
 
-        {/* ── Recover & Grounding ────────────────────── */}
-        <View style={st.section}>
-          <SectionHeading icon="leaf-outline" iconColor={colors.accentCalm} title="Recovery" colors={colors} />
-          {d.loadingRecover ? (
-            <GlassCard>
-              <View style={st.loadingRow}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={st.loadingText}>Loading recovery data…</Text>
-              </View>
-            </GlassCard>
-          ) : d.recoverySummary ? (
-            <GlassCard>
-              <View style={st.statsRow}>
-                <StatPill icon="leaf-outline" value={d.recoverySummary.count} label="Total Sessions" color={colors.accentCalm} colors={colors} />
-                <View style={[st.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
-                <StatPill icon="calendar-outline" value={d.recoverySummary.last7} label="This Week" color={colors.accentIndigo} colors={colors} />
-              </View>
-              {d.recoverySummary.topModes.length > 0 && (
-                <View style={st.modeChips}>
-                  {d.recoverySummary.topModes.map((m) => (
-                    <View key={m.id} style={[st.modeChip, { backgroundColor: colors.accentCalm + '14', borderColor: colors.accentCalm + '25' }]}>
-                      <Text style={[st.modeChipText, { color: colors.accentCalm }]}>{m.label}</Text>
-                      <Text style={[st.modeChipCount, { color: colors.textMuted }]}>×{m.count}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </GlassCard>
-          ) : (
-            <GlassCard>
-              <View style={st.emptyState}>
-                <View style={[st.emptyIcon, { backgroundColor: colors.accentCalm + '14' }]}>
-                  <Ionicons name="leaf-outline" size={28} color={colors.accentCalm} />
-                </View>
-                <Text style={[st.emptyTitle, { color: colors.textPrimary }]}>No recovery sessions</Text>
-                <Text style={[st.emptyBody, { color: colors.textSecondary }]}>
-                  Try a grounding or breathing exercise to see your recovery stats here.
-                </Text>
-                <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.accentCalm, alignSelf: 'stretch' }]} onPress={() => router.push('/(tabs)/recover')} activeOpacity={0.85}>
-                  <Ionicons name="leaf-outline" size={18} color="#fff" />
-                  <Text style={[st.ctaBtnText, { color: '#fff' }]}>Try Grounding</Text>
-                </TouchableOpacity>
-              </View>
-            </GlassCard>
-          )}
-          {d.errorRecover ? <Text style={st.errorText}>{d.errorRecover}</Text> : null}
-        </View>
-
         <View style={st.footer}>
           <Text style={st.footerText}>
             Progress uses structured data only. Your conversations remain private.
@@ -722,10 +603,8 @@ function SectionHeading({ icon, iconColor, title, colors }: {
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1 },
-    content: { paddingBottom: 120, paddingHorizontal: Spacing.md },
-    header: { paddingTop: Platform.OS === 'ios' ? 56 : Spacing.xl, marginBottom: Spacing.lg },
-    title: { fontSize: 26, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.5 },
-    subtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+    content: { paddingBottom: 120, paddingHorizontal: Spacing.md, paddingTop: 4 },
+    subtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: Spacing.lg, paddingHorizontal: 2 },
 
     snapshotSectionTitle: {
       fontSize: Typography.fontSize.sm,

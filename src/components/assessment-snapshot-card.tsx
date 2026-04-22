@@ -1,88 +1,102 @@
 /**
- * EQ + Big Five text snapshot (used on Progress).
+ * Last completed EQ and Big Five scores (Progress home block).
+ * Retake anytime — we always show the most recent result when present.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassCard } from '@/components/ui/glass-card';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
-import {
-  assessmentTypeLabel,
-  formatShortDate,
-  latestByType,
-  latestOverall,
-  type EqScoreSnapshot,
-} from '@/lib/home-assessment-summary';
+import { assessmentTypeLabel, formatShortDate } from '@/lib/home-assessment-summary';
+import { formatBig5ScoresLine } from '@/services/profile-context';
+import type { Big5Scores } from '@/services/big5-scoring';
+
+export type LastEqSnapshot = {
+  overallScore: number;
+  assessmentType: 'check_in' | 'full_test';
+  completedAt: string;
+} | null;
+
+export type LastBig5Snapshot = {
+  scores: Big5Scores;
+  completedAt: string;
+} | null;
 
 export function AssessmentSnapshotCard({
   loading,
-  snapshots,
-  big5CompletedAt,
+  lastEq,
+  lastBig5,
+  onPressEq,
+  onPressBig5,
 }: {
   loading: boolean;
-  snapshots: EqScoreSnapshot[];
-  big5CompletedAt: string | null;
+  lastEq: LastEqSnapshot;
+  lastBig5: LastBig5Snapshot;
+  onPressEq: () => void;
+  onPressBig5: () => void;
 }) {
   const colors = useColors();
-  const latest = latestOverall(snapshots);
-  const lastCheckIn = latestByType(snapshots, 'check_in');
-  const lastFull = latestByType(snapshots, 'full_test');
   const st = createStyles(colors);
+
+  if (loading) {
+    return (
+      <GlassCard borderRadius={Radius.lg} style={st.card}>
+        <View style={st.loadingRow}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={st.muted}>Loading assessments…</Text>
+        </View>
+      </GlassCard>
+    );
+  }
 
   return (
     <GlassCard borderRadius={Radius.lg} style={st.card}>
-      {loading ? (
-        <View style={st.loadingRow}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={st.muted}>Loading your snapshot…</Text>
+      <View style={st.row}>
+        <Ionicons name="heart-outline" size={20} color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <Text style={st.kicker}>Emotional intelligence (EQ)</Text>
+          {lastEq ? (
+            <Text style={st.body}>
+              <Text style={st.em}>Last score {lastEq.overallScore}</Text>
+              {' · '}
+              {assessmentTypeLabel(lastEq.assessmentType)}
+              {formatShortDate(lastEq.completedAt) ? ` · ${formatShortDate(lastEq.completedAt)}` : ''}
+            </Text>
+          ) : (
+            <Text style={st.body}>Not taken yet — start a check-in or full test when you are ready.</Text>
+          )}
+          <TouchableOpacity onPress={onPressEq} style={st.linkRow} activeOpacity={0.7} accessibilityRole="button">
+            <Text style={st.link}>{lastEq ? 'Retake or continue' : 'Start EQ'}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          </TouchableOpacity>
         </View>
-      ) : (
-        <>
-          <View style={st.row}>
-            <Ionicons name="heart-outline" size={20} color={colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={st.kicker}>EQ</Text>
-              {latest ? (
-                <Text style={st.body}>
-                  Latest score <Text style={st.em}>{latest.overallScore}</Text>
-                  {' · '}
-                  {assessmentTypeLabel(latest.assessmentType)}
-                  {formatShortDate(latest.completedAt) ? ` · ${formatShortDate(latest.completedAt)}` : ''}
+      </View>
+
+      <View style={[st.row, { marginTop: Spacing.lg, paddingTop: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight }]}>
+        <Ionicons name="color-wand-outline" size={20} color={colors.accentIndigo} />
+        <View style={{ flex: 1 }}>
+          <Text style={st.kicker}>Big Five personality</Text>
+          {lastBig5 ? (
+            <>
+              <Text style={st.traits} numberOfLines={3} selectable={Platform.OS === 'web'}>
+                {formatBig5ScoresLine(lastBig5.scores)}
+              </Text>
+              {formatShortDate(lastBig5.completedAt) ? (
+                <Text style={[st.body, { marginTop: 4 }]}>
+                  Last completed {formatShortDate(lastBig5.completedAt)}
                 </Text>
-              ) : (
-                <Text style={st.body}>No completed EQ session yet — start a check-in or full test from Assessments on Home.</Text>
-              )}
-            </View>
-          </View>
-          <View style={[st.row, { marginTop: Spacing.sm }]}>
-            <Ionicons name="git-compare-outline" size={20} color={colors.accentIndigo} />
-            <View style={{ flex: 1 }}>
-              <Text style={st.kicker}>Check-in vs full test</Text>
-              <Text style={st.body}>
-                {lastCheckIn
-                  ? `Last check-in: ${lastCheckIn.overallScore} · ${formatShortDate(lastCheckIn.completedAt) ?? ''}`
-                  : 'No check-in yet'}
-                {' · '}
-                {lastFull
-                  ? `Full test: ${lastFull.overallScore} · ${formatShortDate(lastFull.completedAt) ?? ''}`
-                  : 'Full test: not completed'}
-              </Text>
-            </View>
-          </View>
-          <View style={[st.row, { marginTop: Spacing.sm }]}>
-            <Ionicons name="color-wand-outline" size={20} color={colors.accentIndigo} />
-            <View style={{ flex: 1 }}>
-              <Text style={st.kicker}>Big Five</Text>
-              <Text style={st.body}>
-                {big5CompletedAt
-                  ? `Last completed ${formatShortDate(big5CompletedAt) ?? ''}`
-                  : 'Not completed yet — open Big Five from Assessments on Home.'}
-              </Text>
-            </View>
-          </View>
-        </>
-      )}
+              ) : null}
+            </>
+          ) : (
+            <Text style={st.body}>Not taken yet — about 5–10 minutes for a trait snapshot.</Text>
+          )}
+          <TouchableOpacity onPress={onPressBig5} style={st.linkRow} activeOpacity={0.7} accessibilityRole="button">
+            <Text style={st.link}>{lastBig5 ? 'Retake test' : 'Start Big Five'}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
     </GlassCard>
   );
 }
@@ -111,5 +125,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       color: colors.textSecondary,
       lineHeight: Typography.fontSize.sm * 1.45,
     },
+    traits: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.textPrimary,
+      lineHeight: Typography.fontSize.sm * 1.45,
+      fontWeight: Typography.fontWeight.medium,
+    },
     em: { fontWeight: Typography.fontWeight.bold, color: colors.textPrimary },
+    linkRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.sm },
+    link: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.primary },
   });

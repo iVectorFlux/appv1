@@ -1187,14 +1187,25 @@ export default function FullEQTestScreen() {
         <Text style={styles.testHeaderText}>
           {currentIndex + 1} / {questions.length}
         </Text>
-        <TouchableOpacity
-          onPress={handleExit}
-          style={styles.closeButton}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="close" size={28} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => router.replace('/(tabs)/home')}
+            style={styles.closeButton}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            activeOpacity={0.7}
+            accessibilityLabel="Home"
+          >
+            <Ionicons name="home-outline" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleExit}
+            style={styles.closeButton}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={28} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
       
       {/* Animated Progress bar */}
@@ -1349,6 +1360,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     paddingVertical: Spacing.md,
     paddingTop: Platform.OS === 'ios' ? 50 : Spacing.xl,
   },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   closeButton: {
     width: 44,
     height: 44,

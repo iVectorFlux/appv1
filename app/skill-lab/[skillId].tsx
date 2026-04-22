@@ -45,7 +45,9 @@ import {
 } from '@/data/skill-lab-practice-ui';
 import { saveSkillSession, recordScenarioAttempt } from '@/services/skills-storage';
 import { bumpOfflineSessionCount } from '@/services/skill-lab-offline-progress';
+import { getUserProfileContext, buildPracticeContextWire, type UserProfileContext } from '@/services/profile-context';
 import { buildVercelApiUrl } from '@/utils/vercel-api';
+import { ScreenHeader } from '@/components/ui/screen-header';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -442,6 +444,7 @@ export default function SkillDetailScreen() {
   const [roundsSaved, setRoundsSaved] = useState(0);
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [customProblemDraft, setCustomProblemDraft] = useState('');
+  const [learnerContext, setLearnerContext] = useState<UserProfileContext | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   /** Timestamp when the current scenario started loading — used for duration_ms. */
@@ -479,6 +482,18 @@ export default function SkillDetailScreen() {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [fadeAnim]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      setLearnerContext(null);
+      return;
+    }
+    let cancelled = false;
+    getUserProfileContext(user.id)
+      .then((c) => { if (!cancelled) setLearnerContext(c); })
+      .catch(() => { if (!cancelled) setLearnerContext(null); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   // ── Start practice: generate scenario ──────────────────────────────────────
   const startPractice = useCallback(async () => {
     const atomicId = selectedAtomicIdRef.current;
@@ -500,6 +515,7 @@ export default function SkillDetailScreen() {
     try {
       const customDraft = customProblemDraft.trim();
 
+      const practiceContext = buildPracticeContextWire(learnerContext);
       const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -511,6 +527,7 @@ export default function SkillDetailScreen() {
           practiceMode,
           generateScenario: true,
           ...(customDraft ? { customProblemDraft: customDraft } : {}),
+          ...(practiceContext ? { practiceContext } : {}),
         }),
       });
 
@@ -555,7 +572,7 @@ export default function SkillDetailScreen() {
       setPracticeError(errMsg2);
       setPhase('idle');
     }
-  }, [skill, practiceMode, isDecisionMode, user?.id, customProblemDraft]);
+  }, [skill, practiceMode, isDecisionMode, user?.id, customProblemDraft, learnerContext]);
 
 
   // ── Submit answer: get feedback ─────────────────────────────────────────────
@@ -585,6 +602,8 @@ export default function SkillDetailScreen() {
       } else {
         body.question = practiceQuestion;
       }
+      const pc = buildPracticeContextWire(learnerContext);
+      if (pc) body.practiceContext = pc;
 
       const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
         method: 'POST',
@@ -646,7 +665,7 @@ export default function SkillDetailScreen() {
   }, [
     userAnswer, phase, skill, selectedAtomicId, selectedAtomic, practiceMode,
     scenario, practiceQuestion, decisionOptions, selectedDecisionId, attemptNumber, user?.id,
-    isDecisionMode,
+    isDecisionMode, learnerContext,
   ]);
 
   // ── Refine: keep scenario, increment attempt ────────────────────────────────
@@ -701,16 +720,17 @@ export default function SkillDetailScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={navigateBackFromSkill} style={styles.backBtn} hitSlop={8}>
-              <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
+          <ScreenHeader
+            title={skill.name}
+            onBackPress={navigateBackFromSkill}
+            showHomeButton
+            backFallbackHref="/skill-lab"
+          />
+          <View style={styles.subHeader}>
             <View style={[styles.iconCircle, { backgroundColor: skill.color + '18' }]}>
               <Ionicons name={skill.icon as any} size={24} color={skill.color} />
             </View>
             <View style={styles.headerText}>
-              <Text style={styles.skillName}>{skill.name}</Text>
               <Text style={styles.skillTagline}>{skill.tagline}</Text>
             </View>
           </View>
@@ -1059,6 +1079,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     scroll: { flex: 1 },
     content: { paddingBottom: Spacing['3xl'], maxWidth: Layout.maxWidth, alignSelf: 'center', width: '100%' },
     errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, paddingHorizontal: Spacing.xl },
+    subHeader: {
+      paddingHorizontal: Spacing.md,
+      paddingBottom: Spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
     header: {
       paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
       paddingHorizontal: Spacing.md,

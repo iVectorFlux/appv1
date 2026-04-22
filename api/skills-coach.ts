@@ -741,7 +741,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const selected = decisionOptions.find((o) => o.id.toLowerCase() === selectedDecisionId);
       const selectedLabel = selected?.label ?? selectedDecisionId;
 
-      const prompt = buildDecisionFeedbackPrompt(
+      let prompt = buildDecisionFeedbackPrompt(
         skillName,
         atomicSkillName,
         scenario,
@@ -752,6 +752,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         userAnswer,
         attemptNumber
       );
+      const ctxBlock = formatPracticeContextBlock(body.practiceContext);
+      if (ctxBlock !== '(none supplied)') {
+        prompt += `\n\nLearner context (for tone; do not quote labels verbatim):\n${ctxBlock}`;
+      }
       const raw = await callGroqJson(prompt, apiKey, model, 900);
       const parsed = JSON.parse(raw) as Record<string, unknown>;
 
@@ -772,7 +776,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return;
       }
 
-      const prompt = buildOpenFeedbackPrompt(
+      let prompt = buildOpenFeedbackPrompt(
         skillName,
         atomicSkillName,
         practiceMode,
@@ -781,6 +785,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         userAnswer,
         attemptNumber
       );
+      const ctxOpen = formatPracticeContextBlock(body.practiceContext);
+      if (ctxOpen !== '(none supplied)') {
+        prompt += `\n\nLearner context (for tone; do not quote labels verbatim):\n${ctxOpen}`;
+      }
       const raw = await callGroqJson(prompt, apiKey, model, 900);
       const parsed = JSON.parse(raw) as Record<string, unknown>;
 
