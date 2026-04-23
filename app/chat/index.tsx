@@ -99,7 +99,7 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
       : "Hey, I'm here for you. Share how you're feeling. I'll listen, reflect, and help you ground yourself.",
     placeholder: "What's on your mind?",
     suggestions: [
-      "I'm having a bad day. Help me calm down",
+      'I am having a bad day\nhelp me calm down',
       'I have pre-meeting anxiety',
     ],
   },
@@ -805,7 +805,17 @@ export default function ChatScreen({
                   ]}
                   activeOpacity={0.7}
                 >
-                  <Text style={[st.suggestionText, { color: colors.textPrimary }]} numberOfLines={1}>{s}</Text>
+                  <View style={st.suggestionChipTextCol}>
+                    {s.split('\n').map((line, li) => (
+                      <Text
+                        key={li}
+                        style={[st.suggestionText, { color: colors.textPrimary }]}
+                        numberOfLines={1}
+                      >
+                        {line}
+                      </Text>
+                    ))}
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -951,6 +961,9 @@ const createChatStyles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 9,
       borderRadius: 18,
       borderWidth: 1,
+    },
+    suggestionChipTextCol: {
+      gap: 2,
     },
     suggestionText: {
       fontSize: 13,
