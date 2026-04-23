@@ -223,14 +223,9 @@ export default function Big5TestScreen() {
           <>
             <Text style={st.lead}>
               Fifty short statements about how you usually think, feel, and act. For each one, say how much it sounds
-              like you, from not like you at all to very much like you.
+              like you, from not like you at all to very much like you. This is for self-insight, not a clinical diagnosis.
+              Allow about 10 to 15 minutes. You can retake anytime; each completion is saved separately.
             </Text>
-            <GlassCard>
-              <Text style={st.body}>
-                This is for self-insight, not a clinical diagnosis. Allow about 10 to 15 minutes. You can retake anytime;
-                each completion is saved separately.
-              </Text>
-            </GlassCard>
             <TouchableOpacity style={[st.primaryBtn, { backgroundColor: colors.primary }]} onPress={() => setPhase('test')}>
               <Text style={st.primaryBtnText}>Start assessment</Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
@@ -400,12 +395,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.base,
       color: colors.textSecondary,
       lineHeight: Typography.fontSize.base * 1.5,
-      marginBottom: Spacing.md,
-    },
-    body: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
-      lineHeight: Typography.fontSize.sm * 1.5,
+      marginBottom: Spacing.lg,
     },
     primaryBtn: {
       flexDirection: 'row',
