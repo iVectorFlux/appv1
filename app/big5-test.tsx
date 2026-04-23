@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -145,10 +146,32 @@ export default function Big5TestScreen() {
     setSavedToCloud(null);
   }, []);
 
+  const leaveTestDiscardingProgress = useCallback(() => {
+    resetTest();
+    router.back();
+  }, [resetTest, router]);
+
+  const confirmLeaveAssessment = useCallback((onLeave: () => void) => {
+    const msg = 'Your answers and progress on this attempt will be removed.';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${msg}\n\nLeave assessment?`)) onLeave();
+      return;
+    }
+    Alert.alert('Leave assessment?', msg, [
+      { text: 'Stay', style: 'cancel' },
+      { text: 'Leave', style: 'destructive', onPress: onLeave },
+    ]);
+  }, []);
+
   const handleHeaderBack = useCallback(() => {
     if (phase === 'test') {
       if (index > 0) {
         goBackQuestion();
+        return;
+      }
+      const hasProgress = Object.keys(responses).length > 0;
+      if (hasProgress) {
+        confirmLeaveAssessment(leaveTestDiscardingProgress);
         return;
       }
       setPhase('intro');
@@ -159,7 +182,16 @@ export default function Big5TestScreen() {
       return;
     }
     router.back();
-  }, [phase, index, goBackQuestion, router]);
+  }, [phase, index, responses, goBackQuestion, router, confirmLeaveAssessment, leaveTestDiscardingProgress]);
+
+  const handleCloseFromTest = useCallback(() => {
+    const hasProgress = Object.keys(responses).length > 0 || index > 0;
+    if (!hasProgress) {
+      setPhase('intro');
+      return;
+    }
+    confirmLeaveAssessment(leaveTestDiscardingProgress);
+  }, [index, responses, confirmLeaveAssessment, leaveTestDiscardingProgress]);
 
   if (!isLoading && !isAuthenticated) {
     return <Redirect href="/(auth)/sign-in" />;
@@ -168,7 +200,24 @@ export default function Big5TestScreen() {
   return (
     <GlassBackground>
       <ScrollView style={st.scroll} contentContainerStyle={st.content} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title="Big Five" onBackPress={handleHeaderBack} showHomeButton backFallbackHref="/(tabs)/home" />
+        <ScreenHeader
+          title="Big Five"
+          onBackPress={handleHeaderBack}
+          backFallbackHref="/(tabs)/home"
+          right={
+            phase === 'test' ? (
+              <TouchableOpacity
+                onPress={handleCloseFromTest}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+                hitSlop={16}
+                accessibilityRole="button"
+                accessibilityLabel="Close assessment"
+              >
+                <Ionicons name="close" size={26} color={colors.textPrimary} />
+              </TouchableOpacity>
+            ) : undefined
+          }
+        />
 
         {phase === 'intro' && (
           <>

@@ -1,9 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions, type ViewStyle, type StyleProp } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, type ViewStyle, type StyleProp } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '@/constants/design-tokens';
-
-const { width: SW, height: SH } = Dimensions.get('window');
 
 interface GlassBackgroundProps {
   children: React.ReactNode;
@@ -13,6 +11,7 @@ interface GlassBackgroundProps {
 export function GlassBackground({ children, style }: GlassBackgroundProps) {
   const colors = useColors();
   const isDark = colors.glassTint === 'dark';
+  const { width: SW, height: SH } = useWindowDimensions();
 
   return (
     <View style={[styles.container, style]}>

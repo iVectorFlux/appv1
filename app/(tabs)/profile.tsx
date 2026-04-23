@@ -27,11 +27,9 @@ import {
   updateUserProfileContext,
   LIFE_SITUATION_OPTIONS,
   INDUSTRY_OPTIONS,
-  WORK_SETTING_OPTIONS,
   type UserProfileContext,
   type LifeSituationId,
   type IndustryId,
-  type WorkSettingId,
 } from '@/services/profile-context';
 
 export default function ProfileScreen() {
@@ -43,11 +41,11 @@ export default function ProfileScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveOk, setSaveOk] = useState(false);
 
   const [interests, setInterests] = useState('');
   const [industry, setIndustry] = useState<IndustryId | null>(null);
   const [professionalRole, setProfessionalRole] = useState('');
-  const [workSetting, setWorkSetting] = useState<WorkSettingId | null>(null);
   const [lifeSituation, setLifeSituation] = useState<LifeSituationId | null>(null);
 
   const load = useCallback(async () => {
@@ -64,7 +62,6 @@ export default function ProfileScreen() {
       setInterests(ctx.profileInterests ?? '');
       setIndustry(ctx.industry);
       setProfessionalRole(ctx.professionalRole ?? '');
-      setWorkSetting(ctx.orgContext);
       setLifeSituation(ctx.lifeSituation);
     } catch {
       setLoadError('Could not load your profile context.');
@@ -85,10 +82,16 @@ export default function ProfileScreen() {
       lifeSituation,
       industry,
       professionalRole,
-      orgContext: workSetting,
     } satisfies Partial<UserProfileContext>);
     setSaving(false);
-    if (!res.ok) setLoadError(res.error ?? 'Could not save.');
+    if (!res.ok) {
+      setSaveOk(false);
+      setLoadError(res.error ?? 'Could not save.');
+      return;
+    }
+    setLoadError(null);
+    setSaveOk(true);
+    setTimeout(() => setSaveOk(false), 2500);
   };
 
   const handleLogout = async () => {
@@ -126,6 +129,7 @@ export default function ProfileScreen() {
             We use this to tailor Skill Lab scenarios. You can change it anytime. Multiple assessments keep your latest EQ and Big Five on Progress.
           </Text>
           {loadError ? <Text style={st.errorText}>{loadError}</Text> : null}
+          {saveOk ? <Text style={st.saveOkText}>Profile context saved.</Text> : null}
           <GlassCard>
             <Text style={st.fieldLabel}>Life situation</Text>
             <View style={st.chipWrap}>
@@ -154,23 +158,6 @@ export default function ProfileScreen() {
                     style={[st.chip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + '14' : colors.surface }]}
                   >
                     <Text style={[st.chipText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={1}>
-                      {o.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={st.fieldLabel}>Work or study context</Text>
-            <View style={st.chipWrap}>
-              {WORK_SETTING_OPTIONS.map((o) => {
-                const on = workSetting === o.id;
-                return (
-                  <Pressable
-                    key={o.id}
-                    onPress={() => setWorkSetting((prev) => (prev === o.id ? null : o.id))}
-                    style={[st.chip, { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary + '14' : colors.surface }]}
-                  >
-                    <Text style={[st.chipText, { color: on ? colors.primary : colors.textSecondary }]} numberOfLines={2}>
                       {o.label}
                     </Text>
                   </Pressable>
@@ -271,6 +258,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     chipText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
     saveRow: { marginTop: Spacing.md, alignItems: 'stretch' },
     errorText: { fontSize: 12, color: colors.destructive, marginBottom: Spacing.sm },
+    saveOkText: { fontSize: 12, color: colors.success, marginBottom: Spacing.sm, fontWeight: Typography.fontWeight.medium },
     settingsList: { gap: Spacing.sm },
     settingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     settingText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontWeight: Typography.fontWeight.medium },

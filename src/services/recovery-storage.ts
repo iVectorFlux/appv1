@@ -57,17 +57,21 @@ export async function saveRecoverySession(
     ...(extraMetadata && typeof extraMetadata === 'object' ? extraMetadata : {}),
   };
 
+  const duration_ms = Number.isFinite(session.durationMs) ? Math.round(session.durationMs) : 0;
+  const helped =
+    session.helpful === true ? true : session.helpful === false ? false : null;
+
   const row: Record<string, unknown> = {
     user_id: uid,
     type: 'grounding',
     technique: session.mode,
     started_at: session.startedAt,
     completed_at: session.completedAt,
-    duration_ms: session.durationMs,
+    duration_ms,
     intensity: session.stressBefore,
     effectiveness,
     completion_pct: session.completionPct,
-    helped: session.helpful,
+    helped,
     stress_after: session.stressAfter,
     session_metadata,
   };

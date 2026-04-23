@@ -180,14 +180,17 @@ export default function GroundingScreen() {
       exitGrounding();
       return;
     }
+    const startMs = Date.parse(sessionStart);
+    const durationMs = Number.isFinite(startMs) ? Math.max(0, Date.now() - startMs) : 0;
+
     const session: GroundingSession = {
       mode: selectedMode,
       stressBefore: stressLevel,
       stressAfter,
       emotionalTone,
       completionPct,
-      durationMs: Date.now() - new Date(sessionStart).getTime(),
-      startedAt: sessionStart,
+      durationMs,
+      startedAt: sessionStart || new Date().toISOString(),
       completedAt: new Date().toISOString(),
       helpful,
     };

@@ -324,27 +324,34 @@ export default function FullEQTestScreen() {
         router.replace('/(tabs)/profile');
       }
     };
-    
-    // Alert.alert doesn't work on web, use confirm instead
+
+    const hasProgress = responses.length > 0 || currentIndex > 0;
+
     if (Platform.OS === 'web') {
-      if (responses.length === 0 || window.confirm('Exit Assessment?\n\nYour progress will be lost. Are you sure you want to exit?')) {
+      if (
+        !hasProgress ||
+        window.confirm(
+          'Exit assessment?\n\nYour answers and progress on this attempt will be removed. This cannot be undone.'
+        )
+      ) {
         doExit();
       }
-    } else {
-      if (responses.length === 0) {
-        // No responses yet, just exit
-        doExit();
-      } else {
-        Alert.alert(
-          'Exit Assessment?',
-          'Your progress will be lost. Are you sure you want to exit?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Exit', style: 'destructive', onPress: doExit },
-          ]
-        );
-      }
+      return;
     }
+
+    if (!hasProgress) {
+      doExit();
+      return;
+    }
+
+    Alert.alert(
+      'Exit assessment?',
+      'Your answers and progress on this attempt will be removed. This cannot be undone.',
+      [
+        { text: 'Stay', style: 'cancel' },
+        { text: 'Exit', style: 'destructive', onPress: doExit },
+      ]
+    );
   };
 
   const getResponseTime = () => Date.now() - questionStartTime;
@@ -1169,7 +1176,7 @@ export default function FullEQTestScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header: left / right rails keep Home + close on the right; progress is truly centered */}
+      {/* Header: back on the left (when applicable), close on the right; progress centered */}
       <View style={styles.testHeader}>
         <View style={styles.headerSideLeft}>
           {currentIndex > 0 ? (
@@ -1192,15 +1199,6 @@ export default function FullEQTestScreen() {
           </Text>
         </View>
         <View style={styles.headerSideRight}>
-          <TouchableOpacity
-            onPress={() => router.replace('/(tabs)/home')}
-            style={styles.closeButton}
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            activeOpacity={0.7}
-            accessibilityLabel="Home"
-          >
-            <Ionicons name="home-outline" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleExit}
             style={styles.closeButton}
