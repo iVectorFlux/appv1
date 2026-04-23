@@ -1,12 +1,11 @@
 /**
  * Skill Lab - skill detail + AI practice
  *
- * Routes each skill to its own practice mode:
- *   decision_simulator  → scenario → A–D choice → reasoning → feedback
- *   output_audit        → AI output to evaluate → critique → feedback
- *   open_reflection     → interpersonal/systemic situation → open response → feedback
- *   generative_brainstorm → creative challenge → ideas list → originality feedback
- *   draft_and_refine    → communication brief → draft message → feedback
+ * Act-first flow: pick a sub-skill (defaults to the first), optionally add context, start → scenario →
+ * respond → feedback, then “Playbook for next time” (how-to lines) after the attempt—not before.
+ *
+ * Practice modes (see future-skills.ts):
+ *   decision_simulator, output_audit, open_reflection, generative_brainstorm, draft_and_refine
  *
  * Uses /api/skills-coach for AI calls.
  * Saves completed rounds to Supabase via skills-storage.ts.
@@ -444,6 +443,7 @@ export default function SkillDetailScreen() {
   const [roundsSaved, setRoundsSaved] = useState(0);
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [customProblemDraft, setCustomProblemDraft] = useState('');
+  const [optionalContextOpen, setOptionalContextOpen] = useState(false);
   const [learnerContext, setLearnerContext] = useState<UserProfileContext | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -469,12 +469,17 @@ export default function SkillDetailScreen() {
   // Keep ref in sync with state
   useEffect(() => { selectedAtomicIdRef.current = selectedAtomicId; }, [selectedAtomicId]);
 
-  // Deep link: /skill-lab/[id]?atomic=subskill_id
+  // Deep link or sensible default: always have a focus so users can act immediately.
   useEffect(() => {
-    if (!skill || !atomicQs) return;
-    if (skill.atomicSkills.some((a) => a.id === atomicQs)) {
+    if (!skill) return;
+    if (atomicQs && skill.atomicSkills.some((a) => a.id === atomicQs)) {
       setSelectedAtomicId(atomicQs);
+      return;
     }
+    setSelectedAtomicId((prev) => {
+      if (prev && skill.atomicSkills.some((a) => a.id === prev)) return prev;
+      return skill.atomicSkills[0]?.id ?? null;
+    });
   }, [skill, atomicQs]);
 
   // Fade-in animation on mount
@@ -493,6 +498,11 @@ export default function SkillDetailScreen() {
       .catch(() => { if (!cancelled) setLearnerContext(null); });
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!skill) return;
+    setOptionalContextOpen(false);
+  }, [skill?.id]);
 
   // ── Start practice: generate scenario ──────────────────────────────────────
   const startPractice = useCallback(async () => {
@@ -740,8 +750,8 @@ export default function SkillDetailScreen() {
             <Text style={styles.sectionTitle}>Sub-skills</Text>
             <Text style={styles.bodyTextMuted}>
               {selectedAtomic
-                ? `You’re practising “${selectedAtomic.name}”. Scenarios and tips below follow this focus.`
-                : 'Pick a sub-skill. Scenarios, “how to solve,” and coaching all match that focus.'}
+                ? `Focus: ${selectedAtomic.name}. Tap start to get a scenario—then you respond and learn from feedback.`
+                : 'Choose a focus area for this round.'}
             </Text>
             <View style={styles.chipRow}>
               {skill.atomicSkills.map((a) => (
@@ -751,7 +761,7 @@ export default function SkillDetailScreen() {
                   selected={selectedAtomicId === a.id}
                   color={skill.color}
                   colors={colors}
-                  onPress={() => setSelectedAtomicId((prev) => (prev === a.id ? null : a.id))}
+                  onPress={() => setSelectedAtomicId(a.id)}
                 />
               ))}
             </View>
@@ -759,51 +769,44 @@ export default function SkillDetailScreen() {
               <>
                 <Text style={styles.atomicDesc}>{selectedAtomic.description}</Text>
 
-                {/* How to solve - numbered bullets with accent left border */}
-                <View style={[styles.howBox, { borderColor: colors.border, backgroundColor: colors.floating, borderLeftColor: skill.color, borderLeftWidth: 3 }]}>
-                  <Text style={[styles.howTitle, { color: colors.textPrimary }]}>How to solve this well</Text>
-                  {getHowToSolveLines({
-                    skillId: skill.id,
-                    atomicSkillId: selectedAtomicId,
-                    practiceMode,
-                    isDecisionMode,
-                  }).map((line, idx) => (
-                    <View key={idx} style={styles.howBulletRow}>
-                      <View style={[styles.howBulletNum, { backgroundColor: skill.color + '18' }]}>
-                        <Text style={[styles.howBulletNumText, { color: skill.color }]}>{idx + 1}</Text>
-                      </View>
-                      <Text style={[styles.howBulletText, { color: colors.textSecondary }]}>
-                        {line}
+                <TouchableOpacity
+                  style={[styles.optionalContextToggle, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  onPress={() => setOptionalContextOpen((o) => !o)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.optionalContextToggleText, { color: colors.textPrimary }]}>
+                    Personalise with your situation (optional)
+                  </Text>
+                  <Ionicons
+                    name={optionalContextOpen ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={colors.textMuted}
+                  />
+                </TouchableOpacity>
+                {optionalContextOpen && (
+                  <View style={{ marginTop: Spacing.sm }}>
+                    <Text style={[styles.customHint, { color: colors.textMuted, marginBottom: Spacing.sm }]}>
+                      {situationCopy.hint}
+                    </Text>
+                    <View>
+                      <TextInput
+                        style={[
+                          styles.customInput,
+                          { borderColor: colors.border, backgroundColor: colors.surface, color: colors.textPrimary },
+                        ]}
+                        placeholder={situationCopy.placeholder}
+                        placeholderTextColor={colors.textMuted}
+                        value={customProblemDraft}
+                        onChangeText={(t) => setCustomProblemDraft(t.slice(0, maxCustomChars))}
+                        multiline
+                        textAlignVertical="top"
+                      />
+                      <Text style={[styles.charCount, { color: customProblemDraft.length >= maxCustomChars ? colors.destructive : colors.textMuted }]}>
+                        {customProblemDraft.length}/{maxCustomChars}
                       </Text>
                     </View>
-                  ))}
-                  <Text style={[styles.howFooter, { color: colors.textMuted }]}>
-                    {`After feedback, use "Try again" to deepen the same scenario or "New scenario" for a fresh situation.`}
-                  </Text>
-                </View>
-
-                {/* Your situation (optional) - with character count */}
-                <Text style={[styles.customLabel, { color: colors.textPrimary }]}>Your situation (optional)</Text>
-                <Text style={[styles.customHint, { color: colors.textMuted }]}>
-                  {situationCopy.hint}
-                </Text>
-                <View>
-                  <TextInput
-                    style={[
-                      styles.customInput,
-                      { borderColor: colors.border, backgroundColor: colors.surface, color: colors.textPrimary },
-                    ]}
-                    placeholder={situationCopy.placeholder}
-                    placeholderTextColor={colors.textMuted}
-                    value={customProblemDraft}
-                    onChangeText={(t) => setCustomProblemDraft(t.slice(0, maxCustomChars))}
-                    multiline
-                    textAlignVertical="top"
-                  />
-                  <Text style={[styles.charCount, { color: customProblemDraft.length >= maxCustomChars ? colors.destructive : colors.textMuted }]}>
-                    {customProblemDraft.length}/{maxCustomChars}
-                  </Text>
-                </View>
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -859,7 +862,9 @@ export default function SkillDetailScreen() {
                   Select a sub-skill above to enable practice.
                 </Text>
               ) : (
-                <Text style={styles.practiceHint}>{modeConfig.hint}</Text>
+                <Text style={[styles.practiceHint, { color: colors.textMuted }]}>
+                  Jump in first—after feedback you’ll see a short playbook for your next try.
+                </Text>
               )}
             </View>
           )}
@@ -1032,6 +1037,36 @@ export default function SkillDetailScreen() {
                         <View style={styles.feedbackArea}>
                           <FeedbackCard fb={feedback} colors={colors} skill={skill} />
 
+                          <View
+                            style={[
+                              styles.howBox,
+                              {
+                                borderColor: colors.border,
+                                backgroundColor: colors.floating,
+                                borderLeftColor: skill.color,
+                                borderLeftWidth: 3,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.howTitle, { color: colors.textPrimary }]}>Playbook for next time</Text>
+                            <Text style={[styles.playbookLead, { color: colors.textMuted }]}>
+                              Use this after you’ve seen feedback—same scenario on “Try again,” or a fresh one on “New scenario.”
+                            </Text>
+                            {getHowToSolveLines({
+                              skillId: skill.id,
+                              atomicSkillId: selectedAtomicId,
+                              practiceMode,
+                              isDecisionMode,
+                            }).map((line, idx) => (
+                              <View key={idx} style={styles.howBulletRow}>
+                                <View style={[styles.howBulletNum, { backgroundColor: skill.color + '18' }]}>
+                                  <Text style={[styles.howBulletNumText, { color: skill.color }]}>{idx + 1}</Text>
+                                </View>
+                                <Text style={[styles.howBulletText, { color: colors.textSecondary }]}>{line}</Text>
+                              </View>
+                            ))}
+                          </View>
+
                           <View style={styles.feedbackActions}>
                             <TouchableOpacity
                               style={[styles.actionBtn, styles.refineBtn, { borderColor: skill.color }]}
@@ -1129,8 +1164,27 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     howBulletNum: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
     howBulletNumText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.bold },
     howBulletText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45 },
-    howFooter: { fontSize: Typography.fontSize.xs, lineHeight: Typography.fontSize.xs * 1.45, marginTop: Spacing.xs },
-    customLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, marginTop: Spacing.lg },
+    playbookLead: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.fontSize.xs * 1.45,
+      marginBottom: Spacing.sm,
+    },
+    optionalContextToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: Spacing.md,
+      paddingVertical: Spacing.sm + 2,
+      paddingHorizontal: Spacing.md,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+    },
+    optionalContextToggleText: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.medium,
+      flex: 1,
+      paddingRight: Spacing.sm,
+    },
     customHint: { fontSize: Typography.fontSize.xs, lineHeight: Typography.fontSize.xs * 1.45, marginTop: Spacing.xs, marginBottom: Spacing.sm },
     customInput: {
       borderWidth: 1,
