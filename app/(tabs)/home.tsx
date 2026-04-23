@@ -25,6 +25,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
+import { AddToHomeScreenBanner } from '@/components/web/add-to-home-screen-banner';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 
 const STAGGER = 70;
@@ -148,6 +149,7 @@ export default function HomeScreen() {
         contentContainerStyle={[st.content, isWebLaptop && st.contentWebLaptop]}
         showsVerticalScrollIndicator={false}
       >
+        {Platform.OS === 'web' ? <AddToHomeScreenBanner /> : null}
         <Animated.View style={[st.greetSection, { opacity: greetAnim }]}>
           <View style={st.greetRow}>
             <View style={{ flex: 1 }}>
