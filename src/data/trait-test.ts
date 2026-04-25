@@ -221,7 +221,7 @@ export const TRAIT_QUESTION_POOL: TraitQuestionItem[] = [
   { id: 'tt_gra_c', traitId: 'grandiosity', text: 'I trust my judgment strongly.', reverse: false },
   { id: 'tt_gra_d', traitId: 'grandiosity', text: 'I feel confident even with limited data.', reverse: false },
   // 12 Gender Rigidity
-  { id: 'tt_grg_a', traitId: 'gender_rigidity', text: 'I avoid behaviours seen as "not my type".', reverse: false },
+  { id: 'tt_grg_a', traitId: 'gender_rigidity', text: 'I avoid behaviors seen as "not my type".', reverse: false },
   { id: 'tt_grg_b', traitId: 'gender_rigidity', text: 'I suppress traits that feel socially risky.', reverse: false },
   { id: 'tt_grg_c', traitId: 'gender_rigidity', text: 'I act according to expected roles.', reverse: false },
   { id: 'tt_grg_d', traitId: 'gender_rigidity', text: 'I feel uncomfortable outside norms.', reverse: false },
