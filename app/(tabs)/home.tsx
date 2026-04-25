@@ -74,6 +74,14 @@ export default function HomeScreen() {
           route: '/big5-test',
         },
         {
+          key: 'trait-test',
+          title: 'Trait test',
+          subtitle: '18 habits · 25 adaptive questions',
+          icon: 'git-branch-outline' as const,
+          accent: colors.accentSage,
+          route: '/trait-test',
+        },
+        {
           key: 'progress',
           title: 'Progress',
           subtitle: 'EQ, learning & Skill Lab',

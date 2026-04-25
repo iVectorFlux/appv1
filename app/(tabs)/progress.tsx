@@ -32,6 +32,7 @@ import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { AssessmentSnapshotCard } from '@/components/assessment-snapshot-card';
+import { readTraitTestLatest, type TraitTestLatestCache } from '@/lib/trait-test-cache';
 import { ShimmerCardBlock, ShimmerBox } from '@/components/ui/shimmer';
 import type { EQDimension } from '@/types/eq-assessment';
 
@@ -257,6 +258,7 @@ function useProgressData() {
 
   const [eqScores, setEqScores] = useState<Awaited<ReturnType<typeof getEQScores>>>([]);
   const [big5Latest, setBig5Latest] = useState<Big5AssessmentRow | null>(null);
+  const [traitTestLatest, setTraitTestLatest] = useState<TraitTestLatestCache | null>(null);
   const [learningBundle, setLearningBundle] = useState<InsightsLearningBundle>(EMPTY_INSIGHTS_LEARNING_BUNDLE);
   const [learningHydrated, setLearningHydrated] = useState(false);
 
@@ -273,6 +275,7 @@ function useProgressData() {
     if (authLoading || !user?.id) {
       setEqScores([]);
       setBig5Latest(null);
+      setTraitTestLatest(null);
       setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE);
       setLearningHydrated(false);
       return;
@@ -394,6 +397,20 @@ function useProgressData() {
     return () => { cancelledRef.current = true; clearTimeout(safetyTimer); };
   }, [user?.id, refreshTrigger, authLoading]);
 
+  useEffect(() => {
+    if (authLoading || !user?.id) {
+      setTraitTestLatest(null);
+      return;
+    }
+    let cancelled = false;
+    void readTraitTestLatest(user.id).then((row) => {
+      if (!cancelled) setTraitTestLatest(row);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, refreshTrigger, authLoading]);
+
   const eqSummary = useMemo(() => {
     if (eqScores.length === 0) return null;
     const n = eqScores.length;
@@ -439,6 +456,7 @@ function useProgressData() {
     learningHydrated,
     learningSummary,
     big5Latest,
+    traitTestLatest,
     loadingEq,
     loadingLearning,
     errorEq,
@@ -476,6 +494,16 @@ export default function ProgressScreen() {
     return { scores: row.scores, completedAt: row.completed_at };
   }, [d.big5Latest]);
 
+  const lastTraitTest = useMemo(() => {
+    const t = d.traitTestLatest;
+    if (!t?.completedAt) return null;
+    return {
+      overall0to100: t.overall0to100,
+      summaryLine: t.summaryLine,
+      completedAt: t.completedAt,
+    };
+  }, [d.traitTestLatest]);
+
   const loadingAssessments = d.loadingEq;
 
   return (
@@ -495,8 +523,10 @@ export default function ProgressScreen() {
             loading={loadingAssessments}
             lastEq={lastEq}
             lastBig5={lastBig5}
+            lastTraitTest={lastTraitTest}
             onPressEq={() => router.push('/full-eq-test')}
             onPressBig5={() => router.push('/big5-test')}
+            onPressTraitTest={() => router.push('/trait-test')}
           />
         </View>
 
@@ -635,7 +665,7 @@ export default function ProgressScreen() {
                       </Text>
                     </View>
                   </View>
-                  {d.learningSummary.catalogDetails.map((ep, i) => (
+                  {d.learningSummary.catalogDetails.map((ep) => (
                     <EpisodeRow
                       key={ep.episodeKey}
                       name={extractEpisodeName(ep.episodeKey)}

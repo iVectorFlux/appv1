@@ -3,7 +3,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
@@ -63,6 +63,38 @@ export default function ProfileScreen() {
           </View>
           <Text style={st.username}>{nameToShow}</Text>
           {user?.email ? <Text style={st.email}>{user.email}</Text> : null}
+        </View>
+
+        <View style={st.section}>
+          <Text style={st.sectionTitle}>Assessments</Text>
+          <GlassCard>
+            {(
+              [
+                { route: '/full-eq-test' as const, icon: 'analytics-outline' as const, title: 'Full EQ test', subtitle: 'Emotional intelligence · full battery' },
+                { route: '/big5-test' as const, icon: 'color-wand-outline' as const, title: 'Big Five', subtitle: 'Personality OCEAN · IPIP 50' },
+                { route: '/trait-test' as const, icon: 'git-branch-outline' as const, title: 'Trait test', subtitle: '18 patterns · 25 adaptive questions' },
+              ] as const
+            ).map((row, i, arr) => (
+              <View key={row.route}>
+                <TouchableOpacity
+                  style={st.assessRow}
+                  onPress={() => router.push(row.route)}
+                  activeOpacity={0.75}
+                  accessibilityRole="button"
+                >
+                  <View style={[st.assessIcon, { backgroundColor: colors.primary + '14' }]}>
+                    <Ionicons name={row.icon} size={22} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.assessTitle}>{row.title}</Text>
+                    <Text style={st.assessSubtitle}>{row.subtitle}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+                {i < arr.length - 1 ? <View style={[st.assessDivider, { backgroundColor: colors.borderLight }]} /> : null}
+              </View>
+            ))}
+          </GlassCard>
         </View>
 
         <View style={st.section}>
@@ -153,4 +185,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     privacyTitle: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, textAlign: 'center' },
     privacyText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, textAlign: 'center', lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm },
     logoutSection: { marginTop: Spacing.xl },
+    assessRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, paddingHorizontal: Spacing.sm },
+    assessIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    assessTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary },
+    assessSubtitle: { fontSize: Typography.fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+    assessDivider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
   });

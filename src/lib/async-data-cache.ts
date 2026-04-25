@@ -41,6 +41,7 @@ export async function removeCacheSegment(segment: string): Promise<void> {
 export const cacheSegments = {
   eqScores: (userId: string) => `eq_scores:${userId}`,
   big5Latest: (userId: string) => `big5_latest:${userId}`,
+  traitTestLatest: (userId: string) => `trait_test_latest:${userId}`,
   insightsLearningBundle: (userId: string) => `insights_bundle:${userId}`,
   learningEpisodes: (language: string) => `learning_episodes:${language}`,
 } as const;

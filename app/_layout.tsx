@@ -57,6 +57,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="full-eq-test" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="big5-test" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+        <Stack.Screen name="trait-test" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="learning-detail" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="grounding" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="chat" options={{ presentation: 'card', animation: 'slide_from_right' }} />
