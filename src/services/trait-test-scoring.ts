@@ -6,8 +6,7 @@ import {
   TRAIT_DIMENSIONS,
   TRAIT_QUESTION_POOL,
   type TraitDimensionId,
-  type TraitQuestionItem,
-  traitItemKeyedValue,
+  responseToTraitSignal,
 } from '@/data/trait-test';
 
 export type TraitTestScores = Record<TraitDimensionId, number>;
@@ -48,7 +47,7 @@ export function scoreTraitTest(
   for (const [qid, likert] of Object.entries(responses)) {
     const item = byId.get(qid);
     if (!item) continue;
-    const keyed = traitItemKeyedValue(item, likert);
+    const keyed = responseToTraitSignal(item, likert);
     keyedByTrait.get(item.traitId)!.push(keyed);
   }
 

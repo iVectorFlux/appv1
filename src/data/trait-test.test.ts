@@ -4,7 +4,7 @@ import {
   TRAIT_QUESTION_POOL,
   buildInitialTraitQuestionOrder,
   pickAdaptiveFollowUps,
-  traitItemKeyedValue,
+  responseToTraitSignal,
 } from '@/data/trait-test';
 import { scoreTraitTest } from '@/services/trait-test-scoring';
 
@@ -50,13 +50,11 @@ describe('trait-test adaptive bank', () => {
     }
   });
 
-  it('traitItemKeyedValue respects reverse', () => {
-    const q = TRAIT_QUESTION_POOL.find((x) => x.id === 'tt_irr_a')!;
-    expect(q.reverse).toBe(false);
-    expect(traitItemKeyedValue(q, 5)).toBe(5);
-    const rev = TRAIT_QUESTION_POOL.find((x) => x.id === 'tt_irr_b')!;
-    expect(rev.reverse).toBe(true);
-    expect(traitItemKeyedValue(rev, 5)).toBe(1);
+  it('responseToTraitSignal: scenario passthrough', () => {
+    const a = TRAIT_QUESTION_POOL.find((x) => x.id === 'tt_irr_q1')!;
+    expect(responseToTraitSignal(a, 5)).toBe(5);
+    const b = TRAIT_QUESTION_POOL.find((x) => x.id === 'tt_rp_q9')!;
+    expect(responseToTraitSignal(b, 1)).toBe(1);
   });
 
   it('scoreTraitTest maps all-neutral to ~50', () => {
@@ -65,7 +63,7 @@ describe('trait-test adaptive bank', () => {
     for (const q of wave) responses[q.id] = 3;
     const extras = pickAdaptiveFollowUps(wave, responses);
     for (const q of extras) responses[q.id] = 3;
-    const r = scoreTraitTest(responses, 'trait_patterns_18x4_adaptive_v2');
+    const r = scoreTraitTest(responses, 'trait_patterns_18x72_scenario_v4');
     expect(r.overall0to100).toBeGreaterThanOrEqual(48);
     expect(r.overall0to100).toBeLessThanOrEqual(52);
   });

@@ -26,6 +26,7 @@ import {
   buildInitialTraitQuestionOrder,
   pickAdaptiveFollowUps,
   newTraitTestSessionSeed,
+  getQuestionPrompt,
   type TraitQuestionItem,
 } from '@/data/trait-test';
 import { scoreTraitTest, formatTraitTestSummaryLine } from '@/services/trait-test-scoring';
@@ -111,10 +112,10 @@ export default function TraitTestScreen() {
     }
   }, [result]);
 
-  const selectLikert = useCallback(
-    (value: number) => {
+  const commitAnswer = useCallback(
+    (value1to5: number) => {
       if (!q) return;
-      const next = { ...responses, [q.id]: value };
+      const next = { ...responses, [q.id]: value1to5 };
 
       if (questions.length === 18 && index === 17 && !followUpsAppendedRef.current) {
         followUpsAppendedRef.current = true;
@@ -241,9 +242,10 @@ export default function TraitTestScreen() {
         {phase === 'intro' && (
           <>
             <Text style={st.lead}>
-              This assessment maps <Text style={{ fontWeight: '700' }}>eighteen</Text> named patterns (for example
-              Irrationality, Narcissism, Role-playing, through Death Denial). Each uses four statements in the bank;
-              your run asks twenty-five total. It is for self-insight only—not diagnosis, hiring, or clinical use.
+              This assessment maps <Text style={{ fontWeight: '700' }}>eighteen</Text> patterns (Irrationality through
+              Death Denial). Every item is a short situation with <Text style={{ fontWeight: '700' }}>four</Text> options
+              —trade-offs, not moral “right answers.” Your run asks twenty-five items sampled from a bank of seventy-two.
+              For self-insight only—not diagnosis, hiring, or clinical use.
             </Text>
             <Text style={st.lead}>
               You will answer <Text style={{ fontWeight: '700' }}>twenty-five</Text> items. The first pass is one item
@@ -252,11 +254,10 @@ export default function TraitTestScreen() {
               eight to twelve minutes.
             </Text>
             <Text style={st.lead}>
-              <Text style={{ fontWeight: '600' }}>Scoring.</Text> Agree–disagree (1–5). A few items are reverse-keyed
-              so that endorsement of the healthier opposite lowers that pattern score. For each pattern we average
-              keyed responses (one or two items), then show <Text style={{ fontWeight: '700' }}>0–100</Text> where{' '}
-              <Text style={{ fontWeight: '700' }}>higher means a stronger presence of that pattern</Text> (see each
-              card for what “high” suggests). Overall is the average of the eighteen pattern scores.
+              <Text style={{ fontWeight: '600' }}>Scoring.</Text> Each choice maps to a 1–5 signal for that pattern
+              (higher = more of it). We average one or two items per pattern, then show{' '}
+              <Text style={{ fontWeight: '700' }}>0–100</Text>. If many first answers are neutral, follow-ups spread by
+              a shuffle so we still learn. Overall is the average of the eighteen pattern scores.
             </Text>
             <TouchableOpacity style={[st.primaryBtn, { backgroundColor: colors.primary }]} onPress={() => setPhase('test')}>
               <Text style={st.primaryBtnText}>Start trait test</Text>
@@ -274,19 +275,39 @@ export default function TraitTestScreen() {
               Question {index + 1} of {total}
               {total === 18 ? ' · first pass' : index < 18 ? ' · first pass' : ' · adaptive follow-ups'}
             </Text>
-            <Text style={st.questionText}>{q.text}</Text>
-            <Text style={st.scaleHint}>How much do you agree?</Text>
-            {([5, 4, 3, 2, 1] as const).map((v) => (
-              <TouchableOpacity
-                key={v}
-                style={[st.optionRow, { borderColor: colors.border, backgroundColor: colors.floating }]}
-                onPress={() => selectLikert(v)}
-                activeOpacity={0.75}
-              >
-                <Text style={st.optionLabel}>{TRAIT_LIKERT_LABELS[v]}</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            ))}
+            <Text style={st.questionText}>{getQuestionPrompt(q)}</Text>
+            {q.type === 'scenario' ? (
+              <>
+                <Text style={st.scaleHint}>Pick the option closest to what you usually do—not what sounds best.</Text>
+                {q.options.map((opt, i) => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[st.optionRow, { borderColor: colors.border, backgroundColor: colors.floating }]}
+                    onPress={() => commitAnswer(opt.traitSignal)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={st.optionLetter}>{String.fromCharCode(65 + i)}.</Text>
+                    <Text style={st.optionLabel}>{opt.label}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  </TouchableOpacity>
+                ))}
+              </>
+            ) : (
+              <>
+                <Text style={st.scaleHint}>How much do you agree?</Text>
+                {([5, 4, 3, 2, 1] as const).map((v) => (
+                  <TouchableOpacity
+                    key={v}
+                    style={[st.optionRow, { borderColor: colors.border, backgroundColor: colors.floating }]}
+                    onPress={() => commitAnswer(v)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={st.optionLabel}>{TRAIT_LIKERT_LABELS[v]}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
             {index > 0 ? (
               <TouchableOpacity onPress={goBackQuestion} style={st.backLink}>
                 <Text style={[st.backLinkText, { color: colors.primary }]}>Previous question</Text>
@@ -436,6 +457,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: Spacing.md,
       paddingHorizontal: Spacing.md,
       marginBottom: Spacing.sm,
+    },
+    optionLetter: {
+      width: 22,
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.textMuted,
+      marginRight: Spacing.xs,
     },
     optionLabel: { flex: 1, fontSize: Typography.fontSize.sm, color: colors.textPrimary },
     backLink: { marginTop: Spacing.lg, alignItems: 'center' },

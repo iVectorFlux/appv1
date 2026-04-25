@@ -1,15 +1,21 @@
+import { TRAIT_QUESTION_POOL_RAW } from '@/data/trait-test-pool';
+
 /**
  * Trait Test — eighteen interpersonal pattern dimensions (self-report).
  *
- * **Scale:** 1 = Strongly disagree … 5 = Strongly agree.  
- * **Reverse-keyed items** (`reverse: true`): agreeing indicates *less* of the pattern (healthier opposite).
- * **Score 0–100 per trait:** Higher = stronger expression of that pattern (as described in `scoreHighMeans`).
+ * **Question types**
+ * - `likert`: agreement 1–5; `reverse` flips so healthier answers lower the trait signal.
+ * - `scenario`: recall / situational stem with four options; each option carries a 1–5 `traitSignal` (no “correct”
+ *   answer—trade-offs). Stored value is the chosen option’s `traitSignal`.
  *
- * **Adaptive (72 → 25):** Four items per trait in the bank (72). First pass: one item per trait (18).
- * Follow-ups: seven extra items for traits whose first answer was closest to neutral (3).
+ * **Score 0–100 per trait:** Higher = stronger expression of that pattern (`scoreHighMeans`).
+ *
+ * **Adaptive (72 → 25):** Four items per trait. First pass: one per trait (18). Follow-ups: seven traits—usually
+ * those whose first signal was closest to 3; if ≥10 first-pass answers are neutral (habitual midpoint), follow-ups
+ * are spread across a seeded shuffle instead (midpoint alone is not treated as rich information).
  */
 
-export const TRAIT_TEST_INSTRUMENT_VERSION = 'trait_patterns_18x4_adaptive_v2';
+export const TRAIT_TEST_INSTRUMENT_VERSION = 'trait_patterns_18x72_scenario_v4';
 
 export type TraitDimensionId =
   | 'irrationality'
@@ -153,109 +159,50 @@ export const TRAIT_DIMENSIONS: TraitDimensionMeta[] = [
   },
 ];
 
-export interface TraitQuestionItem {
+export type LikertTraitQuestion = {
+  type: 'likert';
   id: string;
   traitId: TraitDimensionId;
   text: string;
-  /** When true, agreement lowers the trait score (healthy opposite). */
+  /** When true, agreement lowers the trait score (healthier opposite). */
   reverse: boolean;
+};
+
+export type ScenarioTraitOption = {
+  id: string;
+  label: string;
+  /** 1–5: higher = more of this dimension’s pattern. */
+  traitSignal: number;
+};
+
+export type ScenarioTraitQuestion = {
+  type: 'scenario';
+  id: string;
+  traitId: TraitDimensionId;
+  prompt: string;
+  options: ScenarioTraitOption[];
+};
+
+export type TraitQuestionItem = LikertTraitQuestion | ScenarioTraitQuestion;
+
+/** Four items per dimension (72): scenario stems + likert fallback (see `trait-test-pool.ts`). */
+export const TRAIT_QUESTION_POOL = TRAIT_QUESTION_POOL_RAW as TraitQuestionItem[];
+
+export function getQuestionPrompt(q: TraitQuestionItem): string {
+  return q.type === 'scenario' ? q.prompt : q.text;
 }
 
-/**
- * Four items per dimension (72). Wording from the product spec; `reverse` marks healthy opposites.
- */
-export const TRAIT_QUESTION_POOL: TraitQuestionItem[] = [
-  // 1 Irrationality
-  { id: 'tt_irr_a', traitId: 'irrationality', text: 'I make decisions quickly when I feel strongly.', reverse: false },
-  { id: 'tt_irr_b', traitId: 'irrationality', text: 'I later rethink emotionally driven decisions.', reverse: true },
-  { id: 'tt_irr_c', traitId: 'irrationality', text: 'My mood affects how I interpret facts.', reverse: false },
-  { id: 'tt_irr_d', traitId: 'irrationality', text: 'I seek information that supports my beliefs.', reverse: false },
-  // 2 Narcissism
-  { id: 'tt_nar_a', traitId: 'narcissism', text: 'I expect recognition for my efforts.', reverse: false },
-  { id: 'tt_nar_b', traitId: 'narcissism', text: 'I feel overlooked when not appreciated.', reverse: false },
-  { id: 'tt_nar_c', traitId: 'narcissism', text: 'I compare myself with others often.', reverse: false },
-  { id: 'tt_nar_d', traitId: 'narcissism', text: 'I seek validation after success.', reverse: false },
-  // 3 Role-playing
-  { id: 'tt_rp_a', traitId: 'role_playing', text: 'I behave differently across social contexts.', reverse: false },
-  { id: 'tt_rp_b', traitId: 'role_playing', text: 'I hide true opinions to maintain harmony.', reverse: false },
-  { id: 'tt_rp_c', traitId: 'role_playing', text: 'I adjust personality to expectations.', reverse: false },
-  { id: 'tt_rp_d', traitId: 'role_playing', text: "People don't fully know my real self.", reverse: false },
-  // 4 Compulsive Behavior
-  { id: 'tt_cb_a', traitId: 'compulsive_behavior', text: 'I repeat patterns even when harmful.', reverse: false },
-  { id: 'tt_cb_b', traitId: 'compulsive_behavior', text: 'I react similarly under stress.', reverse: false },
-  { id: 'tt_cb_c', traitId: 'compulsive_behavior', text: "I notice patterns but don't change them.", reverse: false },
-  { id: 'tt_cb_d', traitId: 'compulsive_behavior', text: 'My habits conflict with goals.', reverse: false },
-  // 5 Covetousness
-  { id: 'tt_cov_a', traitId: 'covetousness', text: 'I want things more when others have them.', reverse: false },
-  { id: 'tt_cov_b', traitId: 'covetousness', text: 'I lose interest after achieving goals.', reverse: false },
-  { id: 'tt_cov_c', traitId: 'covetousness', text: 'I chase externally impressive goals.', reverse: false },
-  { id: 'tt_cov_d', traitId: 'covetousness', text: 'Comparison drives my motivation.', reverse: false },
-  // 6 Shortsightedness
-  { id: 'tt_sh_a', traitId: 'shortsightedness', text: 'I prioritize short-term rewards.', reverse: false },
-  { id: 'tt_sh_b', traitId: 'shortsightedness', text: 'I act quickly on opportunities.', reverse: false },
-  { id: 'tt_sh_c', traitId: 'shortsightedness', text: 'I underestimate long-term risks.', reverse: false },
-  { id: 'tt_sh_d', traitId: 'shortsightedness', text: 'I struggle to delay gratification.', reverse: false },
-  // 7 Defensiveness
-  { id: 'tt_def_a', traitId: 'defensiveness', text: 'I feel attacked by criticism.', reverse: false },
-  { id: 'tt_def_b', traitId: 'defensiveness', text: 'I justify my actions quickly.', reverse: false },
-  { id: 'tt_def_c', traitId: 'defensiveness', text: 'I resist opposing views.', reverse: false },
-  { id: 'tt_def_d', traitId: 'defensiveness', text: 'I protect my self-image strongly.', reverse: false },
-  // 8 Self-sabotage
-  { id: 'tt_ss_a', traitId: 'self_sabotage', text: 'I delay important actions.', reverse: false },
-  { id: 'tt_ss_b', traitId: 'self_sabotage', text: 'I avoid opportunities due to fear.', reverse: false },
-  { id: 'tt_ss_c', traitId: 'self_sabotage', text: 'I act against my own goals.', reverse: false },
-  { id: 'tt_ss_d', traitId: 'self_sabotage', text: 'I doubt myself unnecessarily.', reverse: false },
-  // 9 Repression (Shadow)
-  { id: 'tt_rs_a', traitId: 'repression_shadow', text: 'I hide parts of myself from others.', reverse: false },
-  { id: 'tt_rs_b', traitId: 'repression_shadow', text: 'I sometimes act out of character.', reverse: false },
-  { id: 'tt_rs_c', traitId: 'repression_shadow', text: 'I suppress negative emotions.', reverse: false },
-  { id: 'tt_rs_d', traitId: 'repression_shadow', text: 'My reactions surprise me later.', reverse: false },
-  // 10 Envy
-  { id: 'tt_env_a', traitId: 'envy', text: "Others' success makes me uneasy.", reverse: false },
-  { id: 'tt_env_b', traitId: 'envy', text: 'I compare progress with peers.', reverse: false },
-  { id: 'tt_env_c', traitId: 'envy', text: 'I feel others have unfair advantages.', reverse: false },
-  { id: 'tt_env_d', traitId: 'envy', text: "I internally downplay others' success.", reverse: false },
-  // 11 Grandiosity
-  { id: 'tt_gra_a', traitId: 'grandiosity', text: 'I believe I can handle more than others.', reverse: false },
-  { id: 'tt_gra_b', traitId: 'grandiosity', text: 'I underestimate risks in decisions.', reverse: false },
-  { id: 'tt_gra_c', traitId: 'grandiosity', text: 'I trust my judgment strongly.', reverse: false },
-  { id: 'tt_gra_d', traitId: 'grandiosity', text: 'I feel confident even with limited data.', reverse: false },
-  // 12 Gender Rigidity
-  { id: 'tt_grg_a', traitId: 'gender_rigidity', text: 'I avoid behaviors seen as "not my type".', reverse: false },
-  { id: 'tt_grg_b', traitId: 'gender_rigidity', text: 'I suppress traits that feel socially risky.', reverse: false },
-  { id: 'tt_grg_c', traitId: 'gender_rigidity', text: 'I act according to expected roles.', reverse: false },
-  { id: 'tt_grg_d', traitId: 'gender_rigidity', text: 'I feel uncomfortable outside norms.', reverse: false },
-  // 13 Aimlessness
-  { id: 'tt_aim_a', traitId: 'aimlessness', text: 'I lack a clear long-term direction.', reverse: false },
-  { id: 'tt_aim_b', traitId: 'aimlessness', text: 'I switch goals frequently.', reverse: false },
-  { id: 'tt_aim_c', traitId: 'aimlessness', text: 'My daily actions lack alignment.', reverse: false },
-  { id: 'tt_aim_d', traitId: 'aimlessness', text: 'I feel uncertain about purpose.', reverse: false },
-  // 14 Conformity
-  { id: 'tt_conf_a', traitId: 'conformity', text: 'I adjust opinions to match group.', reverse: false },
-  { id: 'tt_conf_b', traitId: 'conformity', text: 'I avoid disagreeing publicly.', reverse: false },
-  { id: 'tt_conf_c', traitId: 'conformity', text: 'I follow trends easily.', reverse: false },
-  { id: 'tt_conf_d', traitId: 'conformity', text: 'I seek approval before expressing views.', reverse: false },
-  // 15 Fickleness
-  { id: 'tt_fic_a', traitId: 'fickleness', text: 'My opinions change based on outcomes.', reverse: false },
-  { id: 'tt_fic_b', traitId: 'fickleness', text: 'I shift support when results change.', reverse: false },
-  { id: 'tt_fic_c', traitId: 'fickleness', text: 'I lose interest quickly.', reverse: false },
-  { id: 'tt_fic_d', traitId: 'fickleness', text: 'My commitments fluctuate.', reverse: false },
-  // 16 Aggression
-  { id: 'tt_agg_a', traitId: 'aggression', text: 'I feel irritation easily.', reverse: false },
-  { id: 'tt_agg_b', traitId: 'aggression', text: 'I express frustration indirectly.', reverse: false },
-  { id: 'tt_agg_c', traitId: 'aggression', text: 'I hold grudges.', reverse: false },
-  { id: 'tt_agg_d', traitId: 'aggression', text: 'I react strongly under stress.', reverse: false },
-  // 17 Generational Myopia
-  { id: 'tt_gm_a', traitId: 'generational_myopia', text: 'I believe current times are unique.', reverse: false },
-  { id: 'tt_gm_b', traitId: 'generational_myopia', text: 'I rarely use historical context.', reverse: false },
-  { id: 'tt_gm_c', traitId: 'generational_myopia', text: "I assume past lessons don't apply.", reverse: false },
-  { id: 'tt_gm_d', traitId: 'generational_myopia', text: 'I focus on present trends only.', reverse: false },
-  // 18 Death Denial
-  { id: 'tt_dd_a', traitId: 'death_denial', text: 'I avoid thinking about mortality.', reverse: false },
-  { id: 'tt_dd_b', traitId: 'death_denial', text: 'I focus on short-term achievements.', reverse: false },
-  { id: 'tt_dd_c', traitId: 'death_denial', text: 'I delay meaningful priorities.', reverse: false },
-  { id: 'tt_dd_d', traitId: 'death_denial', text: 'I chase status over purpose.', reverse: false },
-];
+/** 1–5 trait signal: likert applies reverse; scenario treats stored value as chosen option’s traitSignal. */
+export function responseToTraitSignal(item: TraitQuestionItem, stored1to5: number): number {
+  const v = Math.min(5, Math.max(1, Math.round(stored1to5)));
+  if (item.type === 'scenario') return v;
+  return item.reverse ? 6 - v : v;
+}
+
+/** @deprecated alias for `responseToTraitSignal` */
+export function traitItemKeyedValue(item: TraitQuestionItem, raw: number): number {
+  return responseToTraitSignal(item, raw);
+}
 
 /** Likert anchors (agreement). */
 export const TRAIT_LIKERT_LABELS: Record<number, string> = {
@@ -309,10 +256,28 @@ export function buildInitialTraitQuestionOrder(sessionSeed: number): TraitQuesti
   return out;
 }
 
-/** Keyed 1–5: higher = more of the target pattern (after reverse handling). */
-export function traitItemKeyedValue(item: TraitQuestionItem, likert1to5: number): number {
-  const v = Math.min(5, Math.max(1, likert1to5));
-  return item.reverse ? 6 - v : v;
+function hashQuestionIds(questions: TraitQuestionItem[]): number {
+  let h = 2166136261 >>> 0;
+  for (const q of questions) {
+    for (let i = 0; i < q.id.length; i++) {
+      h = Math.imul(h ^ q.id.charCodeAt(i), 16777619) >>> 0;
+    }
+  }
+  return h >>> 0;
+}
+
+function pickFollowUpItem(
+  bank: TraitQuestionItem[],
+  firstQ: TraitQuestionItem,
+  usedIds: Set<string>
+): TraitQuestionItem | undefined {
+  const ok = (q: TraitQuestionItem) => !usedIds.has(q.id) && q.id !== firstQ.id;
+  const isLk = (q: TraitQuestionItem): q is LikertTraitQuestion => q.type === 'likert';
+  return (
+    bank.find((q) => ok(q) && q.type !== firstQ.type) ??
+    bank.find((q) => ok(q) && (!isLk(firstQ) || !isLk(q) || q.reverse !== firstQ.reverse)) ??
+    bank.find((q) => ok(q))
+  );
 }
 
 export function pickAdaptiveFollowUps(
@@ -320,12 +285,38 @@ export function pickAdaptiveFollowUps(
   responses: Record<string, number>
 ): TraitQuestionItem[] {
   const usedIds = new Set(wave1Questions.map((q) => q.id));
-  const rows: { traitId: TraitDimensionId; ambiguity: number; firstQ: TraitQuestionItem }[] = [];
 
+  let neutralCount = 0;
   for (const q of wave1Questions) {
     const raw = responses[q.id];
     if (raw == null) continue;
-    const keyed = traitItemKeyedValue(q, raw);
+    if (responseToTraitSignal(q, raw) === 3) neutralCount++;
+  }
+
+  if (neutralCount >= 10) {
+    const traitOrder = [...new Set(wave1Questions.map((q) => q.traitId))];
+    const rand = traitTestMulberry32(hashQuestionIds(wave1Questions) ^ 0x9e3779b9);
+    shuffleInPlace(traitOrder, rand);
+    const out: TraitQuestionItem[] = [];
+    for (const tid of traitOrder) {
+      if (out.length >= 7) break;
+      const firstInWave = wave1Questions.find((q) => q.traitId === tid);
+      if (!firstInWave) continue;
+      const bank = POOL_BY_TRAIT.get(tid)!;
+      const nextQ = pickFollowUpItem(bank, firstInWave, usedIds);
+      if (nextQ) {
+        out.push(nextQ);
+        usedIds.add(nextQ.id);
+      }
+    }
+    return out.slice(0, 7);
+  }
+
+  const rows: { traitId: TraitDimensionId; ambiguity: number; firstQ: TraitQuestionItem }[] = [];
+  for (const q of wave1Questions) {
+    const raw = responses[q.id];
+    if (raw == null) continue;
+    const keyed = responseToTraitSignal(q, raw);
     rows.push({ traitId: q.traitId, ambiguity: Math.abs(keyed - 3), firstQ: q });
   }
 
@@ -335,15 +326,12 @@ export function pickAdaptiveFollowUps(
   });
 
   const followUps: TraitQuestionItem[] = [];
-
   for (const row of rows.slice(0, 7)) {
     const bank = POOL_BY_TRAIT.get(row.traitId)!;
-    const preferred =
-      bank.find((q) => !usedIds.has(q.id) && q.id !== row.firstQ.id && q.reverse !== row.firstQ.reverse) ??
-      bank.find((q) => !usedIds.has(q.id) && q.id !== row.firstQ.id);
-    if (preferred) {
-      followUps.push(preferred);
-      usedIds.add(preferred.id);
+    const nextQ = pickFollowUpItem(bank, row.firstQ, usedIds);
+    if (nextQ) {
+      followUps.push(nextQ);
+      usedIds.add(nextQ.id);
     }
   }
 
@@ -353,7 +341,7 @@ export function pickAdaptiveFollowUps(
       if (followUps.length >= 7) break;
       if (covered.has(q.traitId)) continue;
       const bank = POOL_BY_TRAIT.get(q.traitId)!;
-      const pick = bank.find((item) => !usedIds.has(item.id));
+      const pick = pickFollowUpItem(bank, q, usedIds);
       if (pick) {
         followUps.push(pick);
         usedIds.add(pick.id);
