@@ -24,6 +24,19 @@ describe('trait-test adaptive bank', () => {
     }
   });
 
+  it('scenario prompts and four-pattern options are consistent', () => {
+    const subs = ['dominant_pattern', 'healthy_pattern', 'neutral_pattern', 'risk_pattern'] as const;
+    for (const q of TRAIT_QUESTION_POOL) {
+      if (q.type !== 'scenario') continue;
+      expect(q.prompt.startsWith('Think about the last time ')).toBe(true);
+      expect(q.prompt.endsWith(' What did you do first?')).toBe(true);
+      expect(q.options).toHaveLength(4);
+      const gotSubs = [...q.options.map((o) => o.sub)].sort();
+      expect(gotSubs).toEqual([...subs].sort());
+      expect(q.options.map((o) => o.traitSignal)).toEqual([1, 3, 4, 5]);
+    }
+  });
+
   it('buildInitialTraitQuestionOrder returns two items per trait', () => {
     const wave = buildInitialTraitQuestionOrder(42_001);
     expect(wave).toHaveLength(TRAIT_FIRST_WAVE_LEN);

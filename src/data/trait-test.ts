@@ -5,8 +5,8 @@ import { TRAIT_QUESTION_POOL_RAW } from '@/data/trait-test-pool';
  *
  * **Question types**
  * - `likert`: agreement 1–5; `reverse` flips so healthier answers lower the trait signal.
- * - `scenario`: situational stem with four options; each option carries a 1–5 `traitSignal`. Stored value is the
- *   chosen option’s `traitSignal`.
+ * - `scenario`: “Think about the last time … What did you do first?” plus four options (`healthy_pattern` → 1,
+ *   `neutral_pattern` → 3, `risk_pattern` → 4, `dominant_pattern` → 5). Stored value is the chosen `traitSignal`.
  *
  * **Score 0–100 per trait:** Higher = stronger expression of that pattern (`scoreHighMeans`).
  *
@@ -15,7 +15,7 @@ import { TRAIT_QUESTION_POOL_RAW } from '@/data/trait-test-pool';
  * ambiguity (flat mid responses and inconsistent pairs between the two items) and get a third unused scenario each.
  */
 
-export const TRAIT_TEST_INSTRUMENT_VERSION = 'trait_patterns_18x72_scenario_v5';
+export const TRAIT_TEST_INSTRUMENT_VERSION = 'trait_patterns_18x72_scenario_v6';
 
 /** First wave length (two scenarios per pattern, order randomized by trait block). */
 export const TRAIT_FIRST_WAVE_LEN = 36;
@@ -171,11 +171,18 @@ export type LikertTraitQuestion = {
   reverse: boolean;
 };
 
+/** Option role for analytics / consistency (four slots per scenario). */
+export type TraitOptionPatternSub =
+  | 'healthy_pattern'
+  | 'neutral_pattern'
+  | 'risk_pattern'
+  | 'dominant_pattern';
+
 export type ScenarioTraitOption = {
-  id: string;
   label: string;
-  /** 1–5: higher = more of this dimension’s pattern. */
+  /** 1 / 3 / 4 / 5 aligned to healthy → dominant pattern expression for this dimension. */
   traitSignal: number;
+  sub: TraitOptionPatternSub;
 };
 
 export type ScenarioTraitQuestion = {

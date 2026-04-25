@@ -274,7 +274,7 @@ export default function TraitTestScreen() {
                 <Text style={st.scaleHint}>Pick the option closest to what you usually do—not what sounds best.</Text>
                 {q.options.map((opt, i) => (
                   <TouchableOpacity
-                    key={opt.id}
+                    key={`${q.id}-${opt.sub}`}
                     style={[st.optionRow, { borderColor: colors.border, backgroundColor: colors.floating }]}
                     onPress={() => commitAnswer(opt.traitSignal)}
                     activeOpacity={0.75}

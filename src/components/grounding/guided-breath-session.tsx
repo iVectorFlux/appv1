@@ -243,19 +243,21 @@ export function GuidedBreathSession({
 
       {phaseTotal > 0 ? (
         <View style={s.topStepBlock} accessibilityRole="summary" accessibilityLabel={`Step ${phaseCurrent} of ${phaseTotal}`}>
-          <Text style={s.stepMeta} accessibilityLiveRegion="polite">
-            Step {phaseCurrent} of {phaseTotal}
-          </Text>
-          <View style={s.phaseSegRow}>
-            {Array.from({ length: phaseTotal }, (_, i) => (
-              <View
-                key={i}
-                style={[
-                  s.phaseSeg,
-                  i < phaseCurrent && { backgroundColor: currentStep.color },
-                ]}
-              />
-            ))}
+          <View style={s.stepRowInline}>
+            <Text style={s.stepMeta} accessibilityLiveRegion="polite" numberOfLines={1}>
+              Step {phaseCurrent} of {phaseTotal}
+            </Text>
+            <View style={s.phaseSegRow}>
+              {Array.from({ length: phaseTotal }, (_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    s.phaseSeg,
+                    i < phaseCurrent && { backgroundColor: currentStep.color },
+                  ]}
+                />
+              ))}
+            </View>
           </View>
         </View>
       ) : null}
@@ -274,15 +276,21 @@ export function GuidedBreathSession({
           />
         </View>
 
-        <Text style={s.phaseLine} accessibilityRole="text">
-          <Text style={[s.phaseLabel, { color: currentStep.color }]}>{currentStep.label}</Text>
+        <View style={s.phaseLineRow} accessibilityRole="text" accessibilityLabel={`${currentStep.label}${tick > 0 && currentStep.durationMs >= 3000 ? `, ${tick} seconds` : ''}`}>
+          <Text style={[s.phaseLabel, { color: currentStep.color }]} numberOfLines={1}>
+            {currentStep.label}
+          </Text>
           {tick > 0 && currentStep.durationMs >= 3000 ? (
             <>
-              <Text style={s.phaseSep}> · </Text>
-              <Text style={[s.phaseTick, { color: currentStep.color }]}>{tick}</Text>
+              <Text style={s.phaseSep} numberOfLines={1}>
+                {' · '}
+              </Text>
+              <Text style={[s.phaseTick, { color: currentStep.color }]} numberOfLines={1}>
+                {tick}
+              </Text>
             </>
           ) : null}
-        </Text>
+        </View>
       </View>
     </View>
   );
@@ -324,18 +332,24 @@ const s = StyleSheet.create({
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.xs,
   },
+  stepRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
   stepMeta: {
     fontSize: Typography.fontSize.sm,
     color: TEXT_MUTED,
     fontFamily: Typography.fontFamily.primary,
     fontWeight: Typography.fontWeight.medium,
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
+    flexShrink: 0,
   },
   phaseSegRow: {
+    flex: 1,
     flexDirection: 'row',
     gap: 3,
     alignItems: 'center',
+    minWidth: 0,
   },
   phaseSeg: {
     flex: 1,
@@ -357,14 +371,20 @@ const s = StyleSheet.create({
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.lg },
   orbSlot: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
-  phaseLine: {
+  phaseLineRow: {
     marginTop: Spacing.md,
-    textAlign: 'center',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    flexWrap: 'nowrap',
+    maxWidth: '100%',
+    paddingHorizontal: Spacing.sm,
   },
   phaseLabel: {
     fontSize: 28,
     fontWeight: Typography.fontWeight.semibold,
     fontFamily: Typography.fontFamily.heading,
+    flexShrink: 1,
   },
   phaseSep: {
     fontSize: 28,
