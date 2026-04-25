@@ -76,7 +76,7 @@ export default function HomeScreen() {
         {
           key: 'trait-test',
           title: 'Trait test',
-          subtitle: '18 habits · 25 adaptive questions',
+          subtitle: '18 habits · 36 + 7 adaptive questions',
           icon: 'git-branch-outline' as const,
           accent: colors.accentSage,
           route: '/trait-test',

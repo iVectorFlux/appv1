@@ -32,7 +32,7 @@ export function keyedMeanToDisplay100(keyedMean: number): number {
 }
 
 /**
- * Score from any subset of answered items (typically 18 or 25 ids).
+ * Score from any subset of answered items (typically up to 43 ids for the full adaptive run).
  * Multiple items per trait are averaged after keying.
  */
 export function scoreTraitTest(

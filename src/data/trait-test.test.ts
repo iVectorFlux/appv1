@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   TRAIT_DIMENSIONS,
   TRAIT_QUESTION_POOL,
+  TRAIT_TEST_INSTRUMENT_VERSION,
+  TRAIT_FIRST_WAVE_LEN,
   buildInitialTraitQuestionOrder,
   pickAdaptiveFollowUps,
   responseToTraitSignal,
@@ -22,11 +24,15 @@ describe('trait-test adaptive bank', () => {
     }
   });
 
-  it('buildInitialTraitQuestionOrder returns one item per trait', () => {
+  it('buildInitialTraitQuestionOrder returns two items per trait', () => {
     const wave = buildInitialTraitQuestionOrder(42_001);
-    expect(wave).toHaveLength(18);
-    const ids = new Set(wave.map((q) => q.traitId));
-    expect(ids.size).toBe(18);
+    expect(wave).toHaveLength(TRAIT_FIRST_WAVE_LEN);
+    const byTrait = new Map<string, number>();
+    for (const q of wave) byTrait.set(q.traitId, (byTrait.get(q.traitId) ?? 0) + 1);
+    expect(byTrait.size).toBe(18);
+    for (const n of byTrait.values()) {
+      expect(n).toBe(2);
+    }
   });
 
   it('pickAdaptiveFollowUps returns 7 unused items', () => {
@@ -46,14 +52,14 @@ describe('trait-test adaptive bank', () => {
       traitCounts.set(q.traitId, (traitCounts.get(q.traitId) ?? 0) + 1);
     }
     for (const n of traitCounts.values()) {
-      expect(n).toBeLessThanOrEqual(2);
+      expect(n).toBeLessThanOrEqual(3);
     }
   });
 
   it('responseToTraitSignal: scenario passthrough', () => {
-    const a = TRAIT_QUESTION_POOL.find((x) => x.id === 'tt_irr_q1')!;
+    const a = TRAIT_QUESTION_POOL.find((x) => x.id === 'irr_1')!;
     expect(responseToTraitSignal(a, 5)).toBe(5);
-    const b = TRAIT_QUESTION_POOL.find((x) => x.id === 'tt_rp_q9')!;
+    const b = TRAIT_QUESTION_POOL.find((x) => x.id === 'rp_1')!;
     expect(responseToTraitSignal(b, 1)).toBe(1);
   });
 
@@ -63,7 +69,7 @@ describe('trait-test adaptive bank', () => {
     for (const q of wave) responses[q.id] = 3;
     const extras = pickAdaptiveFollowUps(wave, responses);
     for (const q of extras) responses[q.id] = 3;
-    const r = scoreTraitTest(responses, 'trait_patterns_18x72_scenario_v4');
+    const r = scoreTraitTest(responses, TRAIT_TEST_INSTRUMENT_VERSION);
     expect(r.overall0to100).toBeGreaterThanOrEqual(48);
     expect(r.overall0to100).toBeLessThanOrEqual(52);
   });

@@ -5,17 +5,20 @@ import { TRAIT_QUESTION_POOL_RAW } from '@/data/trait-test-pool';
  *
  * **Question types**
  * - `likert`: agreement 1–5; `reverse` flips so healthier answers lower the trait signal.
- * - `scenario`: recall / situational stem with four options; each option carries a 1–5 `traitSignal` (no “correct”
- *   answer—trade-offs). Stored value is the chosen option’s `traitSignal`.
+ * - `scenario`: situational stem with four options; each option carries a 1–5 `traitSignal`. Stored value is the
+ *   chosen option’s `traitSignal`.
  *
  * **Score 0–100 per trait:** Higher = stronger expression of that pattern (`scoreHighMeans`).
  *
- * **Adaptive (72 → 25):** Four items per trait. First pass: one per trait (18). Follow-ups: seven traits—usually
- * those whose first signal was closest to 3; if ≥10 first-pass answers are neutral (habitual midpoint), follow-ups
- * are spread across a seeded shuffle instead (midpoint alone is not treated as rich information).
+ * **Adaptive bank (72):** Four scenarios per trait. First wave: two per trait (36). Then seven follow-up items:
+ * if many answers are neutral (midpoint), those seven are spread by a seeded shuffle; otherwise traits rank by
+ * ambiguity (flat mid responses and inconsistent pairs between the two items) and get a third unused scenario each.
  */
 
-export const TRAIT_TEST_INSTRUMENT_VERSION = 'trait_patterns_18x72_scenario_v4';
+export const TRAIT_TEST_INSTRUMENT_VERSION = 'trait_patterns_18x72_scenario_v5';
+
+/** First wave length (two scenarios per pattern, order randomized by trait block). */
+export const TRAIT_FIRST_WAVE_LEN = 36;
 
 export type TraitDimensionId =
   | 'irrationality'
@@ -185,7 +188,7 @@ export type ScenarioTraitQuestion = {
 
 export type TraitQuestionItem = LikertTraitQuestion | ScenarioTraitQuestion;
 
-/** Four items per dimension (72): scenario stems + likert fallback (see `trait-test-pool.ts`). */
+/** Four scenario items per dimension (72); see `trait-test-pool.ts`. */
 export const TRAIT_QUESTION_POOL = TRAIT_QUESTION_POOL_RAW as TraitQuestionItem[];
 
 export function getQuestionPrompt(q: TraitQuestionItem): string {
@@ -248,10 +251,19 @@ export function buildInitialTraitQuestionOrder(sessionSeed: number): TraitQuesti
   let variantSalt = 0;
   for (const traitId of traits) {
     const bank = POOL_BY_TRAIT.get(traitId)!;
-    const v = Math.floor(rand() * bank.length) % bank.length;
-    const idx = (v + variantSalt) % bank.length;
+    const len = bank.length;
+    const v = Math.floor(rand() * len) % len;
+    const idx0 = (v + variantSalt) % len;
     variantSalt += 7;
-    out.push(bank[idx]!);
+    let idx1 = Math.floor(rand() * len) % len;
+    let guard = 0;
+    while (idx1 === idx0 && len > 1 && guard++ < 32) {
+      idx1 = Math.floor(rand() * len) % len;
+    }
+    if (idx1 === idx0 && len > 1) {
+      idx1 = (idx0 + 1) % len;
+    }
+    out.push(bank[idx0]!, bank[idx1]!);
   }
   return out;
 }
@@ -266,18 +278,9 @@ function hashQuestionIds(questions: TraitQuestionItem[]): number {
   return h >>> 0;
 }
 
-function pickFollowUpItem(
-  bank: TraitQuestionItem[],
-  firstQ: TraitQuestionItem,
-  usedIds: Set<string>
-): TraitQuestionItem | undefined {
-  const ok = (q: TraitQuestionItem) => !usedIds.has(q.id) && q.id !== firstQ.id;
-  const isLk = (q: TraitQuestionItem): q is LikertTraitQuestion => q.type === 'likert';
-  return (
-    bank.find((q) => ok(q) && q.type !== firstQ.type) ??
-    bank.find((q) => ok(q) && (!isLk(firstQ) || !isLk(q) || q.reverse !== firstQ.reverse)) ??
-    bank.find((q) => ok(q))
-  );
+function pickUnusedPoolItem(traitId: TraitDimensionId, usedIds: Set<string>): TraitQuestionItem | undefined {
+  const bank = POOL_BY_TRAIT.get(traitId)!;
+  return bank.find((q) => !usedIds.has(q.id));
 }
 
 export function pickAdaptiveFollowUps(
@@ -293,42 +296,56 @@ export function pickAdaptiveFollowUps(
     if (responseToTraitSignal(q, raw) === 3) neutralCount++;
   }
 
-  if (neutralCount >= 10) {
+  const appendNeutralShuffleFollowUps = (): TraitQuestionItem[] => {
     const traitOrder = [...new Set(wave1Questions.map((q) => q.traitId))];
     const rand = traitTestMulberry32(hashQuestionIds(wave1Questions) ^ 0x9e3779b9);
     shuffleInPlace(traitOrder, rand);
     const out: TraitQuestionItem[] = [];
     for (const tid of traitOrder) {
       if (out.length >= 7) break;
-      const firstInWave = wave1Questions.find((q) => q.traitId === tid);
-      if (!firstInWave) continue;
-      const bank = POOL_BY_TRAIT.get(tid)!;
-      const nextQ = pickFollowUpItem(bank, firstInWave, usedIds);
+      const nextQ = pickUnusedPoolItem(tid, usedIds);
       if (nextQ) {
         out.push(nextQ);
         usedIds.add(nextQ.id);
       }
     }
-    return out.slice(0, 7);
+    return out;
+  };
+
+  // ~55% habitual midpoint → treat as low-information; spread follow-ups.
+  if (neutralCount >= 20) {
+    return appendNeutralShuffleFollowUps().slice(0, 7);
   }
 
-  const rows: { traitId: TraitDimensionId; ambiguity: number; firstQ: TraitQuestionItem }[] = [];
+  const signalsByTrait = new Map<TraitDimensionId, number[]>();
   for (const q of wave1Questions) {
     const raw = responses[q.id];
     if (raw == null) continue;
-    const keyed = responseToTraitSignal(q, raw);
-    rows.push({ traitId: q.traitId, ambiguity: Math.abs(keyed - 3), firstQ: q });
+    const s = responseToTraitSignal(q, raw);
+    const arr = signalsByTrait.get(q.traitId) ?? [];
+    arr.push(s);
+    signalsByTrait.set(q.traitId, arr);
+  }
+
+  const rows: { traitId: TraitDimensionId; ambiguity: number }[] = [];
+  for (const [traitId, sigs] of signalsByTrait) {
+    if (sigs.length < 2) continue;
+    const s1 = sigs[0]!;
+    const s2 = sigs[1]!;
+    const mean = (s1 + s2) / 2;
+    const spread = Math.abs(s1 - s2);
+    const ambiguity = Math.abs(mean - 3) * 0.85 + spread * 0.45;
+    rows.push({ traitId, ambiguity });
   }
 
   rows.sort((a, b) => {
-    if (a.ambiguity !== b.ambiguity) return a.ambiguity - b.ambiguity;
+    if (a.ambiguity !== b.ambiguity) return b.ambiguity - a.ambiguity;
     return a.traitId.localeCompare(b.traitId);
   });
 
   const followUps: TraitQuestionItem[] = [];
   for (const row of rows.slice(0, 7)) {
-    const bank = POOL_BY_TRAIT.get(row.traitId)!;
-    const nextQ = pickFollowUpItem(bank, row.firstQ, usedIds);
+    const nextQ = pickUnusedPoolItem(row.traitId, usedIds);
     if (nextQ) {
       followUps.push(nextQ);
       usedIds.add(nextQ.id);
@@ -340,8 +357,7 @@ export function pickAdaptiveFollowUps(
     for (const q of wave1Questions) {
       if (followUps.length >= 7) break;
       if (covered.has(q.traitId)) continue;
-      const bank = POOL_BY_TRAIT.get(q.traitId)!;
-      const pick = pickFollowUpItem(bank, q, usedIds);
+      const pick = pickUnusedPoolItem(q.traitId, usedIds);
       if (pick) {
         followUps.push(pick);
         usedIds.add(pick.id);

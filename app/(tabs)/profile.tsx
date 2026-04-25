@@ -72,7 +72,7 @@ export default function ProfileScreen() {
               [
                 { route: '/full-eq-test' as const, icon: 'analytics-outline' as const, title: 'Full EQ test', subtitle: 'Emotional intelligence · full battery' },
                 { route: '/big5-test' as const, icon: 'color-wand-outline' as const, title: 'Big Five', subtitle: 'Personality OCEAN · IPIP 50' },
-                { route: '/trait-test' as const, icon: 'git-branch-outline' as const, title: 'Trait test', subtitle: '18 patterns · 25 adaptive questions' },
+                { route: '/trait-test' as const, icon: 'git-branch-outline' as const, title: 'Trait test', subtitle: '18 patterns · 36 + 7 adaptive' },
               ] as const
             ).map((row, i, arr) => (
               <View key={row.route}>

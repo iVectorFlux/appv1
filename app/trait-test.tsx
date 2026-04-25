@@ -1,5 +1,5 @@
 /**
- * Trait Test — 25-question adaptive interpersonal snapshot (18 + 7 follow-ups).
+ * Trait Test — adaptive interpersonal snapshot (36 core + 7 follow-ups from a 72-item bank).
  */
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -22,6 +22,7 @@ import { GlassCard } from '@/components/ui/glass-card';
 import {
   TRAIT_DIMENSIONS,
   TRAIT_TEST_INSTRUMENT_VERSION,
+  TRAIT_FIRST_WAVE_LEN,
   TRAIT_LIKERT_LABELS,
   buildInitialTraitQuestionOrder,
   pickAdaptiveFollowUps,
@@ -117,12 +118,16 @@ export default function TraitTestScreen() {
       if (!q) return;
       const next = { ...responses, [q.id]: value1to5 };
 
-      if (questions.length === 18 && index === 17 && !followUpsAppendedRef.current) {
+      if (
+        questions.length === TRAIT_FIRST_WAVE_LEN &&
+        index === TRAIT_FIRST_WAVE_LEN - 1 &&
+        !followUpsAppendedRef.current
+      ) {
         followUpsAppendedRef.current = true;
         const extras = pickAdaptiveFollowUps(wave1Ref.current, next);
         setResponses(next);
         setQuestions((prev) => [...prev, ...extras]);
-        setIndex(18);
+        setIndex(TRAIT_FIRST_WAVE_LEN);
         return;
       }
 
@@ -244,20 +249,8 @@ export default function TraitTestScreen() {
             <Text style={st.lead}>
               This assessment maps <Text style={{ fontWeight: '700' }}>eighteen</Text> patterns (Irrationality through
               Death Denial). Every item is a short situation with <Text style={{ fontWeight: '700' }}>four</Text> options
-              —trade-offs, not moral “right answers.” Your run asks twenty-five items sampled from a bank of seventy-two.
-              For self-insight only—not diagnosis, hiring, or clinical use.
-            </Text>
-            <Text style={st.lead}>
-              You will answer <Text style={{ fontWeight: '700' }}>twenty-five</Text> items. The first pass is one item
-              per pattern (18). Then we add <Text style={{ fontWeight: '700' }}>seven</Text> follow-ups focused on
-              patterns where your first answer was closest to neutral, so we refine the noisiest areas. Allow about
-              eight to twelve minutes.
-            </Text>
-            <Text style={st.lead}>
-              <Text style={{ fontWeight: '600' }}>Scoring.</Text> Each choice maps to a 1–5 signal for that pattern
-              (higher = more of it). We average one or two items per pattern, then show{' '}
-              <Text style={{ fontWeight: '700' }}>0–100</Text>. If many first answers are neutral, follow-ups spread by
-              a shuffle so we still learn. Overall is the average of the eighteen pattern scores.
+              —trade-offs, not moral “right answers.” Your run uses two items per pattern from a bank of seventy-two, then
+              seven adaptive follow-ups from the same bank. For self-insight only—not diagnosis, hiring, or clinical use.
             </Text>
             <TouchableOpacity style={[st.primaryBtn, { backgroundColor: colors.primary }]} onPress={() => setPhase('test')}>
               <Text style={st.primaryBtnText}>Start trait test</Text>
@@ -273,7 +266,7 @@ export default function TraitTestScreen() {
             </View>
             <Text style={st.progressLabel}>
               Question {index + 1} of {total}
-              {total === 18 ? ' · first pass' : index < 18 ? ' · first pass' : ' · adaptive follow-ups'}
+              {index < TRAIT_FIRST_WAVE_LEN ? ' · first pass' : ' · adaptive follow-ups'}
             </Text>
             <Text style={st.questionText}>{getQuestionPrompt(q)}</Text>
             {q.type === 'scenario' ? (
