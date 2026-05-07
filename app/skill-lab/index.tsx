@@ -1,21 +1,23 @@
 /**
- * Skill Lab - landing (route: /skill-lab)
+ * Skill Lab — Landing (route: /skill-lab)
  *
- * Main skills only as a grid of cards; tap a skill to open sub-skills + practice on the detail screen.
+ * Editorial enterprise design: paper background, serif + sans + mono triad,
+ * single-column reading width, clean card surfaces with light borders.
+ * Tap a skill to open sub-skills + practice on the detail screen.
  */
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Platform } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  useColors,
-  Spacing,
-  Typography,
-  Radius,
-  Layout,
-  Shadows,
-} from '@/constants/design-tokens';
+  SLColors,
+  SLTypography,
+  SLSpacing,
+  SLLayout,
+  SLRadius,
+  SLMotion,
+} from '@/constants/skill-lab-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import { FUTURE_SKILLS } from '@/data/future-skills';
 import { getSkillsProgress } from '@/services/skills-storage';
@@ -23,21 +25,19 @@ import type { SkillProgress } from '@/services/skills-storage';
 import { getOfflineSessionCounts } from '@/services/skill-lab-offline-progress';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 import { ScreenHeader } from '@/components/ui/screen-header';
-import { GlassCard } from '@/components/ui/glass-card';
 
-const STAGGER = 45;
-const FADE_MS = 300;
-const GAP = 12;
+const STAGGER = 50;
+const FADE_MS = SLMotion.normal;
 
 export default function SkillLabScreen() {
   const router = useRouter();
-  const colors = useColors();
   const isWebLaptop = useWebLaptopLayout();
   const { user } = useAuthStore();
   const [progress, setProgress] = useState<Record<string, SkillProgress>>({});
   const [offlineBySkill, setOfflineBySkill] = useState<Record<string, number>>({});
 
   const headerFade = useRef(new Animated.Value(0)).current;
+  const railFade = useRef(new Animated.Value(0)).current;
   const cardAnims = useRef(FUTURE_SKILLS.map(() => new Animated.Value(0))).current;
 
   const loadProgress = useCallback(() => {
@@ -63,7 +63,8 @@ export default function SkillLabScreen() {
   );
 
   useEffect(() => {
-    Animated.timing(headerFade, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
+    Animated.timing(railFade, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
+    Animated.timing(headerFade, { toValue: 1, duration: FADE_MS + 100, useNativeDriver: true }).start();
     Animated.stagger(
       STAGGER,
       cardAnims.map((a) => Animated.timing(a, { toValue: 1, duration: FADE_MS, useNativeDriver: true }))
@@ -82,8 +83,7 @@ export default function SkillLabScreen() {
 
   const skillsStarted = FUTURE_SKILLS.filter((s) => sessionCountForSkill(s.id) > 0).length;
   const totalSessions = FUTURE_SKILLS.reduce((sum, s) => sum + sessionCountForSkill(s.id), 0);
-
-  const styles = createStyles(colors);
+  const progressPct = FUTURE_SKILLS.length > 0 ? (skillsStarted / FUTURE_SKILLS.length) * 100 : 0;
 
   return (
     <ScrollView
@@ -91,38 +91,59 @@ export default function SkillLabScreen() {
       contentContainerStyle={[styles.content, isWebLaptop && styles.contentWebLaptop]}
       showsVerticalScrollIndicator={false}
     >
+      {/* ── Progress Rail ─────────────────────────────────────────── */}
+      <Animated.View style={[styles.progressRail, { opacity: railFade }]}>
+        <View style={styles.progressTrack}>
+          <Animated.View
+            style={[
+              styles.progressFill,
+              {
+                width: `${progressPct}%` as any,
+                backgroundColor: progressPct >= 100 ? SLColors.success : SLColors.brandPrimary,
+              },
+            ]}
+          />
+        </View>
+      </Animated.View>
+
       <ScreenHeader title="Skill Lab" backFallbackHref="/(tabs)/home" showHomeButton />
 
+      {/* ── Header + Stats ────────────────────────────────────────── */}
       <Animated.View
         style={[
           styles.intro,
-          { opacity: headerFade, transform: [{ translateY: headerFade.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] },
+          {
+            opacity: headerFade,
+            transform: [{ translateY: headerFade.interpolate({ inputRange: [0, 1], outputRange: [SLMotion.entranceOffset, 0] }) }],
+          },
         ]}
       >
-        <Text style={styles.subtitle}>
+        <Text style={styles.pageSubtitle}>
           Choose a skill to see its sub-skills and start AI practice.
         </Text>
-        <View style={styles.statsInline}>
-          <View style={styles.statPill}>
-            <Ionicons name="rocket-outline" size={14} color={colors.primary} />
-            <Text style={styles.statPillText}>
-              <Text style={styles.statPillNum}>{skillsStarted}</Text>
-              {` / ${FUTURE_SKILLS.length} started`}
+
+        <View style={styles.statsRow}>
+          <View style={styles.statBlock}>
+            <Text style={styles.statNumber}>{skillsStarted}</Text>
+            <Text style={styles.statLabel}>
+              {'/ ' + FUTURE_SKILLS.length + ' STARTED'}
             </Text>
           </View>
-          <View style={styles.statPill}>
-            <Ionicons name="flash-outline" size={14} color={colors.accentIndigo} />
-            <Text style={styles.statPillText}>
-              <Text style={styles.statPillNum}>{totalSessions}</Text>
-              {` session${totalSessions === 1 ? '' : 's'}`}
+          <View style={styles.statDivider} />
+          <View style={styles.statBlock}>
+            <Text style={styles.statNumber}>{totalSessions}</Text>
+            <Text style={styles.statLabel}>
+              {totalSessions === 1 ? 'SESSION' : 'SESSIONS'}
             </Text>
           </View>
         </View>
       </Animated.View>
 
-      <Text style={styles.sectionLabel}>Skills</Text>
+      {/* ── Section Label ─────────────────────────────────────────── */}
+      <Text style={styles.sectionLabel}>SKILLS</Text>
 
-      <View style={[styles.grid, isWebLaptop && styles.gridWeb]}>
+      {/* ── Skill Cards ───────────────────────────────────────────── */}
+      <View style={styles.cardList}>
         {FUTURE_SKILLS.map((skill, idx) => {
           const sessions = sessionCountForSkill(skill.id);
           const n = skill.atomicSkills.length;
@@ -131,43 +152,54 @@ export default function SkillLabScreen() {
             <Animated.View
               key={skill.id}
               style={[
-                isWebLaptop ? styles.cellWeb : styles.cell,
+                styles.cardWrapper,
                 {
                   opacity: cardAnims[idx],
-                  transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+                  transform: [{ translateY: cardAnims[idx].interpolate({ inputRange: [0, 1], outputRange: [SLMotion.entranceOffset, 0] }) }],
                 },
               ]}
             >
-              <GlassCard
-                borderRadius={Radius.xl}
-                noPadding
+              <TouchableOpacity
                 onPress={() => router.push(`/skill-lab/${skill.id}`)}
-                style={[styles.cardOuter, Shadows.card]}
+                activeOpacity={0.82}
+                style={styles.card}
               >
+                {/* Left accent bar */}
                 <View style={[styles.accentBar, { backgroundColor: skill.color }]} />
-                <View style={styles.cardInner}>
-                  <View style={[styles.iconTile, { backgroundColor: skill.color + '18' }]}>
-                    <Ionicons name={skill.icon as any} size={28} color={skill.color} />
+
+                <View style={styles.cardBody}>
+                  <View style={styles.cardTop}>
+                    <View style={[styles.iconTile, { backgroundColor: skill.color + '14' }]}>
+                      <Ionicons name={skill.icon as any} size={22} color={skill.color} />
+                    </View>
+                    <View style={styles.cardTitleArea}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {skill.name}
+                      </Text>
+                      <Text style={styles.cardTagline} numberOfLines={2}>
+                        {skill.tagline}
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={styles.skillTitle} numberOfLines={2}>
-                    {skill.name}
-                  </Text>
-                  <Text style={styles.skillTagline} numberOfLines={2}>
-                    {skill.tagline}
-                  </Text>
+
                   <View style={styles.cardFooter}>
-                    <View style={styles.meta}>
-                      <Ionicons name="layers-outline" size={13} color={colors.textMuted} />
+                    <View style={styles.metaChip}>
+                      <Ionicons name="layers-outline" size={12} color={SLColors.inkMuted} />
                       <Text style={styles.metaText}>{n} sub-skills</Text>
                     </View>
                     {sessions > 0 && (
-                      <View style={[styles.sessDot, { backgroundColor: colors.primary + '18' }]}>
-                        <Text style={[styles.sessText, { color: colors.primary }]}>{sessions}</Text>
+                      <View style={[styles.sessionBadge, { backgroundColor: skill.color + '14' }]}>
+                        <Text style={[styles.sessionBadgeText, { color: skill.color }]}>
+                          {sessions} {sessions === 1 ? 'session' : 'sessions'}
+                        </Text>
                       </View>
                     )}
+                    <View style={styles.cardArrow}>
+                      <Ionicons name="chevron-forward" size={16} color={SLColors.inkDisabled} />
+                    </View>
                   </View>
                 </View>
-              </GlassCard>
+              </TouchableOpacity>
             </Animated.View>
           );
         })}
@@ -176,146 +208,194 @@ export default function SkillLabScreen() {
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    content: {
-      paddingBottom: Spacing['2xl'],
-      maxWidth: Layout.maxWidth,
-      alignSelf: 'center',
-      width: '100%',
-    },
-    contentWebLaptop: {
-      maxWidth: 960,
-      paddingHorizontal: Spacing.xl,
-    },
-    intro: {
-      paddingHorizontal: Spacing.md,
-      paddingBottom: Spacing.md,
-    },
-    subtitle: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.sm * 1.5,
-      textAlign: 'left',
-    },
-    statsInline: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: Spacing.sm,
-      marginTop: Spacing.md,
-    },
-    statPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: Spacing.sm + 2,
-      paddingVertical: 6,
-      borderRadius: Radius.full,
-      backgroundColor: colors.floating,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    statPillText: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-    },
-    statPillNum: {
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
-    },
-    sectionLabel: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textSecondary,
-      paddingHorizontal: Spacing.md,
-      marginBottom: Spacing.sm,
-    },
-    grid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      paddingHorizontal: Spacing.md,
-      gap: GAP,
-      justifyContent: 'space-between',
-    },
-    gridWeb: {
-      justifyContent: 'flex-start',
-    },
-    cell: {
-      width: '48%' as any,
-      minWidth: 148,
-    },
-    cellWeb: {
-      width: '31%' as any,
-      maxWidth: 300,
-      minWidth: 200,
-    },
-    cardOuter: {
-      overflow: 'hidden',
-      minHeight: 168,
-    },
-    accentBar: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 4,
-      borderTopLeftRadius: Radius.xl - 1,
-      borderBottomLeftRadius: Radius.xl - 1,
-    },
-    cardInner: {
-      paddingLeft: Spacing.md + 6,
-      paddingRight: Spacing.md,
-      paddingVertical: Spacing.md,
-      flex: 1,
-    },
-    iconTile: {
-      width: 52,
-      height: 52,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: Spacing.sm,
-    },
-    skillTitle: {
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-      letterSpacing: -0.2,
-      marginBottom: 4,
-    },
-    skillTagline: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.sm * 1.35,
-      marginBottom: Spacing.sm,
-      minHeight: 36,
-    },
-    cardFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: 'auto' as any,
-    },
-    meta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-    },
-    metaText: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
-    },
-    sessDot: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: Radius.full,
-    },
-    sessText: {
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.semibold,
-    },
-  });
+// ─────────────────────────────────────────────────────────────────────────────
+// Styles — Editorial Enterprise Design
+// ─────────────────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: SLColors.bgPage,
+  },
+  content: {
+    paddingBottom: SLSpacing['5xl'],
+    maxWidth: SLLayout.contentMaxWidth,
+    alignSelf: 'center' as any,
+    width: '100%' as any,
+  },
+  contentWebLaptop: {
+    maxWidth: SLLayout.contentMaxWidth,
+    paddingHorizontal: SLSpacing.xl,
+  },
+
+  // Progress rail
+  progressRail: {
+    paddingHorizontal: 0,
+  },
+  progressTrack: {
+    height: SLLayout.progressRailHeight,
+    backgroundColor: SLColors.borderDefault,
+    overflow: 'hidden' as any,
+  },
+  progressFill: {
+    height: '100%' as any,
+    borderRadius: 2,
+    ...(Platform.OS === 'web' ? { transition: 'width 0.4s ease' } : {}),
+  } as any,
+
+  // Intro
+  intro: {
+    paddingHorizontal: SLSpacing.lg,
+    paddingBottom: SLSpacing['3xl'],
+  },
+  pageSubtitle: {
+    fontFamily: SLTypography.fontFamily.serif,
+    fontSize: SLTypography.fontSize.base,
+    color: SLColors.inkSecondary,
+    lineHeight: SLTypography.fontSize.base * SLTypography.lineHeight.loose,
+    marginBottom: SLSpacing.lg,
+  },
+
+  // Stats
+  statsRow: {
+    flexDirection: 'row' as any,
+    alignItems: 'center' as any,
+    gap: SLSpacing.lg,
+  },
+  statBlock: {
+    alignItems: 'flex-start' as any,
+  },
+  statNumber: {
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.xl,
+    fontWeight: SLTypography.fontWeight.bold,
+    color: SLColors.inkPrimary,
+    letterSpacing: SLTypography.letterSpacing.tight,
+  },
+  statLabel: {
+    fontFamily: SLTypography.fontFamily.mono,
+    fontSize: SLTypography.fontSize.micro,
+    fontWeight: SLTypography.fontWeight.medium,
+    color: SLColors.inkMuted,
+    letterSpacing: SLTypography.fontSize.micro * SLTypography.letterSpacing.uppercase,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: SLColors.borderDefault,
+  },
+
+  // Section label
+  sectionLabel: {
+    fontFamily: SLTypography.fontFamily.mono,
+    fontSize: SLTypography.fontSize.xs,
+    fontWeight: SLTypography.fontWeight.semibold,
+    color: SLColors.inkMuted,
+    letterSpacing: SLTypography.fontSize.xs * SLTypography.letterSpacing.label,
+    paddingHorizontal: SLSpacing.lg,
+    marginBottom: SLSpacing.sm,
+  },
+
+  // Card list
+  cardList: {
+    paddingHorizontal: SLSpacing.lg,
+    gap: SLSpacing.sm,
+  },
+
+  cardWrapper: {},
+
+  card: {
+    backgroundColor: SLColors.bgSurface,
+    borderWidth: 1,
+    borderColor: SLColors.borderDefault,
+    borderRadius: SLRadius.lg,
+    overflow: 'hidden' as any,
+    flexDirection: 'row' as any,
+    ...(Platform.OS === 'web' ? { transition: 'border-color 0.15s ease, box-shadow 0.15s ease', cursor: 'pointer' } : {}),
+  } as any,
+
+  accentBar: {
+    width: 3,
+    alignSelf: 'stretch' as any,
+  },
+
+  cardBody: {
+    flex: 1,
+    paddingVertical: SLSpacing.md,
+    paddingLeft: SLSpacing.md,
+    paddingRight: SLSpacing.md,
+    gap: SLSpacing.sm,
+  },
+
+  cardTop: {
+    flexDirection: 'row' as any,
+    alignItems: 'center' as any,
+    gap: SLSpacing.sm,
+  },
+
+  iconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: SLRadius.md,
+    alignItems: 'center' as any,
+    justifyContent: 'center' as any,
+  },
+
+  cardTitleArea: {
+    flex: 1,
+  },
+
+  cardTitle: {
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.base,
+    fontWeight: SLTypography.fontWeight.semibold,
+    color: SLColors.inkPrimary,
+    letterSpacing: SLTypography.letterSpacing.tight,
+  },
+
+  cardTagline: {
+    fontFamily: SLTypography.fontFamily.serif,
+    fontSize: SLTypography.fontSize.sm,
+    color: SLColors.inkSecondary,
+    lineHeight: SLTypography.fontSize.sm * SLTypography.lineHeight.normal,
+    fontStyle: 'italic' as any,
+    marginTop: 2,
+  },
+
+  cardFooter: {
+    flexDirection: 'row' as any,
+    alignItems: 'center' as any,
+    gap: SLSpacing.xs,
+    marginTop: SLSpacing.xxs,
+  },
+
+  metaChip: {
+    flexDirection: 'row' as any,
+    alignItems: 'center' as any,
+    gap: 4,
+  },
+
+  metaText: {
+    fontFamily: SLTypography.fontFamily.mono,
+    fontSize: SLTypography.fontSize.micro,
+    color: SLColors.inkMuted,
+    letterSpacing: SLTypography.fontSize.micro * SLTypography.letterSpacing.label,
+  },
+
+  sessionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: SLRadius.full,
+  },
+
+  sessionBadgeText: {
+    fontFamily: SLTypography.fontFamily.mono,
+    fontSize: SLTypography.fontSize.micro,
+    fontWeight: SLTypography.fontWeight.medium,
+  },
+
+  cardArrow: {
+    marginLeft: 'auto' as any,
+  },
+});

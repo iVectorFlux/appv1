@@ -318,6 +318,92 @@ export const FUTURE_SKILLS: FutureSkill[] = [
       },
     ],
   },
+  {
+    id: 'strategic_sales',
+    name: 'Strategic Sales',
+    tagline: 'Win with insight, not pressure',
+    description:
+      'Master the consultative sales process: uncover real needs, articulate value in the buyer\'s language, handle objections with confidence, and close deals that create lasting partnerships.',
+    why: 'Top performers don\'t push products—they diagnose problems and co-create solutions. Strategic selling is a trainable craft, not a personality trait.',
+    icon: 'briefcase-outline',
+    color: '#2563EB',
+    practiceMode: 'open_reflection',
+    atomicSkills: [
+      {
+        id: 'discovery_questioning',
+        name: 'Discovery & Qualification',
+        description: 'Ask layered questions that surface the buyer\'s real pain, budget authority, timeline, and decision process.',
+      },
+      {
+        id: 'value_articulation',
+        name: 'Value Articulation',
+        description: 'Translate features into business outcomes the buyer cares about, using their language and metrics.',
+      },
+      {
+        id: 'objection_handling',
+        name: 'Objection Handling',
+        description: 'Welcome resistance as signal, reframe concerns, and address root objections without being defensive.',
+      },
+      {
+        id: 'negotiation_closing',
+        name: 'Negotiation & Closing',
+        description: 'Navigate price, terms, and timing conversations to reach agreements both sides feel good about.',
+      },
+      {
+        id: 'relationship_building',
+        name: 'Relationship Building',
+        description: 'Build trust and rapport that outlasts any single deal, turning buyers into long-term advocates.',
+      },
+      {
+        id: 'pipeline_management',
+        name: 'Pipeline Strategy',
+        description: 'Prioritise opportunities, forecast accurately, and manage your pipeline as a portfolio, not a list.',
+      },
+    ],
+  },
+  {
+    id: 'leadership_essentials',
+    name: 'Leadership Essentials',
+    tagline: 'Lead people, not just projects',
+    description:
+      'Develop the core leadership capabilities that turn managers into leaders: set clear direction, empower your team, build a feedback culture, and make tough decisions under pressure.',
+    why: 'Most leadership failures are skill gaps, not character flaws. The fundamentals—delegation, feedback, presence—are learnable with deliberate practice.',
+    icon: 'flag-outline',
+    color: '#7C3AED',
+    practiceMode: 'open_reflection',
+    atomicSkills: [
+      {
+        id: 'vision_setting',
+        name: 'Vision & Direction Setting',
+        description: 'Articulate a compelling future state and translate it into clear priorities your team can act on.',
+      },
+      {
+        id: 'delegation',
+        name: 'Delegation & Empowerment',
+        description: 'Assign work based on growth potential, set guardrails without micromanaging, and let people own outcomes.',
+      },
+      {
+        id: 'feedback_culture',
+        name: 'Feedback Culture',
+        description: 'Give direct, specific, kind feedback that changes behaviour—and create an environment where others do the same.',
+      },
+      {
+        id: 'team_development',
+        name: 'Team Development',
+        description: 'Identify skill gaps, coach for growth, and build a team whose combined capability exceeds the sum of its parts.',
+      },
+      {
+        id: 'decision_making_under_pressure',
+        name: 'Decision Making Under Pressure',
+        description: 'Make timely calls with incomplete information, communicate your reasoning, and course-correct without losing credibility.',
+      },
+      {
+        id: 'executive_presence',
+        name: 'Executive Presence',
+        description: 'Carry yourself with calm authority, speak with conviction, and command attention in high-stakes moments.',
+      },
+    ],
+  },
 ];
 
 const SKILL_LAB_ID_SET = new Set(FUTURE_SKILLS.map((s) => s.id));

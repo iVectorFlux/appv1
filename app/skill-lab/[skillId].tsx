@@ -28,11 +28,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useColors,
-  Spacing,
-  Typography,
-  Radius,
-  Layout,
 } from '@/constants/design-tokens';
+import {
+  SLColors,
+  SLTypography,
+  SLSpacing,
+  SLLayout,
+  SLRadius,
+  SLButton,
+  SLTextarea,
+} from '@/constants/skill-lab-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import { getSkillById } from '@/data/future-skills';
 import type { AtomicSkill, FutureSkill, PracticeMode } from '@/data/future-skills';
@@ -182,15 +187,16 @@ function AtomicSkillChip({
   return (
     <TouchableOpacity
       onPress={onPress}
+      activeOpacity={0.75}
       style={[
         chipStyles.chip,
         {
-          backgroundColor: selected ? color + '22' : colors.surface,
-          borderColor: selected ? color : colors.border,
+          backgroundColor: selected ? SLColors.brandPrimary + '12' : SLColors.bgSurface,
+          borderColor: selected ? color : SLColors.borderSoft,
         },
       ]}
     >
-      <Text style={[chipStyles.chipText, { color: selected ? color : colors.textSecondary }]}>
+      <Text style={[chipStyles.chipText, { color: selected ? color : SLColors.inkSecondary }]}>
         {skill.name}
       </Text>
     </TouchableOpacity>
@@ -199,16 +205,17 @@ function AtomicSkillChip({
 
 const chipStyles = StyleSheet.create({
   chip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm - 2,
-    borderRadius: Radius.full,
+    paddingHorizontal: SLSpacing.md,
+    paddingVertical: SLSpacing.xs - 2,
+    borderRadius: SLRadius.full,
     borderWidth: 1,
-    marginRight: Spacing.xs,
-    marginBottom: Spacing.xs,
+    marginRight: SLSpacing.xxs,
+    marginBottom: SLSpacing.xxs,
   },
   chipText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.medium,
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.sm,
+    fontWeight: SLTypography.fontWeight.medium,
   },
 });
 
@@ -222,24 +229,24 @@ function FeedbackCard({
   skill: FutureSkill;
 }) {
   return (
-    <View style={[fbStyles.card, { backgroundColor: colors.floating, borderColor: colors.border }]}>
+    <View style={[fbStyles.card, { backgroundColor: SLColors.bgSurface, borderColor: SLColors.borderDefault }]}>
       <View style={[fbStyles.scoreRow, { borderColor: skill.color + '35', backgroundColor: skill.color + '10' }]}>
         <Text style={[fbStyles.scoreLabel, { color: skill.color }]}>Score</Text>
-        <Text style={[fbStyles.scoreValue, { color: colors.textPrimary }]}>
+        <Text style={[fbStyles.scoreValue, { color: SLColors.inkPrimary }]}>
           {fb.scoreOutOf10}
-          <Text style={[fbStyles.scoreDenom, { color: colors.textMuted }]}>/10</Text>
+          <Text style={[fbStyles.scoreDenom, { color: SLColors.inkMuted }]}>/10</Text>
         </Text>
       </View>
-      <Text style={[fbStyles.feedbackText, { color: colors.textPrimary }]}>{fb.feedback}</Text>
+      <Text style={[fbStyles.feedbackText, { color: SLColors.inkPrimary }]}>{fb.feedback}</Text>
 
       {fb.strengths.length > 0 && (
         <View style={fbStyles.section}>
           <View style={fbStyles.sectionHeader}>
             <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-            <Text style={[fbStyles.sectionTitle, { color: colors.primary }]}>Strengths</Text>
+            <Text style={[fbStyles.sectionTitle, { color: SLColors.brandPrimary }]}>Strengths</Text>
           </View>
           {fb.strengths.map((s, i) => (
-            <Text key={i} style={[fbStyles.bullet, { color: colors.textPrimary }]}>· {s}</Text>
+            <Text key={i} style={[fbStyles.bullet, { color: SLColors.inkPrimary }]}>· {s}</Text>
           ))}
         </View>
       )}
@@ -251,18 +258,18 @@ function FeedbackCard({
             <Text style={[fbStyles.sectionTitle, { color: colors.accentWarmTan }]}>Growth areas</Text>
           </View>
           {fb.growthAreas.map((g, i) => (
-            <Text key={i} style={[fbStyles.bullet, { color: colors.textPrimary }]}>· {g}</Text>
+            <Text key={i} style={[fbStyles.bullet, { color: SLColors.inkPrimary }]}>· {g}</Text>
           ))}
         </View>
       )}
 
       {fb.consequences?.trim() ? (
-        <View style={[fbStyles.consequenceBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+        <View style={[fbStyles.consequenceBox, { borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface }]}>
           <View style={fbStyles.sectionHeader}>
             <Ionicons name="git-branch-outline" size={14} color={colors.accentIndigo} />
             <Text style={[fbStyles.sectionTitle, { color: colors.accentIndigo }]}>Likely outcomes</Text>
           </View>
-          <Text style={[fbStyles.consequenceText, { color: colors.textPrimary }]}>
+          <Text style={[fbStyles.consequenceText, { color: SLColors.inkPrimary }]}>
             {fb.consequences.split('\n').filter(Boolean).join('\n')}
           </Text>
         </View>
@@ -273,7 +280,7 @@ function FeedbackCard({
           <Ionicons name="sparkles-outline" size={16} color={skill.color} />
           <View style={{ flex: 1 }}>
             <Text style={[fbStyles.reflectionLabel, { color: skill.color }]}>Reflect</Text>
-            <Text style={[fbStyles.reflectionQ, { color: colors.textPrimary }]}>{fb.reflectionQuestion}</Text>
+            <Text style={[fbStyles.reflectionQ, { color: SLColors.inkPrimary }]}>{fb.reflectionQuestion}</Text>
           </View>
         </View>
       ) : null}
@@ -281,7 +288,7 @@ function FeedbackCard({
       {fb.refinementPrompt?.trim() ? (
         <View style={[fbStyles.refinementBox, { backgroundColor: skill.color + '12', borderColor: skill.color + '30' }]}>
           <Ionicons name="arrow-forward-circle-outline" size={16} color={skill.color} />
-          <Text style={[fbStyles.refinementText, { color: colors.textPrimary }]}>{fb.refinementPrompt}</Text>
+          <Text style={[fbStyles.refinementText, { color: SLColors.inkPrimary }]}>{fb.refinementPrompt}</Text>
         </View>
       ) : null}
     </View>
@@ -289,40 +296,44 @@ function FeedbackCard({
 }
 
 const fbStyles = StyleSheet.create({
-  card: { borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
+  card: { borderRadius: SLRadius.lg, borderWidth: 1, padding: SLSpacing.md, gap: SLSpacing.sm },
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+    borderRadius: SLRadius.md,
+    paddingVertical: SLSpacing.xs,
+    paddingHorizontal: SLSpacing.md,
   },
-  scoreLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, letterSpacing: 0.3 },
-  scoreValue: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold },
-  scoreDenom: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
-  feedbackText: { fontSize: Typography.fontSize.base, lineHeight: Typography.fontSize.base * 1.5 },
+  scoreLabel: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.xs, fontWeight: SLTypography.fontWeight.semibold, letterSpacing: 0.5, textTransform: 'uppercase' as any },
+  scoreValue: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.xl, fontWeight: SLTypography.fontWeight.bold },
+  scoreDenom: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.medium },
+  feedbackText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.base, lineHeight: SLTypography.fontSize.base * 1.6 },
   section: { gap: 4 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: 2 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.xxs, marginBottom: 2 },
   sectionTitle: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.semibold,
-    letterSpacing: 0.2,
+    fontFamily: SLTypography.fontFamily.mono,
+    fontSize: SLTypography.fontSize.xs,
+    fontWeight: SLTypography.fontWeight.semibold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as any,
   },
-  bullet: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.5, paddingLeft: Spacing.xs },
-  refinementBox: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm },
-  refinementText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.5 },
-  consequenceBox: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm, gap: Spacing.xs },
-  consequenceText: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.55 },
-  reflectionBox: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm },
+  bullet: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5, paddingLeft: SLSpacing.xxs },
+  refinementBox: { flexDirection: 'row', alignItems: 'flex-start', gap: SLSpacing.sm, borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm },
+  refinementText: { flex: 1, fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5 },
+  consequenceBox: { borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm, gap: SLSpacing.xxs },
+  consequenceText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.6 },
+  reflectionBox: { flexDirection: 'row', alignItems: 'flex-start', gap: SLSpacing.sm, borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm },
   reflectionLabel: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.semibold,
-    letterSpacing: 0.2,
+    fontFamily: SLTypography.fontFamily.mono,
+    fontSize: SLTypography.fontSize.xs,
+    fontWeight: SLTypography.fontWeight.semibold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as any,
     marginBottom: 4,
   },
-  reflectionQ: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium, lineHeight: Typography.fontSize.sm * 1.5 },
+  reflectionQ: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.medium, lineHeight: SLTypography.fontSize.sm * 1.5 },
 });
 
 /** Phase stepper bar rendered above the practice area. */
@@ -382,7 +393,7 @@ function PhaseStepper({
 }
 
 const stepperStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md, gap: 2 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: SLSpacing.md, gap: 2 },
   stepCol: { alignItems: 'center', gap: 3 },
   dot: {
     width: 20,
@@ -394,7 +405,7 @@ const stepperStyles = StyleSheet.create({
   },
   innerDot: { width: 6, height: 6, borderRadius: 3 },
   line: { height: 2, flex: 1, borderRadius: 1, minWidth: 28 },
-  label: { fontSize: Typography.fontSize.micro, fontWeight: Typography.fontWeight.medium },
+  label: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.micro, fontWeight: SLTypography.fontWeight.medium, textTransform: 'uppercase' as any, letterSpacing: 0.3 },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -502,7 +513,7 @@ export default function SkillDetailScreen() {
   useEffect(() => {
     if (!skill) return;
     setOptionalContextOpen(false);
-  }, [skill?.id]);
+  }, [skill]);
 
   // ── Start practice: generate scenario ──────────────────────────────────────
   const startPractice = useCallback(async () => {
@@ -702,11 +713,11 @@ export default function SkillDetailScreen() {
   if (!skill) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={48} color={colors.textMuted} />
-        <Text style={{ color: colors.textPrimary, fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, marginTop: Spacing.md }}>Skill not found</Text>
-        <Text style={{ color: colors.textMuted, fontSize: Typography.fontSize.sm, marginTop: Spacing.xs }}>This skill may have been removed or the link is invalid.</Text>
-        <TouchableOpacity onPress={navigateBackFromSkill} style={{ marginTop: Spacing.lg }}>
-          <Text style={{ color: colors.primary, fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold }}>Go back</Text>
+        <Ionicons name="alert-circle-outline" size={48} color={SLColors.inkMuted} />
+        <Text style={{ color: SLColors.inkPrimary, fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.lg, fontWeight: SLTypography.fontWeight.semibold, marginTop: SLSpacing.md }}>Skill not found</Text>
+        <Text style={{ color: SLColors.inkMuted, fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, marginTop: SLSpacing.xxs }}>This skill may have been removed or the link is invalid.</Text>
+        <TouchableOpacity onPress={navigateBackFromSkill} style={{ marginTop: SLSpacing.xl }}>
+          <Text style={{ color: SLColors.brandPrimary, fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.semibold }}>Go back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -770,11 +781,11 @@ export default function SkillDetailScreen() {
                 <Text style={styles.atomicDesc}>{selectedAtomic.description}</Text>
 
                 <TouchableOpacity
-                  style={[styles.optionalContextToggle, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  style={[styles.optionalContextToggle, { borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface }]}
                   onPress={() => setOptionalContextOpen((o) => !o)}
                   activeOpacity={0.75}
                 >
-                  <Text style={[styles.optionalContextToggleText, { color: colors.textPrimary }]}>
+                  <Text style={[styles.optionalContextToggleText, { color: SLColors.inkPrimary }]}>
                     Personalise with your situation (optional)
                   </Text>
                   <Ionicons
@@ -784,15 +795,15 @@ export default function SkillDetailScreen() {
                   />
                 </TouchableOpacity>
                 {optionalContextOpen && (
-                  <View style={{ marginTop: Spacing.sm }}>
-                    <Text style={[styles.customHint, { color: colors.textMuted, marginBottom: Spacing.sm }]}>
+                  <View style={{ marginTop: SLSpacing.sm }}>
+                    <Text style={[styles.customHint, { color: SLColors.inkMuted, marginBottom: SLSpacing.sm }]}>
                       {situationCopy.hint}
                     </Text>
                     <View>
                       <TextInput
                         style={[
                           styles.customInput,
-                          { borderColor: colors.border, backgroundColor: colors.surface, color: colors.textPrimary },
+                          { borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface, color: SLColors.inkPrimary },
                         ]}
                         placeholder={situationCopy.placeholder}
                         placeholderTextColor={colors.textMuted}
@@ -815,18 +826,18 @@ export default function SkillDetailScreen() {
           {!isPracticing && (
             <View style={styles.section}>
               {roundsSaved > 0 && (
-                <View style={[styles.roundsBadge, { backgroundColor: colors.primary + '15' }]}>
+                <View style={[styles.roundsBadge, { backgroundColor: SLColors.brandPrimary + '15' }]}>
                   <Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} />
-                  <Text style={[styles.roundsText, { color: colors.primary }]}>
+                  <Text style={[styles.roundsText, { color: SLColors.brandPrimary }]}>
                     {roundsSaved} {roundsSaved === 1 ? 'round' : 'rounds'} completed this session
                   </Text>
                 </View>
               )}
 
               {practiceError && (
-                <View style={[styles.errorBanner, { backgroundColor: colors.destructive + '14', borderColor: colors.destructive + '40' }]}>
+                <View style={[styles.errorBanner, { backgroundColor: SLColors.danger + '14', borderColor: colors.destructive + '40' }]}>
                   <Ionicons name="alert-circle-outline" size={16} color={colors.destructive} />
-                  <Text style={[styles.errorBannerText, { color: colors.destructive }]}>{practiceError}</Text>
+                  <Text style={[styles.errorBannerText, { color: SLColors.danger }]}>{practiceError}</Text>
                 </View>
               )}
 
@@ -836,7 +847,7 @@ export default function SkillDetailScreen() {
                   {
                     backgroundColor: selectedAtomicId ? skill.color : colors.surface,
                     borderWidth: selectedAtomicId ? 0 : 1,
-                    borderColor: colors.border,
+                    borderColor: SLColors.borderDefault,
                   },
                 ]}
                 onPress={startPractice}
@@ -858,11 +869,11 @@ export default function SkillDetailScreen() {
                 </Text>
               </TouchableOpacity>
               {!selectedAtomicId ? (
-                <Text style={[styles.practiceHint, { color: colors.textSecondary }]}>
+                <Text style={[styles.practiceHint, { color: SLColors.inkSecondary }]}>
                   Select a sub-skill above to enable practice.
                 </Text>
               ) : (
-                <Text style={[styles.practiceHint, { color: colors.textMuted }]}>
+                <Text style={[styles.practiceHint, { color: SLColors.inkMuted }]}>
                   Jump in first—after feedback you’ll see a short playbook for your next try.
                 </Text>
               )}
@@ -875,7 +886,7 @@ export default function SkillDetailScreen() {
               <Text style={styles.bodyText}>{skill.description}</Text>
               <View style={[styles.whyBox, { backgroundColor: skill.color + '10', borderColor: skill.color + '30' }]}>
                 <Ionicons name="information-circle-outline" size={16} color={skill.color} />
-                <Text style={[styles.whyText, { color: colors.textPrimary }]}>{skill.why}</Text>
+                <Text style={[styles.whyText, { color: SLColors.inkPrimary }]}>{skill.why}</Text>
               </View>
             </View>
           )}
@@ -908,7 +919,7 @@ export default function SkillDetailScreen() {
               {phase === 'loading_scenario' && (
                 <View style={styles.loadingBox}>
                   <ActivityIndicator size="small" color={skill.color} />
-                  <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+                  <Text style={[styles.loadingText, { color: SLColors.inkMuted }]}>
                     {modeConfig.loadingText}
                   </Text>
                 </View>
@@ -927,16 +938,16 @@ export default function SkillDetailScreen() {
                         {modeConfig.scenarioLabel}
                       </Text>
                     </View>
-                    <Text style={[styles.scenarioText, { color: colors.textPrimary }]}>{scenario}</Text>
+                    <Text style={[styles.scenarioText, { color: SLColors.inkPrimary }]}>{scenario}</Text>
                   </View>
 
                   {/* Decision choice step (decision_simulator only) */}
                   {phase === 'choosing_decision' && isDecisionMode && (
                     <>
-                      <Text style={[styles.decisionStepTitle, { color: colors.textPrimary }]}>
+                      <Text style={[styles.decisionStepTitle, { color: SLColors.inkPrimary }]}>
                         Your move. Pick one
                       </Text>
-                      <Text style={[styles.decisionHint, { color: colors.textSecondary }]}>
+                      <Text style={[styles.decisionHint, { color: SLColors.inkSecondary }]}>
                         You'll explain your reasoning next. Choose the path you'd actually take.
                       </Text>
                       {decisionOptions.map((opt, i) => {
@@ -944,7 +955,7 @@ export default function SkillDetailScreen() {
                         return (
                           <TouchableOpacity
                             key={opt.id}
-                            style={[styles.decisionRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                            style={[styles.decisionRow, { borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface }]}
                             onPress={() => {
                               setSelectedDecisionId(opt.id);
                               setPhase('answering');
@@ -955,7 +966,7 @@ export default function SkillDetailScreen() {
                             <View style={[styles.decisionLetterBadge, { backgroundColor: skill.color + '22' }]}>
                               <Text style={[styles.decisionLetter, { color: skill.color }]}>{letter}</Text>
                             </View>
-                            <Text style={[styles.decisionLabelText, { color: colors.textPrimary }]}>
+                            <Text style={[styles.decisionLabelText, { color: SLColors.inkPrimary }]}>
                               {opt.label}
                             </Text>
                           </TouchableOpacity>
@@ -971,7 +982,7 @@ export default function SkillDetailScreen() {
                       {isDecisionMode && selectedDecisionId && (
                         <View style={[styles.choiceSummary, { borderColor: skill.color + '35', backgroundColor: skill.color + '08' }]}>
                           <Text style={[styles.questionLabel, { color: skill.color }]}>Your choice</Text>
-                          <Text style={[styles.choiceSummaryText, { color: colors.textPrimary }]}>
+                          <Text style={[styles.choiceSummaryText, { color: SLColors.inkPrimary }]}>
                             {(() => {
                               const idx = decisionOptions.findIndex((o) => o.id === selectedDecisionId);
                               const L = idx >= 0 ? (['A', 'B', 'C', 'D', 'E', 'F'][idx] ?? '•') : '•';
@@ -984,14 +995,14 @@ export default function SkillDetailScreen() {
 
                       {/* Question / reasoning prompt */}
                       <View style={styles.questionBox}>
-                        <Text style={[styles.questionLabel, { color: colors.textSecondary }]}>
+                        <Text style={[styles.questionLabel, { color: SLColors.inkSecondary }]}>
                           {isDecisionMode
                             ? `Reasoning${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`
                             : practiceMode === 'output_audit'
                               ? `Task${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`
                               : `Your response${attemptNumber > 1 ? ` (attempt ${attemptNumber})` : ''}`}
                         </Text>
-                        <Text style={[styles.questionText, { color: colors.textPrimary }]}>
+                        <Text style={[styles.questionText, { color: SLColors.inkPrimary }]}>
                           {practiceQuestion}
                         </Text>
                       </View>
@@ -1001,7 +1012,7 @@ export default function SkillDetailScreen() {
                           <TextInput
                             style={[
                               styles.answerInput,
-                              { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary },
+                              { backgroundColor: SLColors.bgSurface, borderColor: SLColors.borderDefault, color: SLColors.inkPrimary },
                             ]}
                             value={userAnswer}
                             onChangeText={setUserAnswer}
@@ -1041,15 +1052,15 @@ export default function SkillDetailScreen() {
                             style={[
                               styles.howBox,
                               {
-                                borderColor: colors.border,
-                                backgroundColor: colors.floating,
+                                borderColor: SLColors.borderDefault,
+                                backgroundColor: SLColors.bgSurface,
                                 borderLeftColor: skill.color,
                                 borderLeftWidth: 3,
                               },
                             ]}
                           >
-                            <Text style={[styles.howTitle, { color: colors.textPrimary }]}>Playbook for next time</Text>
-                            <Text style={[styles.playbookLead, { color: colors.textMuted }]}>
+                            <Text style={[styles.howTitle, { color: SLColors.inkPrimary }]}>Playbook for next time</Text>
+                            <Text style={[styles.playbookLead, { color: SLColors.inkMuted }]}>
                               Use this after you’ve seen feedback—same scenario on “Try again,” or a fresh one on “New scenario.”
                             </Text>
                             {getHowToSolveLines({
@@ -1062,7 +1073,7 @@ export default function SkillDetailScreen() {
                                 <View style={[styles.howBulletNum, { backgroundColor: skill.color + '18' }]}>
                                   <Text style={[styles.howBulletNumText, { color: skill.color }]}>{idx + 1}</Text>
                                 </View>
-                                <Text style={[styles.howBulletText, { color: colors.textSecondary }]}>{line}</Text>
+                                <Text style={[styles.howBulletText, { color: SLColors.inkSecondary }]}>{line}</Text>
                               </View>
                             ))}
                           </View>
@@ -1088,7 +1099,7 @@ export default function SkillDetailScreen() {
                           </View>
 
                           <TouchableOpacity onPress={() => setPhase('idle')} style={styles.doneLink}>
-                            <Text style={[styles.doneLinkText, { color: colors.textMuted }]}>Done for now</Text>
+                            <Text style={[styles.doneLinkText, { color: SLColors.inkMuted }]}>Done for now</Text>
                           </TouchableOpacity>
                         </View>
                       )}
@@ -1104,132 +1115,162 @@ export default function SkillDetailScreen() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Styles
-// ─────────────────────────────────────────────────────────────────────────────
-
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: SLColors.bgPage },
     scroll: { flex: 1 },
-    content: { paddingBottom: Spacing['3xl'], maxWidth: Layout.maxWidth, alignSelf: 'center', width: '100%' },
-    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, paddingHorizontal: Spacing.xl },
+    content: { paddingBottom: SLSpacing['5xl'], maxWidth: SLLayout.contentMaxWidth, alignSelf: 'center', width: '100%' },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: SLColors.bgPage, paddingHorizontal: SLSpacing.xl },
     subHeader: {
-      paddingHorizontal: Spacing.md,
-      paddingBottom: Spacing.md,
+      paddingHorizontal: SLSpacing.lg,
+      paddingBottom: SLSpacing.md,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: Spacing.sm,
+      gap: SLSpacing.sm,
     },
-    header: {
-      paddingTop: Platform.OS === 'ios' ? 52 : Spacing.lg,
-      paddingHorizontal: Spacing.md,
-      paddingBottom: Spacing.md,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-    },
-    backBtn: {},
-    iconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+    iconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
     headerText: { flex: 1 },
-    skillName: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary },
-    skillTagline: { fontSize: Typography.fontSize.sm, color: colors.textSecondary },
-    section: { paddingHorizontal: Spacing.md, marginBottom: Spacing.lg },
-    sectionTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, marginBottom: Spacing.sm },
-    bodyText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, lineHeight: Typography.fontSize.base * 1.5, marginBottom: Spacing.sm },
-    bodyTextMuted: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, marginBottom: Spacing.sm, lineHeight: Typography.fontSize.sm * 1.5 },
-    whyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm },
-    whyText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.5 },
+    skillTagline: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, color: SLColors.inkSecondary, fontStyle: 'italic' },
+    section: { paddingHorizontal: SLSpacing.lg, marginBottom: SLSpacing.xl },
+    sectionTitle: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.semibold, color: SLColors.inkPrimary, marginBottom: SLSpacing.sm },
+    bodyText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.base, color: SLColors.inkDefault, lineHeight: SLTypography.fontSize.base * 1.6, marginBottom: SLSpacing.sm },
+    bodyTextMuted: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: SLColors.inkSecondary, marginBottom: SLSpacing.sm, lineHeight: SLTypography.fontSize.sm * 1.5 },
+    whyBox: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: SLSpacing.sm,
+      borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm,
+      borderLeftWidth: 3, borderLeftColor: SLColors.brandPrimary,
+      backgroundColor: SLColors.bgSubtle,
+    },
+    whyText: { flex: 1, fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5, color: SLColors.inkDefault },
     chipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'flex-start',
-      marginBottom: Spacing.sm,
-      gap: 0,
+      marginBottom: SLSpacing.sm,
+      gap: SLSpacing.xxs,
     },
     atomicDesc: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.sm * 1.5,
+      fontFamily: SLTypography.fontFamily.serif,
+      fontSize: SLTypography.fontSize.sm,
+      color: SLColors.inkSecondary,
+      lineHeight: SLTypography.fontSize.sm * 1.5,
       fontStyle: 'italic',
-      marginTop: Spacing.sm,
+      marginTop: SLSpacing.sm,
     },
-    howBox: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, marginTop: Spacing.md, gap: Spacing.sm },
+    howBox: {
+      borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.md, marginTop: SLSpacing.md, gap: SLSpacing.sm,
+      borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface,
+      borderLeftWidth: 3,
+    },
     howTitle: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.semibold,
-      marginBottom: Spacing.sm,
+      fontFamily: SLTypography.fontFamily.sans,
+      fontSize: SLTypography.fontSize.sm,
+      fontWeight: SLTypography.fontWeight.semibold,
+      color: SLColors.inkPrimary,
+      marginBottom: SLSpacing.sm,
     },
-    howBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+    howBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SLSpacing.sm },
     howBulletNum: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-    howBulletNumText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.bold },
-    howBulletText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45 },
+    howBulletNumText: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.xs, fontWeight: SLTypography.fontWeight.bold },
+    howBulletText: { flex: 1, fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5, color: SLColors.inkSecondary },
     playbookLead: {
-      fontSize: Typography.fontSize.xs,
-      lineHeight: Typography.fontSize.xs * 1.45,
-      marginBottom: Spacing.sm,
+      fontFamily: SLTypography.fontFamily.sans,
+      fontSize: SLTypography.fontSize.xs,
+      color: SLColors.inkMuted,
+      lineHeight: SLTypography.fontSize.xs * 1.45,
+      marginBottom: SLSpacing.sm,
     },
     optionalContextToggle: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: Spacing.md,
-      paddingVertical: Spacing.sm + 2,
-      paddingHorizontal: Spacing.md,
-      borderRadius: Radius.md,
+      marginTop: SLSpacing.md,
+      paddingVertical: SLSpacing.xs + 2,
+      paddingHorizontal: SLSpacing.md,
+      borderRadius: SLRadius.md,
       borderWidth: 1,
+      borderColor: SLColors.borderSoft,
+      backgroundColor: SLColors.bgSurface,
     },
     optionalContextToggleText: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.medium,
+      fontFamily: SLTypography.fontFamily.sans,
+      fontSize: SLTypography.fontSize.sm,
+      fontWeight: SLTypography.fontWeight.medium,
+      color: SLColors.inkDefault,
       flex: 1,
-      paddingRight: Spacing.sm,
+      paddingRight: SLSpacing.sm,
     },
-    customHint: { fontSize: Typography.fontSize.xs, lineHeight: Typography.fontSize.xs * 1.45, marginTop: Spacing.xs, marginBottom: Spacing.sm },
+    customHint: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.xs, lineHeight: SLTypography.fontSize.xs * 1.45, color: SLColors.inkMuted, marginTop: SLSpacing.xxs, marginBottom: SLSpacing.sm },
     customInput: {
       borderWidth: 1,
-      borderRadius: Radius.lg,
-      padding: Spacing.md,
-      fontSize: Typography.fontSize.sm,
+      borderRadius: SLRadius.lg,
+      padding: SLSpacing.md,
+      fontFamily: SLTypography.fontFamily.serif,
+      fontSize: SLTextarea.fontSize,
       minHeight: 88,
-      lineHeight: Typography.fontSize.sm * 1.45,
+      lineHeight: SLTextarea.fontSize * SLTextarea.lineHeight,
+      borderColor: SLColors.borderSoft,
+      backgroundColor: SLColors.bgSurface,
+      color: SLColors.inkDefault,
     },
-    charCount: { position: 'absolute', bottom: Spacing.sm, right: Spacing.md, fontSize: Typography.fontSize.micro },
-    roundsBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.sm },
-    roundsText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
-    errorBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, padding: Spacing.sm, marginBottom: Spacing.sm },
-    errorBannerText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.5 },
-    startBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderRadius: Radius.lg, paddingVertical: Spacing.md, marginBottom: Spacing.sm },
-    startBtnText: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
-    practiceHint: { textAlign: 'center', fontSize: Typography.fontSize.xs, color: colors.textMuted },
-    practiceHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.sm },
-    practiceLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
-    loadingBox: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md },
-    loadingText: { fontSize: Typography.fontSize.sm },
-    scenarioBox: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.md },
-    scenarioLabelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.xs },
-    scenarioLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, letterSpacing: 0.2 },
-    scenarioText: { fontSize: Typography.fontSize.base, lineHeight: Typography.fontSize.base * 1.5 },
-    questionBox: { marginBottom: Spacing.md },
-    questionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, letterSpacing: 0.2, marginBottom: Spacing.xs },
-    questionText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.medium, lineHeight: Typography.fontSize.base * 1.5 },
-    decisionStepTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, marginBottom: Spacing.xs },
-    decisionHint: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45, marginBottom: Spacing.md },
-    decisionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm + 2, marginBottom: Spacing.sm },
+    charCount: { position: 'absolute', bottom: SLSpacing.xs, right: SLSpacing.md, fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.micro },
+    roundsBadge: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.sm, borderRadius: SLRadius.md, padding: SLSpacing.sm, marginBottom: SLSpacing.sm, backgroundColor: SLColors.brandPrimary + '12' },
+    roundsText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.medium, color: SLColors.brandPrimary },
+    errorBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: SLSpacing.sm, borderRadius: SLRadius.md, borderWidth: 1, padding: SLSpacing.sm, marginBottom: SLSpacing.sm, backgroundColor: SLColors.danger + '10', borderColor: SLColors.danger + '30' },
+    errorBannerText: { flex: 1, fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5, color: SLColors.danger },
+    startBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SLSpacing.sm,
+      borderRadius: SLButton.primary.borderRadius,
+      paddingVertical: SLButton.primary.paddingV,
+      marginBottom: SLSpacing.sm,
+    },
+    startBtnText: { fontFamily: SLTypography.fontFamily.sans, color: '#fff', fontSize: SLButton.primary.fontSize, fontWeight: SLTypography.fontWeight.medium, letterSpacing: SLButton.primary.letterSpacing },
+    practiceHint: { textAlign: 'center', fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.xs, color: SLColors.inkMuted },
+    practiceHeader: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.xxs, marginBottom: SLSpacing.sm },
+    practiceLabel: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.semibold, textTransform: 'uppercase' as any, letterSpacing: 0.5 },
+    loadingBox: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.sm, padding: SLSpacing.md },
+    loadingText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: SLColors.inkMuted },
+    scenarioBox: {
+      borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.md, marginBottom: SLSpacing.md,
+      borderLeftWidth: 3, backgroundColor: SLColors.bgSubtle,
+    },
+    scenarioLabelRow: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.xxs, marginBottom: SLSpacing.xxs },
+    scenarioLabel: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.xs, fontWeight: SLTypography.fontWeight.semibold, letterSpacing: 0.5, textTransform: 'uppercase' as any },
+    scenarioText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.base, lineHeight: SLTypography.fontSize.base * 1.6, color: SLColors.inkDefault },
+    questionBox: { marginBottom: SLSpacing.md },
+    questionLabel: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.xs, fontWeight: SLTypography.fontWeight.semibold, letterSpacing: 0.5, textTransform: 'uppercase' as any, marginBottom: SLSpacing.xxs },
+    questionText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.medium, lineHeight: SLTypography.fontSize.base * 1.5, color: SLColors.inkPrimary },
+    decisionStepTitle: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.semibold, color: SLColors.inkPrimary, marginBottom: SLSpacing.xxs },
+    decisionHint: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.45, color: SLColors.inkSecondary, marginBottom: SLSpacing.md },
+    decisionRow: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.sm, borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm + 2, marginBottom: SLSpacing.sm, borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface },
     decisionLetterBadge: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-    decisionLetter: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.bold },
-    decisionLabelText: { flex: 1, fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.45 },
-    choiceSummary: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.md },
-    choiceSummaryText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium, lineHeight: Typography.fontSize.sm * 1.45 },
-    answerArea: { gap: Spacing.sm },
-    answerInput: { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, fontSize: Typography.fontSize.base, minHeight: 120, lineHeight: Typography.fontSize.base * 1.5 },
-    submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderRadius: Radius.lg, paddingVertical: Spacing.md },
-    submitBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
-    feedbackArea: { gap: Spacing.md },
-    feedbackActions: { flexDirection: 'row', gap: Spacing.sm },
-    actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, borderRadius: Radius.lg, paddingVertical: Spacing.sm + 2 },
+    decisionLetter: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.bold },
+    decisionLabelText: { flex: 1, fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.45, color: SLColors.inkDefault },
+    choiceSummary: { borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm, marginBottom: SLSpacing.md },
+    choiceSummaryText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.medium, lineHeight: SLTypography.fontSize.sm * 1.45 },
+    answerArea: { gap: SLSpacing.sm },
+    answerInput: {
+      borderWidth: 1, borderRadius: SLTextarea.borderRadius, padding: SLSpacing.md,
+      fontFamily: SLTypography.fontFamily.serif, fontSize: SLTextarea.fontSize, minHeight: 120,
+      lineHeight: SLTextarea.fontSize * SLTextarea.lineHeight,
+      borderColor: SLTextarea.border, backgroundColor: SLTextarea.bg, color: SLColors.inkDefault,
+    },
+    submitBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SLSpacing.sm,
+      borderRadius: SLButton.primary.borderRadius,
+      paddingVertical: SLButton.primary.paddingV,
+    },
+    submitBtnText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLButton.primary.fontSize, fontWeight: SLTypography.fontWeight.medium, letterSpacing: SLButton.primary.letterSpacing },
+    feedbackArea: { gap: SLSpacing.md },
+    feedbackActions: { flexDirection: 'row', gap: SLSpacing.sm },
+    actionBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SLSpacing.xxs,
+      borderRadius: SLButton.ghost.borderRadius,
+      paddingVertical: SLButton.ghost.paddingV,
+    },
     refineBtn: { borderWidth: 1.5, backgroundColor: 'transparent' },
-    actionBtnText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
-    doneLink: { alignItems: 'center', paddingVertical: Spacing.xs },
-    doneLinkText: { fontSize: Typography.fontSize.sm },
+    actionBtnText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLButton.ghost.fontSize, fontWeight: SLTypography.fontWeight.medium },
+    doneLink: { alignItems: 'center', paddingVertical: SLSpacing.xxs },
+    doneLinkText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: SLColors.inkMuted },
   });
+

@@ -175,6 +175,56 @@ const HOW_TO_ATOMIC: Record<string, readonly [string, string]> = {
     'Compare tools or workflows for fit: accuracy, cost, latency, auditability.',
     'Say what you would automate vs keep human-in-the-loop, and why.',
   ],
+  // Strategic Sales
+  'strategic_sales::discovery_questioning': [
+    'Ask questions that move from surface symptoms to root business pain: budget, authority, timeline, decision process.',
+    'Identify what disqualifies the opportunity as early as what qualifies it.',
+  ],
+  'strategic_sales::value_articulation': [
+    'State the business outcome in the buyer\'s language and metric, not your product\'s feature name.',
+    'Connect your value to one of: revenue gain, cost reduction, risk mitigation, or time saved.',
+  ],
+  'strategic_sales::objection_handling': [
+    'Acknowledge the concern before reframing; never dismiss or talk past it.',
+    'Separate the stated objection from the underlying fear, then address the fear.',
+  ],
+  'strategic_sales::negotiation_closing': [
+    'Anchor on value delivered, not list price; then trade concessions, never give them away.',
+    'Name the next concrete step and who owns it before ending the conversation.',
+  ],
+  'strategic_sales::relationship_building': [
+    'Demonstrate understanding of their world before asking for anything: research, reference, specificity.',
+    'Follow up on something personal they mentioned; consistency builds trust faster than charm.',
+  ],
+  'strategic_sales::pipeline_management': [
+    'Rank opportunities by close probability times deal value, not by how much time you have invested.',
+    'Identify the one stuck deal you should either unstick this week or consciously park.',
+  ],
+  // Leadership Essentials
+  'leadership_essentials::vision_setting': [
+    'State the future state in one sentence a new hire could repeat, then link it to this quarter\'s priorities.',
+    'Say what you are deliberately not pursuing and why that focus creates advantage.',
+  ],
+  'leadership_essentials::delegation': [
+    'Define the outcome and constraints, not the method; then ask what support they need, not how they will do it.',
+    'Choose the person who will grow most from this task, not the person who will do it fastest.',
+  ],
+  'leadership_essentials::feedback_culture': [
+    'Be specific about the behaviour, its impact, and the change you are asking for; avoid vague praise or criticism.',
+    'Ask for feedback on your own leadership in the same conversation; model what you expect.',
+  ],
+  'leadership_essentials::team_development': [
+    'Name the skill gap between where each person is and where the role needs them in 6 months.',
+    'Create one stretch opportunity this quarter that pairs a strength with a growth area.',
+  ],
+  'leadership_essentials::decision_making_under_pressure': [
+    'State the decision, your reasoning, and what would make you reverse it, within the time available.',
+    'Communicate the call clearly, including what is uncertain, so people can execute without second-guessing.',
+  ],
+  'leadership_essentials::executive_presence': [
+    'Open with your conclusion, then support it; do not build up to the point.',
+    'When challenged, pause before responding; your composure communicates more than your words.',
+  ],
 };
 
 const HOW_TO_BY_SKILL_OPEN: Record<string, readonly [string, string]> = {
@@ -197,6 +247,14 @@ const HOW_TO_BY_SKILL_OPEN: Record<string, readonly [string, string]> = {
   systems_thinking: [
     'Trace causes, feedback loops, and dependencies, not just the visible complaint.',
     'Say what might happen next if someone intervened at a leverage point you name.',
+  ],
+  strategic_sales: [
+    'Diagnose the buyer\'s real situation: pain, constraints, decision process, before proposing anything.',
+    'Ground your response in the sub-skill you selected; use a specific detail from the scenario to show you read the room.',
+  ],
+  leadership_essentials: [
+    'Name the leadership challenge clearly, then describe what you would say or do, and what you would deliberately avoid.',
+    'Tie your response to the sub-skill you chose; a great leader is specific, not generic.',
   ],
 };
 
@@ -241,6 +299,20 @@ const OPEN_FIELD_BY_SKILL: Record<string, PracticeFieldCopy> = {
       'Map loops, dependencies, and second-order effects, then what you would try to shift and what you’d watch.',
     hint: 'Read the situation, then analyse the system in writing, then get coaching.',
     loadingText: 'Generating your scenario...',
+  },
+  strategic_sales: {
+    scenarioLabel: 'Sales Situation',
+    inputPlaceholder:
+      'Diagnose the buyer\'s real need, articulate the value in their terms, and describe your next move. Be specific about what you\'d say and why.',
+    hint: 'Read the sales scenario, then write your approach and reasoning, then get coaching.',
+    loadingText: 'Generating your sales scenario...',
+  },
+  leadership_essentials: {
+    scenarioLabel: 'Leadership Situation',
+    inputPlaceholder:
+      'Describe what you would say or do as a leader in this situation. Be specific about your reasoning and what you\'d avoid.',
+    hint: 'Read the leadership scenario, then write your response, then get coaching on your approach.',
+    loadingText: 'Generating your leadership scenario...',
   },
 };
 
