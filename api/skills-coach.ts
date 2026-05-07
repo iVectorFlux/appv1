@@ -528,6 +528,12 @@ type GroqCompletionResult =
   | { ok: true; content: string }
   | { ok: false; status: number; message: string };
 
+function isGroqFailure<TSuccess>(
+  result: { ok: true } & TSuccess | { ok: false; message: string }
+): result is { ok: false; message: string } {
+  return result.ok === false;
+}
+
 async function groqChatCompletionContent(args: {
   prompt: string;
   apiKey: string;
@@ -586,7 +592,7 @@ async function callGroqAndParseSkillsJson(
     jsonObjectMode: true,
   });
 
-  if (!completion.ok && completion.status === 400) {
+  if (!completion.ok && 'status' in completion && completion.status === 400) {
     completion = await groqChatCompletionContent({
       prompt: `${prompt}\n\nReturn a single JSON object only. No markdown, no prose outside the JSON.`,
       apiKey,
@@ -596,7 +602,7 @@ async function callGroqAndParseSkillsJson(
     });
   }
 
-  if (!completion.ok) {
+  if (isGroqFailure(completion)) {
     return { ok: false, message: completion.message };
   }
 
@@ -785,7 +791,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       promptText = appendScenarioLearnerTail(promptText, body);
 
       const groqScenario = await callGroqAndParseSkillsJson(promptText, apiKey, model, 1000);
-      if (!groqScenario.ok) {
+      if (isGroqFailure(groqScenario)) {
         res.status(502).json({ error: groqScenario.message });
         return;
       }
@@ -849,7 +855,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         prompt += `\n\nLearner context (for tone; do not quote labels verbatim):\n${ctxBlock}`;
       }
       const groqFbDecision = await callGroqAndParseSkillsJson(prompt, apiKey, model, 900);
-      if (!groqFbDecision.ok) {
+      if (isGroqFailure(groqFbDecision)) {
         res.status(502).json({ error: groqFbDecision.message });
         return;
       }
@@ -886,7 +892,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         prompt += `\n\nLearner context (for tone; do not quote labels verbatim):\n${ctxOpen}`;
       }
       const groqFbOpen = await callGroqAndParseSkillsJson(prompt, apiKey, model, 900);
-      if (!groqFbOpen.ok) {
+      if (isGroqFailure(groqFbOpen)) {
         res.status(502).json({ error: groqFbOpen.message });
         return;
       }

@@ -99,7 +99,8 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
       : "Hey, I'm here for you. Share how you're feeling. I'll listen, reflect, and help you ground yourself.",
     placeholder: "What's on your mind?",
     suggestions: [
-      'I am having a bad day\nhelp me calm down',
+      'I am having bad day',
+      'Help me calm down',
       'I have pre-meeting anxiety',
     ],
   },
