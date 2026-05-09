@@ -28,6 +28,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useColors,
+  Shadows,
 } from '@/constants/design-tokens';
 import {
   SLColors,
@@ -52,6 +53,7 @@ import { bumpOfflineSessionCount } from '@/services/skill-lab-offline-progress';
 import { getUserProfileContext, buildPracticeContextWire, type UserProfileContext } from '@/services/profile-context';
 import { buildVercelApiUrl } from '@/utils/vercel-api';
 import { ScreenHeader } from '@/components/ui/screen-header';
+import { GlassBackground } from '@/components/ui/glass-background';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -729,18 +731,19 @@ export default function SkillDetailScreen() {
   const situationCopy = getOptionalSituationCopy(skill.id);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+    <GlassBackground>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scroll}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
           <ScreenHeader
             title={skill.name}
             onBackPress={navigateBackFromSkill}
@@ -1109,18 +1112,19 @@ export default function SkillDetailScreen() {
               )}
             </View>
           )}
-        </ScrollView>
-      </Animated.View>
-    </KeyboardAvoidingView>
+          </ScrollView>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </GlassBackground>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: SLColors.bgPage },
+    container: { flex: 1 },
     scroll: { flex: 1 },
     content: { paddingBottom: SLSpacing['5xl'], maxWidth: SLLayout.contentMaxWidth, alignSelf: 'center', width: '100%' },
-    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: SLColors.bgPage, paddingHorizontal: SLSpacing.xl },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, paddingHorizontal: SLSpacing.xl },
     subHeader: {
       paddingHorizontal: SLSpacing.lg,
       paddingBottom: SLSpacing.md,
@@ -1130,18 +1134,27 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     },
     iconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
     headerText: { flex: 1 },
-    skillTagline: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, color: SLColors.inkSecondary, fontStyle: 'italic' },
-    section: { paddingHorizontal: SLSpacing.lg, marginBottom: SLSpacing.xl },
-    sectionTitle: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.semibold, color: SLColors.inkPrimary, marginBottom: SLSpacing.sm },
-    bodyText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.base, color: SLColors.inkDefault, lineHeight: SLTypography.fontSize.base * 1.6, marginBottom: SLSpacing.sm },
-    bodyTextMuted: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: SLColors.inkSecondary, marginBottom: SLSpacing.sm, lineHeight: SLTypography.fontSize.sm * 1.5 },
+    skillTagline: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, color: colors.textSecondary },
+    section: {
+      backgroundColor: colors.floating,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: SLRadius.xl,
+      padding: SLSpacing.lg,
+      marginHorizontal: SLSpacing.lg,
+      marginBottom: SLSpacing.xl,
+      ...Shadows.card,
+    },
+    sectionTitle: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.semibold, color: colors.textPrimary, marginBottom: SLSpacing.sm },
+    bodyText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.base, color: colors.textPrimary, lineHeight: SLTypography.fontSize.base * 1.6, marginBottom: SLSpacing.sm },
+    bodyTextMuted: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: colors.textSecondary, marginBottom: SLSpacing.sm, lineHeight: SLTypography.fontSize.sm * 1.5 },
     whyBox: {
       flexDirection: 'row', alignItems: 'flex-start', gap: SLSpacing.sm,
       borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm,
       borderLeftWidth: 3, borderLeftColor: SLColors.brandPrimary,
-      backgroundColor: SLColors.bgSubtle,
+      backgroundColor: colors.surface,
     },
-    whyText: { flex: 1, fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5, color: SLColors.inkDefault },
+    whyText: { flex: 1, fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5, color: colors.textPrimary },
     chipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -1152,31 +1165,30 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     atomicDesc: {
       fontFamily: SLTypography.fontFamily.serif,
       fontSize: SLTypography.fontSize.sm,
-      color: SLColors.inkSecondary,
+      color: colors.textSecondary,
       lineHeight: SLTypography.fontSize.sm * 1.5,
-      fontStyle: 'italic',
       marginTop: SLSpacing.sm,
     },
     howBox: {
       borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.md, marginTop: SLSpacing.md, gap: SLSpacing.sm,
-      borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface,
+      borderColor: colors.border, backgroundColor: colors.floating,
       borderLeftWidth: 3,
     },
     howTitle: {
       fontFamily: SLTypography.fontFamily.sans,
       fontSize: SLTypography.fontSize.sm,
       fontWeight: SLTypography.fontWeight.semibold,
-      color: SLColors.inkPrimary,
+      color: colors.textPrimary,
       marginBottom: SLSpacing.sm,
     },
     howBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SLSpacing.sm },
     howBulletNum: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
     howBulletNumText: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.xs, fontWeight: SLTypography.fontWeight.bold },
-    howBulletText: { flex: 1, fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5, color: SLColors.inkSecondary },
+    howBulletText: { flex: 1, fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.5, color: colors.textSecondary },
     playbookLead: {
       fontFamily: SLTypography.fontFamily.sans,
       fontSize: SLTypography.fontSize.xs,
-      color: SLColors.inkMuted,
+      color: colors.textMuted,
       lineHeight: SLTypography.fontSize.xs * 1.45,
       marginBottom: SLSpacing.sm,
     },
@@ -1189,18 +1201,18 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: SLSpacing.md,
       borderRadius: SLRadius.md,
       borderWidth: 1,
-      borderColor: SLColors.borderSoft,
-      backgroundColor: SLColors.bgSurface,
+      borderColor: colors.border,
+      backgroundColor: colors.floating,
     },
     optionalContextToggleText: {
       fontFamily: SLTypography.fontFamily.sans,
       fontSize: SLTypography.fontSize.sm,
       fontWeight: SLTypography.fontWeight.medium,
-      color: SLColors.inkDefault,
+      color: colors.textPrimary,
       flex: 1,
       paddingRight: SLSpacing.sm,
     },
-    customHint: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.xs, lineHeight: SLTypography.fontSize.xs * 1.45, color: SLColors.inkMuted, marginTop: SLSpacing.xxs, marginBottom: SLSpacing.sm },
+    customHint: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.xs, lineHeight: SLTypography.fontSize.xs * 1.45, color: colors.textMuted, marginTop: SLSpacing.xxs, marginBottom: SLSpacing.sm },
     customInput: {
       borderWidth: 1,
       borderRadius: SLRadius.lg,
@@ -1209,9 +1221,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: SLTextarea.fontSize,
       minHeight: 88,
       lineHeight: SLTextarea.fontSize * SLTextarea.lineHeight,
-      borderColor: SLColors.borderSoft,
-      backgroundColor: SLColors.bgSurface,
-      color: SLColors.inkDefault,
+      borderColor: colors.border,
+      backgroundColor: colors.inputBackground,
+      color: colors.textPrimary,
     },
     charCount: { position: 'absolute', bottom: SLSpacing.xs, right: SLSpacing.md, fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.micro },
     roundsBadge: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.sm, borderRadius: SLRadius.md, padding: SLSpacing.sm, marginBottom: SLSpacing.sm, backgroundColor: SLColors.brandPrimary + '12' },
@@ -1225,27 +1237,27 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: SLSpacing.sm,
     },
     startBtnText: { fontFamily: SLTypography.fontFamily.sans, color: '#fff', fontSize: SLButton.primary.fontSize, fontWeight: SLTypography.fontWeight.medium, letterSpacing: SLButton.primary.letterSpacing },
-    practiceHint: { textAlign: 'center', fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.xs, color: SLColors.inkMuted },
+    practiceHint: { textAlign: 'center', fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.xs, color: colors.textMuted },
     practiceHeader: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.xxs, marginBottom: SLSpacing.sm },
     practiceLabel: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.semibold, textTransform: 'uppercase' as any, letterSpacing: 0.5 },
     loadingBox: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.sm, padding: SLSpacing.md },
-    loadingText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: SLColors.inkMuted },
+    loadingText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: colors.textMuted },
     scenarioBox: {
       borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.md, marginBottom: SLSpacing.md,
-      borderLeftWidth: 3, backgroundColor: SLColors.bgSubtle,
+      borderLeftWidth: 3, backgroundColor: colors.surface,
     },
     scenarioLabelRow: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.xxs, marginBottom: SLSpacing.xxs },
     scenarioLabel: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.xs, fontWeight: SLTypography.fontWeight.semibold, letterSpacing: 0.5, textTransform: 'uppercase' as any },
-    scenarioText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.base, lineHeight: SLTypography.fontSize.base * 1.6, color: SLColors.inkDefault },
+    scenarioText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.base, lineHeight: SLTypography.fontSize.base * 1.6, color: colors.textPrimary },
     questionBox: { marginBottom: SLSpacing.md },
     questionLabel: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.xs, fontWeight: SLTypography.fontWeight.semibold, letterSpacing: 0.5, textTransform: 'uppercase' as any, marginBottom: SLSpacing.xxs },
-    questionText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.medium, lineHeight: SLTypography.fontSize.base * 1.5, color: SLColors.inkPrimary },
-    decisionStepTitle: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.semibold, color: SLColors.inkPrimary, marginBottom: SLSpacing.xxs },
-    decisionHint: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.45, color: SLColors.inkSecondary, marginBottom: SLSpacing.md },
-    decisionRow: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.sm, borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm + 2, marginBottom: SLSpacing.sm, borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface },
+    questionText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.medium, lineHeight: SLTypography.fontSize.base * 1.5, color: colors.textPrimary },
+    decisionStepTitle: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.base, fontWeight: SLTypography.fontWeight.semibold, color: colors.textPrimary, marginBottom: SLSpacing.xxs },
+    decisionHint: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.45, color: colors.textSecondary, marginBottom: SLSpacing.md },
+    decisionRow: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.sm, borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm + 2, marginBottom: SLSpacing.sm, borderColor: colors.border, backgroundColor: colors.floating },
     decisionLetterBadge: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     decisionLetter: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.bold },
-    decisionLabelText: { flex: 1, fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.45, color: SLColors.inkDefault },
+    decisionLabelText: { flex: 1, fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, lineHeight: SLTypography.fontSize.sm * 1.45, color: colors.textPrimary },
     choiceSummary: { borderWidth: 1, borderRadius: SLRadius.md, padding: SLSpacing.sm, marginBottom: SLSpacing.md },
     choiceSummaryText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.medium, lineHeight: SLTypography.fontSize.sm * 1.45 },
     answerArea: { gap: SLSpacing.sm },
@@ -1253,7 +1265,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1, borderRadius: SLTextarea.borderRadius, padding: SLSpacing.md,
       fontFamily: SLTypography.fontFamily.serif, fontSize: SLTextarea.fontSize, minHeight: 120,
       lineHeight: SLTextarea.fontSize * SLTextarea.lineHeight,
-      borderColor: SLTextarea.border, backgroundColor: SLTextarea.bg, color: SLColors.inkDefault,
+      borderColor: colors.border, backgroundColor: colors.inputBackground, color: colors.textPrimary,
     },
     submitBtn: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SLSpacing.sm,
@@ -1271,6 +1283,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     refineBtn: { borderWidth: 1.5, backgroundColor: 'transparent' },
     actionBtnText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLButton.ghost.fontSize, fontWeight: SLTypography.fontWeight.medium },
     doneLink: { alignItems: 'center', paddingVertical: SLSpacing.xxs },
-    doneLinkText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: SLColors.inkMuted },
+    doneLinkText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: colors.textMuted },
   });
 

@@ -1,86 +1,81 @@
 /**
- * Skill Lab Editorial Design Tokens
+ * Skill Lab design tokens
  *
- * Implements the "First Principles Enterprise Design Spec" visual system.
- * Scoped to Skill Lab pages only — the rest of the app keeps its existing
- * Forest Green / Cream editorial-wellness palette.
- *
- * Tone: editorial, calm, high-trust.
- * Typography triad: Libre Baskerville (reading) + IBM Plex Sans (UI) + IBM Plex Mono (meta).
- * Palette: soft paper background + navy brand + restrained ink hierarchy.
+ * Scoped aliases over the main platform design system. Skill Lab has some
+ * practice-specific component tokens, but it should look like the rest of the
+ * forest/cream editorial wellness UI.
  */
 
 import { Platform } from 'react-native';
+import { Radius, Spacing, Typography } from '@/constants/design-tokens';
 
 // ── Color Palette ────────────────────────────────────────────────────────────
 
 export const SLColors = {
   // Backgrounds
-  bgPage: '#F7F6F3',
+  bgPage: '#FAF9F7',
   bgSurface: '#FFFFFF',
-  bgSubtle: '#EFEDE8',
+  bgSubtle: '#F5EDE3',
 
   // Ink hierarchy
-  inkPrimary: '#1A1814',
-  inkDefault: '#2C2A25',
-  inkSecondary: '#5C5A52',
-  inkMuted: '#9B9890',
-  inkDisabled: '#C5C3BC',
+  inkPrimary: '#2D4739',
+  inkDefault: '#2D4739',
+  inkSecondary: '#666666',
+  inkMuted: '#888888',
+  inkDisabled: '#AAAAAA',
 
   // Borders
-  borderDefault: '#E5E3DE',
-  borderSoft: '#D8D6D0',
+  borderDefault: '#EDEAE6',
+  borderSoft: 'rgba(237, 234, 230, 0.8)',
 
   // Brand / Interactive
-  brandPrimary: '#1B2A4A',
-  brandPrimaryHover: '#243660',
+  brandPrimary: '#2D4739',
+  brandPrimaryHover: '#3D8B6E',
   brandOnPrimary: '#FFFFFF',
 
   // Semantic
-  success: '#2D6A4F',
-  danger: '#9B2335',
+  success: '#3D8B6E',
+  danger: '#E07A5F',
 
   // Reflection (dark surface)
-  reflectionBg: '#1B2A4A',
-  reflectionLabel: '#6B8AB8',
-  reflectionText: '#E5EAF5',
+  reflectionBg: '#2D4739',
+  reflectionLabel: '#D4B896',
+  reflectionText: '#FFFFFF',
 } as const;
 
 // ── Typography ───────────────────────────────────────────────────────────────
 
-const WEB_SERIF = '"Libre Baskerville", Georgia, serif';
-const WEB_SANS = '"IBM Plex Sans", sans-serif';
-const WEB_MONO = '"IBM Plex Mono", monospace';
+const WEB_SANS = Typography.fontFamily.primary;
 const NATIVE_FONT = 'System';
 
 export const SLTypography = {
   fontFamily: {
-    /** Long-form writing, scenario content */
-    serif: Platform.OS === 'web' ? WEB_SERIF : NATIVE_FONT,
+    /** Long-form writing and scenario content use the platform body face. */
+    serif: Platform.OS === 'web' ? WEB_SANS : NATIVE_FONT,
     /** Controls, helper text, headings, list labels */
     sans: Platform.OS === 'web' ? WEB_SANS : NATIVE_FONT,
-    /** Step numbers, progress counters, system labels */
-    mono: Platform.OS === 'web' ? WEB_MONO : NATIVE_FONT,
+    /** Meta labels use the platform face for visual consistency. */
+    mono: Platform.OS === 'web' ? WEB_SANS : NATIVE_FONT,
   },
   fontSize: {
     /** Micro/meta labels */
-    micro: 11,
+    micro: Typography.fontSize.micro,
     /** Small meta labels */
-    xs: 12,
+    xs: Typography.fontSize.xs,
     /** UI label text */
-    sm: 13,
+    sm: Typography.fontSize.sm,
     /** Body default */
-    base: 15,
+    base: Typography.fontSize.base,
     /** Body larger */
-    body: 16,
+    body: Typography.fontSize.body,
     /** Heading medium */
-    md: 17,
+    md: Typography.fontSize.cardTitle,
     /** Section/card titles */
-    lg: 20,
+    lg: Typography.fontSize.xl,
     /** Section question */
-    xl: 24,
+    xl: Typography.fontSize['2xl'],
     /** Display/title (use with clamp on web) */
-    display: 28,
+    display: Typography.fontSize['3xl'],
   },
   fontWeight: {
     normal: '400' as const,
@@ -89,16 +84,16 @@ export const SLTypography = {
     bold: '700' as const,
   },
   lineHeight: {
-    tight: 1.25,
+    tight: Typography.lineHeight.tight,
     snug: 1.3,
-    normal: 1.5,
+    normal: Typography.lineHeight.normal,
     relaxed: 1.6,
-    loose: 1.75,
+    loose: Typography.lineHeight.relaxed,
   },
   letterSpacing: {
-    tight: -0.3,
+    tight: Typography.letterSpacing.narrow,
     normal: 0,
-    wide: 0.02,
+    wide: Typography.letterSpacing.wide,
     label: 0.06,
     uppercase: 0.1,
   },
@@ -107,23 +102,23 @@ export const SLTypography = {
 // ── Spacing (8px base) ──────────────────────────────────────────────────────
 
 export const SLSpacing = {
-  xxs: 4,
-  xs: 8,
+  xxs: Spacing.xs,
+  xs: Spacing.sm,
   sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 24,
-  '2xl': 28,
-  '3xl': 32,
-  '4xl': 36,
-  '5xl': 40,
+  md: Spacing.md,
+  lg: Spacing.lg,
+  xl: Spacing.xl,
+  '2xl': Spacing['2xl'],
+  '3xl': Spacing['3xl'],
+  '4xl': Spacing['4xl'],
+  '5xl': Spacing['5xl'],
 } as const;
 
 // ── Layout ───────────────────────────────────────────────────────────────────
 
 export const SLLayout = {
-  /** Single-column reading width for deep tasks */
-  contentMaxWidth: 640,
+  /** Full-width browser layout. Inner elements provide their own padding. */
+  contentMaxWidth: '100%',
   /** Header padding horizontal */
   headerPadH: 40,
   /** Header padding vertical */
@@ -132,16 +127,16 @@ export const SLLayout = {
   mainPadV: 40,
   mainPadH: 20,
   /** Progress rail height */
-  progressRailHeight: 3,
+  progressRailHeight: 4,
 } as const;
 
 // ── Radius ───────────────────────────────────────────────────────────────────
 
 export const SLRadius = {
-  sm: 6,
-  md: 8,
-  lg: 12,
-  xl: 16,
+  sm: Radius.sm,
+  md: Radius.md,
+  lg: Radius.lg,
+  xl: Radius.xl,
   full: 9999,
 } as const;
 
