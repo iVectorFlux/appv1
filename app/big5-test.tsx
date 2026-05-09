@@ -1,5 +1,6 @@
 /**
  * Big Five personality assessment (IPIP 50-item markers) - from Profile.
+ * UI aligned with Full EQ Test design language.
  */
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -12,13 +13,13 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Animated,
 } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
-import { GlassBackground } from '@/components/ui/glass-background';
-import { GlassCard } from '@/components/ui/glass-card';
+import { Button } from '@/components/ui/button';
 import { BIG5_QUESTIONS, BIG5_LIKERT_LABELS, BIG5_INSTRUMENT_VERSION } from '@/data/big5-questions';
 import { formatScore1dp, type Big5Scores } from '@/services/big5-scoring';
 import { scoreBig5Assessment, type Big5EngineResult } from '@/services/big5-engine';
@@ -26,9 +27,22 @@ import { requestBig5LeadershipInsights } from '@/utils/vercel-api';
 import { generateBig5Report } from '@/services/big5-report';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { saveBig5Assessment } from '@/services/big5-storage';
-import { ScreenHeader } from '@/components/ui/screen-header';
+import {
+  AnimationConfigs,
+  createQuestionTransition,
+  getQuestionAnimatedStyle,
+  getProgressBarWidth,
+} from '@/styles/animations';
 
 type Phase = 'intro' | 'test' | 'results';
+
+const BIG5_TRAITS = [
+  'Openness to Experience',
+  'Conscientiousness',
+  'Extraversion',
+  'Agreeableness',
+  'Emotional Stability',
+] as const;
 
 export default function Big5TestScreen() {
   const router = useRouter();
@@ -37,6 +51,7 @@ export default function Big5TestScreen() {
   const [phase, setPhase] = useState<Phase>('intro');
   const [index, setIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, number>>({});
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [scores, setScores] = useState<Big5Scores | null>(null);
   const [engineResult, setEngineResult] = useState<Big5EngineResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -47,6 +62,18 @@ export default function Big5TestScreen() {
   const [savedToCloud, setSavedToCloud] = useState<boolean | null>(null);
   const sessionStartRef = useRef<number | null>(null);
 
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const isTransitioning = useRef(false);
+
+  const questionTransition = useMemo(
+    () => createQuestionTransition(fadeAnim, slideAnim, scaleAnim),
+    [fadeAnim, slideAnim, scaleAnim]
+  );
+
   useEffect(() => {
     if (phase === 'test' && sessionStartRef.current === null) {
       sessionStartRef.current = Date.now();
@@ -54,12 +81,30 @@ export default function Big5TestScreen() {
     if (phase === 'intro') sessionStartRef.current = null;
   }, [phase]);
 
+  // Animate progress bar
+  useEffect(() => {
+    const total = BIG5_QUESTIONS.length;
+    const target = total > 0 ? (index / total) * 100 : 0;
+    Animated.timing(progressAnim, { toValue: target, ...AnimationConfigs.progressBar }).start();
+  }, [index, progressAnim]);
+
   const st = createStyles(colors);
   const q = BIG5_QUESTIONS[index];
   const total = BIG5_QUESTIONS.length;
-  const progress = index / total;
 
   const report = useMemo(() => (scores ? generateBig5Report(scores) : null), [scores]);
+
+  useEffect(() => {
+    setSelectedAnswer(q?.id ? (responses[q.id] ?? null) : null);
+    // Only reset when the visible question changes. Responses are intentionally not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q?.id]);
+
+  const animateTransition = useCallback((callback: () => void) => {
+    if (isTransitioning.current) return;
+    isTransitioning.current = true;
+    questionTransition(callback, () => { isTransitioning.current = false; });
+  }, [questionTransition]);
 
   const finish = useCallback(
     async (finalResponses: Record<string, number>) => {
@@ -117,443 +162,385 @@ export default function Big5TestScreen() {
 
   const selectLikert = useCallback(
     (value: number) => {
-      if (!q) return;
+      if (!q || isTransitioning.current) return;
       const next = { ...responses, [q.id]: value };
       setResponses(next);
       if (index + 1 >= total) {
         void finish(next);
       } else {
-        setIndex((i) => i + 1);
+        animateTransition(() => setIndex((i) => i + 1));
       }
     },
-    [q, responses, index, total, finish]
+    [q, responses, index, total, finish, animateTransition]
   );
 
   const goBackQuestion = useCallback(() => {
-    if (index <= 0) return;
-    setIndex((i) => i - 1);
-  }, [index]);
+    if (index <= 0 || isTransitioning.current) return;
+    animateTransition(() => setIndex((i) => i - 1));
+  }, [index, animateTransition]);
+
+  const handleSkip = useCallback(() => {
+    if (isTransitioning.current) return;
+    if (index + 1 >= total) {
+      void finish(responses);
+    } else {
+      animateTransition(() => setIndex((i) => i + 1));
+    }
+  }, [index, total, responses, finish, animateTransition]);
 
   const resetTest = useCallback(() => {
     setPhase('intro');
     setIndex(0);
     setResponses({});
+    setSelectedAnswer(null);
     setScores(null);
     setEngineResult(null);
     setAiReport(null);
     setAiError(null);
     setSaveError(null);
     setSavedToCloud(null);
-  }, []);
+    fadeAnim.setValue(1);
+    slideAnim.setValue(0);
+    scaleAnim.setValue(1);
+    progressAnim.setValue(0);
+  }, [fadeAnim, slideAnim, scaleAnim, progressAnim]);
 
-  const leaveTestDiscardingProgress = useCallback(() => {
-    resetTest();
-    router.back();
-  }, [resetTest, router]);
-
-  const confirmLeaveAssessment = useCallback((onLeave: () => void) => {
-    const msg = 'Your answers and progress on this attempt will be removed.';
-    if (Platform.OS === 'web') {
-      if (window.confirm(`${msg}\n\nLeave assessment?`)) onLeave();
-      return;
-    }
-    Alert.alert('Leave assessment?', msg, [
-      { text: 'Stay', style: 'cancel' },
-      { text: 'Leave', style: 'destructive', onPress: onLeave },
-    ]);
-  }, []);
-
-  const handleHeaderBack = useCallback(() => {
-    if (phase === 'test') {
-      if (index > 0) {
-        goBackQuestion();
-        return;
-      }
-      const hasProgress = Object.keys(responses).length > 0;
-      if (hasProgress) {
-        confirmLeaveAssessment(leaveTestDiscardingProgress);
-        return;
-      }
-      setPhase('intro');
-      return;
-    }
-    if (phase === 'results') {
-      router.back();
-      return;
-    }
-    router.back();
-  }, [phase, index, responses, goBackQuestion, router, confirmLeaveAssessment, leaveTestDiscardingProgress]);
-
-  const handleCloseFromTest = useCallback(() => {
+  const handleExit = useCallback(() => {
+    const doExit = () => {
+      if (router.canGoBack()) router.back();
+      else router.replace('/(tabs)/profile');
+    };
     const hasProgress = Object.keys(responses).length > 0 || index > 0;
-    if (!hasProgress) {
-      setPhase('intro');
+    if (Platform.OS === 'web') {
+      if (!hasProgress || window.confirm('Exit assessment?\n\nYour answers and progress will be removed.')) doExit();
       return;
     }
-    confirmLeaveAssessment(leaveTestDiscardingProgress);
-  }, [index, responses, confirmLeaveAssessment, leaveTestDiscardingProgress]);
+    if (!hasProgress) { doExit(); return; }
+    Alert.alert('Exit assessment?', 'Your answers and progress will be removed.', [
+      { text: 'Stay', style: 'cancel' },
+      { text: 'Exit', style: 'destructive', onPress: doExit },
+    ]);
+  }, [responses, index, router]);
 
   if (!isLoading && !isAuthenticated) {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  return (
-    <GlassBackground>
-      <ScrollView style={st.scroll} contentContainerStyle={st.content} keyboardShouldPersistTaps="handled">
-        <ScreenHeader
-          title="Big Five"
-          onBackPress={handleHeaderBack}
-          backFallbackHref="/(tabs)/home"
-          right={
-            phase === 'test' ? (
-              <TouchableOpacity
-                onPress={handleCloseFromTest}
-                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-                hitSlop={16}
-                accessibilityRole="button"
-                accessibilityLabel="Close assessment"
-              >
-                <Ionicons name="close" size={26} color={colors.textPrimary} />
-              </TouchableOpacity>
-            ) : undefined
-          }
-        />
-
-        {phase === 'intro' && (
-          <>
-            <Text style={st.lead}>
-              Fifty short statements about how you usually think, feel, and act. For each one, say how much it sounds
-              like you, from not like you at all to very much like you. This is for self-insight, not a clinical diagnosis.
-              Allow about 10 to 15 minutes. You can retake anytime; each completion is saved separately.
-            </Text>
-            <TouchableOpacity style={[st.primaryBtn, { backgroundColor: colors.primary }]} onPress={() => setPhase('test')}>
-              <Text style={st.primaryBtnText}>Start assessment</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
-            </TouchableOpacity>
-          </>
-        )}
-
-        {phase === 'test' && q && (
-          <>
-            <View style={st.progressOuter}>
-              <View style={[st.progressInner, { width: `${progress * 100}%`, backgroundColor: colors.primary }]} />
+  // ── INTRO ──
+  if (phase === 'intro') {
+    return (
+      <View style={st.container}>
+        <ScrollView style={st.container} contentContainerStyle={st.introScrollContent} showsVerticalScrollIndicator={false}>
+          <View style={st.introContainer}>
+            <View style={[st.introIconCircle, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="hardware-chip-outline" size={48} color={colors.primary} />
             </View>
-            <Text style={st.progressLabel}>
-              Question {index + 1} of {total}
+            <Text style={st.introTitle}>Big Five Personality</Text>
+            <Text style={st.introDescription}>
+              Fifty short statements about how you usually think, feel, and act. Say how much each one sounds like you.
+              This is for self-insight, not a clinical diagnosis.
             </Text>
-            <Text style={st.questionText}>{q.text}</Text>
-            <Text style={st.scaleHint}>How much is this like you?</Text>
-            {([5, 4, 3, 2, 1] as const).map((v) => (
-              <TouchableOpacity
-                key={v}
-                style={[st.optionRow, { borderColor: colors.border, backgroundColor: colors.floating }]}
-                onPress={() => selectLikert(v)}
-                activeOpacity={0.75}
-              >
-                <Text style={st.optionLabel}>{BIG5_LIKERT_LABELS[v]}</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            ))}
-            {index > 0 ? (
-              <TouchableOpacity onPress={goBackQuestion} style={st.backLink}>
-                <Text style={[st.backLinkText, { color: colors.primary }]}>Previous question</Text>
-              </TouchableOpacity>
-            ) : null}
-          </>
-        )}
-
-        {phase === 'results' && scores && report && engineResult && (
-          <>
-            <Text style={st.resultsTitle}>Your Big Five report</Text>
-            <Text style={st.headline}>{report.headline}</Text>
-
-            {saveError ? (
-              <Text style={[st.warn, { color: colors.destructive }]}>{saveError}</Text>
-            ) : saving ? (
-              <ActivityIndicator color={colors.primary} style={{ marginVertical: Spacing.sm }} />
-            ) : savedToCloud ? (
-              <Text style={[st.saved, { color: colors.primary }]}>Results saved to your account.</Text>
-            ) : savedToCloud === false && !saveError ? (
-              <Text style={[st.saved, { color: colors.textSecondary }]}>
-                {isSupabaseConfigured()
-                  ? 'Results could not be synced. Your report is still shown below.'
-                  : 'Report is shown on this device only (cloud sync not configured).'}
-              </Text>
-            ) : null}
-
-            <GlassCard style={st.reportCard}>
-              <Text style={st.reportSectionLabel}>Summary</Text>
-              <Text style={st.execSummary}>{report.executiveSummary}</Text>
-            </GlassCard>
-
-            <GlassCard style={st.reportCard}>
-              <Text style={st.reportSectionLabel}>Pattern</Text>
-              <Text style={st.patternText}>{report.patterns.spreadNote}</Text>
-              <Text style={st.patternSub}>
-                Emphasis: {report.patterns.emphasis.map((e) => `${e.label} (${formatScore1dp(e.score)})`).join(' · ')}
-              </Text>
-              <Text style={st.patternSub}>
-                Relatively lower:{' '}
-                {report.patterns.quieter.map((e) => `${e.label} (${formatScore1dp(e.score)})`).join(' · ')}
-              </Text>
-            </GlassCard>
-
-            <Text style={st.detailedHeading}>Detailed breakdown</Text>
-            <Text style={st.resultsSub}>Each score is an average on a 1 to 5 scale (higher = more of that trait).</Text>
-
-            {report.domains.map((d) => {
-              const pct = ((d.score - 1) / 4) * 100;
-              return (
-                <GlassCard key={d.traitKey} style={st.traitCard}>
-                  <View style={st.traitHeader}>
-                    <Text style={st.traitName}>{d.displayName}</Text>
-                    <Text style={st.traitScore}>
-                      {formatScore1dp(d.score)} · {d.bandLabel}
-                    </Text>
-                  </View>
-                  <View style={[st.barBg, { backgroundColor: colors.surface }]}>
-                    <View style={[st.barFill, { width: `${pct}%`, backgroundColor: colors.primary }]} />
-                  </View>
-                  <Text style={st.oneLine}>{d.oneLine}</Text>
-                  <Text style={st.detailPara}>{d.detail}</Text>
-                </GlassCard>
-              );
-            })}
-
-            <Text style={st.disclaimer}>{report.disclaimer}</Text>
-
-            <Text style={st.aiSectionTitle}>Leadership & workplace (AI)</Text>
-            <Text style={st.aiHint}>
-              Get a deeper take on how this profile may show up at work: teams, influence, and development. Sends your
-              scores, percentiles, and quality flags to our AI (not every individual answer). For reflection only; not for
-              hiring or selection.
-            </Text>
-            <TouchableOpacity
-              style={[st.aiPrimaryBtn, { backgroundColor: colors.accentIndigo }]}
-              onPress={() => void fetchLeadershipInsights()}
-              disabled={aiLoading}
-              activeOpacity={0.85}
-            >
-              {aiLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="sparkles" size={20} color="#fff" />
-                  <Text style={st.aiPrimaryBtnText}>Generate AI leadership insights</Text>
-                </>
-              )}
+            <View style={st.infoCards}>
+              <View style={st.infoCard}>
+                <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+                <Text style={st.infoText}>~12 minutes</Text>
+              </View>
+              <View style={st.infoCard}>
+                <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
+                <Text style={st.infoText}>{total} questions</Text>
+              </View>
+            </View>
+            <View style={st.dimensionsList}>
+              <Text style={st.dimensionsTitle}>What we measure:</Text>
+              {BIG5_TRAITS.map((trait) => (
+                <View key={trait} style={st.dimensionItem}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                  <Text style={st.dimensionText}>{trait}</Text>
+                </View>
+              ))}
+            </View>
+            <Button title="Begin Assessment" onPress={() => setPhase('test')} size="lg" fullWidth />
+            <TouchableOpacity style={st.backLink} onPress={() => router.back()} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={20} color={colors.primary} />
+              <Text style={st.backLinkText}>Back to Profile</Text>
             </TouchableOpacity>
-            {aiError ? <Text style={[st.aiError, { color: colors.destructive }]}>{aiError}</Text> : null}
-            {aiReport ? (
-              <GlassCard style={st.aiReportCard}>
-                <Text style={st.reportSectionLabel}>AI insights</Text>
-                {aiReport.split(/\n\n+/).map((para, i) => (
-                  <Text key={i} style={st.aiPara}>
-                    {para.replace(/^#{1,6}\s+/gm, '').trim()}
-                  </Text>
-                ))}
-              </GlassCard>
-            ) : null}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
-            <TouchableOpacity style={[st.secondaryBtn, { borderColor: colors.primary }]} onPress={resetTest}>
-              <Text style={[st.secondaryBtnText, { color: colors.primary }]}>Retake assessment</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.back()} style={st.doneLink}>
-              <Text style={[st.doneLinkText, { color: colors.textMuted }]}>Done</Text>
-            </TouchableOpacity>
-          </>
-        )}
+  // ── RESULTS ──
+  if (phase === 'results' && scores && report && engineResult) {
+    return (
+      <ScrollView style={st.container} contentContainerStyle={st.resultsContainer}>
+        <View style={st.resultsHeader}>
+          <Text style={st.resultsTitle}>Your Big Five Profile</Text>
+          <Text style={st.resultsSubtitle}>Based on {total} responses</Text>
+        </View>
+
+        {/* Headline card */}
+        <View style={st.overallScoreCard}>
+          <Text style={st.overallScoreLabel}>Personality Headline</Text>
+          <Text style={st.overallHeadline}>{report.headline}</Text>
+        </View>
+
+        {saveError ? (
+          <Text style={[st.saveNote, { color: colors.destructive }]}>{saveError}</Text>
+        ) : saving ? (
+          <ActivityIndicator color={colors.primary} style={{ marginVertical: Spacing.sm }} />
+        ) : savedToCloud ? (
+          <Text style={[st.saveNote, { color: colors.primary }]}>Results saved to your account.</Text>
+        ) : savedToCloud === false && !saveError ? (
+          <Text style={[st.saveNote, { color: colors.textSecondary }]}>
+            {isSupabaseConfigured()
+              ? 'Results could not be synced. Your report is still shown below.'
+              : 'Report is shown on this device only (cloud sync not configured).'}
+          </Text>
+        ) : null}
+
+        {/* Summary */}
+        <View style={st.cardSection}>
+          <Text style={st.cardTitle}>Summary</Text>
+          <Text style={st.cardBody}>{report.executiveSummary}</Text>
+        </View>
+
+        {/* Pattern */}
+        <View style={st.cardSection}>
+          <Text style={st.cardTitle}>Pattern</Text>
+          <Text style={st.cardBody}>{report.patterns.spreadNote}</Text>
+          <Text style={st.cardBodySub}>
+            Emphasis: {report.patterns.emphasis.map((e) => `${e.label} (${formatScore1dp(e.score)})`).join(' · ')}
+          </Text>
+          <Text style={st.cardBodySub}>
+            Relatively lower: {report.patterns.quieter.map((e) => `${e.label} (${formatScore1dp(e.score)})`).join(' · ')}
+          </Text>
+        </View>
+
+        {/* Dimension Breakdown */}
+        <View style={st.cardSection}>
+          <Text style={st.cardTitle}>Trait Breakdown</Text>
+          <Text style={st.cardBodySub}>Each score is an average on a 1–5 scale (higher = more of that trait).</Text>
+          {report.domains.map((d) => {
+            const pct = ((d.score - 1) / 4) * 100;
+            return (
+              <View key={d.traitKey} style={st.dimRow}>
+                <View style={st.dimInfo}>
+                  <Text style={st.dimName}>{d.displayName}</Text>
+                  <Text style={st.dimScore}>{formatScore1dp(d.score)} · {d.bandLabel}</Text>
+                </View>
+                <View style={st.dimBar}>
+                  <View style={[st.dimBarFill, { width: `${pct}%` }]} />
+                </View>
+                <Text style={st.dimOneLine}>{d.oneLine}</Text>
+                <Text style={st.dimDetail}>{d.detail}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <Text style={st.disclaimerText}>{report.disclaimer}</Text>
+
+        {/* AI insights */}
+        <View style={st.cardSection}>
+          <Text style={st.cardTitle}>Leadership & Workplace (AI)</Text>
+          <Text style={st.cardBodySub}>
+            A deeper take on how this profile may show up at work. Sends your scores, percentiles, and quality flags to
+            our AI. For reflection only; not for hiring or selection.
+          </Text>
+          <TouchableOpacity
+            style={[st.aiBtn, { backgroundColor: colors.accentIndigo }]}
+            onPress={() => void fetchLeadershipInsights()}
+            disabled={aiLoading}
+            activeOpacity={0.85}
+          >
+            {aiLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="sparkles" size={20} color="#fff" />
+                <Text style={st.aiBtnText}>Generate AI leadership insights</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          {aiError ? <Text style={[st.aiErrorText, { color: colors.destructive }]}>{aiError}</Text> : null}
+          {aiReport ? (
+            <View style={st.aiReportBox}>
+              <Text style={st.cardBodySub}>AI insights</Text>
+              {aiReport.split(/\n\n+/).map((para, i) => (
+                <Text key={i} style={st.cardBody}>
+                  {para.replace(/^#{1,6}\s+/gm, '').trim()}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        <Button title="Retake Assessment" onPress={resetTest} variant="secondary" size="lg" fullWidth />
+        <Button title="Done" onPress={() => router.replace('/(tabs)/profile')} size="lg" fullWidth />
+        <Text style={st.disclaimerText}>
+          This assessment is for self-reflection purposes and is not a clinical diagnosis.
+        </Text>
       </ScrollView>
-    </GlassBackground>
+    );
+  }
+
+  // ── TEST ──
+  if (!q) {
+    return (
+      <View style={st.container}>
+        <View style={st.loadingContainer}>
+          <Text style={st.loadingText}>Preparing assessment...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={st.container}>
+      {/* Header: back | counter | close */}
+      <View style={st.testHeader}>
+        <View style={st.headerSideLeft}>
+          {index > 0 ? (
+            <TouchableOpacity onPress={goBackQuestion} style={st.backButton} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+              <Text style={st.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={st.headerSpacer} />
+          )}
+        </View>
+        <View style={st.headerProgressOverlay} pointerEvents="none">
+          <Text style={st.testHeaderText}>{index + 1} / {total}</Text>
+        </View>
+        <View style={st.headerSideRight}>
+          <TouchableOpacity onPress={handleExit} style={st.closeButton} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} activeOpacity={0.7} accessibilityLabel="Exit test">
+            <Ionicons name="close" size={28} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Progress bar */}
+      <View style={st.progressBar}>
+        <Animated.View style={[st.progressFill, { width: getProgressBarWidth(progressAnim) }]} />
+      </View>
+
+      {/* Question */}
+      <ScrollView contentContainerStyle={st.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <Animated.View style={[st.questionWrapper, getQuestionAnimatedStyle(fadeAnim, slideAnim, scaleAnim)]}>
+          <View style={st.questionContent}>
+            <Text style={st.questionPrompt}>{q.text}</Text>
+            <Text style={st.questionHint}>How much is this like you?</Text>
+            <View style={st.optionsContainer}>
+              {([5, 4, 3, 2, 1] as const).map((v) => {
+                const isSelected = selectedAnswer === v;
+                return (
+                  <TouchableOpacity
+                    key={v}
+                    style={[st.optionRow, isSelected && st.optionRowSelected]}
+                    onPress={() => setSelectedAnswer(v)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[st.optionLabel, isSelected && st.optionLabelSelected]}>
+                      {BIG5_LIKERT_LABELS[v]}
+                    </Text>
+                    {isSelected ? (
+                      <Ionicons name="checkmark-circle" size={22} color={colors.primaryForeground} />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </Animated.View>
+      </ScrollView>
+
+      {/* Actions */}
+      <View style={st.actionContainer}>
+        <Button
+          title={index + 1 >= total ? 'See Results' : 'Next'}
+          onPress={() => selectedAnswer != null && selectLikert(selectedAnswer)}
+          fullWidth
+          size="lg"
+          disabled={selectedAnswer == null || isTransitioning.current}
+        />
+        <TouchableOpacity onPress={handleSkip}>
+          <Text style={st.skipText}>Skip this question</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    scroll: { flex: 1 },
-    content: {
-      paddingHorizontal: Spacing.md,
-      paddingTop: Platform.OS === 'ios' ? 48 : Spacing.lg,
-      paddingBottom: 120,
-      maxWidth: 520,
-      alignSelf: 'center',
-      width: '100%',
-    },
-    headerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: Spacing.lg,
-    },
-    backBtn: { padding: 4 },
-    headerTitle: {
-      fontSize: Typography.fontSize.lg,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-    },
-    lead: {
-      fontSize: Typography.fontSize.base,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.base * 1.5,
-      marginBottom: Spacing.lg,
-    },
-    primaryBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: Spacing.sm,
-      borderRadius: Radius.lg,
-      paddingVertical: Spacing.md,
-      marginTop: Spacing.xl,
-    },
-    primaryBtnText: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
-    progressOuter: {
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: colors.surface,
-      overflow: 'hidden',
-      marginBottom: Spacing.sm,
-    },
-    progressInner: { height: '100%', borderRadius: 3 },
-    progressLabel: { fontSize: Typography.fontSize.xs, color: colors.textMuted, marginBottom: Spacing.lg },
-    questionText: {
-      fontSize: Typography.fontSize.lg,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
-      marginBottom: Spacing.sm,
-      lineHeight: Typography.fontSize.lg * 1.35,
-    },
-    scaleHint: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, marginBottom: Spacing.md },
-    optionRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderWidth: 1,
-      borderRadius: Radius.md,
-      paddingVertical: Spacing.md,
-      paddingHorizontal: Spacing.md,
-      marginBottom: Spacing.sm,
-    },
-    optionLabel: { flex: 1, fontSize: Typography.fontSize.sm, color: colors.textPrimary },
-    backLink: { marginTop: Spacing.lg, alignItems: 'center' },
-    backLinkText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
-    resultsTitle: {
-      fontSize: Typography.fontSize['2xl'],
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-      marginBottom: Spacing.xs,
-    },
-    headline: {
-      fontSize: Typography.fontSize.lg,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
-      marginBottom: Spacing.lg,
-      lineHeight: Typography.fontSize.lg * 1.35,
-    },
-    reportCard: { marginBottom: Spacing.md },
-    reportSectionLabel: {
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textMuted,
-      marginBottom: Spacing.sm,
-      letterSpacing: 0.3,
-    },
-    execSummary: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
-      lineHeight: Typography.fontSize.sm * 1.55,
-    },
-    patternText: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
-      lineHeight: Typography.fontSize.sm * 1.5,
-      marginBottom: Spacing.sm,
-    },
-    patternSub: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.xs * 1.45,
-      marginBottom: Spacing.xs,
-    },
-    detailedHeading: {
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
-      marginTop: Spacing.md,
-      marginBottom: Spacing.xs,
-    },
-    resultsSub: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, marginBottom: Spacing.md },
-    warn: { fontSize: Typography.fontSize.sm, marginBottom: Spacing.sm },
-    saved: { fontSize: Typography.fontSize.sm, marginBottom: Spacing.md },
-    traitCard: { marginBottom: Spacing.md },
-    traitHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'baseline',
-      marginBottom: Spacing.sm,
-    },
-    traitName: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary },
-    traitScore: { fontSize: Typography.fontSize.sm, color: colors.textSecondary },
-    barBg: { height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: Spacing.sm },
-    barFill: { height: '100%', borderRadius: 4 },
-    oneLine: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.medium,
-      color: colors.textPrimary,
-      lineHeight: Typography.fontSize.sm * 1.45,
-      marginBottom: Spacing.sm,
-    },
-    detailPara: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.sm * 1.55,
-    },
-    disclaimer: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
-      lineHeight: Typography.fontSize.xs * 1.5,
-      marginTop: Spacing.md,
-      marginBottom: Spacing.sm,
-    },
-    aiSectionTitle: {
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
-      marginTop: Spacing.lg,
-      marginBottom: Spacing.xs,
-    },
-    aiHint: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.xs * 1.5,
-      marginBottom: Spacing.md,
-    },
-    aiPrimaryBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: Spacing.sm,
-      borderRadius: Radius.lg,
-      paddingVertical: Spacing.md,
-      marginBottom: Spacing.sm,
-    },
-    aiPrimaryBtnText: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
-    aiError: { fontSize: Typography.fontSize.sm, marginBottom: Spacing.sm },
-    aiReportCard: { marginBottom: Spacing.md, marginTop: Spacing.sm },
-    aiPara: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textPrimary,
-      lineHeight: Typography.fontSize.sm * 1.55,
-      marginBottom: Spacing.md,
-    },
-    secondaryBtn: {
-      borderWidth: 1.5,
-      borderRadius: Radius.lg,
-      paddingVertical: Spacing.md,
-      alignItems: 'center',
-      marginTop: Spacing.md,
-    },
-    secondaryBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
-    doneLink: { alignItems: 'center', paddingVertical: Spacing.lg },
-    doneLinkText: { fontSize: Typography.fontSize.sm },
-  });
+const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { fontSize: Typography.fontSize.base, color: colors.textSecondary },
+  // Intro
+  introScrollContent: { flexGrow: 1, padding: Spacing.xl, paddingBottom: Spacing['2xl'] },
+  introContainer: { alignItems: 'center', justifyContent: 'center', paddingBottom: Spacing.xl },
+  introIconCircle: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
+  introTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.md },
+  introDescription: { fontSize: Typography.fontSize.base, color: colors.textSecondary, textAlign: 'center', lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base, marginBottom: Spacing.xl, maxWidth: 320 },
+  infoCards: { flexDirection: 'row', gap: Spacing.lg, marginBottom: Spacing.xl },
+  infoCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.surface, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: Radius.lg },
+  infoText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontWeight: Typography.fontWeight.medium },
+  dimensionsList: { width: '100%', marginBottom: Spacing['2xl'] },
+  dimensionsTitle: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, marginBottom: Spacing.md },
+  dimensionItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+  dimensionText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary },
+  backLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, marginTop: Spacing.xl, marginBottom: Spacing.xl, paddingVertical: Spacing.lg, paddingHorizontal: Spacing.xl, minHeight: 48, borderRadius: Radius.lg, borderWidth: 1, backgroundColor: colors.surface, borderColor: colors.border },
+  backLinkText: { fontSize: Typography.fontSize.base, color: colors.primary, fontWeight: Typography.fontWeight.semibold },
+  // Test header
+  testHeader: { position: 'relative', flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, paddingTop: Platform.OS === 'ios' ? 50 : Spacing.xl, minHeight: 52 },
+  headerSideLeft: { flex: 1, zIndex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' },
+  headerSideRight: { flex: 1, zIndex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  headerSpacer: { width: 44, height: 44 },
+  headerProgressOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  closeButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.xs, minWidth: 44 },
+  backButtonText: { fontSize: Typography.fontSize.sm, color: colors.primary, fontWeight: Typography.fontWeight.medium },
+  testHeaderText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontWeight: Typography.fontWeight.semibold },
+  progressBar: { height: 4, backgroundColor: colors.surface },
+  progressFill: { height: '100%', backgroundColor: colors.primary },
+  scrollContent: { flexGrow: 1, padding: Spacing.lg, justifyContent: 'center' },
+  questionWrapper: { flex: 1, justifyContent: 'center' },
+  questionContent: { gap: Spacing.xl },
+  questionPrompt: { fontSize: Typography.fontSize.xl, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, textAlign: 'center', fontFamily: Typography.fontFamily.heading, lineHeight: Typography.lineHeight.tight * Typography.fontSize.xl },
+  questionHint: { fontSize: Typography.fontSize.xs, color: colors.textMuted, textAlign: 'center' },
+  optionsContainer: { gap: Spacing.md },
+  optionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.floating, borderRadius: Radius.lg, padding: Spacing.lg, borderWidth: 2, borderColor: colors.borderLight },
+  optionRowSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  optionLabel: { flex: 1, fontSize: Typography.fontSize.sm, color: colors.textPrimary },
+  optionLabelSelected: { color: colors.primaryForeground, fontWeight: Typography.fontWeight.semibold },
+  actionContainer: { padding: Spacing.lg, paddingTop: Spacing.sm, gap: Spacing.md },
+  skipText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, textAlign: 'center' },
+  // Results
+  resultsContainer: { padding: Spacing.xl, paddingTop: Platform.OS === 'ios' ? Spacing['3xl'] : Spacing.xl, paddingBottom: Spacing['5xl'] },
+  resultsHeader: { marginBottom: Spacing['2xl'] },
+  resultsTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs },
+  resultsSubtitle: { fontSize: Typography.fontSize.sm, color: colors.textSecondary },
+  overallScoreCard: { backgroundColor: colors.primary, borderRadius: Radius.xl, padding: Spacing['2xl'], alignItems: 'center', marginBottom: Spacing.xl },
+  overallScoreLabel: { fontSize: Typography.fontSize.sm, color: colors.primaryForeground, opacity: 0.8, marginBottom: Spacing.sm },
+  overallHeadline: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.bold, color: colors.primaryForeground, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: Typography.fontSize.lg * 1.4 },
+  saveNote: { fontSize: Typography.fontSize.sm, marginBottom: Spacing.md },
+  cardSection: { backgroundColor: colors.floating, borderRadius: Radius.xl, padding: Spacing.xl, marginBottom: Spacing.xl },
+  cardTitle: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.lg },
+  cardBody: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, lineHeight: Typography.fontSize.sm * 1.55, marginBottom: Spacing.md },
+  cardBodySub: { fontSize: Typography.fontSize.xs, color: colors.textSecondary, lineHeight: Typography.fontSize.xs * 1.45, marginBottom: Spacing.xs },
+  dimRow: { marginBottom: Spacing.lg },
+  dimInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
+  dimName: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontWeight: Typography.fontWeight.medium, textTransform: 'capitalize' },
+  dimScore: { fontSize: Typography.fontSize.sm, color: colors.primary, fontWeight: Typography.fontWeight.bold },
+  dimBar: { height: 8, backgroundColor: colors.surface, borderRadius: Radius.full, overflow: 'hidden', marginBottom: Spacing.sm },
+  dimBarFill: { height: '100%', backgroundColor: colors.primary, borderRadius: Radius.full },
+  dimOneLine: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium, color: colors.textPrimary, lineHeight: Typography.fontSize.sm * 1.45, marginBottom: Spacing.sm },
+  dimDetail: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, lineHeight: Typography.fontSize.sm * 1.55 },
+  aiBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderRadius: Radius.lg, paddingVertical: Spacing.md, marginBottom: Spacing.sm, marginTop: Spacing.md },
+  aiBtnText: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
+  aiErrorText: { fontSize: Typography.fontSize.sm, marginBottom: Spacing.sm },
+  aiReportBox: { marginTop: Spacing.md },
+  disclaimerText: { fontSize: Typography.fontSize.xs, color: colors.textMuted, textAlign: 'center', marginTop: Spacing.xl },
+});
