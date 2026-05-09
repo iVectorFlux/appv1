@@ -29,11 +29,21 @@ type PracticeMode =
   | 'output_audit'
   | 'open_reflection'
   | 'generative_brainstorm'
-  | 'draft_and_refine';
+  | 'draft_and_refine'
+  | 'quick_round';
 
 interface DecisionOption {
   id: string;
   label: string;
+}
+
+/** Quick Round option (single-call multi-choice with pre-baked lightweight coaching). */
+interface QuickRoundOption {
+  id: string;
+  label: string;
+  tier: 'sharp' | 'solid' | 'try';
+  reaction: string;
+  nextTip: string;
 }
 
 interface PracticeContextWire {
@@ -94,6 +104,42 @@ If the situation is only a weak match for this skill or sub-skill, still return 
 // ─────────────────────────────────────────────────────────────────────────────
 // Scenario prompt builders
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Quick Round: a 60-second multi-choice round.
+ * One API call returns the scenario plus pre-baked coaching for every option,
+ * so tapping an answer feels instant on the client.
+ */
+function buildQuickRoundPrompt(skillName: string, atomicSkillName?: string): string {
+  const focus = atomicSkillName ? `${skillName} - "${atomicSkillName}"` : skillName;
+  return `You are designing a 60-second QUICK ROUND for the skill "${focus}".
+
+This is meant to feel like a snappy game, not homework. Keep it warm and human.
+
+Output:
+1) "scenario": ONE specific 1-2 sentence workplace moment. Concrete characters or roles. No exposition.
+2) "options": EXACTLY 3 short response options. Each LABEL is one sentence, max 14 words, written in first person ("I'd ...") or as a direct line. Each option represents a different real approach a person might take in this moment.
+
+For each option, also fill these fields (warm coaching tone, NO numerical scores, NO grading words like "wrong" / "correct"):
+  - "tier": exactly one of "sharp" | "solid" | "try"
+      sharp = clearly the best application of "${focus}"
+      solid = okay but missing the key move of "${focus}"
+      try   = common mistake, the move most people regret later
+  - "reaction": ONE short sentence (max ~22 words). Praise what is good (sharp), name the gap kindly (solid), or surface the trap with a friendly nudge (try). No numbers, no clinical language. Use second person ("You ...").
+  - "nextTip": ONE short sentence (max ~22 words). A concrete tweak or move to try next time, tied to "${focus}".
+
+Return ONE option marked "sharp", ONE "solid", and ONE "try". Keep ids exactly a, b, c (in any order; tiers can be in any order).
+
+JSON only, no markdown:
+{
+  "scenario": "...",
+  "options": [
+    { "id": "a", "label": "...", "tier": "sharp|solid|try", "reaction": "...", "nextTip": "..." },
+    { "id": "b", "label": "...", "tier": "sharp|solid|try", "reaction": "...", "nextTip": "..." },
+    { "id": "c", "label": "...", "tier": "sharp|solid|try", "reaction": "...", "nextTip": "..." }
+  ]
+}`;
+}
 
 function buildDecisionSimulatorPrompt(skillName: string, atomicSkillName?: string): string {
   const focus = atomicSkillName ? `${skillName} - specifically "${atomicSkillName}"` : skillName;
@@ -669,6 +715,65 @@ function normalizeDecisionScenario(parsed: Record<string, unknown>): {
   return { scenario, decisionOptions: decisionOptions.slice(0, 6), reasoningPrompt };
 }
 
+function normalizeQuickRound(parsed: Record<string, unknown>): {
+  scenario: string;
+  options: QuickRoundOption[];
+} {
+  const scenario = String(parsed.scenario ?? '').trim();
+  const rawOpts = parsed.options ?? parsed.choices;
+
+  const fallback = (i: number, tier: QuickRoundOption['tier']): QuickRoundOption => ({
+    id: ['a', 'b', 'c'][i] ?? `o${i}`,
+    label:
+      tier === 'sharp'
+        ? "I'd name the goal first, then suggest the next concrete step."
+        : tier === 'solid'
+          ? "I'd ask a clarifying question and propose one option."
+          : "I'd push hard for my preferred answer right away.",
+    tier,
+    reaction:
+      tier === 'sharp'
+        ? 'You led with the move that actually unblocks people.'
+        : tier === 'solid'
+          ? "Solid instinct, you're close. Just one tweak away from the sharper play."
+          : "Tempting, but this usually narrows the room. Worth a different angle.",
+    nextTip:
+      tier === 'sharp'
+        ? 'Lock it in by saying it out loud first, then propose the step.'
+        : tier === 'solid'
+          ? 'Try naming the goal explicitly before asking the question.'
+          : 'Pause, ask one question, then make the call.',
+  });
+
+  let options: QuickRoundOption[] = [];
+  if (Array.isArray(rawOpts)) {
+    options = rawOpts
+      .map((o, i) => {
+        const row = (o && typeof o === 'object' ? o : {}) as Record<string, unknown>;
+        const id = String(row.id ?? row.key ?? ['a', 'b', 'c'][i] ?? `o${i}`).toLowerCase();
+        const label = String(row.label ?? row.text ?? row.title ?? '').trim();
+        const tierRaw = String(row.tier ?? '').trim().toLowerCase();
+        const tier: QuickRoundOption['tier'] =
+          tierRaw === 'sharp' || tierRaw === 'solid' || tierRaw === 'try' ? tierRaw : 'solid';
+        const reaction = String(row.reaction ?? '').trim();
+        const nextTip = String(row.nextTip ?? row.next_tip ?? row.tip ?? '').trim();
+        return { id, label, tier, reaction, nextTip };
+      })
+      .filter((o) => o.label.length > 0 && o.reaction.length > 0 && o.nextTip.length > 0);
+  }
+
+  if (options.length < 3) {
+    const tiers: QuickRoundOption['tier'][] = ['sharp', 'solid', 'try'];
+    options = tiers.map((t, i) => fallback(i, t));
+  }
+
+  options = options.slice(0, 3);
+
+  if (!scenario) throw new Error('Invalid scenario payload from model');
+
+  return { scenario, options };
+}
+
 function normalizeOpenScenario(parsed: Record<string, unknown>): {
   scenario: string;
   question: string;
@@ -772,6 +877,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (generateScenario) {
       let promptText: string;
       switch (practiceMode) {
+        case 'quick_round':
+          promptText = buildQuickRoundPrompt(skillName, atomicSkillName);
+          break;
         case 'output_audit':
           promptText = buildOutputAuditPrompt(skillId, skillName, atomicSkillId, atomicSkillName);
           break;
@@ -790,7 +898,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       promptText = appendScenarioLearnerTail(promptText, body);
 
-      const groqScenario = await callGroqAndParseSkillsJson(promptText, apiKey, model, 1000);
+      const scenarioMaxTokens = practiceMode === 'quick_round' ? 700 : 1000;
+      const groqScenario = await callGroqAndParseSkillsJson(promptText, apiKey, model, scenarioMaxTokens);
       if (isGroqFailure(groqScenario)) {
         res.status(502).json({ error: groqScenario.message });
         return;
@@ -798,7 +907,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const parsed = groqScenario.parsed;
 
       try {
-        if (practiceMode === 'decision_simulator') {
+        if (practiceMode === 'quick_round') {
+          res.status(200).json(normalizeQuickRound(parsed));
+        } else if (practiceMode === 'decision_simulator') {
           res.status(200).json(normalizeDecisionScenario(parsed));
         } else {
           res.status(200).json(normalizeOpenScenario(parsed));

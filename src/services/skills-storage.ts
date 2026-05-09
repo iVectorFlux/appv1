@@ -253,6 +253,54 @@ export async function recordScenarioAttempt(userId: string, skillId: string): Pr
 // Read progress
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Lightweight engagement helpers (streak / "round today")
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Count distinct YYYY-MM-DD dates ≤ today reached without a skip. UTC-naive day key. */
+function consecutiveDayCount(dates: string[]): number {
+  if (dates.length === 0) return 0;
+  const set = new Set<string>();
+  for (const d of dates) {
+    const day = d.slice(0, 10);
+    if (day) set.add(day);
+  }
+  if (set.size === 0) return 0;
+
+  let streak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  // Slack: if user hasn't practiced today, streak still counts ending yesterday.
+  if (!set.has(cursor.toISOString().slice(0, 10))) {
+    cursor.setDate(cursor.getDate() - 1);
+    if (!set.has(cursor.toISOString().slice(0, 10))) return 0;
+  }
+  while (set.has(cursor.toISOString().slice(0, 10))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+/**
+ * Returns engagement signal derived from the local progress map:
+ * - practicedToday: any skill has last_practiced_at in the last 18h
+ * - streakDays: consecutive days ending today/yesterday (1 if just today)
+ * Note: streak is approximate without per-day session rows; we use last_practiced_at per skill
+ * as a stand-in. Good enough for a "you're on a streak" nudge.
+ */
+export function computeEngagementFromProgress(
+  progress: Record<string, SkillProgress>
+): { practicedToday: boolean; streakDays: number } {
+  const dates = Object.values(progress)
+    .map((p) => p.lastPracticedAt)
+    .filter((d): d is string => typeof d === 'string' && d.length > 0);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const practicedToday = dates.some((d) => d.slice(0, 10) === todayKey);
+  const streakDays = consecutiveDayCount(dates);
+  return { practicedToday, streakDays };
+}
+
 export async function getSkillsProgress(userId: string): Promise<Record<string, SkillProgress>> {
   if (!isSupabaseConfigured()) return {};
 

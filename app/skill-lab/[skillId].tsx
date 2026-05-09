@@ -49,7 +49,7 @@ import {
   normalizeSkillRouteParam,
 } from '@/data/skill-lab-practice-ui';
 import { saveSkillSession, recordScenarioAttempt } from '@/services/skills-storage';
-import { bumpOfflineSessionCount } from '@/services/skill-lab-offline-progress';
+import { bumpOfflineSessionCount, recordRoundForToday } from '@/services/skill-lab-offline-progress';
 import { getUserProfileContext, buildPracticeContextWire, type UserProfileContext } from '@/services/profile-context';
 import { buildVercelApiUrl } from '@/utils/vercel-api';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -65,11 +65,117 @@ type PracticePhase =
   | 'choosing_decision'   // decision_simulator only
   | 'answering'
   | 'loading_feedback'
-  | 'feedback';
+  | 'feedback'
+  // Quick Round (60s, multi-choice, single-call)
+  | 'quick_loading'
+  | 'quick_choosing'
+  | 'quick_feedback';
+
+/** Practice depth — Quick Round is the new default lightweight path. */
+type PracticeDepth = 'quick' | 'standard';
 
 interface DecisionOption {
   id: string;
   label: string;
+}
+
+interface QuickOption {
+  id: string;
+  label: string;
+  tier: 'sharp' | 'solid' | 'try';
+  reaction: string;
+  nextTip: string;
+}
+
+const QUICK_TIER_COPY: Record<QuickOption['tier'], { label: string; emoji: string }> = {
+  sharp: { label: 'Sharp move', emoji: '🎯' },
+  solid: { label: 'Solid, almost there', emoji: '✨' },
+  try: { label: 'Worth a rethink', emoji: '🌱' },
+};
+
+const QUICK_TIER_ORDER: QuickOption['tier'][] = ['sharp', 'solid', 'try'];
+
+function quickFallbackText(tier: QuickOption['tier']): Pick<QuickOption, 'reaction' | 'nextTip'> {
+  if (tier === 'sharp') {
+    return {
+      reaction: 'You picked the move that keeps the moment moving.',
+      nextTip: 'Lock it in by naming the goal before the next step.',
+    };
+  }
+  if (tier === 'solid') {
+    return {
+      reaction: "Solid instinct. You're close to the sharper play.",
+      nextTip: 'Try adding one clear question or trade-off before you act.',
+    };
+  }
+  return {
+    reaction: 'Tempting move, but it may narrow the room too early.',
+    nextTip: 'Pause, ask one grounding question, then make the call.',
+  };
+}
+
+function quickFallbackOption(i: number, tier: QuickOption['tier'], label?: string): QuickOption {
+  const text = quickFallbackText(tier);
+  return {
+    id: ['a', 'b', 'c'][i] ?? `o${i}`,
+    label:
+      label?.trim() ||
+      (tier === 'sharp'
+        ? "I'd clarify the goal, then suggest one concrete next step."
+        : tier === 'solid'
+          ? "I'd ask one question and offer a small next move."
+          : "I'd push my preferred answer and try to settle it fast."),
+    tier,
+    ...text,
+  };
+}
+
+function parseQuickOptionsFromApi(data: Record<string, unknown>): QuickOption[] {
+  const raw =
+    data.options ??
+    data.choices ??
+    data.decisionOptions ??
+    data.decision_options;
+
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return QUICK_TIER_ORDER.map((tier, i) => quickFallbackOption(i, tier));
+  }
+
+  const parsed = raw.slice(0, 3).map((item, i) => {
+    const row = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
+    const tierRaw = String(row.tier ?? '').trim().toLowerCase();
+    const tier: QuickOption['tier'] =
+      tierRaw === 'sharp' || tierRaw === 'solid' || tierRaw === 'try'
+        ? tierRaw
+        : QUICK_TIER_ORDER[i] ?? 'solid';
+    const fallback = quickFallbackOption(i, tier);
+    const label = String(
+      row.label ?? row.text ?? row.title ?? row.option ?? row.description ?? ''
+    ).trim();
+    return {
+      id: String(row.id ?? row.key ?? fallback.id).toLowerCase(),
+      label: label || fallback.label,
+      tier,
+      reaction: String(row.reaction ?? row.feedback ?? '').trim() || fallback.reaction,
+      nextTip:
+        String(row.nextTip ?? row.next_tip ?? row.tip ?? row.coachTip ?? '').trim() ||
+        fallback.nextTip,
+    };
+  });
+
+  while (parsed.length < 3) {
+    const tier = QUICK_TIER_ORDER[parsed.length] ?? 'solid';
+    parsed.push(quickFallbackOption(parsed.length, tier));
+  }
+
+  return parsed;
+}
+
+/** Friendly label for a 0-10 score in standard mode. */
+function tierLabelForScore(score: number): { label: string; tone: 'sharp' | 'solid' | 'try' } {
+  if (score >= 8) return { label: 'Sharp', tone: 'sharp' };
+  if (score >= 5) return { label: 'Solid', tone: 'solid' };
+  return { label: 'Worth another look', tone: 'try' };
 }
 
 interface Feedback {
@@ -152,9 +258,9 @@ function parseDecisionOptionsFromApi(data: Record<string, unknown>): DecisionOpt
     .filter((x) => x.label.length > 0);
 }
 
-/** Phase step labels for the practice stepper bar. */
-const PHASE_STEPS_DECISION = ['Choose', 'Reason', 'Feedback'] as const;
-const PHASE_STEPS_OPEN = ['Read', 'Respond', 'Feedback'] as const;
+/** Phase step labels for the practice stepper bar — kept warm, not exam-y. */
+const PHASE_STEPS_DECISION = ['Scene', 'Your call', 'Coach'] as const;
+const PHASE_STEPS_OPEN = ['Scene', 'Your move', 'Coach'] as const;
 
 function getPhaseIndex(phase: PracticePhase, isDecision: boolean): number {
   if (phase === 'loading_scenario') return 0;
@@ -230,50 +336,30 @@ function FeedbackCard({
   colors: ReturnType<typeof useColors>;
   skill: FutureSkill;
 }) {
+  const [scoreOpen, setScoreOpen] = useState(false);
+  const [extrasOpen, setExtrasOpen] = useState(false);
+  const tier = tierLabelForScore(fb.scoreOutOf10);
+  const tierAccent = tier.tone === 'sharp' ? colors.success : tier.tone === 'solid' ? skill.color : colors.accentWarmTan;
+  const hasExtras = fb.strengths.length > 0 || fb.growthAreas.length > 0 || (fb.consequences?.trim() ?? '') !== '';
+
   return (
     <View style={[fbStyles.card, { backgroundColor: SLColors.bgSurface, borderColor: SLColors.borderDefault }]}>
-      <View style={[fbStyles.scoreRow, { borderColor: skill.color + '35', backgroundColor: skill.color + '10' }]}>
-        <Text style={[fbStyles.scoreLabel, { color: skill.color }]}>Score</Text>
-        <Text style={[fbStyles.scoreValue, { color: SLColors.inkPrimary }]}>
-          {fb.scoreOutOf10}
-          <Text style={[fbStyles.scoreDenom, { color: SLColors.inkMuted }]}>/10</Text>
+      <TouchableOpacity
+        onPress={() => setScoreOpen((o) => !o)}
+        activeOpacity={0.85}
+        style={[fbStyles.tierRow, { borderColor: tierAccent + '40', backgroundColor: tierAccent + '12' }]}
+      >
+        <Text style={[fbStyles.tierLabel, { color: tierAccent }]}>{tier.label}</Text>
+        <Text style={[fbStyles.tierHint, { color: SLColors.inkMuted }]}>
+          {scoreOpen ? `${fb.scoreOutOf10}/10` : 'Tap for score'}
         </Text>
-      </View>
+      </TouchableOpacity>
       <Text style={[fbStyles.feedbackText, { color: SLColors.inkPrimary }]}>{fb.feedback}</Text>
 
-      {fb.strengths.length > 0 && (
-        <View style={fbStyles.section}>
-          <View style={fbStyles.sectionHeader}>
-            <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-            <Text style={[fbStyles.sectionTitle, { color: SLColors.brandPrimary }]}>Strengths</Text>
-          </View>
-          {fb.strengths.map((s, i) => (
-            <Text key={i} style={[fbStyles.bullet, { color: SLColors.inkPrimary }]}>· {s}</Text>
-          ))}
-        </View>
-      )}
-
-      {fb.growthAreas.length > 0 && (
-        <View style={fbStyles.section}>
-          <View style={fbStyles.sectionHeader}>
-            <Ionicons name="trending-up-outline" size={14} color={colors.accentWarmTan} />
-            <Text style={[fbStyles.sectionTitle, { color: colors.accentWarmTan }]}>Growth areas</Text>
-          </View>
-          {fb.growthAreas.map((g, i) => (
-            <Text key={i} style={[fbStyles.bullet, { color: SLColors.inkPrimary }]}>· {g}</Text>
-          ))}
-        </View>
-      )}
-
-      {fb.consequences?.trim() ? (
-        <View style={[fbStyles.consequenceBox, { borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface }]}>
-          <View style={fbStyles.sectionHeader}>
-            <Ionicons name="git-branch-outline" size={14} color={colors.accentIndigo} />
-            <Text style={[fbStyles.sectionTitle, { color: colors.accentIndigo }]}>Likely outcomes</Text>
-          </View>
-          <Text style={[fbStyles.consequenceText, { color: SLColors.inkPrimary }]}>
-            {fb.consequences.split('\n').filter(Boolean).join('\n')}
-          </Text>
+      {fb.refinementPrompt?.trim() ? (
+        <View style={[fbStyles.refinementBox, { backgroundColor: skill.color + '12', borderColor: skill.color + '30' }]}>
+          <Ionicons name="arrow-forward-circle-outline" size={16} color={skill.color} />
+          <Text style={[fbStyles.refinementText, { color: SLColors.inkPrimary }]}>{fb.refinementPrompt}</Text>
         </View>
       ) : null}
 
@@ -287,30 +373,95 @@ function FeedbackCard({
         </View>
       ) : null}
 
-      {fb.refinementPrompt?.trim() ? (
-        <View style={[fbStyles.refinementBox, { backgroundColor: skill.color + '12', borderColor: skill.color + '30' }]}>
-          <Ionicons name="arrow-forward-circle-outline" size={16} color={skill.color} />
-          <Text style={[fbStyles.refinementText, { color: SLColors.inkPrimary }]}>{fb.refinementPrompt}</Text>
-        </View>
-      ) : null}
+      {hasExtras && (
+        <TouchableOpacity onPress={() => setExtrasOpen((o) => !o)} style={fbStyles.extrasToggle}>
+          <Ionicons
+            name={extrasOpen ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color={SLColors.inkMuted}
+          />
+          <Text style={[fbStyles.extrasToggleText, { color: SLColors.inkMuted }]}>
+            {extrasOpen ? 'Hide details' : 'Show what worked & what to tighten'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {extrasOpen && (
+        <>
+          {fb.strengths.length > 0 && (
+            <View style={fbStyles.section}>
+              <View style={fbStyles.sectionHeader}>
+                <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+                <Text style={[fbStyles.sectionTitle, { color: SLColors.brandPrimary }]}>What worked</Text>
+              </View>
+              {fb.strengths.map((s, i) => (
+                <Text key={i} style={[fbStyles.bullet, { color: SLColors.inkPrimary }]}>· {s}</Text>
+              ))}
+            </View>
+          )}
+
+          {fb.growthAreas.length > 0 && (
+            <View style={fbStyles.section}>
+              <View style={fbStyles.sectionHeader}>
+                <Ionicons name="trending-up-outline" size={14} color={colors.accentWarmTan} />
+                <Text style={[fbStyles.sectionTitle, { color: colors.accentWarmTan }]}>To tighten next time</Text>
+              </View>
+              {fb.growthAreas.map((g, i) => (
+                <Text key={i} style={[fbStyles.bullet, { color: SLColors.inkPrimary }]}>· {g}</Text>
+              ))}
+            </View>
+          )}
+
+          {fb.consequences?.trim() ? (
+            <View style={[fbStyles.consequenceBox, { borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface }]}>
+              <View style={fbStyles.sectionHeader}>
+                <Ionicons name="git-branch-outline" size={14} color={colors.accentIndigo} />
+                <Text style={[fbStyles.sectionTitle, { color: colors.accentIndigo }]}>If you go this way</Text>
+              </View>
+              <Text style={[fbStyles.consequenceText, { color: SLColors.inkPrimary }]}>
+                {fb.consequences.split('\n').filter(Boolean).join('\n')}
+              </Text>
+            </View>
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
 
 const fbStyles = StyleSheet.create({
   card: { borderRadius: SLRadius.lg, borderWidth: 1, padding: SLSpacing.md, gap: SLSpacing.sm },
-  scoreRow: {
+  tierRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
     borderRadius: SLRadius.md,
-    paddingVertical: SLSpacing.xs,
+    paddingVertical: SLSpacing.xs + 2,
     paddingHorizontal: SLSpacing.md,
   },
-  scoreLabel: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.xs, fontWeight: SLTypography.fontWeight.semibold, letterSpacing: 0.5, textTransform: 'uppercase' as any },
-  scoreValue: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.xl, fontWeight: SLTypography.fontWeight.bold },
-  scoreDenom: { fontFamily: SLTypography.fontFamily.mono, fontSize: SLTypography.fontSize.sm, fontWeight: SLTypography.fontWeight.medium },
+  tierLabel: {
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.base,
+    fontWeight: SLTypography.fontWeight.semibold,
+  },
+  tierHint: {
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.xs,
+    fontWeight: SLTypography.fontWeight.medium,
+  },
+  extrasToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SLSpacing.xxs,
+    paddingVertical: SLSpacing.xxs,
+  },
+  extrasToggleText: {
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.xs,
+    fontWeight: SLTypography.fontWeight.medium,
+  },
   feedbackText: { fontFamily: SLTypography.fontFamily.serif, fontSize: SLTypography.fontSize.base, lineHeight: SLTypography.fontSize.base * 1.6 },
   section: { gap: 4 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: SLSpacing.xxs, marginBottom: 2 },
@@ -420,12 +571,21 @@ export default function SkillDetailScreen() {
     returnTo?: string | string[];
     /** Pre-select a sub-skill (e.g. from Skill Lab catalog). */
     atomic?: string | string[];
+    /** Optional ?depth=quick|standard or ?quick=1 to pre-select Quick Round. */
+    depth?: string | string[];
+    quick?: string | string[];
   }>();
   const skillIdParam = normalizeSkillRouteParam(params.skillId);
   const atomicQs = (() => {
     const a = params.atomic;
     const s = Array.isArray(a) ? a[0] : a;
     return typeof s === 'string' && s.length > 0 ? s : undefined;
+  })();
+  const initialDepth: PracticeDepth = (() => {
+    const d = params.depth;
+    const dv = Array.isArray(d) ? d[0] : d;
+    if (dv === 'standard') return 'standard';
+    return 'quick';
   })();
   const router = useRouter();
   const colors = useColors();
@@ -457,7 +617,13 @@ export default function SkillDetailScreen() {
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [customProblemDraft, setCustomProblemDraft] = useState('');
   const [optionalContextOpen, setOptionalContextOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [learnerContext, setLearnerContext] = useState<UserProfileContext | null>(null);
+
+  // Quick Round state — single-call multi-choice flow
+  const [practiceDepth, setPracticeDepth] = useState<PracticeDepth>(initialDepth);
+  const [quickOptions, setQuickOptions] = useState<QuickOption[]>([]);
+  const [quickPickedId, setQuickPickedId] = useState<string | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   /** Timestamp when the current scenario started loading - used for duration_ms. */
@@ -517,7 +683,7 @@ export default function SkillDetailScreen() {
     setOptionalContextOpen(false);
   }, [skill]);
 
-  // ── Start practice: generate scenario ──────────────────────────────────────
+  // ── Start practice: generate scenario (standard mode) ──────────────────────
   const startPractice = useCallback(async () => {
     const atomicId = selectedAtomicIdRef.current;
     if (!atomicId || !skill) return;
@@ -530,10 +696,6 @@ export default function SkillDetailScreen() {
     setSelectedDecisionId(null);
     setPracticeQuestion('');
     scenarioStartedAt.current = Date.now();
-
-    if (user?.id) {
-      await recordScenarioAttempt(user.id, skill.id);
-    }
 
     try {
       const customDraft = customProblemDraft.trim();
@@ -567,6 +729,11 @@ export default function SkillDetailScreen() {
 
       setScenario(scenarioText);
 
+      // Only count scenarios_attempted after a real scenario landed (avoids inflated counts on errors).
+      if (user?.id) {
+        void recordScenarioAttempt(user.id, skill.id);
+      }
+
       if (isDecisionMode) {
         let options = parseDecisionOptionsFromApi(data);
         if (options.length < 2) options = [...FALLBACK_DECISION_OPTIONS];
@@ -597,6 +764,115 @@ export default function SkillDetailScreen() {
     }
   }, [skill, practiceMode, isDecisionMode, user?.id, customProblemDraft, learnerContext]);
 
+
+  // ── Quick Round: one API call returns scenario + 3 options w/ pre-baked coaching ──
+  const startQuickRound = useCallback(async () => {
+    const atomicId = selectedAtomicIdRef.current;
+    if (!atomicId || !skill) return;
+    setPracticeError(null);
+    setPhase('quick_loading');
+    setQuickOptions([]);
+    setQuickPickedId(null);
+    setScenario('');
+    scenarioStartedAt.current = Date.now();
+
+    try {
+      const customDraft = customProblemDraft.trim();
+      const practiceContext = buildPracticeContextWire(learnerContext);
+
+      const res = await fetch(buildVercelApiUrl('/api/skills-coach'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skillId: skill.id,
+          skillName: skill.name,
+          atomicSkillId: atomicId,
+          atomicSkillName: skill.atomicSkills.find((a) => a.id === atomicId)?.name ?? null,
+          practiceMode: 'quick_round',
+          generateScenario: true,
+          ...(customDraft ? { customProblemDraft: customDraft } : {}),
+          ...(practiceContext ? { practiceContext } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        let errMsg = `Server error (${res.status})`;
+        try { const j = JSON.parse(errBody) as Record<string, unknown>; if (typeof j.error === 'string') errMsg = j.error; } catch { /* ignore */ }
+        throw new Error(errMsg);
+      }
+
+      const data = (await res.json()) as Record<string, unknown>;
+      const scenarioText = String(data.scenario ?? '').trim();
+      if (!scenarioText) {
+        throw new Error('The AI returned an empty round. Please try again.');
+      }
+      const opts = parseQuickOptionsFromApi(data);
+
+      if (user?.id) {
+        void recordScenarioAttempt(user.id, skill.id);
+      }
+
+      setScenario(scenarioText);
+      setQuickOptions(opts);
+      setPhase('quick_choosing');
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Could not start a quick round.';
+      setPracticeError(errMsg);
+      setPhase('idle');
+    }
+  }, [skill, user?.id, customProblemDraft, learnerContext]);
+
+  const pickQuickOption = useCallback(
+    async (opt: QuickOption) => {
+      if (!skill) return;
+      setQuickPickedId(opt.id);
+      setPhase('quick_feedback');
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+
+      const durationMs =
+        scenarioStartedAt.current > 0 ? Date.now() - scenarioStartedAt.current : undefined;
+
+      void recordRoundForToday();
+
+      if (user?.id) {
+        const saved = await saveSkillSession({
+          userId: user.id,
+          skillId: skill.id,
+          atomicSkillId: selectedAtomicId,
+          scenario,
+          aiQuestion: 'Quick round — pick the move that fits',
+          userAnswer: opt.label,
+          aiFeedback: `${opt.reaction}${opt.nextTip ? `\n\nNext time: ${opt.nextTip}` : ''}`,
+          aiScore: opt.tier === 'sharp' ? 9 : opt.tier === 'solid' ? 7 : 5,
+          strengths: opt.tier === 'sharp' ? [opt.reaction] : [],
+          growthAreas: opt.tier !== 'sharp' && opt.nextTip ? [opt.nextTip] : [],
+          attemptNumber: 1,
+          durationMs,
+          practiceMode: 'quick_round',
+          sessionMetadata: { practiceMode: 'quick_round' },
+        });
+        if (saved) {
+          setRoundsSaved((n) => n + 1);
+        } else {
+          void bumpOfflineSessionCount(skill.id);
+        }
+      } else {
+        void bumpOfflineSessionCount(skill.id);
+      }
+    },
+    [skill, user?.id, selectedAtomicId, scenario]
+  );
+
+  // Quick → standard handoff: open a deep round on the same skill/atomic
+  const goDeeper = useCallback(() => {
+    setPracticeDepth('standard');
+    setQuickOptions([]);
+    setQuickPickedId(null);
+    setScenario('');
+    setPhase('idle');
+    setTimeout(() => startPractice(), 50);
+  }, [startPractice]);
 
   // ── Submit answer: get feedback ─────────────────────────────────────────────
   const submitAnswer = useCallback(async () => {
@@ -679,6 +955,7 @@ export default function SkillDetailScreen() {
         }
       }
 
+      void recordRoundForToday();
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not get feedback. Check your connection and try again.';
@@ -761,11 +1038,11 @@ export default function SkillDetailScreen() {
 
           {/* Sub-skills (first - pick a focus, then practice; About sits below Start) */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sub-skills</Text>
+            <Text style={styles.sectionTitle}>Pick a focus</Text>
             <Text style={styles.bodyTextMuted}>
               {selectedAtomic
-                ? `Focus: ${selectedAtomic.name}. Tap start to get a scenario—then you respond and learn from feedback.`
-                : 'Choose a focus area for this round.'}
+                ? `Today: ${selectedAtomic.name}.`
+                : 'Choose a focus for this round.'}
             </Text>
             <View style={styles.chipRow}>
               {skill.atomicSkills.map((a) => (
@@ -789,7 +1066,7 @@ export default function SkillDetailScreen() {
                   activeOpacity={0.75}
                 >
                   <Text style={[styles.optionalContextToggleText, { color: SLColors.inkPrimary }]}>
-                    Personalise with your situation (optional)
+                    Use a real moment from your week (optional)
                   </Text>
                   <Ionicons
                     name={optionalContextOpen ? 'chevron-up' : 'chevron-down'}
@@ -830,9 +1107,9 @@ export default function SkillDetailScreen() {
             <View style={styles.section}>
               {roundsSaved > 0 && (
                 <View style={[styles.roundsBadge, { backgroundColor: SLColors.brandPrimary + '15' }]}>
-                  <Ionicons name="checkmark-circle-outline" size={16} color={colors.primary} />
+                  <Ionicons name="sparkles-outline" size={16} color={colors.primary} />
                   <Text style={[styles.roundsText, { color: SLColors.brandPrimary }]}>
-                    {roundsSaved} {roundsSaved === 1 ? 'round' : 'rounds'} completed this session
+                    {roundsSaved} {roundsSaved === 1 ? 'round' : 'rounds'} done today — nice
                   </Text>
                 </View>
               )}
@@ -844,6 +1121,53 @@ export default function SkillDetailScreen() {
                 </View>
               )}
 
+              <View style={styles.depthToggleRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.depthChip,
+                    practiceDepth === 'quick' && { backgroundColor: skill.color + '18', borderColor: skill.color },
+                  ]}
+                  onPress={() => setPracticeDepth('quick')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="flash-outline"
+                    size={14}
+                    color={practiceDepth === 'quick' ? skill.color : colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.depthChipText,
+                      { color: practiceDepth === 'quick' ? skill.color : colors.textSecondary },
+                    ]}
+                  >
+                    Quick round · 60s
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.depthChip,
+                    practiceDepth === 'standard' && { backgroundColor: skill.color + '18', borderColor: skill.color },
+                  ]}
+                  onPress={() => setPracticeDepth('standard')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="school-outline"
+                    size={14}
+                    color={practiceDepth === 'standard' ? skill.color : colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.depthChipText,
+                      { color: practiceDepth === 'standard' ? skill.color : colors.textSecondary },
+                    ]}
+                  >
+                    Deep practice
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity
                 style={[
                   styles.startBtn,
@@ -853,12 +1177,12 @@ export default function SkillDetailScreen() {
                     borderColor: SLColors.borderDefault,
                   },
                 ]}
-                onPress={startPractice}
+                onPress={practiceDepth === 'quick' ? startQuickRound : startPractice}
                 disabled={!selectedAtomicId}
                 activeOpacity={selectedAtomicId ? 0.85 : 1}
               >
                 <Ionicons
-                  name="play-circle-outline"
+                  name={practiceDepth === 'quick' ? 'flash' : 'play-circle-outline'}
                   size={20}
                   color={selectedAtomicId ? '#fff' : colors.textMuted}
                 />
@@ -868,29 +1192,55 @@ export default function SkillDetailScreen() {
                     { color: selectedAtomicId ? '#fff' : colors.textMuted },
                   ]}
                 >
-                  {practiceError ? 'Try again' : roundsSaved > 0 ? 'Practice again' : 'Start AI practice'}
+                  {practiceError
+                    ? 'Try again'
+                    : practiceDepth === 'quick'
+                      ? 'Start quick round'
+                      : roundsSaved > 0
+                        ? 'Start a deep round'
+                        : 'Start deep practice'}
                 </Text>
               </TouchableOpacity>
               {!selectedAtomicId ? (
                 <Text style={[styles.practiceHint, { color: SLColors.inkSecondary }]}>
-                  Select a sub-skill above to enable practice.
+                  Pick a sub-skill above to start.
+                </Text>
+              ) : practiceDepth === 'quick' ? (
+                <Text style={[styles.practiceHint, { color: SLColors.inkMuted }]}>
+                  One scenario, three choices, one tap of coaching. Done in 60 seconds.
                 </Text>
               ) : (
                 <Text style={[styles.practiceHint, { color: SLColors.inkMuted }]}>
-                  Jump in first—after feedback you’ll see a short playbook for your next try.
+                  Write your own response and get full coaching. ~5 minutes.
                 </Text>
               )}
             </View>
           )}
 
+          {/* About this skill — collapsible, sits below the start CTA so it never blocks the round. */}
           {!isPracticing && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About this skill</Text>
-              <Text style={styles.bodyText}>{skill.description}</Text>
-              <View style={[styles.whyBox, { backgroundColor: skill.color + '10', borderColor: skill.color + '30' }]}>
-                <Ionicons name="information-circle-outline" size={16} color={skill.color} />
-                <Text style={[styles.whyText, { color: SLColors.inkPrimary }]}>{skill.why}</Text>
-              </View>
+              <TouchableOpacity
+                onPress={() => setAboutOpen((o) => !o)}
+                activeOpacity={0.8}
+                style={styles.aboutToggleRow}
+              >
+                <Text style={styles.sectionTitle}>Why this skill matters</Text>
+                <Ionicons
+                  name={aboutOpen ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+              {aboutOpen && (
+                <>
+                  <Text style={styles.bodyText}>{skill.description}</Text>
+                  <View style={[styles.whyBox, { backgroundColor: skill.color + '10', borderColor: skill.color + '30' }]}>
+                    <Ionicons name="information-circle-outline" size={16} color={skill.color} />
+                    <Text style={[styles.whyText, { color: SLColors.inkPrimary }]}>{skill.why}</Text>
+                  </View>
+                </>
+              )}
             </View>
           )}
 
@@ -899,17 +1249,22 @@ export default function SkillDetailScreen() {
             <View style={styles.section}>
               {/* Practice header with close */}
               <View style={styles.practiceHeader}>
-                <Ionicons name="school-outline" size={16} color={skill.color} />
+                <Ionicons
+                  name={practiceDepth === 'quick' ? 'flash-outline' : 'school-outline'}
+                  size={16}
+                  color={skill.color}
+                />
                 <Text style={[styles.practiceLabel, { color: skill.color }]}>
-                  AI Practice{selectedAtomic ? ` · ${selectedAtomic.name}` : ''}
+                  {practiceDepth === 'quick' ? 'Quick round' : 'Deep practice'}
+                  {selectedAtomic ? ` · ${selectedAtomic.name}` : ''}
                 </Text>
                 <TouchableOpacity onPress={() => setPhase('idle')} hitSlop={8} style={{ marginLeft: 'auto' }}>
                   <Ionicons name="close" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
-              {/* Phase stepper */}
-              {phase !== 'loading_scenario' && (
+              {/* Standard-mode stepper (hidden for quick rounds — they are a single beat) */}
+              {practiceDepth === 'standard' && phase !== 'loading_scenario' && (
                 <PhaseStepper
                   steps={phaseSteps}
                   activeIndex={getPhaseIndex(phase, isDecisionMode)}
@@ -919,13 +1274,123 @@ export default function SkillDetailScreen() {
               )}
 
               {/* Loading */}
-              {phase === 'loading_scenario' && (
+              {(phase === 'loading_scenario' || phase === 'quick_loading') && (
                 <View style={styles.loadingBox}>
                   <ActivityIndicator size="small" color={skill.color} />
                   <Text style={[styles.loadingText, { color: SLColors.inkMuted }]}>
-                    {modeConfig.loadingText}
+                    {phase === 'quick_loading' ? 'Cooking up a quick round…' : modeConfig.loadingText}
                   </Text>
                 </View>
+              )}
+
+              {/* Quick Round: scenario + 3 tap-able options + instant lightweight feedback */}
+              {(phase === 'quick_choosing' || phase === 'quick_feedback') && (
+                <>
+                  <View style={[styles.scenarioBox, { backgroundColor: skill.color + '0D', borderColor: skill.color + '30' }]}>
+                    <View style={styles.scenarioLabelRow}>
+                      <Ionicons name={skill.icon as any} size={14} color={skill.color} />
+                      <Text style={[styles.scenarioLabel, { color: skill.color }]}>
+                        Quick scene
+                      </Text>
+                    </View>
+                    <Text style={[styles.scenarioText, { color: SLColors.inkPrimary }]}>{scenario}</Text>
+                  </View>
+
+                  {phase === 'quick_choosing' && (
+                    <>
+                      <Text style={[styles.decisionStepTitle, { color: SLColors.inkPrimary }]}>
+                        What would you do?
+                      </Text>
+                      <Text style={[styles.decisionHint, { color: SLColors.inkSecondary }]}>
+                        Tap one. You'll get a quick coach take in a heartbeat.
+                      </Text>
+                      {quickOptions.map((opt, i) => {
+                        const letter = ['A', 'B', 'C'][i] ?? '•';
+                        return (
+                          <TouchableOpacity
+                            key={opt.id}
+                            style={[styles.decisionRow, { borderColor: SLColors.borderDefault, backgroundColor: SLColors.bgSurface }]}
+                            onPress={() => pickQuickOption(opt)}
+                            activeOpacity={0.75}
+                          >
+                            <View style={[styles.decisionLetterBadge, { backgroundColor: skill.color + '22' }]}>
+                              <Text style={[styles.decisionLetter, { color: skill.color }]}>{letter}</Text>
+                            </View>
+                            <Text style={[styles.decisionLabelText, { color: SLColors.inkPrimary }]}>
+                              {opt.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {phase === 'quick_feedback' && (() => {
+                    const picked = quickOptions.find((o) => o.id === quickPickedId);
+                    if (!picked) return null;
+                    const tierMeta = QUICK_TIER_COPY[picked.tier];
+                    const tierAccent =
+                      picked.tier === 'sharp'
+                        ? colors.success
+                        : picked.tier === 'solid'
+                          ? skill.color
+                          : colors.accentWarmTan;
+                    return (
+                      <View style={styles.feedbackArea}>
+                        <View style={[styles.choiceSummary, { borderColor: tierAccent + '40', backgroundColor: tierAccent + '10' }]}>
+                          <Text style={[styles.questionLabel, { color: tierAccent }]}>You chose</Text>
+                          <Text style={[styles.choiceSummaryText, { color: SLColors.inkPrimary }]}>
+                            {picked.label}
+                          </Text>
+                        </View>
+
+                        <View style={[fbStyles.card, { backgroundColor: SLColors.bgSurface, borderColor: SLColors.borderDefault }]}>
+                          <View style={[fbStyles.tierRow, { borderColor: tierAccent + '40', backgroundColor: tierAccent + '12' }]}>
+                            <Text style={[fbStyles.tierLabel, { color: tierAccent }]}>
+                              {tierMeta.emoji} {tierMeta.label}
+                            </Text>
+                          </View>
+                          <Text style={[fbStyles.feedbackText, { color: SLColors.inkPrimary }]}>
+                            {picked.reaction}
+                          </Text>
+                          {picked.nextTip ? (
+                            <View style={[fbStyles.refinementBox, { backgroundColor: skill.color + '12', borderColor: skill.color + '30' }]}>
+                              <Ionicons name="bulb-outline" size={16} color={skill.color} />
+                              <Text style={[fbStyles.refinementText, { color: SLColors.inkPrimary }]}>
+                                <Text style={{ fontWeight: '600' as any }}>Coach tip · </Text>
+                                {picked.nextTip}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <View style={styles.feedbackActions}>
+                          <TouchableOpacity
+                            style={[styles.actionBtn, styles.refineBtn, { borderColor: skill.color }]}
+                            onPress={startQuickRound}
+                          >
+                            <Ionicons name="refresh-outline" size={16} color={skill.color} />
+                            <Text style={[styles.actionBtnText, { color: skill.color }]}>
+                              Another round
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: skill.color }]}
+                            onPress={goDeeper}
+                          >
+                            <Ionicons name="arrow-forward-outline" size={16} color="#fff" />
+                            <Text style={[styles.actionBtnText, { color: '#fff' }]}>Go deeper</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity onPress={() => setPhase('idle')} style={styles.doneLink}>
+                          <Text style={[styles.doneLinkText, { color: SLColors.inkMuted }]}>Done for now</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })()}
+                </>
               )}
 
               {/* Scenario / brief / AI output */}
@@ -1062,9 +1527,9 @@ export default function SkillDetailScreen() {
                               },
                             ]}
                           >
-                            <Text style={[styles.howTitle, { color: SLColors.inkPrimary }]}>Playbook for next time</Text>
+                            <Text style={[styles.howTitle, { color: SLColors.inkPrimary }]}>Coach tips</Text>
                             <Text style={[styles.playbookLead, { color: SLColors.inkMuted }]}>
-                              Use this after you’ve seen feedback—same scenario on “Try again,” or a fresh one on “New scenario.”
+                              Try one of these next time you’re in this kind of moment.
                             </Text>
                             {getHowToSolveLines({
                               skillId: skill.id,
@@ -1284,5 +1749,33 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     actionBtnText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLButton.ghost.fontSize, fontWeight: SLTypography.fontWeight.medium },
     doneLink: { alignItems: 'center', paddingVertical: SLSpacing.xxs },
     doneLinkText: { fontFamily: SLTypography.fontFamily.sans, fontSize: SLTypography.fontSize.sm, color: colors.textMuted },
+    depthToggleRow: {
+      flexDirection: 'row',
+      gap: SLSpacing.sm,
+      marginBottom: SLSpacing.md,
+    },
+    depthChip: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: SLSpacing.xxs,
+      paddingVertical: SLSpacing.xs + 2,
+      paddingHorizontal: SLSpacing.sm,
+      borderRadius: SLRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    depthChipText: {
+      fontFamily: SLTypography.fontFamily.sans,
+      fontSize: SLTypography.fontSize.xs,
+      fontWeight: SLTypography.fontWeight.semibold,
+    },
+    aboutToggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
   });
 

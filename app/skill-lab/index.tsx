@@ -20,9 +20,14 @@ import {
 import { Shadows, useColors } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import { FUTURE_SKILLS } from '@/data/future-skills';
-import { getSkillsProgress } from '@/services/skills-storage';
+import { getSkillsProgress, computeEngagementFromProgress } from '@/services/skills-storage';
 import type { SkillProgress } from '@/services/skills-storage';
-import { getOfflineSessionCounts } from '@/services/skill-lab-offline-progress';
+import {
+  getOfflineSessionCounts,
+  getQuickRoundCursor,
+  getRoundDays,
+  setQuickRoundCursor,
+} from '@/services/skill-lab-offline-progress';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { GlassBackground } from '@/components/ui/glass-background';
 
@@ -35,6 +40,8 @@ export default function SkillLabScreen() {
   const { user } = useAuthStore();
   const [progress, setProgress] = useState<Record<string, SkillProgress>>({});
   const [offlineBySkill, setOfflineBySkill] = useState<Record<string, number>>({});
+  const [localRoundDays, setLocalRoundDays] = useState<string[]>([]);
+  const [quickRoundCursor, setQuickRoundCursorState] = useState(0);
 
   const headerFade = useRef(new Animated.Value(0)).current;
   const railFade = useRef(new Animated.Value(0)).current;
@@ -42,13 +49,24 @@ export default function SkillLabScreen() {
 
   const loadProgress = useCallback(() => {
     if (user?.id) {
-      Promise.all([getSkillsProgress(user.id), getOfflineSessionCounts()]).then(([p, off]) => {
+      Promise.all([
+        getSkillsProgress(user.id),
+        getOfflineSessionCounts(),
+        getRoundDays(),
+        getQuickRoundCursor(),
+      ]).then(([p, off, days, cursor]) => {
         setProgress(p);
         setOfflineBySkill(off);
+        setLocalRoundDays(days);
+        setQuickRoundCursorState(cursor);
       });
     } else {
       setProgress({});
       setOfflineBySkill({});
+      Promise.all([getRoundDays(), getQuickRoundCursor()]).then(([days, cursor]) => {
+        setLocalRoundDays(days);
+        setQuickRoundCursorState(cursor);
+      });
     }
   }, [user?.id]);
 
@@ -81,9 +99,60 @@ export default function SkillLabScreen() {
     [progress, offlineBySkill]
   );
 
+  /** "X of Y sub-skills tried" derived from atomic_skill_breakdown. */
+  const subSkillsTriedForSkill = useCallback(
+    (skillId: string) => {
+      const breakdown = progress[skillId]?.atomicSkillBreakdown ?? {};
+      let tried = 0;
+      for (const k of Object.keys(breakdown)) {
+        if ((breakdown[k] ?? 0) > 0) tried += 1;
+      }
+      return tried;
+    },
+    [progress]
+  );
+
   const skillsStarted = FUTURE_SKILLS.filter((s) => sessionCountForSkill(s.id) > 0).length;
   const totalSessions = FUTURE_SKILLS.reduce((sum, s) => sum + sessionCountForSkill(s.id), 0);
   const progressPct = FUTURE_SKILLS.length > 0 ? (skillsStarted / FUTURE_SKILLS.length) * 100 : 0;
+
+  /** Streak / today flags — combine cloud progress with local AsyncStorage day list. */
+  const { practicedToday: cloudPracticedToday, streakDays: cloudStreak } =
+    computeEngagementFromProgress(progress);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const practicedToday = cloudPracticedToday || localRoundDays.includes(todayKey);
+  const streakDays = (() => {
+    if (cloudStreak >= 1) return cloudStreak;
+    if (localRoundDays.length === 0) return 0;
+    const set = new Set(localRoundDays);
+    let n = 0;
+    const cursor = new Date();
+    cursor.setHours(0, 0, 0, 0);
+    if (!set.has(cursor.toISOString().slice(0, 10))) {
+      cursor.setDate(cursor.getDate() - 1);
+      if (!set.has(cursor.toISOString().slice(0, 10))) return 0;
+    }
+    while (set.has(cursor.toISOString().slice(0, 10))) {
+      n += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return n;
+  })();
+
+  /** Pick a "next focus" skill using a local round-robin cursor. */
+  const nextFocusSkill = (() => {
+    if (FUTURE_SKILLS.length === 0) return undefined;
+    return FUTURE_SKILLS[quickRoundCursor % FUTURE_SKILLS.length];
+  })();
+
+  const startTodayQuickRound = useCallback(() => {
+    if (!nextFocusSkill || FUTURE_SKILLS.length === 0) return;
+    const nextCursor = (quickRoundCursor + 1) % FUTURE_SKILLS.length;
+    setQuickRoundCursorState(nextCursor);
+    void setQuickRoundCursor(nextCursor);
+    router.push(`/skill-lab/${nextFocusSkill.id}?depth=quick`);
+  }, [nextFocusSkill, quickRoundCursor, router]);
+
   const styles = createStyles(colors);
 
   return (
@@ -121,34 +190,71 @@ export default function SkillLabScreen() {
           ]}
         >
           <Text style={styles.pageSubtitle}>
-            Choose a skill to see its sub-skills and start AI practice.
+            One scenario. Three choices. A coach in your pocket. Done in 60 seconds.
           </Text>
 
           <View style={styles.statsRow}>
-            <View style={styles.statBlock}>
-              <Text style={styles.statNumber}>{skillsStarted}</Text>
-              <Text style={styles.statLabel}>
-                {'/ ' + FUTURE_SKILLS.length + ' STARTED'}
-              </Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBlock}>
-              <Text style={styles.statNumber}>{totalSessions}</Text>
-              <Text style={styles.statLabel}>
-                {totalSessions === 1 ? 'SESSION' : 'SESSIONS'}
+            {streakDays > 0 ? (
+              <View style={styles.streakChip}>
+                <Ionicons name="flame" size={14} color={colors.warning ?? '#E07B5C'} />
+                <Text style={styles.streakChipText}>
+                  {streakDays}-day streak
+                </Text>
+              </View>
+            ) : null}
+            <View style={styles.todayChip}>
+              <Ionicons
+                name={practicedToday ? 'checkmark-circle' : 'sunny-outline'}
+                size={14}
+                color={practicedToday ? colors.success : colors.textMuted}
+              />
+              <Text style={[styles.todayChipText, { color: practicedToday ? colors.success : colors.textMuted }]}>
+                {practicedToday ? 'Round done today' : 'No round yet today'}
               </Text>
             </View>
           </View>
+
+          <View style={styles.statsRowSecondary}>
+            <Text style={styles.statsLine}>
+              {totalSessions} {totalSessions === 1 ? 'round' : 'rounds'} total · {skillsStarted}/{FUTURE_SKILLS.length} skills tried
+            </Text>
+          </View>
         </Animated.View>
 
+        {/* ── Today's Quick Round CTA ─────────────────────────────── */}
+        {nextFocusSkill && (
+          <TouchableOpacity
+            style={[styles.quickCta, { borderColor: nextFocusSkill.color + '40', backgroundColor: nextFocusSkill.color + '10' }]}
+            activeOpacity={0.85}
+            onPress={startTodayQuickRound}
+          >
+            <View style={[styles.quickCtaIconTile, { backgroundColor: nextFocusSkill.color + '22' }]}>
+              <Ionicons name="flash" size={20} color={nextFocusSkill.color} />
+            </View>
+            <View style={styles.quickCtaText}>
+              <Text style={styles.quickCtaTitle}>
+                {practicedToday ? 'One more quick round?' : "Today's quick round"}
+              </Text>
+              <Text style={styles.quickCtaSubtitle}>
+                {practicedToday
+                  ? `60 seconds on ${nextFocusSkill.name} — next in the rotation.`
+                  : `60 seconds on ${nextFocusSkill.name}. We rotate the skill — you tap.`}
+              </Text>
+            </View>
+            <Ionicons name="arrow-forward" size={18} color={nextFocusSkill.color} />
+          </TouchableOpacity>
+        )}
+
         {/* ── Section Label ─────────────────────────────────────────── */}
-        <Text style={styles.sectionLabel}>Skills</Text>
+        <Text style={styles.sectionLabel}>Pick a skill to practise</Text>
 
         {/* ── Skill Cards ───────────────────────────────────────────── */}
         <View style={styles.cardList}>
           {FUTURE_SKILLS.map((skill, idx) => {
             const sessions = sessionCountForSkill(skill.id);
             const n = skill.atomicSkills.length;
+            const tried = subSkillsTriedForSkill(skill.id);
+            const subPct = n > 0 ? Math.min(100, (tried / n) * 100) : 0;
 
             return (
               <Animated.View
@@ -184,15 +290,27 @@ export default function SkillLabScreen() {
                       </View>
                     </View>
 
+                    {/* Per-skill sub-skill progress (tried out of total) */}
+                    <View style={styles.subProgressTrack}>
+                      <View
+                        style={[
+                          styles.subProgressFill,
+                          { width: `${subPct}%` as any, backgroundColor: skill.color },
+                        ]}
+                      />
+                    </View>
+
                     <View style={styles.cardFooter}>
                       <View style={styles.metaChip}>
                         <Ionicons name="layers-outline" size={12} color={colors.textMuted} />
-                        <Text style={styles.metaText}>{n} sub-skills</Text>
+                        <Text style={styles.metaText}>
+                          {tried > 0 ? `${tried}/${n} sub-skills tried` : `${n} sub-skills`}
+                        </Text>
                       </View>
                       {sessions > 0 && (
                         <View style={[styles.sessionBadge, { backgroundColor: skill.color + '14' }]}>
                           <Text style={[styles.sessionBadgeText, { color: skill.color }]}>
-                            {sessions} {sessions === 1 ? 'session' : 'sessions'}
+                            {sessions} {sessions === 1 ? 'round' : 'rounds'}
                           </Text>
                         </View>
                       )}
@@ -255,28 +373,83 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   statsRow: {
     flexDirection: 'row' as any,
     alignItems: 'center' as any,
-    gap: SLSpacing.lg,
+    flexWrap: 'wrap' as any,
+    gap: SLSpacing.sm,
   },
-  statBlock: {
-    alignItems: 'flex-start' as any,
+  statsRowSecondary: {
+    marginTop: SLSpacing.xs,
   },
-  statNumber: {
+  statsLine: {
     fontFamily: SLTypography.fontFamily.sans,
-    fontSize: SLTypography.fontSize.xl,
-    fontWeight: SLTypography.fontWeight.bold,
-    color: colors.textPrimary,
+    fontSize: SLTypography.fontSize.xs,
+    color: colors.textMuted,
   },
-  statLabel: {
+  streakChip: {
+    flexDirection: 'row' as any,
+    alignItems: 'center' as any,
+    gap: 4,
+    paddingHorizontal: SLSpacing.sm,
+    paddingVertical: 4,
+    borderRadius: SLRadius.full,
+    backgroundColor: '#FFF1E5',
+  },
+  streakChipText: {
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.xs,
+    fontWeight: SLTypography.fontWeight.semibold,
+    color: '#A04A2C',
+  },
+  todayChip: {
+    flexDirection: 'row' as any,
+    alignItems: 'center' as any,
+    gap: 4,
+    paddingHorizontal: SLSpacing.sm,
+    paddingVertical: 4,
+    borderRadius: SLRadius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  todayChipText: {
     fontFamily: SLTypography.fontFamily.sans,
     fontSize: SLTypography.fontSize.xs,
     fontWeight: SLTypography.fontWeight.medium,
-    color: colors.textMuted,
-    marginTop: 2,
   },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: colors.border,
+
+  // Today's Quick Round CTA
+  quickCta: {
+    flexDirection: 'row' as any,
+    alignItems: 'center' as any,
+    gap: SLSpacing.sm,
+    marginHorizontal: SLSpacing.md,
+    marginBottom: SLSpacing.lg,
+    paddingVertical: SLSpacing.md,
+    paddingHorizontal: SLSpacing.md,
+    borderRadius: SLRadius.xl,
+    borderWidth: 1,
+    ...(Platform.OS === 'web' ? { transition: 'border-color 0.15s ease, box-shadow 0.15s ease', cursor: 'pointer' } : {}),
+  } as any,
+  quickCtaIconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: SLRadius.md,
+    alignItems: 'center' as any,
+    justifyContent: 'center' as any,
+  },
+  quickCtaText: {
+    flex: 1,
+    gap: 2,
+  },
+  quickCtaTitle: {
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.base,
+    fontWeight: SLTypography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  quickCtaSubtitle: {
+    fontFamily: SLTypography.fontFamily.sans,
+    fontSize: SLTypography.fontSize.xs,
+    color: colors.textSecondary,
   },
 
   // Section label
@@ -353,6 +526,18 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     lineHeight: SLTypography.fontSize.xs * SLTypography.lineHeight.normal,
     marginTop: 2,
   },
+
+  subProgressTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.surface,
+    overflow: 'hidden' as any,
+    marginTop: 2,
+  },
+  subProgressFill: {
+    height: '100%' as any,
+    borderRadius: 2,
+  } as any,
 
   cardFooter: {
     flexDirection: 'row' as any,

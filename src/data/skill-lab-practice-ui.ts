@@ -266,89 +266,82 @@ const GENERIC_OPEN = [
 /** UI field copy for practice area + idle hints (per skill for open_reflection). */
 const OPEN_FIELD_BY_SKILL: Record<string, PracticeFieldCopy> = {
   emotional_intelligence: {
-    scenarioLabel: 'Situation',
-    inputPlaceholder:
-      "Share your honest thinking: what you notice, how you'd respond, and why, with emotional specificity.",
-    hint: 'Read the situation, then reflect openly, then get coaching on your response.',
-    loadingText: 'Generating your scenario...',
+    scenarioLabel: 'Scene',
+    inputPlaceholder: "What would you say or do — and why?",
+    hint: 'Read the scene, write what you’d say, then get a coach take.',
+    loadingText: 'Setting the scene…',
   },
   critical_thinking: {
-    scenarioLabel: 'Situation',
-    inputPlaceholder:
-      'Unpack assumptions, what you treat as fundamental vs convention, then reason step by step, trade-offs and what would change your mind.',
-    hint: 'Read the situation, then write your full analysis, then get coaching.',
-    loadingText: 'Generating your scenario...',
+    scenarioLabel: 'Scene',
+    inputPlaceholder: "What's your read? Name your reasoning and what would change your mind.",
+    hint: 'Read it, lay out your thinking, get a coach take.',
+    loadingText: 'Setting the scene…',
   },
   problem_solving: {
-    scenarioLabel: 'Situation',
-    inputPlaceholder:
-      'Clarify the real problem vs symptoms, your root-cause hypothesis, options with trade-offs, and the smallest test you’d run next.',
-    hint: 'Read the situation, then explain how you would diagnose and move forward in writing.',
-    loadingText: 'Generating your scenario...',
+    scenarioLabel: 'Scene',
+    inputPlaceholder: 'Where do you think the real problem sits, and what would you try first?',
+    hint: 'Read it, sketch your move, get a coach take.',
+    loadingText: 'Setting the scene…',
   },
   adaptability: {
-    scenarioLabel: 'Situation',
-    inputPlaceholder:
-      'Name what changed or what’s unknown, how you’d update your approach, and concrete next steps.',
-    hint: 'Read the situation, then describe how you would adapt with specifics.',
-    loadingText: 'Generating your scenario...',
+    scenarioLabel: 'Scene',
+    inputPlaceholder: 'What changed, and what would you do differently now?',
+    hint: 'Read it, name your shift, get a coach take.',
+    loadingText: 'Setting the scene…',
   },
   systems_thinking: {
-    scenarioLabel: 'Situation',
-    inputPlaceholder:
-      'Map loops, dependencies, and second-order effects, then what you would try to shift and what you’d watch.',
-    hint: 'Read the situation, then analyse the system in writing, then get coaching.',
-    loadingText: 'Generating your scenario...',
+    scenarioLabel: 'Scene',
+    inputPlaceholder: 'What loops or dependencies do you see, and where would you nudge first?',
+    hint: 'Read it, map the system, get a coach take.',
+    loadingText: 'Setting the scene…',
   },
   strategic_sales: {
-    scenarioLabel: 'Sales Situation',
-    inputPlaceholder:
-      'Diagnose the buyer\'s real need, articulate the value in their terms, and describe your next move. Be specific about what you\'d say and why.',
-    hint: 'Read the sales scenario, then write your approach and reasoning, then get coaching.',
-    loadingText: 'Generating your sales scenario...',
+    scenarioLabel: 'Sales scene',
+    inputPlaceholder: "What would you say to the buyer right now — and why?",
+    hint: 'Read it, write your move, get a coach take.',
+    loadingText: 'Setting the scene…',
   },
   leadership_essentials: {
-    scenarioLabel: 'Leadership Situation',
-    inputPlaceholder:
-      'Describe what you would say or do as a leader in this situation. Be specific about your reasoning and what you\'d avoid.',
-    hint: 'Read the leadership scenario, then write your response, then get coaching on your approach.',
-    loadingText: 'Generating your leadership scenario...',
+    scenarioLabel: 'Leadership scene',
+    inputPlaceholder: 'What would you say to your team here — and what would you skip?',
+    hint: 'Read it, write your move, get a coach take.',
+    loadingText: 'Setting the scene…',
   },
 };
 
 const DEFAULT_OPEN_FIELD: PracticeFieldCopy = {
-  scenarioLabel: 'Situation',
-  inputPlaceholder: "Share your honest thinking: what you notice, how you'd respond, and why.",
-  hint: 'Read the situation, then reflect openly, then get coaching on your response.',
-  loadingText: 'Generating your scenario...',
+  scenarioLabel: 'Scene',
+  inputPlaceholder: "What would you say or do here — and why?",
+  hint: 'Read it, write your move, get a coach take.',
+  loadingText: 'Setting the scene…',
 };
 
 const OUTPUT_AUDIT_FIELD: PracticeFieldCopy = {
   scenarioLabel: 'Exercise',
-  inputPlaceholder: "Be specific, what you noticed, why it matters, what you'd change or verify.",
-  hint: 'Each sub-skill uses a different exercise. Pick a sub-skill, then start practice.',
-  loadingText: 'Generating your exercise...',
+  inputPlaceholder: "What's off, why it matters, what you'd change or check.",
+  hint: 'Each sub-skill is a different mini-exercise. Pick one and tap start.',
+  loadingText: 'Cooking up your exercise…',
 };
 
 const GENERATIVE_FIELD: PracticeFieldCopy = {
-  scenarioLabel: 'Creative Challenge',
-  inputPlaceholder: 'List your ideas, aim for at least 4. Range over polish. One should challenge an assumption.',
-  hint: 'Read the challenge, then generate ideas (range over polish), then get feedback on originality.',
-  loadingText: 'Generating your creative challenge...',
+  scenarioLabel: 'Creative scene',
+  inputPlaceholder: 'Quick list of ideas — aim for range, not polish. One should feel a bit weird.',
+  hint: 'Quantity beats polish. Aim for 4+ ideas, then get a coach take.',
+  loadingText: 'Cooking up a creative scene…',
 };
 
 const DRAFT_FIELD: PracticeFieldCopy = {
-  scenarioLabel: 'Communication Brief',
-  inputPlaceholder: 'Draft your message, email, Slack, memo, or opening line. Keep it under 150 words.',
-  hint: 'Read the brief, then draft your message, then get feedback on clarity, framing, and audience fit.',
-  loadingText: 'Generating your communication brief...',
+  scenarioLabel: 'Communication brief',
+  inputPlaceholder: 'Draft a short message — under 150 words is plenty.',
+  hint: 'Read the brief, draft your line, get a coach take on tone and clarity.',
+  loadingText: 'Setting up the brief…',
 };
 
 const DECISION_FIELD: PracticeFieldCopy = {
-  scenarioLabel: 'Scenario',
-  inputPlaceholder: 'Short answer is fine, focus on your logic and trade-offs.',
-  hint: 'Read the scenario, then pick a move, then explain your reasoning. You will get feedback, trade-offs, and a reflection prompt.',
-  loadingText: 'Generating your scenario...',
+  scenarioLabel: 'Scene',
+  inputPlaceholder: 'A line or two on why you picked it.',
+  hint: 'Read it, pick a path, say why in a sentence or two.',
+  loadingText: 'Setting the scene…',
 };
 
 function outputAuditScenarioLabel(skillId: string | undefined, atomicSkillId: string | null): string {
@@ -384,14 +377,13 @@ export function normalizeSkillRouteParam(
 export function getOptionalSituationCopy(skillId: string): { hint: string; placeholder: string } {
   if (skillId === 'emotional_intelligence') {
     return {
-      hint: 'Describe a real interpersonal moment. The AI will anchor the scenario when it fits.',
-      placeholder: 'Example: my manager challenged my timeline in front of the client…',
+      hint: 'Got a real moment in mind? Drop it in and we’ll anchor the scene there.',
+      placeholder: 'e.g. my manager pushed back on my timeline in front of the client…',
     };
   }
   return {
-    hint: 'Optional: add real constraints (market, price, org politics, deadlines). The AI will anchor the scenario when it fits.',
-    placeholder:
-      'Example: enterprise buyers in our region see us as too expensive versus local alternatives…',
+    hint: 'Got a real constraint in mind? Drop it in and we’ll anchor the scene there.',
+    placeholder: 'e.g. enterprise buyers see us as pricey vs local alternatives…',
   };
 }
 
