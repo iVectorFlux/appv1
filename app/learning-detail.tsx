@@ -41,6 +41,7 @@ import {
   recordEpisodeVideoCompleted,
   recordEpisodeAudioCompleted,
 } from '@/services/learning-content-progress';
+import { buildAudioProxyUrl } from '@/utils/vercel-api';
 
 type MediaMode = 'video' | 'audio';
 
@@ -105,6 +106,8 @@ export default function LearningDetailScreen() {
   /** Bumps when screen refocuses or app returns foreground - remounts native <Video> to recover stuck decoders. */
   const [videoMountNonce, setVideoMountNonce] = useState(0);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  /** When the user taps play before the media element is ready, we queue it here. */
+  const pendingPlayRef = useRef(false);
 
   // expo-av ref for native platforms
   const videoRef = useRef<Video>(null);
@@ -142,16 +145,18 @@ export default function LearningDetailScreen() {
         setMediaMode(startMode);
       }
       // Video starts loading immediately via the player element.
-      // Audio on web is lazy-initialized on first play (no initial spinner needed).
+      // Audio on web is eagerly pre-created so it's ready for the first play tap.
       // Audio on native is initialized below via a dedicated effect.
       setIsLoading(startMode === 'video');
       setError(null);
       setProgress(0);
       setDuration(0);
       setIsPlaying(false);
+      pendingPlayRef.current = false;
       setDetailLoading(false);
     })();
     return () => {
+      pendingPlayRef.current = false;
       if (Platform.OS === 'web') {
         if (webAudioRef.current) {
           webAudioRef.current.pause();
@@ -159,6 +164,10 @@ export default function LearningDetailScreen() {
             webAudioRef.current.parentNode.removeChild(webAudioRef.current);
           }
           webAudioRef.current = null;
+        }
+        if (webVideoRef.current) {
+          webVideoRef.current.pause();
+          webVideoRef.current = null;
         }
       }
       if (Platform.OS !== 'web' && audioRef.current) {
@@ -308,7 +317,8 @@ export default function LearningDetailScreen() {
     }
   };
 
-  // Web audio: create and append to DOM so play() works (browsers often require media in DOM)
+  // Web audio: create and append to DOM so play() works (browsers often require media in DOM).
+  // Called eagerly on mount AND on switchToAudio so the element is warm when the user taps play.
   const setupWebAudio = (audioUrl: string) => {
     if (Platform.OS !== 'web') return;
     if (webAudioRef.current) {
@@ -319,8 +329,10 @@ export default function LearningDetailScreen() {
       webAudioRef.current = null;
     }
     const audio = document.createElement('audio');
-    audio.src = audioUrl;
+    audio.src = buildAudioProxyUrl(audioUrl);
     audio.preload = 'auto';
+    // The proxy adds CORS + Range headers; keep anonymous so browsers expose metadata consistently.
+    audio.crossOrigin = 'anonymous';
     audio.style.position = 'fixed';
     audio.style.left = '-9999px';
     audio.style.opacity = '0';
@@ -341,14 +353,50 @@ export default function LearningDetailScreen() {
       }
     };
     audio.onerror = () => {
+      pendingPlayRef.current = false;
       setError('Unable to load audio. Please try again.');
       setIsLoading(false);
     };
-    audio.oncanplay = () => setIsLoading(false);
+    // When the element becomes playable, honor any queued play intent
+    audio.oncanplay = () => {
+      setIsLoading(false);
+      if (pendingPlayRef.current) {
+        pendingPlayRef.current = false;
+        audio.play().catch((err) => {
+          setError('Audio didn\u2019t start. Tap Play again or try the Video tab.');
+          console.error('Audio deferred-play error:', err);
+        });
+      }
+    };
     document.body.appendChild(audio);
     audio.load();
     webAudioRef.current = audio;
   };
+
+  // Eagerly pre-create the web audio element when the module loads (so it's warm by first tap)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (!module?.audioUrl?.trim()) return;
+    // Only pre-create if not already set up (switchToAudio also calls setupWebAudio)
+    if (!webAudioRef.current) {
+      setupWebAudio(module.audioUrl.trim());
+    }
+    // Cleanup handled by the params.id effect above
+    return () => {
+      if (webAudioRef.current) {
+        webAudioRef.current.pause();
+        if (webAudioRef.current.parentNode) {
+          webAudioRef.current.parentNode.removeChild(webAudioRef.current);
+        }
+        webAudioRef.current = null;
+      }
+      if (webVideoRef.current) {
+        webVideoRef.current.pause();
+        webVideoRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [module?.audioUrl]);
 
   const togglePlayPause = async () => {
     if (mediaMode === 'video') {
@@ -357,6 +405,22 @@ export default function LearningDetailScreen() {
           if (isPlaying) {
             webVideoRef.current.pause();
           } else {
+            // If the video isn't ready yet, wait for it
+            if (webVideoRef.current.readyState < 2) {
+              setIsLoading(true);
+              await new Promise<void>((resolve) => {
+                const el = webVideoRef.current;
+                if (!el) { resolve(); return; }
+                const handler = () => {
+                  el.removeEventListener('canplay', handler);
+                  resolve();
+                };
+                el.addEventListener('canplay', handler);
+                // Safety timeout - don't wait forever
+                setTimeout(() => { el.removeEventListener('canplay', handler); resolve(); }, 8000);
+              });
+              setIsLoading(false);
+            }
             await webVideoRef.current.play();
           }
         } catch (err) {
@@ -377,18 +441,31 @@ export default function LearningDetailScreen() {
       }
     } else if (mediaMode === 'audio') {
       if (Platform.OS === 'web') {
-        // On mobile browsers play() must run in the same user gesture; ensure element exists then play immediately
+        // Ensure audio element exists (should already be pre-created, but guard just in case)
         if (!webAudioRef.current && module?.audioUrl?.trim()) {
           setupWebAudio(module.audioUrl.trim());
         }
         if (webAudioRef.current) {
           if (isPlaying) {
+            pendingPlayRef.current = false;
             webAudioRef.current.pause();
           } else {
-            webAudioRef.current.play().catch((err) => {
-              setError('Audio didn’t start. Tap Play again or try the Video tab.');
-              console.error('Audio play error:', err);
-            });
+            // If element is ready (readyState >= 2 = HAVE_CURRENT_DATA), play immediately.
+            // Otherwise queue play intent - oncanplay will fire it.
+            if (webAudioRef.current.readyState >= 2) {
+              webAudioRef.current.play().catch((err) => {
+                setError('Audio didn\u2019t start. Tap Play again or try the Video tab.');
+                console.error('Audio play error:', err);
+              });
+            } else {
+              // Queue the play for when audio becomes ready
+              pendingPlayRef.current = true;
+              setIsLoading(true);
+              // Also attempt play() now - on some browsers this will succeed once data arrives
+              webAudioRef.current.play().catch(() => {
+                // Expected to fail if not ready - oncanplay handler will retry
+              });
+            }
           }
         }
       } else if (audioRef.current) {
@@ -585,7 +662,7 @@ export default function LearningDetailScreen() {
                     controls: true,
                     playsInline: true,
                     controlsList: 'nodownload',
-                    preload: 'metadata',
+                    preload: 'auto',
                     style: {
                       width: '100%',
                       height: '100%',

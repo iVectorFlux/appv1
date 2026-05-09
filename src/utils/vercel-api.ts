@@ -10,6 +10,8 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import type { Big5EngineResult } from '@/services/big5-engine';
 
+const DEFAULT_DEPLOYED_APP_URL = 'https://appv1-erd1.vercel.app';
+
 function readConfiguredAppUrl(): string {
   const extra = Constants.expoConfig?.extra?.appUrl;
   if (typeof extra === 'string' && extra.trim()) {
@@ -69,6 +71,30 @@ function joinApiUrl(path: string): string {
 export function buildVercelApiUrl(path: string): string {
   assertLocalWebCanReachApi();
   return joinApiUrl(path);
+}
+
+/**
+ * Web-only media proxy URL.
+ *
+ * Local Expo web is served by Metro, which has no `/api/*`. For media only,
+ * default to the deployed Vercel app so localhost audio does not hit S3
+ * directly and fail CORS. Native platforms keep using the original S3 URL.
+ */
+export function buildAudioProxyUrl(sourceUrl: string): string {
+  const trimmed = sourceUrl.trim();
+  if (!trimmed || Platform.OS !== 'web') return trimmed;
+
+  let base = readConfiguredAppUrl();
+  if (!base && typeof window !== 'undefined') {
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1';
+    base = isLocal
+      ? DEFAULT_DEPLOYED_APP_URL
+      : `${window.location.protocol}//${window.location.host}`.replace(/\/$/, '');
+  }
+  if (!base) base = DEFAULT_DEPLOYED_APP_URL;
+
+  return `${base}/api/audio-proxy?url=${encodeURIComponent(trimmed)}`;
 }
 
 export type ChatApiSuccess = {
