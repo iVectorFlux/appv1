@@ -766,8 +766,8 @@ export default function SkillDetailScreen() {
 
 
   // ── Quick Round: one API call returns scenario + 3 options w/ pre-baked coaching ──
-  const startQuickRound = useCallback(async () => {
-    const atomicId = selectedAtomicIdRef.current;
+  const startQuickRound = useCallback(async (atomicIdOverride?: string | null) => {
+    const atomicId = atomicIdOverride ?? selectedAtomicIdRef.current;
     if (!atomicId || !skill) return;
     setPracticeError(null);
     setPhase('quick_loading');
@@ -1177,7 +1177,10 @@ export default function SkillDetailScreen() {
                     borderColor: SLColors.borderDefault,
                   },
                 ]}
-                onPress={practiceDepth === 'quick' ? startQuickRound : startPractice}
+                onPress={() => {
+                  if (practiceDepth === 'quick') void startQuickRound();
+                  else void startPractice();
+                }}
                 disabled={!selectedAtomicId}
                 activeOpacity={selectedAtomicId ? 0.85 : 1}
               >
@@ -1367,7 +1370,20 @@ export default function SkillDetailScreen() {
                         <View style={styles.feedbackActions}>
                           <TouchableOpacity
                             style={[styles.actionBtn, styles.refineBtn, { borderColor: skill.color }]}
-                            onPress={startQuickRound}
+                            onPress={() => {
+                              const ids = skill.atomicSkills.map((a) => a.id);
+                              if (ids.length === 0) {
+                                void startQuickRound();
+                                return;
+                              }
+                              const cur = selectedAtomicIdRef.current;
+                              const idx = cur ? ids.indexOf(cur) : -1;
+                              const nextIdx = idx === -1 ? 0 : (idx + 1) % ids.length;
+                              const nextId = ids[nextIdx];
+                              selectedAtomicIdRef.current = nextId;
+                              setSelectedAtomicId(nextId);
+                              void startQuickRound(nextId);
+                            }}
                           >
                             <Ionicons name="refresh-outline" size={16} color={skill.color} />
                             <Text style={[styles.actionBtnText, { color: skill.color }]}>

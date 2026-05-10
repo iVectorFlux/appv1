@@ -20,6 +20,7 @@ import {
 import { Shadows, useColors } from '@/constants/design-tokens';
 import { useAuthStore } from '@/stores/auth-store';
 import { FUTURE_SKILLS } from '@/data/future-skills';
+import type { AtomicSkill, FutureSkill } from '@/data/future-skills';
 import { getSkillsProgress, computeEngagementFromProgress } from '@/services/skills-storage';
 import type { SkillProgress } from '@/services/skills-storage';
 import {
@@ -33,6 +34,18 @@ import { GlassBackground } from '@/components/ui/glass-background';
 
 const STAGGER = 50;
 const FADE_MS = SLMotion.normal;
+
+/** Landing CTA: parent skill + atomic sub-skill from a monotonic cursor (persisted unbounded). */
+function quickRoundFocusAt(cursor: number): { skill: FutureSkill | undefined; atomic: AtomicSkill | null } {
+  const n = FUTURE_SKILLS.length;
+  if (n === 0) return { skill: undefined, atomic: null };
+  const skill = FUTURE_SKILLS[cursor % n];
+  const atomics = skill.atomicSkills;
+  if (!atomics.length) return { skill, atomic: null };
+  const lap = Math.floor(cursor / n);
+  const atomic = atomics[lap % atomics.length] ?? null;
+  return { skill, atomic };
+}
 
 export default function SkillLabScreen() {
   const router = useRouter();
@@ -139,19 +152,16 @@ export default function SkillLabScreen() {
     return n;
   })();
 
-  /** Pick a "next focus" skill using a local round-robin cursor. */
-  const nextFocusSkill = (() => {
-    if (FUTURE_SKILLS.length === 0) return undefined;
-    return FUTURE_SKILLS[quickRoundCursor % FUTURE_SKILLS.length];
-  })();
+  const { skill: nextFocusSkill, atomic: nextQuickAtomic } = quickRoundFocusAt(quickRoundCursor);
 
   const startTodayQuickRound = useCallback(() => {
     if (!nextFocusSkill || FUTURE_SKILLS.length === 0) return;
-    const nextCursor = (quickRoundCursor + 1) % FUTURE_SKILLS.length;
+    const nextCursor = quickRoundCursor + 1;
     setQuickRoundCursorState(nextCursor);
     void setQuickRoundCursor(nextCursor);
-    router.push(`/skill-lab/${nextFocusSkill.id}?depth=quick`);
-  }, [nextFocusSkill, quickRoundCursor, router]);
+    const atomicQs = nextQuickAtomic?.id ? `&atomic=${encodeURIComponent(nextQuickAtomic.id)}` : '';
+    router.push(`/skill-lab/${nextFocusSkill.id}?depth=quick${atomicQs}`);
+  }, [nextFocusSkill, nextQuickAtomic, quickRoundCursor, router]);
 
   const styles = createStyles(colors);
 
@@ -236,9 +246,13 @@ export default function SkillLabScreen() {
                 {practicedToday ? 'One more quick round?' : "Today's quick round"}
               </Text>
               <Text style={styles.quickCtaSubtitle}>
-                {practicedToday
-                  ? `60 seconds on ${nextFocusSkill.name} — next in the rotation.`
-                  : `60 seconds on ${nextFocusSkill.name}. We rotate the skill — you tap.`}
+                {nextQuickAtomic
+                  ? practicedToday
+                    ? `60 seconds on ${nextQuickAtomic.name} · ${nextFocusSkill.name} — next combo in the rotation.`
+                    : `60 seconds on ${nextQuickAtomic.name} · ${nextFocusSkill.name}. We rotate skills — you tap.`
+                  : practicedToday
+                    ? `60 seconds on ${nextFocusSkill.name} — next in the rotation.`
+                    : `60 seconds on ${nextFocusSkill.name}. We rotate the skill — you tap.`}
               </Text>
             </View>
             <Ionicons name="arrow-forward" size={18} color={nextFocusSkill.color} />
