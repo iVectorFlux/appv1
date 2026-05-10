@@ -405,18 +405,22 @@ export default function FullEQTestScreen() {
           <Button
             title={questionsLoading ? 'Loading questions…' : 'Begin Assessment'}
             disabled={questionsLoading || questions.length === 0}
-            onPress={async () => {
+            onPress={() => {
               if (!user?.id || questions.length === 0) return;
               const startTime = Date.now();
               setSessionStartTime(startTime);
               setQuestionStartTime(startTime);
-              try {
-                const sid = await startEQAssessmentSession(user.id, 'full_test', questions.length);
-                setSessionId(sid);
-              } catch (e) {
-                console.error('[Full EQ Test] Failed to start session:', e);
-              }
+              // Transition immediately - don't let a slow DB call block the UI
               setScreenState('test');
+              // Fire session creation in the background with a timeout
+              const SESSION_TIMEOUT_MS = 4000;
+              const sessionPromise = startEQAssessmentSession(user.id, 'full_test', questions.length);
+              const timeoutPromise = new Promise<string>((_, reject) =>
+                setTimeout(() => reject(new Error('Session start timed out')), SESSION_TIMEOUT_MS)
+              );
+              Promise.race([sessionPromise, timeoutPromise])
+                .then((sid) => setSessionId(sid))
+                .catch((e) => console.error('[Full EQ Test] Failed to start session:', e));
             }}
             size="lg"
             fullWidth
