@@ -31,6 +31,11 @@ async function postVoiceJson<T>(path: string, body: object): Promise<T> {
       );
     }
     if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error(
+          'Voice API is not on the server yet (404). Redeploy your Vercel project from the latest main branch, then try again.'
+        );
+      }
       const msg = typeof parsed.error === 'string' ? parsed.error : `Request failed (${res.status})`;
       throw new Error(msg);
     }
