@@ -8,9 +8,11 @@ import { Audio } from 'expo-av';
 import type { ChatMode } from '@/services/chat-storage';
 import {
   audioUriToBase64,
+  playVoiceSpeechResult,
   requestVoiceSpeech,
   requestVoiceTranscription,
 } from '@/utils/voice-api';
+import { stopDeviceSpeech } from '@/services/device-speech';
 
 export type VoicePhase =
   | 'idle'
@@ -28,15 +30,15 @@ type UseVoiceConversationArgs = {
   onUserTranscript: (text: string) => Promise<string | null>;
 };
 
-const RECORDING_MIME =
+const DEFAULT_RECORDING_MIME =
   Platform.OS === 'web' ? 'audio/webm' : Platform.OS === 'ios' ? 'audio/m4a' : 'audio/mp4';
 
-const MAX_LISTEN_MS = 18_000;
-const SILENCE_END_MS = 1_400;
-const MIN_SPEECH_BEFORE_SILENCE_MS = 700;
+const MAX_LISTEN_MS = 22_000;
+const SILENCE_END_MS = 2_000;
+const MIN_SPEECH_BEFORE_SILENCE_MS = 1_000;
 /** Metering / RMS below this counts as silence (platform-specific scales). */
-const NATIVE_SILENCE_DB = -42;
-const WEB_SILENCE_RMS = 0.018;
+const NATIVE_SILENCE_DB = -38;
+const WEB_SILENCE_RMS = 0.014;
 
 export function useVoiceConversation({
   mode,
@@ -56,6 +58,7 @@ export function useVoiceConversation({
   const webAnalyserRef = useRef<{ ctx: AudioContext; interval: ReturnType<typeof setInterval> } | null>(
     null
   );
+  const recordingMimeRef = useRef(DEFAULT_RECORDING_MIME);
   const listenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listenStartedAtRef = useRef(0);
@@ -82,6 +85,7 @@ export function useVoiceConversation({
   }, []);
 
   const stopPlayback = useCallback(async () => {
+    stopDeviceSpeech();
     if (soundRef.current) {
       try {
         await soundRef.current.stopAsync();
@@ -140,8 +144,8 @@ export function useVoiceConversation({
       const trimmed = text.trim();
       if (!trimmed) return;
       setPhase('speaking');
-      const { chunks } = await requestVoiceSpeech({ text: trimmed, mode });
-      await playWavChunks(chunks);
+      const speech = await requestVoiceSpeech({ text: trimmed, mode });
+      await playVoiceSpeechResult(speech, playWavChunks);
     },
     [mode, playWavChunks]
   );
@@ -213,19 +217,29 @@ export function useVoiceConversation({
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       throw new Error('Microphone is not available in this browser.');
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+      },
+    });
     webStreamRef.current = stream;
     webChunksRef.current = [];
 
     const mimeType =
-      typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : 'audio/mp4';
+      typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+    recordingMimeRef.current = mimeType.split(';')[0] ?? DEFAULT_RECORDING_MIME;
     const recorder = new MediaRecorder(stream, { mimeType });
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) webChunksRef.current.push(e.data);
     };
-    recorder.start();
+    recorder.start(250);
     webRecorderRef.current = recorder;
 
     const ctx = new AudioContext();
@@ -256,7 +270,7 @@ export function useVoiceConversation({
 
     const blob = await new Promise<Blob>((resolve, reject) => {
       recorder.onstop = () => {
-        const b = new Blob(webChunksRef.current, { type: RECORDING_MIME });
+        const b = new Blob(webChunksRef.current, { type: recordingMimeRef.current });
         webChunksRef.current = [];
         resolve(b);
       };
@@ -296,12 +310,13 @@ export function useVoiceConversation({
       setStatusDetail(null);
 
       try {
-        const audioBase64 = await audioUriToBase64(uri, RECORDING_MIME);
+        const mime = recordingMimeRef.current;
+        const audioBase64 = await audioUriToBase64(uri, mime);
         if (Platform.OS === 'web' && uri.startsWith('blob:')) {
           URL.revokeObjectURL(uri);
         }
 
-        const { text } = await requestVoiceTranscription({ audioBase64, mimeType: RECORDING_MIME });
+        const { text } = await requestVoiceTranscription({ audioBase64, mimeType: mime });
         if (!text.trim()) {
           processingRef.current = false;
           if (sessionActiveRef.current) {

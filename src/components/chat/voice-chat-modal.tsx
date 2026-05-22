@@ -125,7 +125,7 @@ export function VoiceChatModal({
           </Text>
           {voice.isListening ? (
             <Text style={[styles.detailText, { color: colors.textMuted }]}>
-              Speak naturally — I will pick up when you pause. Tap the circle if you are done.
+              Speak clearly in a quiet space — I will pick up when you pause. Tap the circle when you are done.
             </Text>
           ) : null}
           {voice.statusDetail ? (

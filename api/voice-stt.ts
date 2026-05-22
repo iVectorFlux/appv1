@@ -10,10 +10,13 @@ import { getGroqEnv } from './_lib/groq-config';
 import {
   GROQ_AUDIO_TRANSCRIPTIONS_URL,
   GROQ_WHISPER_MODEL,
+  WHISPER_TRANSCRIPTION_PROMPT,
   mimeToGroqFilename,
+  parseGroqErrorPayload,
 } from './_lib/groq-voice';
 
 const MAX_AUDIO_BYTES = 12 * 1024 * 1024;
+const MIN_AUDIO_BYTES = 2_000;
 
 function readJsonBody(req: VercelRequest): {
   audioBase64?: string;
@@ -33,6 +36,13 @@ function readJsonBody(req: VercelRequest): {
     }
   }
   return null;
+}
+
+function normalizeTranscript(raw: string): string {
+  return raw
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.!?])/g, '$1')
+    .trim();
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -68,6 +78,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(400).json({ error: 'Empty audio payload.' });
     return;
   }
+  if (audioBuffer.length < MIN_AUDIO_BYTES) {
+    res.status(422).json({
+      error: 'Recording was too short. Speak for at least a second, then pause.',
+    });
+    return;
+  }
   if (audioBuffer.length > MAX_AUDIO_BYTES) {
     res.status(413).json({ error: 'Audio file too large. Keep recordings under about 60 seconds.' });
     return;
@@ -84,7 +100,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const form = new FormData();
   form.append('model', GROQ_WHISPER_MODEL);
   form.append('language', language);
-  form.append('response_format', 'json');
+  form.append('prompt', WHISPER_TRANSCRIPTION_PROMPT);
+  form.append('response_format', 'verbose_json');
   form.append('temperature', '0');
   form.append(
     'file',
@@ -102,21 +119,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (!upstream.ok) {
       const errText = await upstream.text();
       console.error('[voice-stt] Groq error:', errText.slice(0, 500));
-      let message = 'Speech recognition failed.';
-      try {
-        const j = JSON.parse(errText) as { error?: { message?: string } };
-        if (typeof j?.error?.message === 'string') message = j.error.message;
-      } catch {
-        if (errText.length > 0 && errText.length < 400) message = errText;
-      }
-      res.status(502).json({ error: message });
+      const { message } = parseGroqErrorPayload(errText);
+      res.status(502).json({ error: message || 'Speech recognition failed.' });
       return;
     }
 
-    const data = (await upstream.json()) as { text?: string };
-    const text = typeof data.text === 'string' ? data.text.trim() : '';
-    if (!text) {
-      res.status(422).json({ error: 'Could not understand the audio. Please try again.' });
+    const data = (await upstream.json()) as {
+      text?: string;
+      segments?: { text?: string; no_speech_prob?: number }[];
+    };
+
+    const segmentTexts = (data.segments ?? [])
+      .filter((s) => (s.no_speech_prob ?? 0) < 0.6)
+      .map((s) => (typeof s.text === 'string' ? s.text.trim() : ''))
+      .filter(Boolean);
+
+    const text = normalizeTranscript(
+      typeof data.text === 'string' && data.text.trim()
+        ? data.text
+        : segmentTexts.join(' ')
+    );
+
+    if (!text || text.length < 2) {
+      res.status(422).json({
+        error: 'Could not understand the audio. Try speaking a bit louder and closer to the mic.',
+      });
       return;
     }
 

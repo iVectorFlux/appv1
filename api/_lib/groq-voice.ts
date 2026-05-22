@@ -1,6 +1,5 @@
 /**
- * Groq voice: Whisper Large v3 (STT) + Canopy Labs Orpheus (TTS).
- * Serverless only — uses GROQ_API_KEY from env.
+ * Groq voice: Whisper Large v3 (STT) + cloud TTS (PlayAI / Orpheus).
  */
 
 export const GROQ_AUDIO_TRANSCRIPTIONS_URL =
@@ -10,14 +9,24 @@ export const GROQ_AUDIO_SPEECH_URL = 'https://api.groq.com/openai/v1/audio/speec
 
 export const GROQ_WHISPER_MODEL = 'whisper-large-v3';
 
-export const GROQ_ORPHEUS_MODEL = 'canopylabs/orpheus-v1-english';
+/** Guides spelling for wellbeing / workplace vocabulary (max 224 tokens). */
+export const WHISPER_TRANSCRIPTION_PROMPT =
+  'The speaker is talking with an AI coach about feelings, stress, anxiety, work, leadership, relationships, grounding, and personal growth.';
 
-/** Orpheus input limit per request */
+export const GROQ_ORPHEUS_MODEL = 'canopylabs/orpheus-v1-english';
+export const GROQ_PLAYAI_TTS_MODEL = 'playai-tts';
+
 export const ORPHEUS_MAX_INPUT_CHARS = 200;
+export const PLAYAI_MAX_INPUT_CHARS = 900;
 
 export const ORPHEUS_VOICES = {
   inner_ally: 'hannah',
   coach: 'austin',
+} as const;
+
+export const PLAYAI_VOICES = {
+  inner_ally: 'Celeste-PlayAI',
+  coach: 'Fritz-PlayAI',
 } as const;
 
 /** Remove wire-format JSON and markdown noise before TTS. */
@@ -33,8 +42,8 @@ export function textForSpeech(raw: string): string {
   return t;
 }
 
-/** Split text into Orpheus-safe chunks (≤ maxLen), preferring sentence boundaries. */
-export function chunkTextForOrpheus(text: string, maxLen = ORPHEUS_MAX_INPUT_CHARS): string[] {
+/** Split text into TTS-safe chunks, preferring sentence boundaries. */
+export function chunkTextForSpeech(text: string, maxLen: number): string[] {
   const cleaned = textForSpeech(text);
   if (!cleaned) return [];
   if (cleaned.length <= maxLen) return [cleaned];
@@ -73,6 +82,14 @@ export function chunkTextForOrpheus(text: string, maxLen = ORPHEUS_MAX_INPUT_CHA
   return chunks;
 }
 
+export function chunkTextForOrpheus(text: string): string[] {
+  return chunkTextForSpeech(text, ORPHEUS_MAX_INPUT_CHARS);
+}
+
+export function chunkTextForPlayAi(text: string): string[] {
+  return chunkTextForSpeech(text, PLAYAI_MAX_INPUT_CHARS);
+}
+
 export function mimeToGroqFilename(mime: string): string {
   const m = mime.toLowerCase().split(';')[0].trim();
   if (m.includes('webm')) return 'audio.webm';
@@ -81,4 +98,21 @@ export function mimeToGroqFilename(mime: string): string {
   if (m.includes('mp4') || m.includes('m4a')) return 'audio.m4a';
   if (m.includes('ogg')) return 'audio.ogg';
   return 'audio.m4a';
+}
+
+export function parseGroqErrorPayload(errText: string): { message: string; code?: string } {
+  try {
+    const j = JSON.parse(errText) as { error?: { message?: string; code?: string } };
+    return {
+      message: typeof j?.error?.message === 'string' ? j.error.message : errText,
+      code: typeof j?.error?.code === 'string' ? j.error.code : undefined,
+    };
+  } catch {
+    return { message: errText };
+  }
+}
+
+export function isOrpheusTermsError(errText: string): boolean {
+  const { code, message } = parseGroqErrorPayload(errText);
+  return code === 'model_terms_required' || message.includes('model_terms_required');
 }
