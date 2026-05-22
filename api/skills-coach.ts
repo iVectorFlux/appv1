@@ -116,15 +116,17 @@ function buildQuickRoundPrompt(skillName: string, atomicSkillName?: string): str
 
 This is meant to feel like a snappy game, not homework. Keep it warm and human.
 
+DIFFICULTY (important): Target experienced professionals, not beginners. The scenario should include at least one complicating factor (time pressure, incomplete information, competing stakeholders, reputational risk, or a trade-off where two reasonable values clash). The three options must ALL sound plausible at first glance — no cartoonishly bad choices. "solid" and "try" should be moves smart people actually take under stress; only "sharp" should show the distinctive mastery of "${focus}".
+
 Output:
-1) "scenario": ONE specific 1-2 sentence workplace moment. Concrete characters or roles. No exposition.
+1) "scenario": ONE specific 2-3 sentence workplace moment. Concrete characters or roles. Include stakes and tension. No exposition or teaching.
 2) "options": EXACTLY 3 short response options. Each LABEL is one sentence, max 14 words, written in first person ("I'd ...") or as a direct line. Each option represents a different real approach a person might take in this moment.
 
 For each option, also fill these fields (warm coaching tone, NO numerical scores, NO grading words like "wrong" / "correct"):
   - "tier": exactly one of "sharp" | "solid" | "try"
-      sharp = clearly the best application of "${focus}"
-      solid = okay but missing the key move of "${focus}"
-      try   = common mistake, the move most people regret later
+      sharp = the move that best applies "${focus}" in THIS messy moment (not generic politeness)
+      solid = defensible but misses the key nuance of "${focus}" or optimizes the wrong thing
+      try   = a tempting shortcut that backfires here (sounds reasonable, fails on second thought)
   - "reaction": ONE short sentence (max ~22 words). Praise what is good (sharp), name the gap kindly (solid), or surface the trap with a friendly nudge (try). No numbers, no clinical language. Use second person ("You ...").
   - "nextTip": ONE short sentence (max ~22 words). A concrete tweak or move to try next time, tied to "${focus}".
 
@@ -898,7 +900,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       promptText = appendScenarioLearnerTail(promptText, body);
 
-      const scenarioMaxTokens = practiceMode === 'quick_round' ? 700 : 1000;
+      const scenarioMaxTokens = practiceMode === 'quick_round' ? 850 : 1000;
       const groqScenario = await callGroqAndParseSkillsJson(promptText, apiKey, model, scenarioMaxTokens);
       if (isGroqFailure(groqScenario)) {
         res.status(502).json({ error: groqScenario.message });

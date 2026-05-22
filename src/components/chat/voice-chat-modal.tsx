@@ -1,6 +1,6 @@
 /**
- * Full-screen voice conversation for Inner Ally / Coach.
- * Hold mic to speak; AI replies with Orpheus TTS.
+ * Hands-free voice conversation for Inner Ally / Coach.
+ * Opens with a spoken intro, then listens and replies in a loop.
  */
 
 import React, { useCallback } from 'react';
@@ -10,7 +10,6 @@ import {
   Modal,
   TouchableOpacity,
   StyleSheet,
-  Pressable,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,12 +22,15 @@ type VoiceChatModalProps = {
   mode: ChatMode;
   modeColor: string;
   modeLabel: string;
+  introText: string;
   onClose: () => void;
   onUserTranscript: (text: string) => Promise<string | null>;
 };
 
 function phaseLabel(phase: VoicePhase): string {
   switch (phase) {
+    case 'intro':
+      return 'Starting conversation…';
     case 'listening':
       return 'Listening…';
     case 'transcribing':
@@ -40,7 +42,7 @@ function phaseLabel(phase: VoicePhase): string {
     case 'error':
       return 'Something went wrong';
     default:
-      return 'Hold the mic to talk';
+      return 'Connecting…';
   }
 }
 
@@ -49,6 +51,7 @@ export function VoiceChatModal({
   mode,
   modeColor,
   modeLabel,
+  introText,
   onClose,
   onUserTranscript,
 }: VoiceChatModalProps) {
@@ -56,21 +59,12 @@ export function VoiceChatModal({
   const voice = useVoiceConversation({
     mode,
     enabled: visible,
+    introText,
     onUserTranscript,
   });
 
-  const handleMicPressIn = useCallback(() => {
-    if (voice.isBusy) return;
-    void voice.startListening();
-  }, [voice]);
-
-  const handleMicPressOut = useCallback(() => {
-    if (!voice.isListening) return;
-    void voice.stopListeningAndProcess();
-  }, [voice]);
-
   const handleClose = useCallback(() => {
-    void voice.cancelListening();
+    void voice.endSession();
     voice.reset();
     onClose();
   }, [onClose, voice]);
@@ -84,7 +78,7 @@ export function VoiceChatModal({
     >
       <View style={[styles.root, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} hitSlop={16} accessibilityLabel="Close voice chat">
+          <TouchableOpacity onPress={handleClose} hitSlop={16} accessibilityLabel="End voice chat">
             <Ionicons name="close" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
@@ -101,27 +95,39 @@ export function VoiceChatModal({
         </View>
 
         <View style={styles.body}>
-          <View style={[styles.orbOuter, { borderColor: modeColor + '30' }]}>
+          <TouchableOpacity
+            activeOpacity={voice.isListening ? 0.85 : 1}
+            onPress={voice.isListening ? voice.finishTurnEarly : undefined}
+            disabled={!voice.isListening}
+            style={[styles.orbOuter, { borderColor: modeColor + '30' }]}
+            accessibilityRole="button"
+            accessibilityLabel={voice.isListening ? 'Done speaking' : 'Voice status'}
+          >
             <View style={[styles.orbInner, { backgroundColor: modeColor + '18' }]}>
               <Ionicons
                 name={
                   voice.isListening
                     ? 'mic'
-                    : voice.phase === 'speaking'
+                    : voice.phase === 'speaking' || voice.phase === 'intro'
                       ? 'volume-high'
                       : voice.isBusy
                         ? 'ellipsis-horizontal'
-                        : 'mic-outline'
+                        : 'chatbubbles-outline'
                 }
                 size={48}
                 color={modeColor}
               />
             </View>
-          </View>
+          </TouchableOpacity>
 
           <Text style={[styles.phaseText, { color: colors.textPrimary }]}>
             {phaseLabel(voice.phase)}
           </Text>
+          {voice.isListening ? (
+            <Text style={[styles.detailText, { color: colors.textMuted }]}>
+              Speak naturally — I will pick up when you pause. Tap the circle if you are done.
+            </Text>
+          ) : null}
           {voice.statusDetail ? (
             <Text style={[styles.detailText, { color: colors.textMuted }]}>{voice.statusDetail}</Text>
           ) : null}
@@ -136,26 +142,18 @@ export function VoiceChatModal({
         </View>
 
         <View style={styles.footer}>
-          <Text style={[styles.hint, { color: colors.textMuted }]}>
-            Hold the button while you speak, then release. The assistant will reply aloud.
-          </Text>
-
-          <Pressable
-            onPressIn={handleMicPressIn}
-            onPressOut={handleMicPressOut}
-            disabled={voice.isBusy}
-            style={({ pressed }) => [
-              styles.micBtn,
-              {
-                backgroundColor: voice.isListening ? modeColor : modeColor + 'CC',
-                opacity: voice.isBusy ? 0.45 : pressed ? 0.9 : 1,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Hold to speak"
-          >
-            <Ionicons name="mic" size={32} color="#fff" />
-          </Pressable>
+          {voice.phase === 'error' ? (
+            <TouchableOpacity
+              onPress={voice.retrySession}
+              style={[styles.retryBtn, { backgroundColor: modeColor }]}
+            >
+              <Text style={styles.retryText}>Try again</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.hint, { color: colors.textMuted }]}>
+              Conversation runs automatically. Close when you are finished.
+            </Text>
+          )}
         </View>
       </View>
     </Modal>
@@ -214,6 +212,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     paddingHorizontal: Spacing.md,
+    lineHeight: 22,
   },
   transcriptBox: {
     marginTop: 8,
@@ -237,18 +236,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? 40 : 28,
-    gap: 20,
   },
   hint: {
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
   },
-  micBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+  retryBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

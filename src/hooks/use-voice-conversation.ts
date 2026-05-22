@@ -1,5 +1,5 @@
 /**
- * Push-to-talk voice loop: record → Whisper STT → chat → Orpheus TTS playback.
+ * Hands-free voice loop: spoken intro → listen → STT → chat → TTS → listen again.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,20 +12,36 @@ import {
   requestVoiceTranscription,
 } from '@/utils/voice-api';
 
-export type VoicePhase = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking' | 'error';
+export type VoicePhase =
+  | 'idle'
+  | 'intro'
+  | 'listening'
+  | 'transcribing'
+  | 'thinking'
+  | 'speaking'
+  | 'error';
 
 type UseVoiceConversationArgs = {
   mode: ChatMode;
   enabled: boolean;
+  introText: string;
   onUserTranscript: (text: string) => Promise<string | null>;
 };
 
 const RECORDING_MIME =
   Platform.OS === 'web' ? 'audio/webm' : Platform.OS === 'ios' ? 'audio/m4a' : 'audio/mp4';
 
+const MAX_LISTEN_MS = 18_000;
+const SILENCE_END_MS = 1_400;
+const MIN_SPEECH_BEFORE_SILENCE_MS = 700;
+/** Metering / RMS below this counts as silence (platform-specific scales). */
+const NATIVE_SILENCE_DB = -42;
+const WEB_SILENCE_RMS = 0.018;
+
 export function useVoiceConversation({
   mode,
   enabled,
+  introText,
   onUserTranscript,
 }: UseVoiceConversationArgs) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
@@ -37,9 +53,30 @@ export function useVoiceConversation({
   const webRecorderRef = useRef<MediaRecorder | null>(null);
   const webChunksRef = useRef<Blob[]>([]);
   const webStreamRef = useRef<MediaStream | null>(null);
+  const webAnalyserRef = useRef<{ ctx: AudioContext; interval: ReturnType<typeof setInterval> } | null>(
+    null
+  );
+  const listenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listenStartedAtRef = useRef(0);
+  const heardSpeechRef = useRef(false);
+  const sessionActiveRef = useRef(false);
+  const processingRef = useRef(false);
   const unmountedRef = useRef(false);
 
+  const clearListenTimers = useCallback(() => {
+    if (listenTimerRef.current) {
+      clearTimeout(listenTimerRef.current);
+      listenTimerRef.current = null;
+    }
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+  }, []);
+
   const setError = useCallback((message: string) => {
+    sessionActiveRef.current = false;
     setPhase('error');
     setStatusDetail(message);
   }, []);
@@ -72,7 +109,7 @@ export function useVoiceConversation({
       await configureAudioMode(false);
 
       for (const chunk of chunks) {
-        if (unmountedRef.current) return;
+        if (unmountedRef.current || !sessionActiveRef.current) return;
         const uri = `data:audio/wav;base64,${chunk}`;
         const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false, volume: 1 });
         soundRef.current = sound;
@@ -98,6 +135,46 @@ export function useVoiceConversation({
     [configureAudioMode, stopPlayback]
   );
 
+  const speakText = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      setPhase('speaking');
+      const { chunks } = await requestVoiceSpeech({ text: trimmed, mode });
+      await playWavChunks(chunks);
+    },
+    [mode, playWavChunks]
+  );
+
+  const stopWebAnalyser = useCallback(() => {
+    if (webAnalyserRef.current) {
+      clearInterval(webAnalyserRef.current.interval);
+      void webAnalyserRef.current.ctx.close().catch(() => undefined);
+      webAnalyserRef.current = null;
+    }
+  }, []);
+
+  const scheduleSilenceEnd = useCallback(() => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = setTimeout(() => {
+      if (heardSpeechRef.current) {
+        void finishListeningRef.current?.();
+      }
+    }, SILENCE_END_MS);
+  }, []);
+
+  const onSpeechActivity = useCallback(() => {
+    heardSpeechRef.current = true;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = null;
+  }, []);
+
+  const onSilenceActivity = useCallback(() => {
+    if (!heardSpeechRef.current) return;
+    if (Date.now() - listenStartedAtRef.current < MIN_SPEECH_BEFORE_SILENCE_MS) return;
+    scheduleSilenceEnd();
+  }, [scheduleSilenceEnd]);
+
   const startNativeRecording = useCallback(async () => {
     const perm = await Audio.requestPermissionsAsync();
     if (!perm.granted) {
@@ -105,10 +182,19 @@ export function useVoiceConversation({
     }
     await configureAudioMode(true);
     const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+    await recording.prepareToRecordAsync({
+      ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      isMeteringEnabled: true,
+    });
+    recording.setProgressUpdateInterval(200);
+    recording.setOnRecordingStatusUpdate((status) => {
+      if (!status.isRecording || status.metering == null) return;
+      if (status.metering > NATIVE_SILENCE_DB) onSpeechActivity();
+      else onSilenceActivity();
+    });
     await recording.startAsync();
     recordingRef.current = recording;
-  }, [configureAudioMode]);
+  }, [configureAudioMode, onSilenceActivity, onSpeechActivity]);
 
   const stopNativeRecording = useCallback(async (): Promise<string | null> => {
     const recording = recordingRef.current;
@@ -130,6 +216,7 @@ export function useVoiceConversation({
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     webStreamRef.current = stream;
     webChunksRef.current = [];
+
     const mimeType =
       typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
         ? 'audio/webm'
@@ -140,9 +227,29 @@ export function useVoiceConversation({
     };
     recorder.start();
     webRecorderRef.current = recorder;
-  }, []);
+
+    const ctx = new AudioContext();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.fftSize);
+    const interval = setInterval(() => {
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / data.length);
+      if (rms > WEB_SILENCE_RMS) onSpeechActivity();
+      else onSilenceActivity();
+    }, 200);
+    webAnalyserRef.current = { ctx, interval };
+  }, [onSilenceActivity, onSpeechActivity]);
 
   const stopWebRecording = useCallback(async (): Promise<string | null> => {
+    stopWebAnalyser();
     const recorder = webRecorderRef.current;
     if (!recorder) return null;
     webRecorderRef.current = null;
@@ -165,28 +272,74 @@ export function useVoiceConversation({
     webStreamRef.current = null;
 
     return URL.createObjectURL(blob);
-  }, []);
+  }, [stopWebAnalyser]);
 
-  const startListening = useCallback(async () => {
-    if (phase === 'listening') return;
-    setStatusDetail(null);
-    setPhase('listening');
-    await stopPlayback();
-    try {
-      if (Platform.OS === 'web') {
-        await startWebRecording();
-      } else {
-        await startNativeRecording();
+  const finishListeningRef = useRef<(() => Promise<void>) | null>(null);
+
+  const processRecording = useCallback(
+    async (uri: string | null) => {
+      if (processingRef.current) return;
+      processingRef.current = true;
+      clearListenTimers();
+
+      if (!uri) {
+        processingRef.current = false;
+        if (sessionActiveRef.current) {
+          setPhase('listening');
+          setStatusDetail('Say something when you are ready.');
+          void beginListenTurnRef.current?.();
+        }
+        return;
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Could not start recording.';
-      setError(msg);
-    }
-  }, [phase, setError, startNativeRecording, startWebRecording, stopPlayback]);
 
-  const stopListeningAndProcess = useCallback(async () => {
-    if (phase !== 'listening') return;
+      setPhase('transcribing');
+      setStatusDetail(null);
 
+      try {
+        const audioBase64 = await audioUriToBase64(uri, RECORDING_MIME);
+        if (Platform.OS === 'web' && uri.startsWith('blob:')) {
+          URL.revokeObjectURL(uri);
+        }
+
+        const { text } = await requestVoiceTranscription({ audioBase64, mimeType: RECORDING_MIME });
+        if (!text.trim()) {
+          processingRef.current = false;
+          if (sessionActiveRef.current) {
+            setStatusDetail('Did not catch that — listening again.');
+            void beginListenTurnRef.current?.();
+          }
+          return;
+        }
+
+        setLastTranscript(text);
+        setPhase('thinking');
+
+        const reply = await onUserTranscript(text);
+        if (!reply?.trim()) {
+          processingRef.current = false;
+          if (sessionActiveRef.current) void beginListenTurnRef.current?.();
+          return;
+        }
+
+        await speakText(reply);
+        processingRef.current = false;
+        if (sessionActiveRef.current && !unmountedRef.current) {
+          void beginListenTurnRef.current?.();
+        }
+      } catch (e) {
+        processingRef.current = false;
+        const msg = e instanceof Error ? e.message : 'Voice conversation failed.';
+        setError(msg);
+      }
+    },
+    [clearListenTimers, mode, onUserTranscript, setError, speakText]
+  );
+
+  finishListeningRef.current = async () => {
+    if (processingRef.current) return;
+    if (!recordingRef.current && !webRecorderRef.current) return;
+    clearListenTimers();
+    setPhase('transcribing');
     let uri: string | null = null;
     try {
       uri = Platform.OS === 'web' ? await stopWebRecording() : await stopNativeRecording();
@@ -195,60 +348,59 @@ export function useVoiceConversation({
       setError(msg);
       return;
     }
+    await processRecording(uri);
+  };
 
-    if (!uri) {
-      setPhase('idle');
-      setStatusDetail('No audio captured. Hold the mic and try again.');
-      return;
-    }
+  const beginListenTurnRef = useRef<(() => Promise<void>) | null>(null);
 
-    setPhase('transcribing');
-    setStatusDetail('Understanding you…');
+  beginListenTurnRef.current = async () => {
+    if (!sessionActiveRef.current || unmountedRef.current || processingRef.current) return;
+    heardSpeechRef.current = false;
+    listenStartedAtRef.current = Date.now();
+    setStatusDetail(null);
+    setPhase('listening');
+    await stopPlayback();
+    clearListenTimers();
 
     try {
-      const audioBase64 = await audioUriToBase64(uri, RECORDING_MIME);
-      if (Platform.OS === 'web' && uri.startsWith('blob:')) {
-        URL.revokeObjectURL(uri);
+      if (Platform.OS === 'web') {
+        await startWebRecording();
+      } else {
+        await startNativeRecording();
       }
-
-      const { text } = await requestVoiceTranscription({ audioBase64, mimeType: RECORDING_MIME });
-      if (!text.trim()) {
-        setPhase('idle');
-        setStatusDetail('Did not catch that. Try again.');
-        return;
-      }
-
-      setLastTranscript(text);
-      setPhase('thinking');
-      setStatusDetail(null);
-
-      const reply = await onUserTranscript(text);
-      if (!reply?.trim()) {
-        setPhase('idle');
-        return;
-      }
-
-      setPhase('speaking');
-      setStatusDetail(null);
-      const { chunks } = await requestVoiceSpeech({ text: reply, mode });
-      await playWavChunks(chunks);
-      if (!unmountedRef.current) setPhase('idle');
+      listenTimerRef.current = setTimeout(() => {
+        void finishListeningRef.current?.();
+      }, MAX_LISTEN_MS);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Voice conversation failed.';
+      const msg = e instanceof Error ? e.message : 'Could not start recording.';
       setError(msg);
     }
-  }, [
-    mode,
-    onUserTranscript,
-    phase,
-    playWavChunks,
-    setError,
-    stopNativeRecording,
-    stopWebRecording,
-  ]);
+  };
 
-  const cancelListening = useCallback(async () => {
-    if (phase !== 'listening') return;
+  const startSession = useCallback(async () => {
+    sessionActiveRef.current = true;
+    processingRef.current = false;
+    setLastTranscript(null);
+    setStatusDetail(null);
+
+    try {
+      if (introText.trim()) {
+        setPhase('intro');
+        await speakText(introText);
+      }
+      if (!sessionActiveRef.current || unmountedRef.current) return;
+      await beginListenTurnRef.current?.();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not start voice chat.';
+      setError(msg);
+    }
+  }, [introText, setError, speakText]);
+
+  const endSession = useCallback(async () => {
+    sessionActiveRef.current = false;
+    processingRef.current = false;
+    clearListenTimers();
+    stopWebAnalyser();
     try {
       if (Platform.OS === 'web') {
         webRecorderRef.current?.stop();
@@ -261,42 +413,55 @@ export function useVoiceConversation({
       /* ignore */
     }
     await configureAudioMode(false);
+    await stopPlayback();
     setPhase('idle');
     setStatusDetail(null);
-  }, [configureAudioMode, phase]);
+  }, [clearListenTimers, configureAudioMode, stopPlayback, stopWebAnalyser]);
+
+  const finishTurnEarly = useCallback(() => {
+    if (phase === 'listening') void finishListeningRef.current?.();
+  }, [phase]);
+
+  const retrySession = useCallback(() => {
+    void endSession().then(() => startSession());
+  }, [endSession, startSession]);
 
   const reset = useCallback(() => {
-    setPhase('idle');
-    setStatusDetail(null);
     setLastTranscript(null);
+    setStatusDetail(null);
+    setPhase('idle');
   }, []);
 
   useEffect(() => {
     unmountedRef.current = false;
     return () => {
       unmountedRef.current = true;
-      void stopPlayback();
-      void cancelListening();
+      void endSession();
     };
-  }, [cancelListening, stopPlayback]);
+  }, [endSession]);
 
   useEffect(() => {
-    if (!enabled) {
-      void cancelListening();
-      void stopPlayback();
+    if (enabled) {
+      void startSession();
+    } else {
+      void endSession();
       reset();
     }
-  }, [cancelListening, enabled, reset, stopPlayback]);
+  }, [enabled, mode, introText]);
 
   return {
     phase,
     statusDetail,
     lastTranscript,
     isListening: phase === 'listening',
-    isBusy: phase === 'transcribing' || phase === 'thinking' || phase === 'speaking',
-    startListening,
-    stopListeningAndProcess,
-    cancelListening,
+    isBusy:
+      phase === 'intro' ||
+      phase === 'transcribing' ||
+      phase === 'thinking' ||
+      phase === 'speaking',
+    finishTurnEarly,
+    retrySession,
+    endSession,
     reset,
   };
 }

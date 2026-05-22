@@ -768,7 +768,7 @@ export default function ChatScreen({
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               style={st.headerSideBtn}
               accessibilityRole="button"
-              accessibilityLabel="Voice conversation"
+              accessibilityLabel="Start voice conversation"
             >
               <Ionicons name="mic-outline" size={22} color={modeColor} />
             </TouchableOpacity>
@@ -924,6 +924,7 @@ export default function ChatScreen({
         mode={mode}
         modeColor={modeColor}
         modeLabel={MODE_CONFIG[mode].label}
+        introText={MODE_CONFIG[mode].intro(displayName)}
         onClose={() => setVoiceVisible(false)}
         onUserTranscript={handleVoiceTranscript}
       />
