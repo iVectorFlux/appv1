@@ -16,13 +16,9 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.eqapp.app",
-      "infoPlist": {
-        "NSMicrophoneUsageDescription": "EQ App uses the microphone for voice conversations with Inner Ally and Coach."
-      }
+      "bundleIdentifier": "com.eqapp.app"
     },
     "android": {
-      "permissions": ["RECORD_AUDIO"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F7F9F8"
