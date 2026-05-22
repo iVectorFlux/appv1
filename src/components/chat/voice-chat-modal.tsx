@@ -95,13 +95,10 @@ export function VoiceChatModal({
         </View>
 
         <View style={styles.body}>
-          <TouchableOpacity
-            activeOpacity={voice.isListening ? 0.85 : 1}
-            onPress={voice.isListening ? voice.finishTurnEarly : undefined}
-            disabled={!voice.isListening}
+          <View
             style={[styles.orbOuter, { borderColor: modeColor + '30' }]}
-            accessibilityRole="button"
-            accessibilityLabel={voice.isListening ? 'Done speaking' : 'Voice status'}
+            accessibilityRole="text"
+            accessibilityLabel={phaseLabel(voice.phase)}
           >
             <View style={[styles.orbInner, { backgroundColor: modeColor + '18' }]}>
               <Ionicons
@@ -118,14 +115,14 @@ export function VoiceChatModal({
                 color={modeColor}
               />
             </View>
-          </TouchableOpacity>
+          </View>
 
           <Text style={[styles.phaseText, { color: colors.textPrimary }]}>
             {phaseLabel(voice.phase)}
           </Text>
           {voice.isListening ? (
             <Text style={[styles.detailText, { color: colors.textMuted }]}>
-              Speak clearly in a quiet space — I will pick up when you pause. Tap the circle when you are done.
+              Just talk — when you pause for a moment, I will reply automatically.
             </Text>
           ) : null}
           {voice.statusDetail ? (
@@ -151,7 +148,7 @@ export function VoiceChatModal({
             </TouchableOpacity>
           ) : (
             <Text style={[styles.hint, { color: colors.textMuted }]}>
-              Conversation runs automatically. Close when you are finished.
+              Hands-free: speak, pause, listen to the reply, then speak again. Close when you are done.
             </Text>
           )}
         </View>

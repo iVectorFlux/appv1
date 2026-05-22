@@ -140,7 +140,7 @@ export async function playVoiceSpeechResult(
   playWavChunks: (chunks: string[]) => Promise<void>
 ): Promise<void> {
   if (result.provider === 'device') {
-    await speakDeviceSegments(result.segments);
+    await speakDeviceSegments(result.segments, 'inner_ally');
     return;
   }
   await playWavChunks(result.chunks);

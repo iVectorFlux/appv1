@@ -1,40 +1,22 @@
 /**
- * On-device TTS — default for voice chat (no Groq Orpheus/PlayAI terms required).
+ * On-device TTS for voice chat (free OS / browser voices).
  */
 
-import { Platform } from 'react-native';
-import * as Speech from 'expo-speech';
+import type { ChatMode } from '@/services/chat-storage';
 import { chunkTextForDeviceSpeech } from '@/utils/voice-text';
+import { speakNaturally, stopNaturalSpeech } from '@/services/natural-voice';
 
 export function stopDeviceSpeech(): void {
-  Speech.stop();
+  stopNaturalSpeech();
 }
 
-export function speakOnDevice(text: string): Promise<void> {
-  const trimmed = text.trim();
-  if (!trimmed) return Promise.resolve();
-
-  return new Promise((resolve, reject) => {
-    Speech.speak(trimmed, {
-      language: 'en-US',
-      rate: Platform.select({ ios: 0.48, android: 0.92, default: 1 }),
-      pitch: 1,
-      onDone: () => resolve(),
-      onStopped: () => resolve(),
-      onError: (message) => reject(new Error(typeof message === 'string' ? message : 'Speech failed')),
-    });
-  });
-}
-
-export async function speakDeviceSegments(segments: string[]): Promise<void> {
+export async function speakDeviceSegments(segments: string[], mode: ChatMode = 'inner_ally'): Promise<void> {
   for (const segment of segments) {
-    await speakOnDevice(segment);
+    await speakNaturally(segment, mode);
   }
 }
 
-/** Speak assistant reply using the device voice (primary path for Inner Ally / Coach). */
-export async function speakAssistantReply(raw: string): Promise<void> {
+export async function speakAssistantReply(raw: string, mode: ChatMode): Promise<void> {
   const segments = chunkTextForDeviceSpeech(raw);
-  if (segments.length === 0) return;
-  await speakDeviceSegments(segments);
+  await speakDeviceSegments(segments, mode);
 }
