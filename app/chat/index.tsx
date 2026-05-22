@@ -42,6 +42,7 @@ import { isSkillLabSkillId } from '@/data/future-skills';
 import { requestChatCompletion } from '@/utils/vercel-api';
 import { breathToneParamFromEmotions } from '@/data/breathing-techniques';
 import { ChatHistoryPanel } from '@/components/chat/chat-history-panel';
+import { VoiceChatModal } from '@/components/chat/voice-chat-modal';
 
 interface ChatScreenProps {
   asTab?: boolean;
@@ -500,6 +501,7 @@ export default function ChatScreen({
   const [inputFocused, setInputFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [voiceVisible, setVoiceVisible] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
@@ -570,6 +572,101 @@ export default function ChatScreen({
     }
   };
 
+  const sendUserMessage = useCallback(
+    async (text: string): Promise<string | null> => {
+      const trimmed = text.trim();
+      if (!trimmed || isLoading) return null;
+
+      const userMsg: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: trimmed,
+        createdAt: new Date().toISOString(),
+      };
+
+      let historyForApi: { role: 'user' | 'assistant'; content: string }[] = [];
+      setMessages((prev) => {
+        historyForApi = prev
+          .filter((m) => m.id !== 'intro')
+          .map((m) => ({ role: m.role, content: m.content }));
+        return [...prev, userMsg];
+      });
+      setIsLoading(true);
+
+      if (user?.id) {
+        saveChatMessage({
+          userId: user.id,
+          mode,
+          role: 'user',
+          content: trimmed,
+          id: userMsg.id,
+          createdAt: userMsg.createdAt,
+        });
+      }
+
+      try {
+        const data = await requestChatCompletion({
+          mode,
+          messages: [...historyForApi, { role: 'user', content: trimmed }],
+          userId: user?.id,
+        });
+
+        const suggestion: ChatSuggestion = {
+          emotions: data.emotions,
+          lifeContexts: data.lifeContexts,
+          groundingOptions: data.groundingOptions,
+          learningPathway: data.learningPathway,
+          suggestSaveAsReflection: data.suggestSaveAsReflection,
+          skillId: data.skillId,
+          reframe: data.reframe ?? null,
+        };
+
+        const assistantMsg: Message = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          role: 'assistant',
+          content: data.reply,
+          suggestion,
+          createdAt: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, assistantMsg]);
+
+        if (user?.id) {
+          try {
+            await persistAssistantTurnAfterReply({
+              userId: user.id,
+              mode,
+              reply: data.reply,
+              suggestion: { ...suggestion } as Record<string, unknown>,
+              userMessageForJournal: trimmed,
+              assistantMessageId: assistantMsg.id,
+              createdAt: assistantMsg.createdAt,
+            });
+          } catch (persistErr) {
+            console.error('[Chat] Failed to persist assistant turn:', persistErr);
+          }
+        }
+
+        return data.reply;
+      } catch (e) {
+        const detail = e instanceof Error ? e.message : 'Something went wrong.';
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: `I could not reach the assistant just now.\n\n${detail}`,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, mode, user?.id]
+  );
+
   const handleSend = async () => {
     const text = inputText.trim();
     if (!text || isLoading) return;
@@ -579,90 +676,14 @@ export default function ChatScreen({
       Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }),
     ]).start();
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: text,
-      createdAt: new Date().toISOString(),
-    };
-
     setInputText('');
-    setMessages((prev) => [...prev, userMsg]);
-    setIsLoading(true);
-
-    if (user?.id) {
-      saveChatMessage({
-        userId: user.id,
-        mode,
-        role: 'user',
-        content: text,
-        id: userMsg.id,
-        createdAt: userMsg.createdAt,
-      });
-    }
-
-    const history = messages
-      .filter((m) => m.id !== 'intro')
-      .map((m) => ({ role: m.role, content: m.content }));
-
-    try {
-      const data = await requestChatCompletion({
-        mode,
-        messages: [...history, { role: 'user', content: text }],
-        userId: user?.id,
-      });
-
-      const suggestion: ChatSuggestion = {
-        emotions: data.emotions,
-        lifeContexts: data.lifeContexts,
-        groundingOptions: data.groundingOptions,
-        learningPathway: data.learningPathway,
-        suggestSaveAsReflection: data.suggestSaveAsReflection,
-        skillId: data.skillId,
-        reframe: data.reframe ?? null,
-      };
-
-      const assistantMsg: Message = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        role: 'assistant',
-        content: data.reply,
-        suggestion,
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-      setIsLoading(false);
-
-      if (user?.id) {
-        try {
-          await persistAssistantTurnAfterReply({
-            userId: user.id,
-            mode,
-            reply: data.reply,
-            suggestion: { ...suggestion } as Record<string, unknown>,
-            userMessageForJournal: text,
-            assistantMessageId: assistantMsg.id,
-            createdAt: assistantMsg.createdAt,
-          });
-        } catch (persistErr) {
-          console.error('[Chat] Failed to persist assistant turn:', persistErr);
-        }
-      }
-    } catch (e) {
-      const detail = e instanceof Error ? e.message : 'Something went wrong.';
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `I could not reach the assistant just now.\n\n${detail}`,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    await sendUserMessage(text);
   };
+
+  const handleVoiceTranscript = useCallback(
+    (text: string) => sendUserMessage(text),
+    [sendUserMessage]
+  );
 
   const handleGroundingPress = (technique: string, emotions?: string[]) => {
     const tone = breathToneParamFromEmotions(emotions);
@@ -741,13 +762,24 @@ export default function ChatScreen({
             })}
           </View>
 
-          <TouchableOpacity
-            onPress={() => setHistoryVisible(true)}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={st.headerSideBtn}
-          >
-            <Ionicons name="time-outline" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <View style={st.headerActions}>
+            <TouchableOpacity
+              onPress={() => setVoiceVisible(true)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={st.headerSideBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Voice conversation"
+            >
+              <Ionicons name="mic-outline" size={22} color={modeColor} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setHistoryVisible(true)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={st.headerSideBtn}
+            >
+              <Ionicons name="time-outline" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -886,6 +918,15 @@ export default function ChatScreen({
           mode={mode}
         />
       )}
+
+      <VoiceChatModal
+        visible={voiceVisible}
+        mode={mode}
+        modeColor={modeColor}
+        modeLabel={MODE_CONFIG[mode].label}
+        onClose={() => setVoiceVisible(false)}
+        onUserTranscript={handleVoiceTranscript}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -912,6 +953,10 @@ const createChatStyles = (colors: ReturnType<typeof useColors>) =>
       height: 40,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     modeSwitch: {
       flex: 1,

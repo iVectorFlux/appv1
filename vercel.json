@@ -4,6 +4,8 @@
   "framework": null,
   "functions": {
     "api/chat.ts": { "maxDuration": 60 },
+    "api/voice-stt.ts": { "maxDuration": 60 },
+    "api/voice-tts.ts": { "maxDuration": 60 },
     "api/skills-coach.ts": { "maxDuration": 60 },
     "api/big5-leadership-insights.ts": { "maxDuration": 60 },
     "api/health.ts": { "maxDuration": 10 }
