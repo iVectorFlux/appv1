@@ -6,13 +6,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import type { ChatMode } from '@/services/chat-storage';
-import {
-  audioUriToBase64,
-  playVoiceSpeechResult,
-  requestVoiceSpeech,
-  requestVoiceTranscription,
-} from '@/utils/voice-api';
-import { stopDeviceSpeech } from '@/services/device-speech';
+import { audioUriToBase64, requestVoiceTranscription } from '@/utils/voice-api';
+import { speakAssistantReply, stopDeviceSpeech } from '@/services/device-speech';
 
 export type VoicePhase =
   | 'idle'
@@ -139,16 +134,13 @@ export function useVoiceConversation({
     [configureAudioMode, stopPlayback]
   );
 
-  const speakText = useCallback(
-    async (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      setPhase('speaking');
-      const speech = await requestVoiceSpeech({ text: trimmed, mode });
-      await playVoiceSpeechResult(speech, playWavChunks);
-    },
-    [mode, playWavChunks]
-  );
+  const speakText = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setPhase('speaking');
+    await configureAudioMode(false);
+    await speakAssistantReply(trimmed);
+  }, [configureAudioMode]);
 
   const stopWebAnalyser = useCallback(() => {
     if (webAnalyserRef.current) {
