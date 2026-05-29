@@ -52,7 +52,7 @@ const TEXT_MUTED = '#94A3B8';
 const PHASE_INFO: Record<BreathPhase, { label: string; sub: string; timing: string; color: string }> = {
   in:   { label: 'Breathe in',          sub: 'Through your nose',          timing: `${PHYSIOLOGICAL_SIGH_PATTERN.inhale}s`, color: '#38bdf8' },
   hold: { label: 'Top-up inhale',       sub: 'A short second breath',      timing: `${PHYSIOLOGICAL_SIGH_PATTERN.sighInhale}s`, color: '#a78bfa' },
-  out:  { label: 'Long exhale',         sub: 'Release through mouth',      timing: `${PHYION_PATTERN?.exhale ?? PHYSIOLOGICAL_SIGH_PATTERN.exhale}s`, color: '#fb923c' },
+  out:  { label: 'Long exhale',         sub: 'Release through mouth',      timing: `${PHYSIOLOGICAL_SIGH_PATTERN.exhale}s`, color: '#fb923c' },
 };
 
 const STEP_LABELS: Record<Step, string> = {
