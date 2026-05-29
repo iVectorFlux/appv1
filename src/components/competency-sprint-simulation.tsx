@@ -61,7 +61,7 @@ export function CompetencySprintSimulation() {
   const activeOptions = lastAssistantMsg?.options || [];
 
   // Guided completes after 3 turns, independent and escalated can be ended by user
-  const isConcluded = lastAssistantMsg?.options?.length === 0 && currentStage === 'guided' || (currentStage !== 'guided' && turnCount >= 4);
+  const isConcluded = currentStage === 'guided' ? turnCount >= 3 : turnCount >= 4;
 
   const handleSendFreeText = async () => {
     if (!freeText.trim() || submittingSimTurn) return;
@@ -97,80 +97,94 @@ export function CompetencySprintSimulation() {
       flex: 1,
     },
     chatContent: {
-      padding: Spacing.md,
-      paddingBottom: Spacing.xl,
+      padding: Spacing.lg,
+      paddingBottom: Spacing['2xl'],
     },
     // Messages bubble styles
     messageRow: {
       flexDirection: 'row',
-      marginBottom: Spacing.md,
+      marginBottom: Spacing.lg,
       width: '100%',
     },
     systemRow: {
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: Spacing.md,
+      marginBottom: Spacing.lg,
     },
     systemCard: {
-      backgroundColor: colors.glass,
+      backgroundColor: colors.primary + '10',
       paddingVertical: Spacing.xs,
-      paddingHorizontal: Spacing.sm,
+      paddingHorizontal: Spacing.md,
       borderRadius: Radius.full,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.primary + '33',
+      ...Shadows.sm,
     },
     systemText: {
-      fontSize: 10,
-      fontFamily: Typography.fontFamily.primary,
-      fontWeight: Typography.fontWeight.semibold,
+      fontSize: 9,
+      fontFamily: Typography.fontFamily.heading,
+      fontWeight: Typography.fontWeight.bold,
       color: colors.primary,
       textTransform: 'uppercase',
-      letterSpacing: Typography.letterSpacing.section,
+      letterSpacing: 1.2,
     },
     assistantRow: {
       justifyContent: 'flex-start',
-      paddingRight: 40,
+      paddingRight: 48,
     },
     userRow: {
       justifyContent: 'flex-end',
-      paddingLeft: 40,
+      paddingLeft: 48,
     },
     avatar: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: Spacing.sm,
       marginTop: 2,
+      borderWidth: 1.5,
+      borderColor: '#FFFFFF',
+      ...Shadows.sm,
+    },
+    avatarText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: Typography.fontWeight.bold,
     },
     bubble: {
-      borderRadius: Radius.lg,
-      paddingVertical: Spacing.sm,
-      paddingHorizontal: Spacing.md,
+      borderRadius: Radius.xl,
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.lg,
       ...Shadows.sm,
     },
     assistantBubble: {
       backgroundColor: colors.glass,
       borderColor: colors.glassBorder,
       borderWidth: 1,
-      borderTopLeftRadius: 0,
+      borderTopLeftRadius: 3,
     },
     userBubble: {
       backgroundColor: colors.primary,
-      borderTopRightRadius: 0,
+      borderTopRightRadius: 3,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
     },
     msgName: {
       fontFamily: Typography.fontFamily.heading,
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: Typography.fontWeight.bold,
       color: colors.textMuted,
-      marginBottom: 2,
+      marginBottom: 3,
+      letterSpacing: 0.5,
     },
     msgText: {
       fontFamily: Typography.fontFamily.primary,
       fontSize: Typography.fontSize.sm,
-      lineHeight: Typography.fontSize.sm * 1.4,
+      lineHeight: Typography.fontSize.sm * 1.45,
     },
     typingIndicator: {
       flexDirection: 'row',
@@ -183,36 +197,40 @@ export function CompetencySprintSimulation() {
       borderWidth: 1,
       borderRadius: Radius.md,
       alignSelf: 'flex-start',
-      marginLeft: 36,
+      marginLeft: 40,
       marginBottom: Spacing.md,
+      ...Shadows.sm,
     },
     typingText: {
       fontSize: Typography.fontSize.xs,
       color: colors.textMuted,
       fontFamily: Typography.fontFamily.primary,
+      fontWeight: Typography.fontWeight.medium,
     },
     // Guided choice selection
     optionsContainer: {
-      padding: Spacing.md,
+      padding: Spacing.lg,
       backgroundColor: colors.glass,
       borderTopWidth: 1,
       borderTopColor: colors.glassBorder,
-      gap: Spacing.xs,
+      gap: Spacing.sm,
     },
     optionsLabel: {
-      fontFamily: Typography.fontFamily.primary,
+      fontFamily: Typography.fontFamily.heading,
       fontSize: 10,
       fontWeight: Typography.fontWeight.bold,
       color: colors.textMuted,
       textTransform: 'uppercase',
       marginBottom: Spacing.xs,
+      letterSpacing: 0.5,
     },
     optionCard: {
       backgroundColor: colors.glass,
       borderColor: colors.glassBorder,
       borderWidth: 1,
-      borderRadius: Radius.md,
+      borderRadius: Radius.lg,
       padding: Spacing.md,
+      ...Shadows.sm,
       ...(Platform.OS === 'web' ? { cursor: 'pointer', transition: 'border-color 0.15s ease' } : {}),
     } as any,
     optionCardHover: {
@@ -227,43 +245,46 @@ export function CompetencySprintSimulation() {
     // Free text entry
     freeTextContainer: {
       flexDirection: 'row',
-      padding: Spacing.md,
+      padding: Spacing.lg,
       backgroundColor: colors.glass,
       borderTopWidth: 1,
       borderTopColor: colors.glassBorder,
-      gap: Spacing.sm,
+      gap: Spacing.md,
       alignItems: 'center',
     },
     freeInput: {
       flex: 1,
       backgroundColor: colors.glass,
       borderColor: colors.glassBorder,
-      borderWidth: 1,
-      borderRadius: Radius.md,
+      borderWidth: 1.5,
+      borderRadius: Radius.xl,
       paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.sm,
       color: colors.textPrimary,
       fontFamily: Typography.fontFamily.primary,
       fontSize: Typography.fontSize.sm,
       maxHeight: 100,
+      ...Shadows.sm,
+      ...(Platform.OS === 'web' ? { outlineWidth: 0 } : {}),
     },
     sendBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
-      ...Shadows.sm,
+      ...Shadows.md,
     },
     // Completion Card
     concludeCard: {
-      padding: Spacing.md,
-      backgroundColor: colors.success + '0B',
+      padding: Spacing.lg,
+      backgroundColor: colors.success + '0E',
       borderTopWidth: 1,
       borderTopColor: colors.success + '40',
       alignItems: 'center',
-      gap: Spacing.sm,
+      gap: Spacing.md,
+      ...Shadows.sm,
     },
     concludeText: {
       fontFamily: Typography.fontFamily.heading,
@@ -273,27 +294,29 @@ export function CompetencySprintSimulation() {
     },
     concludeBtn: {
       backgroundColor: colors.success,
-      paddingVertical: Spacing.sm,
+      paddingVertical: Spacing.md,
       paddingHorizontal: Spacing.xl,
-      borderRadius: Radius.md,
+      borderRadius: Radius.xl,
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.xs,
+      ...Shadows.md,
     },
     concludeBtnText: {
       color: '#FFFFFF',
       fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.xs,
+      fontSize: Typography.fontSize.base,
       fontWeight: Typography.fontWeight.bold,
+      letterSpacing: 0.3,
     },
     // Right: Sidebar / Mobile Telemetry Card
     sidebarColumn: {
       flex: isWebLaptop ? 1.5 : undefined,
-      padding: Spacing.md,
+      padding: Spacing.lg,
       backgroundColor: isWebLaptop ? colors.glass : 'transparent',
       borderTopWidth: !isWebLaptop ? 1 : 0,
       borderTopColor: colors.glassBorder,
-      gap: Spacing.md,
+      gap: Spacing.lg,
     },
     sideTitle: {
       fontFamily: Typography.fontFamily.heading,
@@ -550,47 +573,30 @@ export function CompetencySprintSimulation() {
 
           {/* User inputs */}
           {!isConcluded ? (
-            currentStage === 'guided' ? (
-              // Guided choice tiles
-              <View style={styles.optionsContainer}>
-                <Text style={styles.optionsLabel}>SELECT DIALOGUE CHOICE</Text>
-                {activeOptions.map((opt: any) => (
-                  <TouchableOpacity
-                    key={opt.id}
-                    style={styles.optionCard}
-                    activeOpacity={0.8}
-                    onPress={() => handleSelectOption(opt)}
-                  >
-                    <Text style={styles.optionText}>{opt.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              // Free Text input
-              <View style={styles.freeTextContainer}>
-                <TextInput
-                  value={freeText}
-                  onChangeText={setFreeText}
-                  placeholder="Draft your custom response..."
-                  placeholderTextColor={colors.textMuted}
-                  style={styles.freeInput}
-                  multiline
-                  maxLength={500}
-                  editable={!submittingSimTurn}
-                />
-                <TouchableOpacity
-                  disabled={submittingSimTurn || !freeText.trim()}
-                  style={[
-                    styles.sendBtn,
-                    { opacity: submittingSimTurn || !freeText.trim() ? 0.6 : 1 }
-                  ]}
-                  onPress={handleSendFreeText}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="send" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-            )
+            // Free Text input
+            <View style={styles.freeTextContainer}>
+              <TextInput
+                value={freeText}
+                onChangeText={setFreeText}
+                placeholder="Draft your custom response..."
+                placeholderTextColor={colors.textMuted}
+                style={styles.freeInput}
+                multiline
+                maxLength={500}
+                editable={!submittingSimTurn}
+              />
+              <TouchableOpacity
+                disabled={submittingSimTurn || !freeText.trim()}
+                style={[
+                  styles.sendBtn,
+                  { opacity: submittingSimTurn || !freeText.trim() ? 0.6 : 1 }
+                ]}
+                onPress={handleSendFreeText}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="send" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           ) : (
             // Concluded state
             <View style={styles.concludeCard}>

@@ -69,119 +69,8 @@ const DEFAULT_DRILLS = {
   }
 };
 
-// Branching script for Guided Simulation (Colleague "Sarah" is highly competent but defensive about code handoffs)
-const GUIDED_SIMULATION_SCRIPT: Record<string, any> = {
-  start: {
-    characterReply: "Look, I'm really busy with the database migration. What is this meeting about? I hope this isn't another long talk about process.",
-    tip: "Sarah is protective of her time and highly suspicious of 'process' talk. Start by validating her busy schedule and state your objective clearly but non-defensively.",
-    options: [
-      {
-        id: 'a',
-        label: "Thanks for making time, Sarah. I know you're swamped. I want to chat about how our recent handoffs felt for you, and find a way to make them smoother.",
-        telemetry: { empathy: 90, clarity: 85, assertiveness: 80, deEscalation: 85 }
-      },
-      {
-        id: 'b',
-        label: "Oh, sorry to disrupt you. It's nothing big, just some administrative alignment. We can get it done in two minutes if you want.",
-        telemetry: { empathy: 60, assertiveness: 35, clarity: 30, deEscalation: 70 }
-      },
-      {
-        id: 'c',
-        label: "We need to talk because your tone in our Slack channels during code handoffs has been completely unacceptable and is slowing down the team.",
-        telemetry: { empathy: 15, assertiveness: 95, clarity: 90, deEscalation: 20 }
-      }
-    ]
-  },
-  'turn_1_a': {
-    characterReply: "Honestly, they feel fine to me. I write clean code and document my API endpoints. If your frontend devs don't understand the specs, they should ask rather than complaining to you that I'm blocking them.",
-    tip: "Sarah is shifting blame to the frontend developers. Avoid taking the bait or getting defensive on their behalf. Use 'Objective Truth Framing' to focus on the observable handoff delays.",
-    options: [
-      {
-        id: 'a',
-        label: "I appreciate that your code is solid. However, our last three deployments were delayed by 24 hours because the spec files weren't shared until the deadline. Let's look at that gap.",
-        telemetry: { empathy: 80, clarity: 95, assertiveness: 90, deEscalation: 90 }
-      },
-      {
-        id: 'b',
-        label: "Yeah, I guess they could ask more questions. But still, it would be nicer if you were a bit more friendly when answering them.",
-        telemetry: { empathy: 55, assertiveness: 40, clarity: 45, deEscalation: 65 }
-      },
-      {
-        id: 'c',
-        label: "They shouldn't have to ask because your documentation is often incomplete. You need to take responsibility for how hard it is to work with you.",
-        telemetry: { empathy: 25, assertiveness: 85, clarity: 75, deEscalation: 25 }
-      }
-    ]
-  },
-  'turn_1_b': {
-    characterReply: "Okay, great. If it's just administrative, can you just email it to me? I really don't have time to sit here and talk about administrative details.",
-    tip: "You have completely lost control by downplaying the meeting. You must re-assert the importance of this face-to-face talk immediately and bring up the handoff issue firmly.",
-    options: [
-      {
-        id: 'a',
-        label: "I understand you're busy, but this is a collaboration blocker that we need to resolve together. Specifically, our deployment handoffs have been hitting delays, and we need a plan.",
-        telemetry: { empathy: 70, clarity: 90, assertiveness: 90, deEscalation: 80 }
-      },
-      {
-        id: 'b',
-        label: "I guess I could email it. But it's about the handoffs... some people feel they are a bit rocky. Let me know what you think.",
-        telemetry: { empathy: 50, assertiveness: 25, clarity: 20, deEscalation: 60 }
-      },
-      {
-        id: 'c',
-        label: "No, you don't get to just leave. Sit down. Your handoffs are messy, and you need to hear this feedback whether you like it or not.",
-        telemetry: { empathy: 10, assertiveness: 90, clarity: 85, deEscalation: 15 }
-      }
-    ]
-  },
-  'turn_1_c': {
-    characterReply: "My tone? I am working 60-hour weeks to single-handedly ship the database engine! If your team spent less time crying about Slack emojis and more time learning to write proper queries, we wouldn't have handoff delays!",
-    tip: "Sarah is highly defensive and hostile now. Any counter-accusation will end the meeting. Use 'De-escalation & Containment' to validate her hard work and focus on the shared deployment goals.",
-    options: [
-      {
-        id: 'a',
-        label: "You are working incredibly hard, Sarah, and the database engine is excellent. I want to protect that work. But emotional tension on Slack is draining the team's energy. Let's work out how to hand off specs calmly.",
-        telemetry: { empathy: 85, clarity: 85, assertiveness: 80, deEscalation: 95 }
-      },
-      {
-        id: 'b',
-        label: "I'm sorry, I didn't mean to insult your hard work. You're right, you do work very hard. Let's just drop it, okay?",
-        telemetry: { empathy: 65, assertiveness: 20, clarity: 20, deEscalation: 80 }
-      },
-      {
-        id: 'c',
-        label: "Don't lecture me about coding. Your hard work doesn't give you a license to act like a bully. We are going to fix this tone issue right now.",
-        telemetry: { empathy: 10, assertiveness: 95, clarity: 90, deEscalation: 10 }
-      }
-    ]
-  },
-  'turn_2_a': {
-    characterReply: "Fine. Thursday handoffs are late because QA keeps pushing last-minute schema requests on Wednesday nights. I can't write documentation when the fields are shifting under my feet.",
-    tip: "Sarah has revealed a systemic blocker (QA schema shifts). This is a breakthrough! Pivot to 'Co-creative Problem Solving' to establish a code freeze or better sync process.",
-    options: [
-      {
-        id: 'a',
-        label: "That's a very fair point—shifting requirements make documentation impossible. Let's set a firm schema freeze for Wednesday noon, so you have clean specs by Thursday. How does that sound?",
-        telemetry: { empathy: 90, clarity: 90, assertiveness: 85, deEscalation: 95 }
-      },
-      {
-        id: 'b',
-        label: "Well, QA says you don't listen to their requests anyway. But I guess a freeze could work. I will think about it.",
-        telemetry: { empathy: 50, assertiveness: 45, clarity: 50, deEscalation: 55 }
-      },
-      {
-        id: 'c',
-        label: "That's just an excuse. You should be able to document it even with changes. Stop blaming QA for your delays.",
-        telemetry: { empathy: 15, assertiveness: 80, clarity: 70, deEscalation: 20 }
-      }
-    ]
-  },
-  'conclude': {
-    characterReply: "Alright. If we can freeze the schema by Wednesday noon, I can commit to sharing complete, documented specs by Thursday at 10 AM. It will save everyone a lot of headaches. Thanks for bringing this up constructively.",
-    tip: "Excellent simulation! Sarah is aligned, feels validated, and has co-created a concrete solution. Tap 'Conclude Chat' to finalize the simulation.",
-    options: []
-  }
-};
+
+
 
 // Groq Upstream helper
 async function callGroqChat(messages: any[], apiKey: string, model: string, maxTokens = 800) {
@@ -231,33 +120,136 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   try {
     // 1. GENERATE MICRO SKILLS
     if (action === 'generate_micro_skills') {
-      // In a real app we could hit Groq, but to guarantee the absolute best experience we return the seeded list.
-      return res.status(200).json({ microSkills: DEFAULT_MICRO_SKILLS });
+      const context = body.context || {};
+      const { industry = '', role = '', function: workSetting = '', situation = '' } = context;
+
+      if (!apiKey) {
+        // Fallback if no API key is configured
+        res.status(200).json({
+          microSkills: DEFAULT_MICRO_SKILLS,
+          drills: Object.entries(DEFAULT_DRILLS).map(([k, v]) => ({
+            microSkillId: k,
+            scenario: v.scenario,
+            question: v.question
+          })),
+          simCharacter: {
+            name: "Sarah",
+            role: "Database Developer",
+            personality: "protective of her time and highly suspicious of 'process' talk",
+            situation: "database migration and late code handoff delays causing team friction",
+            openingGuided: "Look, I'm really busy with the database migration. What is this meeting about? I hope this isn't another long talk about process.",
+            openingIndependent: "Hey, I saw your invite. What's this about? I hope this isn't another meeting that could have been an email.",
+            openingEscalated: "Look, I already explained this! Why are you micromanaging my Slack updates? I don't have time to write essays for your team!",
+            tipGuided: "Sarah is protective of her time. Start by validating her busy migration schedule and state your objective clearly.",
+            tipIndependent: "Sarah is defensive but accessible. State the meeting's objective directly and make her feel respected.",
+            tipEscalated: "Sarah is triggered. Avoid matching her energy. Validate her emotional state and establish a firm container."
+          }
+        });
+        return;
+      }
+
+      const prompt = `You are a world-class EQ and executive communication coach.
+The user is a professional with the following background:
+- Industry: ${industry || 'General Workplace'}
+- Role: ${role || 'Team Member'}
+- Work Setting / Function: ${workSetting || 'Collaborative'}
+- Specific Friction Situation: ${situation || 'A defensive colleague causing delays or misalignment'}
+
+Create a fully custom, highly realistic Competency Sprint package on "Having Difficult Conversations" tailored specifically to their work context.
+If the Specific Friction Situation is not provided, design a highly realistic, specific workplace friction scenario that would typically occur in their Industry and Role.
+
+Generate the exact custom micro-skills, micro-drills, and simulation counterpart details.
+You MUST return a JSON object in this exact format:
+{
+  "microSkills": [
+    {
+      "id": "skill_1_id", // alphanumeric string, e.g. "active_validation", "objective_framing", "clear_assertion", "emotional_containment", "co_creative_problem_solving"
+      "name": "Skill Name",
+      "description": "Clear explanation of how to use this micro-skill.",
+      "why": "Why this skill is crucial in resolving friction.",
+      "goodExample": "A realistic, perfect quote of what to say using this skill in the situation.",
+      "badExample": "A realistic, poor quote of what NOT to say."
+    }
+    // Generate exactly 5 distinct micro-skills
+  ],
+  "drills": [
+    {
+      "microSkillId": "skill_1_id", // must match one of the micro-skills id generated above
+      "scenario": "A highly realistic, single-sentence quote from their colleague/counterpart confronting the user.",
+      "question": "A specific coach instruction detailing how to respond using the mapped micro-skill."
+    }
+    // Generate exactly 5 drills, each mapped to one of the 5 microSkills
+  ],
+  "simCharacter": {
+    "name": "Firstname of counterpart",
+    "role": "Their professional role",
+    "personality": "Short description of their personality and defensiveness profile",
+    "situation": "Short 1-sentence description of the core situation/friction",
+    "openingGuided": "Their opening message (2 sentences) for the Guided simulation.",
+    "openingIndependent": "Their opening message (2 sentences) for the Independent simulation.",
+    "openingEscalated": "Their opening message (2 sentences) for the Escalated simulation.",
+    "tipGuided": "Initial coaching tip (2 sentences) explaining the counterpart's mindset and what the user should do first.",
+    "tipIndependent": "1-sentence coaching advice for the start of Independent mode.",
+    "tipEscalated": "1-sentence coaching advice for the start of Escalated mode."
+  }
+}`;
+
+      try {
+        const result = await callGroqChat([{ role: 'user', content: prompt }], apiKey, model, 1500);
+        res.status(200).json(result);
+        return;
+      } catch (err) {
+        console.error("Groq generate_micro_skills failed, fallback to static defaults", err);
+        res.status(200).json({
+          microSkills: DEFAULT_MICRO_SKILLS,
+          drills: Object.entries(DEFAULT_DRILLS).map(([k, v]) => ({
+            microSkillId: k,
+            scenario: v.scenario,
+            question: v.question
+          })),
+          simCharacter: {
+            name: "Sarah",
+            role: "Database Developer",
+            personality: "protective of her time and highly suspicious of 'process' talk",
+            situation: "database migration and late code handoff delays causing team friction",
+            openingGuided: "Look, I'm really busy with the database migration. What is this meeting about? I hope this isn't another long talk about process.",
+            openingIndependent: "Hey, I saw your invite. What's this about? I hope this isn't another meeting that could have been an email.",
+            openingEscalated: "Look, I already explained this! Why are you micromanaging my Slack updates? I don't have time to write essays for your team!",
+            tipGuided: "Sarah is protective of her time. Start by validating her busy migration schedule and state your objective clearly.",
+            tipIndependent: "Sarah is defensive but accessible. State the meeting's objective directly and make her feel respected.",
+            tipEscalated: "Sarah is triggered. Avoid matching her energy. Validate her emotional state and establish a firm container."
+          }
+        });
+        return;
+      }
     }
 
-    // 2. GENERATE DRILL SCENARIO
+    // 2. GENERATE DRILL SCENARIO (Legacy endpoint, fallback only)
     if (action === 'generate_drill_scenario') {
       const { microSkillId } = body;
       const drill = DEFAULT_DRILLS[microSkillId as keyof typeof DEFAULT_DRILLS] || DEFAULT_DRILLS.active_validation;
-      return res.status(200).json(drill);
+      res.status(200).json(drill);
+      return;
     }
 
     // 3. EVALUATE DRILL
     if (action === 'evaluate_drill') {
       const { scenario, question, userAnswer, microSkillName } = body;
       if (!userAnswer) {
-        return res.status(400).json({ error: "userAnswer is required" });
+        res.status(400).json({ error: "userAnswer is required" });
+        return;
       }
 
       if (!apiKey) {
         // Fallback when API key is missing
-        return res.status(200).json({
+        res.status(200).json({
           score: 8,
           feedback: "Great start! Your response addresses the counterpart's core concern directly while keeping a polite tone. To improve, make sure to state your own operating constraint even more transparently.",
           strengths: ["Clear validation of their concern", "Polite and professional language"],
           growthAreas: ["Asserting your personal boundaries more firmly"],
           perfectResponse: "I understand that meeting market deadlines is absolutely critical for the product's success. To help us hit those targets reliably without burning out, let's establish a pre-planning buffer so we can catch scope changes early."
         });
+        return;
       }
 
       const prompt = `You are a world-class EQ and executive communication coach.
@@ -279,88 +271,75 @@ Return a JSON object in this exact format:
 
       try {
         const evalResult = await callGroqChat([{ role: 'user', content: prompt }], apiKey, model, 600);
-        return res.status(200).json(evalResult);
+        res.status(200).json(evalResult);
+        return;
       } catch (err) {
         console.error("Groq evaluation failed, falling back to static", err);
-        return res.status(200).json({
+        res.status(200).json({
           score: 7,
           feedback: "A good, cooperative response. You validated their frustration which is excellent for de-escalation. To elevate your impact, anchor your assertion around concrete facts rather than justifications.",
           strengths: ["Strong empathy validation", "Constructive, solution-oriented wording"],
           growthAreas: ["Setting boundaries more directly"],
           perfectResponse: "I completely recognize the tight deadlines we are under. Let's work together to establish clear handoff guidelines so we can keep the pace without dropping product quality."
         });
+        return;
       }
     }
 
     // 4. SIMULATION TURN (Guided, Independent, Escalated)
     if (action === 'simulation_turn') {
-      const { mode, chatHistory = [], selectedOptionId, userAnswer } = body;
+      const { mode, chatHistory = [], selectedOptionId, userAnswer, customContext } = body;
+      const isGuided = mode === 'guided';
 
-      // ────────────────── A. GUIDED MODE ──────────────────
-      if (mode === 'guided') {
-        const turnCount = chatHistory.filter((m: any) => m.role === 'user').length;
+      const simChar = customContext?.simCharacter || {
+        name: "Sarah",
+        role: "Database Developer",
+        personality: "protective of her time and highly suspicious of 'process' talk",
+        situation: "database migration and late code handoff delays causing team friction",
+        openingGuided: "Look, I'm really busy with the database migration. What is this meeting about? I hope this isn't another long talk about process.",
+        openingIndependent: "Hey, I saw your invite. What's this about? I hope this isn't another meeting that could have been an email.",
+        openingEscalated: "Look, I already explained this! Why are you micromanaging my Slack updates? I don't have time to write essays for your team!",
+        tipGuided: "Sarah is protective of her time. Start by validating her busy migration schedule and state your objective clearly.",
+        tipIndependent: "Sarah is defensive but accessible. State the meeting's objective directly and make her feel respected.",
+        tipEscalated: "Sarah is triggered. Avoid matching her energy. Validate her emotional state and establish a firm container."
+      };
 
-        if (turnCount === 0) {
-          // Send the initial opening from Sarah
-          return res.status(200).json(GUIDED_SIMULATION_SCRIPT.start);
-        }
-
-        // Branching logic based on turn and choices
-        const lastUserMsg = chatHistory[chatHistory.length - 1];
-        const prevUserMsg = chatHistory[chatHistory.length - 3]; // User's turn 1 (if we are on turn 2)
-
-        if (turnCount === 1) {
-          // Guided Turn 1 has completed, user chose an option.
-          const choice = selectedOptionId || 'a';
-          const nextScriptKey = `turn_1_${choice}`;
-          const responsePayload = GUIDED_SIMULATION_SCRIPT[nextScriptKey] || GUIDED_SIMULATION_SCRIPT.turn_1_a;
-          return res.status(200).json(responsePayload);
-        }
-
-        if (turnCount === 2) {
-          // Guided Turn 2 has completed
-          const choice = selectedOptionId || 'a';
-          if (choice === 'a') {
-            return res.status(200).json(GUIDED_SIMULATION_SCRIPT.conclude);
-          } else {
-            // Give them a second chance or conclude with slightly lower score
-            return res.status(200).json({
-              characterReply: "I see your point, but QA really needs to freeze their specs earlier. If you can handle QA, I will try to make my Thursday handoffs clean.",
-              tip: "Sarah is agreeing reluctantly. You have navigated the dialogue. Tap 'Conclude Chat' to review your performance metrics.",
-              options: []
-            });
-          }
-        }
-
-        return res.status(200).json(GUIDED_SIMULATION_SCRIPT.conclude);
-      }
-
-      // ────────────────── B. UNGUIDED / INDEPENDENT / ESCALATED MODES ──────────────────
-      // These are free-text simulations evaluated live by Groq.
       if (!userAnswer) {
         const openingMessage = mode === 'escalated'
-          ? "Sarah: 'Look, I already explained this! Why are you micromanaging my Slack updates? I don't have time to write essays for your team!'"
-          : "Sarah: 'Hey, I saw your invite. What's this about? I hope this isn't another meeting that could have been an email.'";
+          ? simChar.openingEscalated
+          : isGuided
+            ? simChar.openingGuided
+            : simChar.openingIndependent;
 
-        return res.status(200).json({
+        const openingTip = mode === 'escalated'
+          ? simChar.tipEscalated
+          : isGuided
+            ? simChar.tipGuided
+            : simChar.tipIndependent;
+
+        res.status(200).json({
           characterReply: openingMessage,
           telemetry: { empathy: 50, clarity: 50, assertiveness: 50, deEscalation: 50 },
-          tip: mode === 'escalated'
-            ? "Sarah is highly triggered and hostile. Avoid matching her energy. Breathe, validate her emotional state of being rushed, and establish a firm, professional container."
-            : "Sarah is defensive but accessible. State the meeting's positive objective directly and make her feel respected as a partner."
+          tip: openingTip
         });
+        return;
       }
 
       if (!apiKey) {
         // Fallback telemetry if Groq is offline
         const charReply = mode === 'escalated'
-          ? "Sarah: 'Fine, I get it. Handoffs are late. But I am drowning in bugs here! If I pause to document specs, the main database build will slip! What do you want me to do?'"
-          : "Sarah: 'I understand you want handoffs by Thursday. But when QA keeps changing the schema, it pushes me behind. How do we prevent QA from changing things mid-week?'";
-        return res.status(200).json({
+          ? `Fine, I get it. But I am drowning in work here! If I pause to slow down, the main project will slip! What do you want me to do?`
+          : isGuided
+            ? `Honestly, everything feels fine to me. I do my part. If others don't understand the handoff, they should ask instead of complaining.`
+            : `I understand you want this resolved. But when changes keep happening, it pushes me behind. How do we prevent changes mid-week?`;
+        res.status(200).json({
           characterReply: charReply,
           telemetry: { empathy: 75, clarity: 80, assertiveness: 70, deEscalation: 75 },
-          tip: "Great pivot. Sarah is now sharing her real blockers (bug overload/QA changes). Focus on establishing a solution-oriented collaboration structure."
+          tip: isGuided
+            ? `Coach Guide: ${simChar.name} is shifting blame. Acknowledge that their work quality is high but bring the conversation back to the observable delays and suggest setting a firm process agreement.`
+            : `Great pivot. ${simChar.name} is now sharing their real blockers. Focus on establishing a solution-oriented collaboration structure.`
         });
+        return;
       }
 
       // Live AI character and telemetry generation
@@ -372,21 +351,31 @@ Return a JSON object in this exact format:
       // Add user answer to prompt
       simMessages.push({ role: 'user', content: userAnswer });
 
-      const systemPrompt = `You are playing the role of "Sarah", a brilliant database developer who is protective of her time, defensive about processes, and currently in a high-stakes difficult conversation with her manager (the user) about Slack collaboration and code handoff delays.
+      const systemPrompt = `You are playing the role of "${simChar.name}", a ${simChar.role} who is ${simChar.personality}. You are currently in a high-stakes difficult conversation with the user (their manager or peer) about: ${simChar.situation}.
 
-Mode of simulation: ${mode === 'escalated' ? 'Sarah is EXTREMELY Hostile, triggered, highly defensive, and blames the manager for micromanagement.' : 'Sarah is professional but defensive and skeptical.'}
+Mode of simulation: ${
+  isGuided
+    ? `GUIDED SIMULATION (MODERATE DIFFICULTY). You are defensive but accessible. You want to resolve the conflict but are highly protective of your time and authority. The user needs supportive coaching guidance to handle this conversation successfully.`
+    : mode === 'escalated'
+      ? `EXTREMELY HOSTILE SIMULATION (HIGH DIFFICULTY). You are highly triggered, highly defensive, and blame the manager/peer for micromanagement, lack of support, or unfair demands.`
+      : `INDEPENDENT SIMULATION (HARD DIFFICULTY). You are professional but defensive, skeptical, and expect clear business logic and mutual respect.`
+}
 
-Generate Sarah's next dynamic response, evaluate the user's emotional intelligence live, and provide a coaching tip.
+Generate ${simChar.name}'s next dynamic response (2-3 sentences), evaluate the user's emotional intelligence live, and provide a coaching tip.
 Return a JSON object in this exact format:
 {
-  "characterReply": "Sarah's short 2-3 sentence conversational reply.",
+  "characterReply": "Your short 2-3 sentence conversational reply.",
   "telemetry": {
-    "empathy": 80, // Integer 0 to 100 on how validated the user made Sarah feel
-    "clarity": 85, // Integer 0 to 100 on how clear and jargon-free the user's focus is
-    "assertiveness": 75, // Integer 0 to 100 on how firmly the user held boundaries without submissive/aggressive shifts
+    "empathy": 80, // Integer 0 to 100 on how validated you feel
+    "clarity": 85, // Integer 0 to 100 on how clear the user's focus is
+    "assertiveness": 75, // Integer 0 to 100 on how firmly the user held boundaries without aggressive shifts
     "deEscalation": 90 // Integer 0 to 100 on how calm and composed the user kept the dialogue
   },
-  "tip": "A short 1-sentence coaching advice for the side-panel (empathetic, actionable, 'give me tip but don't talk' style)."
+  "tip": "${
+    isGuided
+      ? `An extremely detailed, step-by-step coaching tip (2-3 sentences) guiding the user on what specific EQ micro-skills to deploy in their next message, explaining what they did well and suggesting a master-level communication structure they can adapt.`
+      : `A short 1-sentence coaching advice for the side-panel (empathetic, actionable, 'give me tip but don't talk' style).`
+  }"
 }`;
 
       const aiMessages = [
@@ -396,23 +385,26 @@ Return a JSON object in this exact format:
 
       try {
         const result = await callGroqChat(aiMessages, apiKey, model, 700);
-        return res.status(200).json(result);
+        res.status(200).json(result);
+        return;
       } catch (err) {
         console.error("AI turn generation failed, fallback", err);
-        return res.status(200).json({
-          characterReply: "I'm doing my best here. Let's just agree to lock in specs by Wednesday noon so my Thursday handoffs are clean.",
+        res.status(200).json({
+          characterReply: `Let's just agree to keep things simple. If we can freeze requirements ahead of time, my work will be clean.`,
           telemetry: { empathy: 70, clarity: 75, assertiveness: 80, deEscalation: 70 },
-          tip: "Keep Sarah focused on the Wednesday noon freeze. Confirm this agreement explicitly to wrap up the conversation."
+          tip: "Keep the counterpart focused on this agreement. Confirm it explicitly to wrap up the conversation."
         });
+        return;
       }
     }
 
     // 5. GENERATE FINAL REPORT
     if (action === 'generate_final_report') {
-      const { drills = [], guidedTrans = [], independentTrans = [], escalatedTrans = [] } = body;
+      const { drills = [], guidedTrans = [], independentTrans = [], escalatedTrans = [], customContext } = body;
+      const simChar = customContext?.simCharacter || { name: 'Sarah', role: 'database developer', situation: 'code handoff delays' };
 
       if (!apiKey) {
-        return res.status(200).json({
+        res.status(200).json({
           overallScore: 84,
           traits: {
             empathy: 88,
@@ -421,21 +413,28 @@ Return a JSON object in this exact format:
             deEscalation: 90,
             problemSolving: 82
           },
-          detailedAnalysis: "You demonstrated outstanding emotional containment and active empathy across all simulations. You navigated Sarah's defensive outbursts with high poise, consistently de-escalating conflicts and steering conversations toward concrete, collaborative handoff freeze agreements. Your growth area is assertiveness: occasionally, you softened boundaries with unnecessary explanations. Continue practicing to maintain absolute clarity on your needs.",
-          strengths: [" Poised de-escalation under hostility", "Active validation of counterpart's time pressure"],
+          detailedAnalysis: `You demonstrated outstanding emotional containment and active empathy across all simulations in your role as a ${customContext?.role || 'Professional'} in the ${customContext?.industry || 'General'} industry. You navigated ${simChar.name}'s defensive outbursts with high poise, consistently de-escalating conflicts and steering conversations toward concrete, collaborative agreements. Your growth area is assertiveness: occasionally, you softened boundaries with unnecessary explanations. Continue practicing to maintain absolute clarity on your needs.`,
+          strengths: ["Poised de-escalation under hostility", "Active validation of counterpart's context"],
           growthAreas: ["Holding firm boundaries without over-explaining", "Maintaining high structural clarity in initial openings"],
           recommendedRepeats: 2
         });
+        return;
       }
 
       const prompt = `You are a senior executive coach and emotional intelligence auditor.
 Compile a comprehensive, premium performance report based on the transcripts of a learner's Competency Sprint on "Having Difficult Conversations".
 
+The user completed this sprint in the following context:
+- Role: ${customContext?.role || 'Professional'}
+- Industry: ${customContext?.industry || 'General'}
+- Counterpart: ${simChar.name} (${simChar.role})
+- Core Situation: ${simChar.situation}
+
 Review these transcript summaries:
 - Micro-drills answers & evaluations: ${JSON.stringify(drills)}
-- Guided Simulation: ${JSON.stringify(guidedTrans)}
-- Independent Simulation: ${JSON.stringify(independentTrans)}
-- Escalated Simulation: ${JSON.stringify(escalatedTrans)}
+- Guided Simulation with ${simChar.name}: ${JSON.stringify(guidedTrans)}
+- Independent Simulation with ${simChar.name}: ${JSON.stringify(independentTrans)}
+- Escalated Simulation with ${simChar.name}: ${JSON.stringify(escalatedTrans)}
 
 Evaluate their traits (empathy, clarity, assertiveness, de-escalation, problem solving) out of 100.
 Compute an overall score (0-100).
@@ -451,7 +450,7 @@ Return a JSON object in this exact format:
     "deEscalation": 90,
     "problemSolving": 80
   },
-  "detailedAnalysis": "A rich 4-5 sentence editorial coaching narrative summarizing their overall performance, behavior trends, and professional impacts.",
+  "detailedAnalysis": "A rich 4-5 sentence editorial coaching narrative summarizing their overall performance, behavior trends, and professional impacts in their specific workplace context.",
   "strengths": ["Strengths 1", "Strengths 2"],
   "growthAreas": ["Growth area 1", "Growth area 2"],
   "recommendedRepeats": 2
@@ -459,17 +458,19 @@ Return a JSON object in this exact format:
 
       try {
         const report = await callGroqChat([{ role: 'user', content: prompt }], apiKey, model, 1000);
-        return res.status(200).json(report);
+        res.status(200).json(report);
+        return;
       } catch (err) {
         console.error("AI report failed, fallback", err);
-        return res.status(200).json({
+        res.status(200).json({
           overallScore: 80,
           traits: { empathy: 82, clarity: 78, assertiveness: 75, deEscalation: 85, problemSolving: 80 },
-          detailedAnalysis: "You've successfully completed the sprint! You showed strong composure and de-escalation skills during Sarah's hostile turns, keeping the dialogue constructive. Your assertiveness score suggests room to hold boundaries more directly without feeling the need to apologize or soften requests.",
+          detailedAnalysis: `You've successfully completed the sprint! You showed strong composure and de-escalation skills during ${simChar.name}'s hostile turns, keeping the dialogue constructive. Your assertiveness score suggests room to hold boundaries more directly without feeling the need to apologize or soften requests.`,
           strengths: ["Excellent composure during high tension", "Active listening and validation"],
           growthAreas: ["Holding boundaries without over-apologizing", "Structuring clear meeting objectives early"],
           recommendedRepeats: 3
         });
+        return;
       }
     }
 

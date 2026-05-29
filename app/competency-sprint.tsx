@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
@@ -12,8 +12,11 @@ import { CompetencySprintLearn } from '@/components/competency-sprint-learn';
 import { CompetencySprintDrills } from '@/components/competency-sprint-drills';
 import { CompetencySprintSimulation } from '@/components/competency-sprint-simulation';
 import { CompetencySprintReport } from '@/components/competency-sprint-report';
+import { getUserProfileContext, type UserProfileContext } from '@/services/profile-context';
 
 export default function CompetencySprintScreen() {
+  const [mounted, setMounted] = useState(false);
+  const [profileContext, setProfileContext] = useState<UserProfileContext | null>(null);
   const colors = useColors();
   const { user } = useAuthStore();
   const {
@@ -21,6 +24,7 @@ export default function CompetencySprintScreen() {
     loading,
     error,
     loadOrCreateSprint,
+    startNewSprintWithContext,
     moveToStage,
     checkOffMicroSkill,
   } = useCompetencySprintStore();
@@ -28,17 +32,62 @@ export default function CompetencySprintScreen() {
   const skillId = 'difficult_conversations';
 
   useEffect(() => {
-    if (user?.id) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && user?.id) {
       void loadOrCreateSprint(user.id, skillId);
+      void getUserProfileContext(user.id).then((ctx) => {
+        setProfileContext(ctx);
+      });
     }
-  }, [user?.id]);
+  }, [user?.id, mounted]);
+
+  if (!mounted) {
+    return (
+      <GlassBackground>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      </GlassBackground>
+    );
+  }
 
   const renderActiveStage = () => {
-    if (!sprint) return null;
+    if (!sprint) {
+      return (
+        <CompetencySprintPrimer
+          initialIndustry={profileContext?.industry ?? null}
+          initialRole={profileContext?.professionalRole ?? null}
+          initialFunction={profileContext?.orgContext ?? null}
+          loading={loading}
+          onStartSprint={async (ctx) => {
+            if (user?.id) {
+              await startNewSprintWithContext(user.id, skillId, ctx);
+              await moveToStage('learn');
+            }
+          }}
+        />
+      );
+    }
 
     switch (sprint.currentStage) {
       case 'primer':
-        return <CompetencySprintPrimer onNext={() => moveToStage('learn')} />;
+        return (
+          <CompetencySprintPrimer
+            initialIndustry={profileContext?.industry ?? null}
+            initialRole={profileContext?.professionalRole ?? null}
+            initialFunction={profileContext?.orgContext ?? null}
+            loading={loading}
+            onStartSprint={async (ctx) => {
+              if (user?.id) {
+                await startNewSprintWithContext(user.id, skillId, ctx);
+                await moveToStage('learn');
+              }
+            }}
+          />
+        );
       case 'learn':
         return (
           <CompetencySprintLearn
@@ -56,7 +105,20 @@ export default function CompetencySprintScreen() {
       case 'report':
         return <CompetencySprintReport />;
       default:
-        return <CompetencySprintPrimer onNext={() => moveToStage('learn')} />;
+        return (
+          <CompetencySprintPrimer
+            initialIndustry={profileContext?.industry ?? null}
+            initialRole={profileContext?.professionalRole ?? null}
+            initialFunction={profileContext?.orgContext ?? null}
+            loading={loading}
+            onStartSprint={async (ctx) => {
+              if (user?.id) {
+                await startNewSprintWithContext(user.id, skillId, ctx);
+                await moveToStage('learn');
+              }
+            }}
+          />
+        );
     }
   };
 
@@ -105,3 +167,4 @@ export default function CompetencySprintScreen() {
     </GlassBackground>
   );
 }
+

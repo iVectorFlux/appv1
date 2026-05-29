@@ -33,7 +33,7 @@ export function CompetencySprintStepper({ currentStage }: CompetencySprintSteppe
   const styles = StyleSheet.create({
     container: {
       paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.sm,
+      paddingVertical: Spacing.md,
       backgroundColor: colors.glass,
       borderBottomWidth: 1,
       borderBottomColor: colors.glassBorder,
@@ -49,15 +49,32 @@ export function CompetencySprintStepper({ currentStage }: CompetencySprintSteppe
       alignItems: 'center',
       position: 'relative',
     },
-    dot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
+    dotContainer: {
+      height: 14,
+      justifyContent: 'center',
+      alignItems: 'center',
       zIndex: 2,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    activeDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      borderWidth: 2.5,
+      borderColor: colors.primary,
+      backgroundColor: '#FFFFFF',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
     },
     line: {
       position: 'absolute',
-      top: 5,
+      top: 6,
       height: 2,
       left: '50%',
       right: '-50%',
@@ -66,9 +83,11 @@ export function CompetencySprintStepper({ currentStage }: CompetencySprintSteppe
     label: {
       marginTop: Spacing.xs,
       fontFamily: Typography.fontFamily.primary,
-      fontSize: 10,
-      fontWeight: Typography.fontWeight.semibold,
+      fontSize: 9,
+      fontWeight: Typography.fontWeight.bold,
       textAlign: 'center',
+      letterSpacing: 0.3,
+      textTransform: 'uppercase',
       ...(Platform.OS === 'web' ? { textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' } : {}),
     },
   });
@@ -87,7 +106,7 @@ export function CompetencySprintStepper({ currentStage }: CompetencySprintSteppe
               : colors.glassBorder;
 
           const labelColor = isActive
-            ? colors.textPrimary
+            ? colors.primary
             : isCompleted
               ? colors.textSecondary
               : colors.textMuted;
@@ -96,7 +115,15 @@ export function CompetencySprintStepper({ currentStage }: CompetencySprintSteppe
 
           return (
             <View key={step.id} style={styles.stepItem}>
-              <View style={[styles.dot, { backgroundColor: dotColor }]} />
+              <View style={styles.dotContainer}>
+                <View
+                  style={
+                    isActive
+                      ? styles.activeDot
+                      : [styles.dot, { backgroundColor: dotColor }]
+                  }
+                />
+              </View>
               {idx < STAGES.length - 1 && (
                 <View style={[styles.line, { backgroundColor: lineColor }]} />
               )}

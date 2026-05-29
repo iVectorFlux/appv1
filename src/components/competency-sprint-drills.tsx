@@ -3,36 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Activi
 import { useColors, Spacing, Radius, Typography, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompetencySprintStore } from '@/stores/competency-sprint-store';
-import { saveSprint } from '@/services/competency-sprint-service';
-
-// Local seeds for drills (matches API seeds)
-const DEFAULT_DRILLS = [
-  {
-    microSkillId: 'active_validation',
-    scenario: "Your product manager says: 'You are always complaining about the timeline, but we have strict market deadlines to meet!'",
-    question: "Acknowledge their timeline pressure first with genuine validation, without immediately agreeing to work overtime."
-  },
-  {
-    microSkillId: 'objective_framing',
-    scenario: "A peer from sales confronts you: 'Your division is completely ignoring our client requests! You guys are totally unresponsive!'",
-    question: "Frame your reply objectively by asking for facts and separating observations from their emotional generalizations."
-  },
-  {
-    microSkillId: 'clear_assertion',
-    scenario: "A teammate says: 'Hey, I can't finish my part of the slides. Can you just write the executive summary for me tonight? Thanks!'",
-    question: "Assert a firm, respectful boundary saying 'No' because of your prior commitments, without over-apologizing."
-  },
-  {
-    microSkillId: 'emotional_containment',
-    scenario: "In a review, a stakeholder slams their laptop: 'This design is completely garbage! Who signed off on this rubbish?'",
-    question: "Respond with absolute calm and composure to de-escalate their anger and anchor the talk around constructive specifics."
-  },
-  {
-    microSkillId: 'co_creative_problem_solving',
-    scenario: "Your developer says: 'Look, I hate this new reporting system. It's a waste of time. I'm just not going to fill it out.'",
-    question: "Pivot them away from their refusal into a co-creative brainstorming loop to find a method that satisfies tracking needs without frustrating them."
-  }
-];
 
 export function CompetencySprintDrills() {
   const colors = useColors();
@@ -46,27 +16,6 @@ export function CompetencySprintDrills() {
   } = useCompetencySprintStore();
 
   const [inputText, setInputText] = useState('');
-
-  // Auto-seed drills progress in the store if it's empty
-  useEffect(() => {
-    if (sprint && (!sprint.microDrillsProgress || sprint.microDrillsProgress.length === 0)) {
-      const seeded = DEFAULT_DRILLS.map((d) => ({
-        ...d,
-        userAnswer: '',
-        score: null,
-        feedback: null,
-        strengths: [],
-        growthAreas: [],
-        perfectResponse: null,
-        completed: false
-      }));
-      const updated = { ...sprint, microDrillsProgress: seeded };
-      void saveSprint(updated).then(() => {
-        // Sync locally
-        useCompetencySprintStore.setState({ sprint: updated });
-      });
-    }
-  }, [sprint]);
 
   const drills = sprint?.microDrillsProgress || [];
   const currentDrill = drills[currentDrillIndex] || drills[0] || null;
@@ -120,102 +69,113 @@ export function CompetencySprintDrills() {
       paddingBottom: Spacing['5xl'],
     },
     header: {
-      marginBottom: Spacing.md,
+      marginBottom: Spacing.sm,
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'baseline',
     },
     title: {
       fontFamily: Typography.fontFamily.heading,
-      fontSize: Typography.fontSize.xl,
+      fontSize: Typography.fontSize['2xl'],
       fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
     },
     counter: {
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.xs,
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: 11,
       color: colors.textMuted,
-      fontWeight: Typography.fontWeight.semibold,
+      fontWeight: Typography.fontWeight.bold,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
     skillNameCard: {
-      backgroundColor: colors.primary + '0D',
-      borderColor: colors.primary + '30',
+      backgroundColor: colors.primary + '10',
+      borderColor: colors.primary + '33',
       borderWidth: 1,
-      borderRadius: Radius.md,
+      borderRadius: Radius.full,
       paddingVertical: Spacing.xs,
-      paddingHorizontal: Spacing.sm,
+      paddingHorizontal: Spacing.md,
       alignSelf: 'flex-start',
       marginBottom: Spacing.md,
     },
     skillNameText: {
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: 10,
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: 9,
       fontWeight: Typography.fontWeight.bold,
       color: colors.primary,
       textTransform: 'uppercase',
-      letterSpacing: Typography.letterSpacing.section,
+      letterSpacing: 1.2,
     },
     scenarioCard: {
       backgroundColor: colors.glass,
       borderColor: colors.glassBorder,
       borderWidth: 1,
-      borderRadius: Radius.lg,
-      padding: Spacing.md,
-      marginBottom: Spacing.md,
-      ...Shadows.sm,
+      borderRadius: Radius.xl,
+      padding: Spacing.lg,
+      marginBottom: Spacing.lg,
+      ...Shadows.card,
     },
     avatarRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.sm,
-      marginBottom: Spacing.xs,
+      marginBottom: Spacing.sm,
     },
     avatar: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       backgroundColor: colors.accentTerracotta,
       alignItems: 'center',
       justifyContent: 'center',
+      ...Shadows.sm,
     },
     avatarText: {
       color: '#FFFFFF',
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: Typography.fontWeight.bold,
     },
     charName: {
       fontFamily: Typography.fontFamily.heading,
-      fontSize: Typography.fontSize.xs,
+      fontSize: 10,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
+      color: colors.textSecondary,
+      letterSpacing: 0.5,
     },
     bubble: {
       fontFamily: Typography.fontFamily.primary,
       fontSize: Typography.fontSize.sm,
       color: colors.textPrimary,
       fontStyle: 'italic',
-      lineHeight: Typography.fontSize.sm * 1.4,
-      marginBottom: Spacing.sm,
+      lineHeight: Typography.fontSize.sm * 1.5,
+      marginBottom: Spacing.md,
+      backgroundColor: colors.glassBorder + '15',
+      padding: Spacing.md,
+      borderRadius: Radius.lg,
+      borderColor: colors.glassBorder + '30',
+      borderWidth: 1,
     },
     promptLabel: {
-      fontFamily: Typography.fontFamily.primary,
+      fontFamily: Typography.fontFamily.heading,
       fontSize: 10,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.textMuted,
+      color: colors.primary,
       textTransform: 'uppercase',
-      marginBottom: 2,
+      marginBottom: 3,
+      letterSpacing: 0.5,
     },
     promptText: {
       fontFamily: Typography.fontFamily.primary,
       fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.xs * 1.4,
+      color: colors.textPrimary,
+      lineHeight: Typography.fontSize.xs * 1.5,
+      fontWeight: Typography.fontWeight.medium,
     },
     inputBox: {
       backgroundColor: colors.glass,
       borderColor: colors.glassBorder,
-      borderWidth: 1,
-      borderRadius: Radius.md,
+      borderWidth: 1.5,
+      borderRadius: Radius.xl,
       padding: Spacing.md,
       minHeight: 120,
       fontFamily: Typography.fontFamily.primary,
@@ -223,33 +183,36 @@ export function CompetencySprintDrills() {
       color: colors.textPrimary,
       textAlignVertical: 'top',
       marginBottom: Spacing.md,
+      ...Shadows.sm,
+      ...(Platform.OS === 'web' ? { outlineWidth: 0 } : {}),
     },
     submitBtn: {
       backgroundColor: colors.primary,
       paddingVertical: Spacing.md,
-      borderRadius: Radius.lg,
+      borderRadius: Radius.xl,
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'row',
       gap: Spacing.sm,
       ...Shadows.md,
-      ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
+      ...(Platform.OS === 'web' ? { cursor: 'pointer', transition: 'background-color 0.2s ease, transform 0.15s ease' } : {}),
     } as any,
     submitText: {
       color: '#FFFFFF',
       fontFamily: Typography.fontFamily.primary,
       fontSize: Typography.fontSize.base,
       fontWeight: Typography.fontWeight.bold,
+      letterSpacing: 0.3,
     },
     // Evaluation View Styles
     evalCard: {
       backgroundColor: colors.glass,
       borderColor: colors.glassBorder,
       borderWidth: 1,
-      borderRadius: Radius.lg,
-      padding: Spacing.md,
-      marginBottom: Spacing.md,
-      ...Shadows.sm,
+      borderRadius: Radius.xl,
+      padding: Spacing.lg,
+      marginBottom: Spacing.lg,
+      ...Shadows.card,
       gap: Spacing.md,
     },
     scoreRow: {
@@ -259,17 +222,18 @@ export function CompetencySprintDrills() {
     },
     scoreLabel: {
       fontFamily: Typography.fontFamily.heading,
-      fontSize: Typography.fontSize.base,
+      fontSize: Typography.fontSize.cardTitle,
       fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
     },
     scoreBadge: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 2,
+      borderWidth: 2.5,
+      ...Shadows.sm,
     },
     scoreVal: {
       fontFamily: Typography.fontFamily.heading,
@@ -279,14 +243,17 @@ export function CompetencySprintDrills() {
     feedbackText: {
       fontFamily: Typography.fontFamily.primary,
       fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
+      color: colors.textPrimary,
       lineHeight: Typography.fontSize.xs * 1.5,
     },
     tagSection: {
-      gap: Spacing.xs,
+      gap: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.glassBorder,
+      paddingTop: Spacing.md,
     },
     tagTitle: {
-      fontFamily: Typography.fontFamily.primary,
+      fontFamily: Typography.fontFamily.heading,
       fontSize: 10,
       fontWeight: Typography.fontWeight.bold,
       color: colors.textMuted,
@@ -294,7 +261,7 @@ export function CompetencySprintDrills() {
       letterSpacing: Typography.letterSpacing.section,
     },
     tagGrid: {
-      gap: Spacing.xs,
+      gap: Spacing.sm,
     },
     tagBullet: {
       flexDirection: 'row',
@@ -309,16 +276,17 @@ export function CompetencySprintDrills() {
       lineHeight: Typography.fontSize.xs * 1.4,
     },
     masterCard: {
-      backgroundColor: colors.success + '0A',
-      borderColor: colors.success + '30',
-      borderWidth: 1,
-      borderRadius: Radius.lg,
-      padding: Spacing.md,
-      marginBottom: Spacing.md,
+      backgroundColor: colors.success + '0E',
+      borderColor: colors.success + '40',
+      borderWidth: 1.5,
+      borderRadius: Radius.xl,
+      padding: Spacing.lg,
+      marginBottom: Spacing.lg,
       gap: Spacing.xs,
+      ...Shadows.sm,
     },
     masterLabel: {
-      fontFamily: Typography.fontFamily.primary,
+      fontFamily: Typography.fontFamily.heading,
       fontSize: 10,
       fontWeight: Typography.fontWeight.bold,
       color: colors.success,
@@ -330,24 +298,26 @@ export function CompetencySprintDrills() {
       fontSize: Typography.fontSize.xs,
       color: colors.textPrimary,
       fontStyle: 'italic',
-      lineHeight: Typography.fontSize.xs * 1.4,
+      lineHeight: Typography.fontSize.xs * 1.5,
+      fontWeight: Typography.fontWeight.medium,
     },
     nextBtn: {
       backgroundColor: colors.success,
       paddingVertical: Spacing.md,
-      borderRadius: Radius.lg,
+      borderRadius: Radius.xl,
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'row',
       gap: Spacing.sm,
       ...Shadows.md,
-      ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
+      ...(Platform.OS === 'web' ? { cursor: 'pointer', transition: 'background-color 0.2s ease, transform 0.15s ease' } : {}),
     } as any,
     nextText: {
       color: '#FFFFFF',
       fontFamily: Typography.fontFamily.primary,
       fontSize: Typography.fontSize.base,
       fontWeight: Typography.fontWeight.bold,
+      letterSpacing: 0.3,
     },
   });
 

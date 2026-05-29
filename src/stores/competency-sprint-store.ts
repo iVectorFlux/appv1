@@ -18,6 +18,11 @@ interface CompetencySprintState {
 
   // Actions
   loadOrCreateSprint: (userId: string, skillId: string) => Promise<void>;
+  startNewSprintWithContext: (
+    userId: string,
+    skillId: string,
+    context: { industry: string; role: string; function: string; situation: string }
+  ) => Promise<void>;
   moveToStage: (stage: CompetencySprint['currentStage']) => Promise<void>;
   checkOffMicroSkill: (skillId: string) => Promise<void>;
   setCurrentDrillIndex: (index: number) => void;
@@ -41,28 +46,57 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
   loadOrCreateSprint: async (userId: string, skillId: string) => {
     set({ loading: true, error: null });
     try {
-      let active = await getActiveSprint(userId, skillId);
-      if (!active) {
-        // Build new sprint session
-        const microSkillsData = await invokeSprintApi('generate_micro_skills', { skillId });
-        const initialSprint: CompetencySprint = {
-          userId,
-          skillId,
-          status: 'active',
-          currentStage: 'primer',
-          microSkills: (microSkillsData.microSkills || []).map((s: any) => ({ ...s, understood: false })),
-          microDrillsProgress: [],
-          guidedSimChat: [],
-          independentSimChat: [],
-          escalatedSimChat: [],
-          finalReport: null,
-        };
-        active = await saveSprint(initialSprint);
-      }
+      const active = await getActiveSprint(userId, skillId);
       set({ sprint: active, loading: false });
     } catch (err: any) {
       console.error('[SprintStore] Failed to load sprint:', err);
       set({ error: err.message || 'Failed to initialize sprint', loading: false });
+    }
+  },
+
+  startNewSprintWithContext: async (
+    userId: string,
+    skillId: string,
+    context: { industry: string; role: string; function: string; situation: string }
+  ) => {
+    set({ loading: true, error: null });
+    try {
+      const microSkillsData = await invokeSprintApi('generate_micro_skills', { skillId, context });
+      const initialSprint: CompetencySprint = {
+        userId,
+        skillId,
+        status: 'active',
+        currentStage: 'primer',
+        microSkills: (microSkillsData.microSkills || []).map((s: any) => ({ ...s, understood: false })),
+        microDrillsProgress: (microSkillsData.drills || []).map((d: any) => ({
+          ...d,
+          userAnswer: '',
+          score: null,
+          feedback: null,
+          strengths: [],
+          growthAreas: [],
+          perfectResponse: null,
+          completed: false,
+        })),
+        guidedSimChat: [],
+        independentSimChat: [],
+        escalatedSimChat: [],
+        finalReport: {
+          customContext: {
+            industry: context.industry,
+            role: context.role,
+            function: context.function,
+            situation: context.situation,
+            simCharacter: microSkillsData.simCharacter,
+          },
+        },
+      };
+
+      const saved = await saveSprint(initialSprint);
+      set({ sprint: saved, currentDrillIndex: 0, loading: false });
+    } catch (err: any) {
+      console.error('[SprintStore] Failed to start sprint with context:', err);
+      set({ error: err.message || 'Failed to start sprint', loading: false });
     }
   },
 
@@ -109,8 +143,8 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
       const currentSkill = sprint.microSkills.find((s) => s.id === microSkillId);
       const drillScenario = sprint.microDrillsProgress.find((d) => d.microSkillId === microSkillId);
 
-      const scenarioText = drillScenario?.scenario || "Scenario placeholder";
-      const questionText = drillScenario?.question || "Question placeholder";
+      const scenarioText = drillScenario?.scenario || 'Scenario placeholder';
+      const questionText = drillScenario?.question || 'Question placeholder';
 
       const evaluation = await invokeSprintApi('evaluate_drill', {
         scenario: scenarioText,
@@ -150,11 +184,12 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
     if (!sprint) return;
 
     const currentStage = sprint.currentStage;
-    const chatField = currentStage === 'guided'
-      ? 'guidedSimChat'
-      : currentStage === 'independent'
-        ? 'independentSimChat'
-        : 'escalatedSimChat';
+    const chatField =
+      currentStage === 'guided'
+        ? 'guidedSimChat'
+        : currentStage === 'independent'
+          ? 'independentSimChat'
+          : 'escalatedSimChat';
 
     if (sprint[chatField] && sprint[chatField].length > 0) {
       // Chat is already initialized
@@ -166,6 +201,7 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
       const response = await invokeSprintApi('simulation_turn', {
         mode: currentStage,
         chatHistory: [],
+        customContext: sprint.finalReport?.customContext,
       });
 
       const updated = {
@@ -198,11 +234,12 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
     if (!sprint) return;
 
     const currentStage = sprint.currentStage;
-    const chatField = currentStage === 'guided'
-      ? 'guidedSimChat'
-      : currentStage === 'independent'
-        ? 'independentSimChat'
-        : 'escalatedSimChat';
+    const chatField =
+      currentStage === 'guided'
+        ? 'guidedSimChat'
+        : currentStage === 'independent'
+          ? 'independentSimChat'
+          : 'escalatedSimChat';
 
     const currentHistory = sprint[chatField] || [];
 
@@ -231,6 +268,7 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
         chatHistory: currentHistory.map((h: any) => ({ role: h.role, content: h.content })),
         selectedOptionId,
         userAnswer: text,
+        customContext: sprint.finalReport?.customContext,
       });
 
       const assistantTurn = {
@@ -290,9 +328,17 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
         guidedTrans: sprint.guidedSimChat.map((c) => ({ role: c.role, content: c.content })),
         independentTrans: sprint.independentSimChat.map((c) => ({ role: c.role, content: c.content })),
         escalatedTrans: sprint.escalatedSimChat.map((c) => ({ role: c.role, content: c.content })),
+        customContext: sprint.finalReport?.customContext,
       });
 
-      const updated = { ...sprint, finalReport: result };
+      const updated = {
+        ...sprint,
+        finalReport: {
+          ...sprint.finalReport,
+          ...result,
+        },
+      };
+
       const saved = await saveSprint(updated);
       if (saved) {
         set({ sprint: saved });
@@ -312,25 +358,10 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
       if (sprint.id) {
         await completeSprint(sprint.id);
       }
-      // Re-initialize a clean sprint
-      const microSkillsData = await invokeSprintApi('generate_micro_skills', { skillId: sprint.skillId });
-      const initialSprint: CompetencySprint = {
-        userId: sprint.userId,
-        skillId: sprint.skillId,
-        status: 'active',
-        currentStage: 'primer',
-        microSkills: (microSkillsData.microSkills || []).map((s: any) => ({ ...s, understood: false })),
-        microDrillsProgress: [],
-        guidedSimChat: [],
-        independentSimChat: [],
-        escalatedSimChat: [],
-        finalReport: null,
-      };
-
-      const saved = await saveSprint(initialSprint);
-      set({ sprint: saved, currentDrillIndex: 0, loading: false });
+      set({ sprint: null, currentDrillIndex: 0, loading: false });
     } catch (err: any) {
       set({ error: err.message || 'Failed to repeat sprint', loading: false });
     }
   },
 }));
+

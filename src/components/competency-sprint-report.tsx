@@ -9,6 +9,256 @@ export function CompetencySprintReport() {
   const colors = useColors();
   const router = useRouter();
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    scroll: {
+      flex: 1,
+    },
+    content: {
+      padding: Spacing.md,
+      paddingBottom: Spacing['5xl'],
+    },
+    // Giant Mastery Score Card
+    masterCard: {
+      backgroundColor: colors.glass,
+      borderColor: colors.glassBorder,
+      borderWidth: 1,
+      borderRadius: Radius.xl,
+      padding: Spacing.xl,
+      alignItems: 'center',
+      marginBottom: Spacing.lg,
+      ...Shadows.card,
+    },
+    tag: {
+      color: colors.primary,
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: 10,
+      fontWeight: Typography.fontWeight.bold,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      marginBottom: Spacing.xs,
+    },
+    rating: {
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: Typography.fontSize.base,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.success,
+      letterSpacing: 0.8,
+      marginBottom: Spacing.lg,
+    },
+    scoreRing: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      borderWidth: 6,
+      borderColor: colors.success,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.success + '0B',
+      marginBottom: Spacing.md,
+      shadowColor: colors.success,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+    },
+    scoreVal: {
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: 40,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.textPrimary,
+      letterSpacing: Typography.letterSpacing.tight,
+    },
+    scoreLabel: {
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: 9,
+      color: colors.textMuted,
+      fontWeight: Typography.fontWeight.bold,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    // Trait Visualizer Section
+    section: {
+      backgroundColor: colors.glass,
+      borderColor: colors.glassBorder,
+      borderWidth: 1,
+      borderRadius: Radius.xl,
+      padding: Spacing.lg,
+      marginBottom: Spacing.lg,
+      ...Shadows.card,
+    },
+    sectionTitle: {
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: Typography.fontSize.cardTitle,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.textPrimary,
+      marginBottom: Spacing.lg,
+      letterSpacing: Typography.letterSpacing.narrow,
+    },
+    traitRow: {
+      marginBottom: Spacing.md,
+      gap: Spacing.xs,
+    },
+    traitHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'baseline',
+    },
+    traitLabel: {
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: Typography.fontSize.xs,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textSecondary,
+    },
+    traitVal: {
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: Typography.fontSize.xs,
+      fontWeight: Typography.fontWeight.bold,
+    },
+    traitTrack: {
+      height: 8,
+      backgroundColor: colors.glassBorder + '40',
+      borderRadius: Radius.full,
+      overflow: 'hidden',
+    },
+    traitFill: {
+      height: '100%',
+      borderRadius: Radius.full,
+    },
+    // Coach analysis narrative
+    analysisText: {
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: Typography.fontSize.xs,
+      color: colors.textPrimary,
+      lineHeight: Typography.fontSize.xs * 1.55,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary + '50',
+      paddingLeft: Spacing.md,
+    },
+    // Strengths and growth area lists
+    bulletRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.xs,
+      marginBottom: Spacing.sm,
+    },
+    bulletText: {
+      flex: 1,
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      lineHeight: Typography.fontSize.xs * 1.45,
+    },
+    // Recommended Practice banner
+    loopBanner: {
+      backgroundColor: colors.primary + '0A',
+      borderColor: colors.primary + '25',
+      borderWidth: 1.5,
+      borderRadius: Radius.xl,
+      padding: Spacing.lg,
+      marginBottom: Spacing.xl,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.lg,
+      ...Shadows.sm,
+    },
+    loopIconWrap: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.primary + '14',
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Shadows.sm,
+    },
+    loopTextWrap: {
+      flex: 1,
+      gap: 3,
+    },
+    loopTitle: {
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: 10,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.primary,
+      letterSpacing: 0.5,
+    },
+    loopDesc: {
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: 11,
+      color: colors.textSecondary,
+      lineHeight: 15,
+      fontWeight: Typography.fontWeight.medium,
+    },
+    // CTA Action Row
+    ctaRow: {
+      flexDirection: 'row',
+      gap: Spacing.md,
+      marginTop: Spacing.xs,
+    },
+    repeatBtn: {
+      flex: 1,
+      backgroundColor: colors.primary,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.xl,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: Spacing.xs,
+      ...Shadows.md,
+      ...(Platform.OS === 'web' ? { cursor: 'pointer', transition: 'background-color 0.2s ease' } : {}),
+    } as any,
+    homeBtn: {
+      flex: 1,
+      backgroundColor: 'transparent',
+      borderColor: colors.glassBorder,
+      borderWidth: 1.5,
+      paddingVertical: Spacing.md,
+      borderRadius: Radius.xl,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: Spacing.xs,
+      ...(Platform.OS === 'web' ? { cursor: 'pointer', transition: 'border-color 0.2s ease' } : {}),
+    } as any,
+    repeatText: {
+      color: '#FFFFFF',
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: Typography.fontSize.base,
+      fontWeight: Typography.fontWeight.bold,
+      letterSpacing: 0.3,
+    },
+    homeText: {
+      color: colors.textSecondary,
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: Typography.fontSize.base,
+      fontWeight: Typography.fontWeight.bold,
+      letterSpacing: 0.3,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: Spacing.xl,
+      gap: Spacing.sm,
+    },
+    loadingText: {
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: Typography.fontSize.base,
+      fontWeight: Typography.fontWeight.bold,
+      textAlign: 'center',
+      marginTop: Spacing.sm,
+    },
+    loadingSub: {
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: Typography.fontSize.xs,
+      color: '#888888',
+      textAlign: 'center',
+      lineHeight: 16,
+      maxWidth: 280,
+    },
+  });
+
   const {
     sprint,
     generatingReport,
@@ -49,217 +299,6 @@ export function CompetencySprintReport() {
     if (score >= 65) return "DEVELOPING NEGOTIATOR";
     return "STRESS ANCHOR REQUIRED";
   };
-
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    scroll: {
-      flex: 1,
-    },
-    content: {
-      padding: Spacing.md,
-      paddingBottom: Spacing['5xl'],
-    },
-    // Giant Mastery Score Card
-    masterCard: {
-      backgroundColor: colors.glass,
-      borderColor: colors.glassBorder,
-      borderWidth: 1,
-      borderRadius: Radius.xl,
-      padding: Spacing.lg,
-      alignItems: 'center',
-      marginBottom: Spacing.md,
-      ...Shadows.card,
-    },
-    tag: {
-      color: colors.primary,
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: 10,
-      fontWeight: Typography.fontWeight.bold,
-      letterSpacing: Typography.letterSpacing.section,
-      textTransform: 'uppercase',
-      marginBottom: Spacing.xs,
-    },
-    rating: {
-      fontFamily: Typography.fontFamily.heading,
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.success,
-      letterSpacing: Typography.letterSpacing.section,
-      marginBottom: Spacing.md,
-    },
-    scoreRing: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      borderWidth: 4,
-      borderColor: colors.success,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.success + '0B',
-      marginBottom: Spacing.md,
-    },
-    scoreVal: {
-      fontFamily: Typography.fontFamily.heading,
-      fontSize: 32,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-    },
-    scoreLabel: {
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: 10,
-      color: colors.textMuted,
-      fontWeight: Typography.fontWeight.semibold,
-      textTransform: 'uppercase',
-    },
-    // Trait Visualizer Section
-    section: {
-      backgroundColor: colors.glass,
-      borderColor: colors.glassBorder,
-      borderWidth: 1,
-      borderRadius: Radius.lg,
-      padding: Spacing.md,
-      marginBottom: Spacing.md,
-      ...Shadows.sm,
-    },
-    sectionTitle: {
-      fontFamily: Typography.fontFamily.heading,
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-      marginBottom: Spacing.md,
-    },
-    traitRow: {
-      marginBottom: Spacing.md,
-      gap: 2,
-    },
-    traitHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    traitLabel: {
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textSecondary,
-    },
-    traitVal: {
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.bold,
-    },
-    traitTrack: {
-      height: 8,
-      backgroundColor: colors.glassBorder,
-      borderRadius: Radius.full,
-      overflow: 'hidden',
-    },
-    traitFill: {
-      height: '100%',
-      borderRadius: Radius.full,
-    },
-    // Coach analysis narrative
-    analysisText: {
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.xs * 1.5,
-    },
-    // Strengths and growth area lists
-    bulletRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: Spacing.xs,
-      marginBottom: Spacing.sm,
-    },
-    bulletText: {
-      flex: 1,
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-      lineHeight: Typography.fontSize.xs * 1.4,
-    },
-    // Recommended Practice banner
-    loopBanner: {
-      backgroundColor: colors.primary + '0D',
-      borderColor: colors.primary + '30',
-      borderWidth: 1,
-      borderRadius: Radius.lg,
-      padding: Spacing.md,
-      marginBottom: Spacing.lg,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.md,
-    },
-    loopIconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.primary + '1A',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    loopTextWrap: {
-      flex: 1,
-      gap: 2,
-    },
-    loopTitle: {
-      fontFamily: Typography.fontFamily.heading,
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.primary,
-    },
-    loopDesc: {
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: 11,
-      color: colors.textSecondary,
-      lineHeight: 14,
-    },
-    // CTA Action Row
-    ctaRow: {
-      flexDirection: 'row',
-      gap: Spacing.md,
-    },
-    repeatBtn: {
-      flex: 1,
-      backgroundColor: colors.primary,
-      paddingVertical: Spacing.md,
-      borderRadius: Radius.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: Spacing.xs,
-      ...Shadows.md,
-      ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
-    } as any,
-    homeBtn: {
-      flex: 1,
-      backgroundColor: 'transparent',
-      borderColor: colors.glassBorder,
-      borderWidth: 1,
-      paddingVertical: Spacing.md,
-      borderRadius: Radius.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: Spacing.xs,
-      ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
-    } as any,
-    repeatText: {
-      color: '#FFFFFF',
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.bold,
-    },
-    homeText: {
-      color: colors.textSecondary,
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.semibold,
-    },
-  });
 
   return (
     <View style={styles.container}>
@@ -411,28 +450,3 @@ export function CompetencySprintReport() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-    gap: Spacing.sm,
-  },
-  loadingText: {
-    fontFamily: Typography.fontFamily.heading,
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.bold,
-    textAlign: 'center',
-    marginTop: Spacing.sm,
-  },
-  loadingSub: {
-    fontFamily: Typography.fontFamily.primary,
-    fontSize: Typography.fontSize.xs,
-    color: '#888888',
-    textAlign: 'center',
-    lineHeight: 16,
-    maxWidth: 280,
-  },
-});
