@@ -68,22 +68,25 @@ export function CompetencySprintDrills() {
     }
   }, [sprint]);
 
-  if (!sprint || !sprint.microDrillsProgress || sprint.microDrillsProgress.length === 0) {
+  const drills = sprint?.microDrillsProgress || [];
+  const currentDrill = drills[currentDrillIndex] || drills[0] || null;
+  const microSkill = currentDrill && sprint ? sprint.microSkills.find((s) => s.id === currentDrill.microSkillId) : null;
+
+  // Synchronize input text when drill changes - defined unconditionally before early return!
+  useEffect(() => {
+    if (currentDrill) {
+      setInputText(currentDrill.userAnswer || '');
+    }
+  }, [currentDrillIndex, currentDrill]);
+
+  // Early return statement placed strictly after all hooks
+  if (!sprint || drills.length === 0 || !currentDrill) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
-
-  const drills = sprint.microDrillsProgress;
-  const currentDrill = drills[currentDrillIndex] || drills[0];
-  const microSkill = sprint.microSkills.find((s) => s.id === currentDrill.microSkillId);
-
-  // Synchronize input text when drill changes
-  useEffect(() => {
-    setInputText(currentDrill.userAnswer || '');
-  }, [currentDrillIndex, currentDrill]);
 
   const handleSubmit = async () => {
     if (!inputText.trim() || submittingDrill) return;
