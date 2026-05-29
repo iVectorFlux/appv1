@@ -22,7 +22,7 @@ import { BREATH_TECHNIQUE_MODES } from '@/data/breathing-techniques';
 export const GROUNDING_MODES: GroundingModeConfig[] = [
   {
     id: 'quick_reset',
-    label: 'Physiological sigh',
+    label: 'Physiological Sigh',
     subtitle: 'Fast nervous-system reset',
     duration: '~1 min',
     durationMs: 60_000,
@@ -32,7 +32,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'sensory_anchor',
-    label: '5 4 3 2 1',
+    label: '5 4 3 2 1 Grounding',
     subtitle: 'Rumination → sensory brain',
     duration: '3-4 min',
     durationMs: 210_000,
@@ -42,7 +42,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'box_breathing',
-    label: 'Box breathing',
+    label: 'Box Breathing',
     subtitle: 'Steady square rhythm',
     duration: '4-5 min',
     durationMs: 270_000,
@@ -52,7 +52,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'pre_meeting',
-    label: 'Pre meeting reset',
+    label: 'Pre Meeting Reset',
     subtitle: 'Regulated activation before performance',
     duration: '2-3 min',
     durationMs: 150_000,
@@ -62,7 +62,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'post_conflict',
-    label: 'Post conflict reset',
+    label: 'Post Conflict Reset',
     subtitle: 'Emotion → language → reality check',
     duration: '4-6 min',
     durationMs: 300_000,

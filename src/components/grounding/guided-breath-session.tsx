@@ -96,14 +96,26 @@ export function GuidedBreathSession({
   const currentStep: BreathPhaseStep | null =
     currentSegment && currentSegment.steps[stepIndex] ? currentSegment.steps[stepIndex]! : null;
 
-  const phaseTotal = useMemo(() => totalGuidedPhaseSteps(segments), [segments]);
-  const phaseCurrent = useMemo(
-    () =>
-      segments.length > 0
-        ? currentGuidedPhaseStep(segments, segmentIndex, cycle, stepIndex)
-        : 0,
-    [segments, segmentIndex, cycle, stepIndex]
-  );
+  const phaseTotal = useMemo(() => {
+    if (segments.length > 1) {
+      return segments.length;
+    }
+    return segments[0] ? segments[0].cycles : 0;
+  }, [segments]);
+
+  const phaseCurrent = useMemo(() => {
+    if (segments.length > 1) {
+      return Math.min(segments.length, segmentIndex + 1);
+    }
+    return Math.min(phaseTotal, cycle + 1);
+  }, [segments, segmentIndex, cycle, phaseTotal]);
+
+  const stepLabel = useMemo(() => {
+    if (segments.length > 1 && currentSegment) {
+      return `Step ${phaseCurrent} of ${phaseTotal} · ${currentSegment.label}`;
+    }
+    return `Step ${phaseCurrent} of ${phaseTotal}`;
+  }, [segments, currentSegment, phaseCurrent, phaseTotal]);
 
   useEffect(() => {
     if (!isGuidedBreathMode(mode)) return;
@@ -246,7 +258,7 @@ export function GuidedBreathSession({
         <View style={s.topStepBlock} accessibilityRole="summary" accessibilityLabel={`Step ${phaseCurrent} of ${phaseTotal}`}>
           <View style={s.stepRowInline}>
             <Text style={s.stepMeta} accessibilityLiveRegion="polite" numberOfLines={1}>
-              Step {phaseCurrent} of {phaseTotal}
+              {stepLabel}
             </Text>
             <View style={s.phaseSegRow}>
               {Array.from({ length: phaseTotal }, (_, i) => (

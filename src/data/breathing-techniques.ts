@@ -30,7 +30,7 @@ const S = (ms: number) => ms;
 
 const SEGMENT_EXTENDED: BreathSegment = {
   id: 'extended',
-  label: 'Extended exhale',
+  label: 'Extended Exhale',
   emotionGuide: 'Anger · frustration · feeling “too fired up”',
   cycles: 5,
   steps: [
@@ -41,7 +41,7 @@ const SEGMENT_EXTENDED: BreathSegment = {
 
 const SEGMENT_COHERENT: BreathSegment = {
   id: 'coherent',
-  label: 'Coherent breathing',
+  label: 'Coherent Breathing',
   emotionGuide: 'Focus · scattered mind · steady rhythm before work',
   cycles: 5,
   steps: [
@@ -52,7 +52,7 @@ const SEGMENT_COHERENT: BreathSegment = {
 
 const SEGMENT_478: BreathSegment = {
   id: 'four78',
-  label: '4 7 8 breathing',
+  label: '4 7 8 Breathing',
   emotionGuide: 'Overthinking · winding down · sleep prep',
   cycles: 4,
   steps: [
@@ -130,7 +130,7 @@ export function regulationFlowTotalMs(tone: EmotionalTone | null): number {
 export const BREATH_TECHNIQUE_MODES: GroundingModeConfig[] = [
   {
     id: BREATH_EXTENDED_EXHALE_MODE_ID,
-    label: 'Extended exhale',
+    label: 'Extended Exhale',
     subtitle: '',
     duration: '~1 min',
     durationMs: segmentMs(SEGMENT_EXTENDED),
@@ -140,7 +140,7 @@ export const BREATH_TECHNIQUE_MODES: GroundingModeConfig[] = [
   },
   {
     id: BREATH_COHERENT_MODE_ID,
-    label: 'Coherent breathing',
+    label: 'Coherent Breathing',
     subtitle: '',
     duration: '~1 min',
     durationMs: segmentMs(SEGMENT_COHERENT),
@@ -150,7 +150,7 @@ export const BREATH_TECHNIQUE_MODES: GroundingModeConfig[] = [
   },
   {
     id: BREATH_REGULATION_MODE_ID,
-    label: 'Calm breath sequence',
+    label: 'Calm Breath Sequence',
     subtitle: '',
     duration: '~4 min',
     durationMs: regulationFlowTotalMs(null),
