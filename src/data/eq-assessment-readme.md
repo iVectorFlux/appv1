@@ -257,8 +257,13 @@ calibrationScore = 100 - (averageDelta × 100)
 
 **Best for:** Leadership development, coaching contexts
 
+<<<<<<< HEAD
 **In the test:**
 - **Full test:** 8 Meta-EQ questions are included. You rate yourself, then rate "how would others rate you" on the same statement.
+=======
+**In the assessment:**
+- **Full assessment:** 8 Meta-EQ questions are included. You rate yourself, then rate "how would others rate you" on the same statement.
+>>>>>>> b4569d9 (Replace UI strings from test to assessment)
 - **Scoring:** There is **no negative marking**. The score is **calibration**: how close your self-rating is to your predicted-other rating. Slight under-rating is rewarded (hidden strengths). The result feeds the **self-awareness** dimension and a separate **metaEQOutput** (metaEQScore 0–100, calibrationType: over / under / accurate, blindSpots, hiddenStrengths).
 - **Check-in:** Meta-EQ is not shown (0 items) to keep check-ins short.
 

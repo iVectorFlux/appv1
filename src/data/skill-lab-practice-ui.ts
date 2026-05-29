@@ -45,7 +45,11 @@ const HOW_TO_ATOMIC: Record<string, readonly [string, string]> = {
   ],
   'critical_thinking::argument_analysis': [
     'Separate conclusions from premises, flag missing links, hidden assumptions, or vague terms.',
+<<<<<<< HEAD
     'State what would strengthen or weaken the argument with one concrete test.',
+=======
+    'State what would strengthen or weaken the argument with one concrete assessment.',
+>>>>>>> b4569d9 (Replace UI strings from test to assessment)
   ],
   'critical_thinking::evidence_evaluation': [
     'Classify evidence by type and strength. Not all facts are equal.',
@@ -57,7 +61,11 @@ const HOW_TO_ATOMIC: Record<string, readonly [string, string]> = {
   ],
   'problem_solving::root_cause': [
     'Separate symptom from cause, say what you would observe or measure before locking a diagnosis.',
+<<<<<<< HEAD
     'Propose the smallest test that would confirm or rule out your leading hypothesis.',
+=======
+    'Propose the smallest assessment that would confirm or rule out your leading hypothesis.',
+>>>>>>> b4569d9 (Replace UI strings from test to assessment)
   ],
   'problem_solving::ideation': [
     'Generate breadth first, defer scoring until you have genuinely different solution shapes.',
@@ -117,7 +125,11 @@ const HOW_TO_ATOMIC: Record<string, readonly [string, string]> = {
   ],
   'creative_thinking::generative_brainstorming': [
     'Prioritise quantity and variety before judging, include one deliberately weird option.',
+<<<<<<< HEAD
     'Circle back: which two ideas would you merge or test first, and why.',
+=======
+    'Circle back: which two ideas would you merge or assessment first, and why.',
+>>>>>>> b4569d9 (Replace UI strings from test to assessment)
   ],
   'emotional_intelligence::eq_self_awareness': [
     'Name the emotion(s) you notice in yourself and what likely triggered them.',

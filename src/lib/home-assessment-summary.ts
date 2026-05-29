@@ -34,5 +34,9 @@ export function latestOverall(scores: EqScoreSnapshot[]): EqScoreSnapshot | null
 }
 
 export function assessmentTypeLabel(t: 'check_in' | 'full_test'): string {
+<<<<<<< HEAD
   return t === 'check_in' ? 'Check in' : 'Full test';
+=======
+  return t === 'check_in' ? 'Check in' : 'Full assessment';
+>>>>>>> b4569d9 (Replace UI strings from test to assessment)
 }
