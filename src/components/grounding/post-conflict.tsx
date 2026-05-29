@@ -125,34 +125,35 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
       {/* Dynamic atmospheric color shift aura overlay */}
       <View style={[s.accentGlow, { backgroundColor: activeColor }]} />
 
-      {/* Top Header Bar */}
-      <View style={s.topBar}>
-        <Text style={s.stepLabel}>
-          {step === 'label' ? 'Step 1 of 4 · Name emotion' : step === 'locate' ? 'Step 2 of 4 · Locate it' : step === 'breathe' ? 'Step 3 of 4 · Release' : 'Step 4 of 4 · Reframe'}
-        </Text>
-        <TouchableOpacity
-          style={s.closeBtn}
-          onPress={onExit}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Exit exercise"
-        >
-          <Ionicons name="chevron-back" size={20} color={TEXT_MUTED} />
+      {/* Navigation Top Bar */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={onExit} hitSlop={16} style={s.backBtn} accessibilityRole="button" accessibilityLabel="Back">
+          <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
+        <Text style={s.headerTitle} numberOfLines={1}>
+          Post Conflict Reset
+        </Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      {/* Segmented Progress Tracks */}
-      <View style={s.progressRow}>
-        {STEP_ORDER.map((st, i) => (
-          <View key={st} style={[s.progressSeg, i <= currentStepIdx && { backgroundColor: activeColor, opacity: 0.85 }]} />
-        ))}
+      <View style={s.topStepBlock}>
+        <View style={s.stepRowInline}>
+          <Text style={s.stepMeta} accessibilityLiveRegion="polite" numberOfLines={1}>
+            {step === 'label' ? 'Step 1 of 4 · Name emotion' : step === 'locate' ? 'Step 2 of 4 · Locate it' : step === 'breathe' ? 'Step 3 of 4 · Release' : 'Step 4 of 4 · Reframe'}
+          </Text>
+          <View style={s.phaseSegRow}>
+            {STEP_ORDER.map((st, i) => (
+              <View key={st} style={[s.phaseSeg, i <= currentStepIdx && { backgroundColor: activeColor, opacity: 0.85 }]} />
+            ))}
+          </View>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Animated.View style={[s.center, { opacity: textFade }]}>
 
           {step === 'label' && (
-            <GlassCard style={s.glassContainer}>
+            <GlassCard style={s.glassContainer} tint="dark" backgroundColor="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)">
               <Text style={s.heading}>What are you feeling?</Text>
               <Text style={s.subheading}>Label the emotion to take away its power.</Text>
               
@@ -181,7 +182,7 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
           )}
 
           {step === 'locate' && (
-            <GlassCard style={s.glassContainer}>
+            <GlassCard style={s.glassContainer} tint="dark" backgroundColor="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)">
               <View style={s.iconGlowWrapper}>
                 <Animated.View style={[s.glowRingOutline, { borderColor: ACCENT + '30', transform: [{ scale: pulseRing }] }]} />
                 <View style={s.promptIcon}><Ionicons name="body-outline" size={30} color={ACCENT} /></View>
@@ -231,7 +232,7 @@ export function PostConflict({ onComplete, onExit }: GroundingModeProps) {
           )}
 
           {step === 'reframe' && (
-            <GlassCard style={s.glassContainer}>
+            <GlassCard style={s.glassContainer} tint="dark" backgroundColor="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)">
               <Text style={s.heading}>Separate facts from stories</Text>
               <Text style={s.subheading}>Filter the objective reality from your interpretation.</Text>
 
@@ -292,25 +293,15 @@ const s = StyleSheet.create({
     opacity: 0.08,
   },
 
-  topBar: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
     zIndex: 10,
   },
-  stepLabel: {
-    fontSize: Typography.fontSize.xs,
-    color: TEXT_MUTED,
-    fontFamily: Typography.fontFamily.primary,
-    fontWeight: Typography.fontWeight.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    opacity: 0.8,
-  },
-  closeBtn: {
+  backBtn: {
     width: 44,
     height: 44,
     alignItems: 'center',
@@ -319,20 +310,50 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
+    marginLeft: Spacing.sm,
   },
-
-  progressRow: {
-    flexDirection: 'row',
-    gap: 5,
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    color: TEXT_PRIMARY,
+    fontFamily: Typography.fontFamily.heading,
+    lineHeight: 20,
+    letterSpacing: 0.5,
+    opacity: 0.85,
+  },
+  topStepBlock: {
     paddingHorizontal: Spacing.lg,
-    marginTop: Spacing.xs,
-    zIndex: 10,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
   },
-  progressSeg: {
+  stepRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  stepMeta: {
+    fontSize: Typography.fontSize.xs,
+    color: TEXT_MUTED,
+    fontFamily: Typography.fontFamily.primary,
+    fontWeight: Typography.fontWeight.semibold,
+    flexShrink: 0,
+    opacity: 0.8,
+  },
+  phaseSegRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  phaseSeg: {
     flex: 1,
     height: 2,
     borderRadius: 1,
     backgroundColor: 'rgba(255,255,255,0.04)',
+    opacity: 0.4,
   },
 
   scroll: { flexGrow: 1, justifyContent: 'center', paddingBottom: Spacing['2xl'] },

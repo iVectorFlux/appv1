@@ -323,7 +323,6 @@ export default function GroundingScreen() {
             </View>
             <View style={st.techniqueTextWrap}>
               <Text style={st.techniqueTitle}>{cfg?.label ?? mode}</Text>
-              <Text style={st.techniqueDesc}>{techniqueSubtitle(mode)}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </View>

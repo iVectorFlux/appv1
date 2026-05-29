@@ -32,7 +32,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'sensory_anchor',
-    label: '5-4-3-2-1',
+    label: '5 4 3 2 1',
     subtitle: 'Rumination → sensory brain',
     duration: '3-4 min',
     durationMs: 210_000,
@@ -52,7 +52,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'pre_meeting',
-    label: 'Pre-meeting reset',
+    label: 'Pre meeting reset',
     subtitle: 'Regulated activation before performance',
     duration: '2-3 min',
     durationMs: 150_000,
@@ -62,7 +62,7 @@ export const GROUNDING_MODES: GroundingModeConfig[] = [
   },
   {
     id: 'post_conflict',
-    label: 'Post-conflict reset',
+    label: 'Post conflict reset',
     subtitle: 'Emotion → language → reality check',
     duration: '4-6 min',
     durationMs: 300_000,
@@ -144,7 +144,7 @@ export const BOX_BREATHING_STEPS = [
     title: 'Box Breathing',
     instruction: 'Follow the square rhythm',
     breathPattern: { inhale: 4, hold: 4, exhale: 4, holdEmpty: 4 },
-    cycles: 4,
+    cycles: 3,
   },
   {
     id: 'identity',

@@ -93,31 +93,34 @@ export function SensoryAnchor({ onComplete, onExit }: GroundingModeProps) {
       {/* Dynamic ambient color glow that transitions seamlessly */}
       <View style={[s.accentGlow, { backgroundColor: accent }]} />
 
-      {/* Top Header Bar */}
-      <View style={s.topBar}>
-        <Text style={s.stepLabel}>Step {currentIdx + 1} of {STEPS.length}</Text>
-        <TouchableOpacity
-          style={s.closeBtn}
-          onPress={onExit}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Exit exercise"
-        >
-          <Ionicons name="chevron-back" size={20} color={TEXT_MUTED} />
+      {/* Navigation Top Bar */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={onExit} hitSlop={16} style={s.backBtn} accessibilityRole="button" accessibilityLabel="Back">
+          <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
+        <Text style={s.headerTitle} numberOfLines={1}>
+          5 4 3 2 1 Grounding
+        </Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      {/* Segmented Top Progress Indicators */}
-      <View style={s.progressRow}>
-        {STEPS.map((st, i) => (
-          <View
-            key={st.id}
-            style={[
-              s.progressSeg,
-              i <= currentIdx && { backgroundColor: accent, opacity: 0.8 },
-            ]}
-          />
-        ))}
+      <View style={s.topStepBlock}>
+        <View style={s.stepRowInline}>
+          <Text style={s.stepMeta} accessibilityLiveRegion="polite" numberOfLines={1}>
+            Step {currentIdx + 1} of {STEPS.length}
+          </Text>
+          <View style={s.phaseSegRow}>
+            {STEPS.map((st, i) => (
+              <View
+                key={st.id}
+                style={[
+                  s.phaseSeg,
+                  i <= currentIdx && { backgroundColor: accent, opacity: 0.8 },
+                ]}
+              />
+            ))}
+          </View>
+        </View>
       </View>
 
       {/* Glassmorphic Sensory Card */}
@@ -130,7 +133,7 @@ export function SensoryAnchor({ onComplete, onExit }: GroundingModeProps) {
           },
         ]}
       >
-        <GlassCard style={s.glassContainer}>
+        <GlassCard style={s.glassContainer} tint="dark" backgroundColor="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)">
           {/* Glowing Orbit Rings & Icon */}
           <View style={s.iconOuter}>
             <Animated.View style={[s.glowRing2, { borderColor: accent + '18', transform: [{ scale: ring2Pulse }] }]} />
@@ -150,7 +153,7 @@ export function SensoryAnchor({ onComplete, onExit }: GroundingModeProps) {
           </View>
 
           {/* Counts and Label */}
-          <Text style={[s.senseLabel, { color: accent }]}>{current.sense.toUpperCase()}</Text>
+          <Text style={[s.senseLabel, { color: accent }]}>{current.sense}</Text>
           <Text style={[s.countBig, { color: TEXT_PRIMARY }]}>{current.count}</Text>
           
           <Text style={s.prompt}>{current.prompt}</Text>
@@ -186,25 +189,15 @@ const s = StyleSheet.create({
     opacity: 0.08,
   },
 
-  topBar: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
     zIndex: 10,
   },
-  stepLabel: {
-    fontSize: Typography.fontSize.xs,
-    color: TEXT_MUTED,
-    fontFamily: Typography.fontFamily.primary,
-    fontWeight: Typography.fontWeight.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    opacity: 0.8,
-  },
-  closeBtn: {
+  backBtn: {
     width: 44,
     height: 44,
     alignItems: 'center',
@@ -213,20 +206,50 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
+    marginLeft: Spacing.sm,
   },
-
-  progressRow: {
-    flexDirection: 'row',
-    gap: 5,
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    color: TEXT_PRIMARY,
+    fontFamily: Typography.fontFamily.heading,
+    lineHeight: 20,
+    letterSpacing: 0.5,
+    opacity: 0.85,
+  },
+  topStepBlock: {
     paddingHorizontal: Spacing.lg,
-    marginTop: Spacing.xs,
-    zIndex: 10,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
   },
-  progressSeg: {
+  stepRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  stepMeta: {
+    fontSize: Typography.fontSize.xs,
+    color: TEXT_MUTED,
+    fontFamily: Typography.fontFamily.primary,
+    fontWeight: Typography.fontWeight.semibold,
+    flexShrink: 0,
+    opacity: 0.8,
+  },
+  phaseSegRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  phaseSeg: {
     flex: 1,
     height: 2,
     borderRadius: 1,
     backgroundColor: 'rgba(255,255,255,0.04)',
+    opacity: 0.4,
   },
 
   center: {

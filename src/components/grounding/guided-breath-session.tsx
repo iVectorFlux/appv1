@@ -246,7 +246,7 @@ export function GuidedBreathSession({
         <View style={s.topStepBlock} accessibilityRole="summary" accessibilityLabel={`Step ${phaseCurrent} of ${phaseTotal}`}>
           <View style={s.stepRowInline}>
             <Text style={s.stepMeta} accessibilityLiveRegion="polite" numberOfLines={1}>
-              {phaseCurrent} / {phaseTotal}
+              Step {phaseCurrent} of {phaseTotal}
             </Text>
             <View style={s.phaseSegRow}>
               {Array.from({ length: phaseTotal }, (_, i) => (
@@ -339,7 +339,6 @@ const s = StyleSheet.create({
     fontFamily: Typography.fontFamily.heading,
     lineHeight: 20,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
     opacity: 0.85,
   },
   topStepBlock: {

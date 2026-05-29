@@ -17,6 +17,9 @@ interface GlassCardProps {
   intensity?: number;
   borderRadius?: number;
   noPadding?: boolean;
+  tint?: 'light' | 'dark';
+  backgroundColor?: string;
+  borderColor?: string;
 }
 
 export function GlassCard({
@@ -26,8 +29,15 @@ export function GlassCard({
   intensity = Glass.intensity,
   borderRadius = Radius.lg,
   noPadding,
+  tint,
+  backgroundColor,
+  borderColor,
 }: GlassCardProps) {
   const colors = useColors();
+
+  const finalTint = tint ?? (colors.glassTint as 'light' | 'dark');
+  const finalBgColor = backgroundColor ?? colors.glass;
+  const finalBorderColor = borderColor ?? colors.glassBorder;
 
   const shadow: ViewStyle =
     Platform.OS === 'web'
@@ -42,11 +52,11 @@ export function GlassCard({
 
   const webGlass: ViewStyle = Platform.OS === 'web'
     ? ({
-        backgroundColor: colors.glass,
+        backgroundColor: finalBgColor,
         backdropFilter: `blur(${Glass.blur}px) saturate(160%)`,
         WebkitBackdropFilter: `blur(${Glass.blur}px) saturate(160%)`,
         borderWidth: 1,
-        borderColor: colors.glassBorder,
+        borderColor: finalBorderColor,
       } as any)
     : {};
 
@@ -73,15 +83,15 @@ export function GlassCard({
   const Wrapper = onPress ? TouchableOpacity : View;
   return (
     <Wrapper
-      style={[cardBase, { borderWidth: 1, borderColor: colors.glassBorder }, style]}
+      style={[cardBase, { borderWidth: 1, borderColor: finalBorderColor }, style]}
       {...(onPress ? { onPress, activeOpacity: 0.85 } : {})}
     >
       <BlurView
         intensity={intensity}
-        tint={colors.glassTint as 'light' | 'dark'}
+        tint={finalTint}
         style={StyleSheet.absoluteFill}
       />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glass }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: finalBgColor }]} />
       {inner}
     </Wrapper>
   );

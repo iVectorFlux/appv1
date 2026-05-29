@@ -33,7 +33,7 @@ const { width: SCREEN_W } = Dimensions.get('window');
 type Step = 'box_breathe' | 'identity' | 'release';
 
 const BOX_SIDE_MS = 4000;
-const BOX_CYCLES = 4;
+const BOX_CYCLES = 3;
 const IDENTITY_PROMPTS = BOX_BREATHING_STEPS[1].prompts;
 const RELEASE_CYCLES = 3;
 const RELEASE_HOLD = 5000;
@@ -57,7 +57,7 @@ const PHASE: Record<Phase, { main: string; sub: string; color: string }> = {
   in:        { main: 'Inhale',  sub: 'Fill your lungs slowly',  color: '#38bdf8' },
   hold:      { main: 'Hold',    sub: 'Keep it gentle',          color: '#a78bfa' },
   out:       { main: 'Exhale',  sub: 'Release completely',      color: '#34d399' },
-  holdEmpty: { main: 'Hold',    sub: 'Rest in the stillness',   color: '#64748b' },
+  holdEmpty: { main: 'Hold',    sub: 'Keep it gentle',          color: '#64748b' },
 };
 
 const PHASE_ORDER: Phase[] = ['in', 'hold', 'out', 'holdEmpty'];
@@ -406,19 +406,30 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
       <View style={[s.accentGlow, { backgroundColor: activeColor }]} />
 
       {/* Navigation Top Bar */}
-      <View style={s.topBar}>
-        <Text style={s.stepLabel}>
-          {step === 'box_breathe' ? 'Step 1 of 3 · Box Breath' : step === 'identity' ? 'Step 2 of 3 · Identity Anchor' : 'Step 3 of 3 · Tension Release'}
-        </Text>
-        <TouchableOpacity
-          style={s.closeBtn}
-          onPress={onExit}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Exit exercise"
-        >
-          <Ionicons name="chevron-back" size={20} color={TEXT_MUTED} />
+      <View style={s.header}>
+        <TouchableOpacity onPress={onExit} hitSlop={16} style={s.backBtn} accessibilityRole="button" accessibilityLabel="Back">
+          <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
+        <Text style={s.headerTitle} numberOfLines={1}>
+          Box Breathing
+        </Text>
+        <View style={{ width: 44 }} />
+      </View>
+
+      <View style={s.topStepBlock}>
+        <View style={s.stepRowInline}>
+          <Text style={s.stepMeta} accessibilityLiveRegion="polite" numberOfLines={1}>
+            {step === 'box_breathe' ? 'Step 1 of 3 · Box Breath' : step === 'identity' ? 'Step 2 of 3 · Identity Anchor' : 'Step 3 of 3 · Tension Release'}
+          </Text>
+          <View style={s.phaseSegRow}>
+            {['box_breathe', 'identity', 'release'].map((st, i) => {
+              const activeIdx = ['box_breathe', 'identity', 'release'].indexOf(step);
+              return (
+                <View key={st} style={[s.phaseSeg, i <= activeIdx && { backgroundColor: activeColor, opacity: 0.85 }]} />
+              );
+            })}
+          </View>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -441,7 +452,6 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
               </LuminousSquircle>
 
               <View style={s.metaWrap}>
-                <Text style={s.phaseHint}>4S IN · 4S HOLD · 4S OUT · 4S HOLD</Text>
                 <Text style={s.cycleText}>Breath {boxCycle + 1} of {BOX_CYCLES}</Text>
               </View>
             </View>
@@ -449,7 +459,7 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
 
           {/* ── IDENTITY ─────────────────────────────────── */}
           {step === 'identity' && (
-            <GlassCard style={s.glassContainer}>
+            <GlassCard style={s.glassContainer} tint="dark" backgroundColor="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)">
               <View style={s.iconGlowWrapper}>
                 <Animated.View style={[s.glowRingOutline, { borderColor: '#38bdf840', transform: [{ scale: ambientPulse }] }]} />
                 <View style={[s.promptIcon, { backgroundColor: '#38bdf812', borderColor: '#38bdf825' }]}>
@@ -469,7 +479,7 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
 
           {/* ── RELEASE ──────────────────────────────────── */}
           {step === 'release' && (
-            <GlassCard style={s.glassContainer}>
+            <GlassCard style={s.glassContainer} tint="dark" backgroundColor="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)">
               <View style={s.iconGlowWrapper}>
                 <Animated.View style={[s.glowRingOutline, { borderColor: releaseColor + '30', transform: [{ scale: releasePulse }] }]} />
                 <Animated.View
@@ -524,25 +534,15 @@ const s = StyleSheet.create({
     opacity: 0.08,
   },
 
-  topBar: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
     zIndex: 10,
   },
-  stepLabel: {
-    fontSize: Typography.fontSize.xs,
-    color: TEXT_MUTED,
-    fontFamily: Typography.fontFamily.primary,
-    fontWeight: Typography.fontWeight.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    opacity: 0.8,
-  },
-  closeBtn: {
+  backBtn: {
     width: 44,
     height: 44,
     alignItems: 'center',
@@ -551,6 +551,50 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
+    marginLeft: Spacing.sm,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    color: TEXT_PRIMARY,
+    fontFamily: Typography.fontFamily.heading,
+    lineHeight: 20,
+    letterSpacing: 0.5,
+    opacity: 0.85,
+  },
+  topStepBlock: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
+  },
+  stepRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  stepMeta: {
+    fontSize: Typography.fontSize.xs,
+    color: TEXT_MUTED,
+    fontFamily: Typography.fontFamily.primary,
+    fontWeight: Typography.fontWeight.semibold,
+    flexShrink: 0,
+    opacity: 0.8,
+  },
+  phaseSegRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  phaseSeg: {
+    flex: 1,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    opacity: 0.4,
   },
 
   scroll: { flexGrow: 1, paddingBottom: Spacing['2xl'] },

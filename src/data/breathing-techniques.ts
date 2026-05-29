@@ -52,7 +52,7 @@ const SEGMENT_COHERENT: BreathSegment = {
 
 const SEGMENT_478: BreathSegment = {
   id: 'four78',
-  label: '4-7-8 breathing',
+  label: '4 7 8 breathing',
   emotionGuide: 'Overthinking · winding down · sleep prep',
   cycles: 4,
   steps: [

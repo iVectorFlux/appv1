@@ -187,17 +187,30 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
       </View>
 
       {/* Navigation Top Bar */}
-      <View style={s.topBar}>
-        <Text style={s.stepLabel}>{STEP_LABELS[step]}</Text>
-        <TouchableOpacity
-          style={s.closeBtn}
-          onPress={onExit}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Exit exercise"
-        >
-          <Ionicons name="chevron-back" size={20} color={TEXT_MUTED} />
+      <View style={s.header}>
+        <TouchableOpacity onPress={onExit} hitSlop={16} style={s.backBtn} accessibilityRole="button" accessibilityLabel="Back">
+          <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
+        <Text style={s.headerTitle} numberOfLines={1}>
+          Physiological Sigh
+        </Text>
+        <View style={{ width: 44 }} />
+      </View>
+
+      <View style={s.topStepBlock}>
+        <View style={s.stepRowInline}>
+          <Text style={s.stepMeta} accessibilityLiveRegion="polite" numberOfLines={1}>
+            {step === 'breathe' ? 'Step 1 of 3 · Breathing' : step === 'anchor' ? 'Step 2 of 3 · Visual Anchor' : 'Step 3 of 3 · Grounding'}
+          </Text>
+          <View style={s.phaseSegRow}>
+            {['breathe', 'anchor', 'ground'].map((st, i) => {
+              const activeIdx = ['breathe', 'anchor', 'ground'].indexOf(step);
+              return (
+                <View key={st} style={[s.phaseSeg, i <= activeIdx && { backgroundColor: activeColor, opacity: 0.85 }]} />
+              );
+            })}
+          </View>
+        </View>
       </View>
 
       {/* Screen step transitions container */}
@@ -234,7 +247,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
         )}
 
         {step === 'anchor' && (
-          <GlassCard style={s.glassContainer}>
+          <GlassCard style={s.glassContainer} tint="dark" backgroundColor="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)">
             <View style={s.iconGlowWrapper}>
               <Animated.View style={[s.glowRingOutline, { borderColor: '#38bdf840', transform: [{ scale: pulseRing }] }]} />
               <View style={[s.promptIcon, { backgroundColor: '#38bdf812', borderColor: '#38bdf825' }]}>
@@ -251,7 +264,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
         )}
 
         {step === 'ground' && (
-          <GlassCard style={s.glassContainer}>
+          <GlassCard style={s.glassContainer} tint="dark" backgroundColor="rgba(255, 255, 255, 0.03)" borderColor="rgba(255, 255, 255, 0.08)">
             <View style={s.iconGlowWrapper}>
               <Animated.View style={[s.glowRingOutline, { borderColor: '#34d39940', transform: [{ scale: pulseRing }] }]} />
               <View style={[s.promptIcon, { backgroundColor: '#34d39912', borderColor: '#34d39925' }]}>
@@ -295,25 +308,15 @@ const s = StyleSheet.create({
   },
   progressFill: { height: 2 },
 
-  topBar: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
     zIndex: 10,
   },
-  stepLabel: {
-    fontSize: Typography.fontSize.xs,
-    color: TEXT_MUTED,
-    fontFamily: Typography.fontFamily.primary,
-    fontWeight: Typography.fontWeight.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    opacity: 0.8,
-  },
-  closeBtn: {
+  backBtn: {
     width: 44,
     height: 44,
     alignItems: 'center',
@@ -322,6 +325,50 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
+    marginLeft: Spacing.sm,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    color: TEXT_PRIMARY,
+    fontFamily: Typography.fontFamily.heading,
+    lineHeight: 20,
+    letterSpacing: 0.5,
+    opacity: 0.85,
+  },
+  topStepBlock: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
+  },
+  stepRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  stepMeta: {
+    fontSize: Typography.fontSize.xs,
+    color: TEXT_MUTED,
+    fontFamily: Typography.fontFamily.primary,
+    fontWeight: Typography.fontWeight.semibold,
+    flexShrink: 0,
+    opacity: 0.8,
+  },
+  phaseSegRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  phaseSeg: {
+    flex: 1,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    opacity: 0.4,
   },
 
   center: {
