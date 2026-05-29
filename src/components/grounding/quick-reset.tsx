@@ -223,7 +223,7 @@ export function QuickReset({ onComplete, onExit }: GroundingModeProps) {
               <PhotonBreathCluster
                 visualKey={`quick-reset-${breathCycle}-${breathPhase}`}
                 durationMs={breathPhase === 'in' ? BREATH.inhale : breathPhase === 'hold' ? BREATH.hold : BREATH.exhale}
-                orb={breathPhase === 'in' ? 'expand' : breathPhase === 'hold' ? 'holdHigh' : 'contract'}
+                orb={breathPhase === 'in' ? 'expand' : breathPhase === 'hold' ? 'expandFurther' : 'contract'}
                 accent={pi.color}
               />
             </View>

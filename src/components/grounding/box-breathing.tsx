@@ -69,12 +69,16 @@ function LuminousSquircle({
   traceProgress,
   phaseColor,
   ambientPulse,
+  squircleScale,
+  boxPhase,
   children,
 }: {
   phaseIndex: number;
   traceProgress: Animated.Value;
   phaseColor: string;
   ambientPulse: Animated.Value;
+  squircleScale: any;
+  boxPhase: Phase;
   children: React.ReactNode;
 }) {
   const corners = [
@@ -112,6 +116,54 @@ function LuminousSquircle({
     };
   };
 
+  const coreScale = traceProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange:
+      boxPhase === 'in'
+        ? [0.6, 1.1]
+        : boxPhase === 'hold'
+        ? [1.1, 1.1]
+        : boxPhase === 'out'
+        ? [1.1, 0.6]
+        : [0.6, 0.6],
+  });
+
+  const coreOpacity = traceProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange:
+      boxPhase === 'in'
+        ? [0.1, 0.25, 0.4]
+        : boxPhase === 'out'
+        ? [0.4, 0.25, 0.1]
+        : boxPhase === 'hold'
+        ? [0.4, 0.4, 0.4]
+        : [0.1, 0.1, 0.1],
+  });
+
+  const orbitScale = traceProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange:
+      boxPhase === 'in'
+        ? [0.5, 1.25]
+        : boxPhase === 'hold'
+        ? [1.25, 1.25]
+        : boxPhase === 'out'
+        ? [1.25, 0.5]
+        : [0.5, 0.5],
+  });
+
+  const orbitOpacity = traceProgress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange:
+      boxPhase === 'in'
+        ? [0.08, 0.2, 0.35]
+        : boxPhase === 'out'
+        ? [0.35, 0.2, 0.08]
+        : boxPhase === 'hold'
+        ? [0.35, 0.35, 0.35]
+        : [0.08, 0.08, 0.08],
+  });
+
   return (
     <View style={sq.wrap}>
       {/* Dynamic ambient halo background glow */}
@@ -124,7 +176,16 @@ function LuminousSquircle({
       <View style={[sq.ambient2, { backgroundColor: phaseColor + '03' }]} />
 
       {/* The frosted squircle box frame */}
-      <View style={[sq.box, { borderColor: 'rgba(255, 255, 255, 0.07)', backgroundColor: 'rgba(255, 255, 255, 0.015)' }]}>
+      <Animated.View
+        style={[
+          sq.box,
+          {
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            transform: [{ scale: squircleScale }],
+          },
+        ]}
+      >
         {/* Sleek edge highlights */}
         <Animated.View style={[sq.edgeTop, edgeStyle(0)]} />
         <Animated.View style={[sq.edgeRight, edgeStyle(1)]} />
@@ -166,9 +227,39 @@ function LuminousSquircle({
           ]}
         />
 
+        {/* Abstract orbital ring with parallax scaling */}
+        <Animated.View
+          style={[
+            sq.orbitalRing,
+            {
+              borderColor: phaseColor,
+              transform: [{ scale: orbitScale }],
+              opacity: orbitOpacity,
+            },
+          ]}
+        />
+
+        {/* Immersive core glass orb that breathes with gradient */}
+        <Animated.View
+          style={[
+            sq.centerCore,
+            {
+              transform: [{ scale: coreScale }],
+              opacity: coreOpacity,
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[phaseColor, phaseColor + '30']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={sq.gradientFill}
+          />
+        </Animated.View>
+
         {/* Center Text Panel */}
         <View style={sq.center}>{children}</View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -240,8 +331,41 @@ const sq = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1,
+    zIndex: 10,
     paddingHorizontal: Spacing.md,
+  },
+  centerCore: {
+    position: 'absolute',
+    left: BOX * 0.14,
+    top: BOX * 0.14,
+    width: BOX * 0.72,
+    height: BOX * 0.72,
+    borderRadius: (BOX * 0.72) / 2,
+    zIndex: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#fff',
+        shadowOpacity: 0.2,
+        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 0 },
+      },
+      default: {},
+    }),
+  },
+  gradientFill: {
+    flex: 1,
+    borderRadius: (BOX * 0.72) / 2,
+  },
+  orbitalRing: {
+    position: 'absolute',
+    left: BOX * 0.05,
+    top: BOX * 0.05,
+    width: BOX * 0.9,
+    height: BOX * 0.9,
+    borderRadius: (BOX * 0.9) / 2,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    zIndex: 0,
   },
 });
 
@@ -264,6 +388,18 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
 
   const phaseIndex = PHASE_ORDER.indexOf(boxPhase);
   const pc = PHASE[boxPhase];
+
+  const squircleScale = traceProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange:
+      boxPhase === 'in'
+        ? [0.92, 1.08]
+        : boxPhase === 'hold'
+        ? [1.08, 1.08]
+        : boxPhase === 'out'
+        ? [1.08, 0.92]
+        : [0.92, 0.92],
+  });
 
   // Ambient breathing pulsator loop
   useEffect(() => {
@@ -443,6 +579,8 @@ export function BoxBreathing({ onComplete, onExit }: GroundingModeProps) {
                 traceProgress={traceProgress}
                 phaseColor={pc.color}
                 ambientPulse={ambientPulse}
+                squircleScale={squircleScale}
+                boxPhase={boxPhase}
               >
                 <Text style={[s.phaseMain, { color: pc.color }]}>{pc.main}</Text>
                 <Text style={s.phaseSub}>{pc.sub}</Text>

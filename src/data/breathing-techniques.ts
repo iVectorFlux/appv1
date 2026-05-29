@@ -6,7 +6,7 @@
 
 import type { GroundingMode, GroundingModeConfig, EmotionalTone } from '@/types/grounding';
 
-export type BreathOrbHint = 'expand' | 'contract' | 'holdHigh' | 'holdLow' | 'pulse';
+export type BreathOrbHint = 'expand' | 'contract' | 'holdHigh' | 'holdLow' | 'pulse' | 'expandFurther';
 
 export type BreathPhaseStep = {
   key: string;

@@ -69,7 +69,6 @@ export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Prop
         useNativeDriver: useND,
       });
     } else if (orb === 'contract') {
-      master.setValue(1);
       run = Animated.timing(master, {
         toValue: 0,
         duration: d,
@@ -81,6 +80,14 @@ export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Prop
       run = Animated.timing(master, {
         toValue: 1,
         duration: d,
+        useNativeDriver: useND,
+      });
+    } else if (orb === 'expandFurther') {
+      master.setValue(1);
+      run = Animated.timing(master, {
+        toValue: 2.0,
+        duration: d,
+        easing: Easing.inOut(Easing.sin),
         useNativeDriver: useND,
       });
     } else if (orb === 'holdLow') {
@@ -133,28 +140,28 @@ export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Prop
 
   // Interpolations
   const rotation = master.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '50deg'], // Rotate lotus on expansion
+    inputRange: [0, 1, 2.0],
+    outputRange: ['0deg', '50deg', '75deg'], // Rotate lotus on expansion
   });
 
   const scale = master.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.72, 1.28], // Fluid squish/bloom
+    inputRange: [0, 1, 2.0],
+    outputRange: [0.72, 1.28, 1.88], // Fluid squish/bloom/super-bloom
   });
 
   const opacity = master.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.28, 0.48], // Soft breathe glow
+    inputRange: [0, 1, 2.0],
+    outputRange: [0.28, 0.48, 0.75], // Soft breathe glow
   });
 
   const coreScale = master.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.85, 1.35],
+    inputRange: [0, 1, 2.0],
+    outputRange: [0.85, 1.35, 2.0],
   });
 
   const coreOpacity = master.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.18, 0.36],
+    inputRange: [0, 1, 2.0],
+    outputRange: [0.18, 0.36, 0.65],
   });
 
   // Calculate petal positioning and transformations
@@ -165,13 +172,13 @@ export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Prop
       const sin = Math.sin(theta);
 
       const tx = master.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, cos * maxDistance],
+        inputRange: [0, 1, 2.0],
+        outputRange: [0, cos * maxDistance, cos * maxDistance * 1.8],
       });
 
       const ty = master.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, sin * maxDistance],
+        inputRange: [0, 1, 2.0],
+        outputRange: [0, sin * maxDistance, sin * maxDistance * 1.8],
       });
 
       return { tx, ty, angle: `${(i * 60)}deg` };
