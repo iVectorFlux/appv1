@@ -35,6 +35,15 @@ export function GlassCard({
 }: GlassCardProps) {
   const colors = useColors();
 
+  const flatStyle = StyleSheet.flatten(style) || {};
+  const {
+    alignItems,
+    justifyContent,
+    flexDirection,
+    alignContent,
+    ...wrapperStyle
+  } = flatStyle;
+
   const finalTint = tint ?? (colors.glassTint as 'light' | 'dark');
   const finalBgColor = backgroundColor ?? colors.glass;
   const finalBorderColor = borderColor ?? colors.glassBorder;
@@ -61,7 +70,13 @@ export function GlassCard({
     : {};
 
   const inner = (
-    <View style={[styles.inner, noPadding && styles.noPadding]}>
+    <View
+      style={[
+        styles.inner,
+        noPadding && styles.noPadding,
+        { alignItems, justifyContent, flexDirection, alignContent },
+      ]}
+    >
       {/* Top highlight line for depth */}
       <View style={[styles.highlight, { backgroundColor: colors.glassHighlight }]} />
       {children}
@@ -72,7 +87,7 @@ export function GlassCard({
     const Wrapper = onPress ? TouchableOpacity : View;
     return (
       <Wrapper
-        style={[cardBase, webGlass, style]}
+        style={[cardBase, webGlass, wrapperStyle]}
         {...(onPress ? { onPress, activeOpacity: 0.82 } : {})}
       >
         {inner}
@@ -83,7 +98,7 @@ export function GlassCard({
   const Wrapper = onPress ? TouchableOpacity : View;
   return (
     <Wrapper
-      style={[cardBase, { borderWidth: 1, borderColor: finalBorderColor }, style]}
+      style={[cardBase, { borderWidth: 1, borderColor: finalBorderColor }, wrapperStyle]}
       {...(onPress ? { onPress, activeOpacity: 0.85 } : {})}
     >
       <BlurView
