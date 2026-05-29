@@ -383,9 +383,7 @@ export default function GroundingScreen() {
     BREATH_TECHNIQUE_MODES.find((m) => m.id === selectedMode)?.label ??
     '';
   const showStressSection = Boolean(selectedMode && selectedMode !== 'pre_meeting');
-  const canComplete =
-    !user?.id ||
-    (helpful != null && (!showStressSection || stressAfter != null));
+  const canComplete = true;
 
   return (
     <GlassBackground>
@@ -404,67 +402,8 @@ export default function GroundingScreen() {
             </View>
           </View>
 
-          <Text style={st.completeHeading}>Did it help?</Text>
+          <Text style={st.completeHeading}>Session Completed</Text>
           {modeLabel ? <Text style={st.completeModeName}>{modeLabel}</Text> : null}
-
-          <View style={st.thumbRow}>
-            <TouchableOpacity
-              onPress={() => setHelpful(true)}
-              activeOpacity={0.85}
-              style={[st.thumbBtn, helpful === true && st.thumbBtnActive]}
-            >
-              <Ionicons name="thumbs-up-outline" size={22} color={helpful === true ? colors.primaryForeground : colors.textPrimary} />
-              <Text style={[st.thumbText, helpful === true && st.thumbTextActive]}>Yes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setHelpful(false)}
-              activeOpacity={0.85}
-              style={[st.thumbBtn, helpful === false && st.thumbBtnActive]}
-            >
-              <Ionicons name="thumbs-down-outline" size={22} color={helpful === false ? colors.primaryForeground : colors.textPrimary} />
-              <Text style={[st.thumbText, helpful === false && st.thumbTextActive]}>Not really</Text>
-            </TouchableOpacity>
-          </View>
-          {helpful == null ? (
-            <Text style={st.completeHint}>Tap Yes or Not really — then you can save.</Text>
-          ) : null}
-
-          {showStressSection && (
-            <GlassCard style={{ marginTop: Spacing.xl, width: '100%' }}>
-              <Text style={st.stressCardTitle}>How's your stress now?</Text>
-              <Text style={st.stressCardHint}>Tap a number. 1 is low, 5 is high</Text>
-              <View style={st.stressRow}>
-                {([1, 2, 3, 4, 5] as StressLevel[]).map((level) => {
-                  const isSelected = stressAfter === level;
-                  const accentColor = STRESS_COLORS[level - 1];
-                  return (
-                    <TouchableOpacity
-                      key={level}
-                      onPress={() => setStressAfter(level)}
-                      style={[st.stressPill, isSelected && { backgroundColor: accentColor, borderColor: accentColor }]}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[st.stressPillText, isSelected && { color: '#fff' }]}>{level}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <View style={st.stressLabelsRow}>
-                <Text style={st.stressCaption}>Low</Text>
-                <Text style={st.stressCaption}>High</Text>
-              </View>
-              {stressAfter == null ? (
-                <Text style={st.stressInlineHint}>Choose a level to finish.</Text>
-              ) : null}
-            </GlassCard>
-          )}
-
-          {stressAfter != null && delta > 0 && (
-            <View style={st.deltaCard}>
-              <Ionicons name="trending-down" size={20} color={colors.success} />
-              <Text style={st.deltaText}>Stress dropped by {delta} point{delta > 1 ? 's' : ''}</Text>
-            </View>
-          )}
 
           {saveError ? (
             <View style={st.saveErrorWrap}>
