@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   useColors,
   Spacing,
@@ -178,37 +179,86 @@ export default function HomeScreen() {
         {/* Competency Sprint Promo Banner */}
         <Animated.View style={{ opacity: greetAnim, marginBottom: Spacing.lg }}>
           <TouchableOpacity
-            style={[
-              {
+            onPress={() => router.push('/competency-sprint')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={[colors.primary + '18', colors.accentIndigo + '12']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
                 borderRadius: Radius.xl,
                 borderWidth: 1,
-                borderColor: colors.primary + '40',
-                backgroundColor: colors.primary + '10',
+                borderColor: colors.primary + '30',
                 padding: Spacing.lg,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: Spacing.md,
-                ...Shadows.card
-              }
-            ]}
-            onPress={() => router.push('/competency-sprint')}
-            activeOpacity={0.8}
-          >
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + '22', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="flash" size={24} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.primary, letterSpacing: 1, textTransform: 'uppercase' }}>
-                NEW PILOT EXPERIENCE
-              </Text>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.textPrimary }}>
-                Competency Sprint
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 16 }}>
-                Master "Having Difficult Conversations" in 10 mins with immersive AI simulations and live telemetry.
-              </Text>
-            </View>
-            <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+                ...Shadows.card,
+                overflow: 'hidden',
+                position: 'relative'
+              }}
+            >
+              {/* Glowing absolute background design element */}
+              <View style={{
+                position: 'absolute',
+                right: -20,
+                top: -20,
+                width: 120,
+                height: 120,
+                borderRadius: 60,
+                backgroundColor: colors.primary + '0A',
+              } as any} />
+
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: colors.primary + '1F',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: colors.primary + '30',
+                ...Shadows.sm
+              }}>
+                <Ionicons name="flash" size={22} color={colors.primary} />
+              </View>
+
+              <View style={{ flex: 1, gap: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
+                  <View style={{ backgroundColor: colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFFFFF', letterSpacing: 0.5 }}>
+                      ACTIVE PILOT
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textSecondary, letterSpacing: 0.5 }}>
+                    COMPETENCY SPRINT
+                  </Text>
+                </View>
+                
+                <Text style={{ fontSize: Typography.fontSize.cardTitle, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, letterSpacing: -0.5 }}>
+                  Difficult Conversations
+                </Text>
+                
+                <Text style={{ fontSize: Typography.fontSize.xs, color: colors.textSecondary, lineHeight: Typography.fontSize.xs * 1.4 }}>
+                  Master this critical leadership boundary with immersive AI simulations and real-time telemetry analytics.
+                </Text>
+              </View>
+
+              <View style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: colors.glass,
+                borderColor: colors.glassBorder,
+                borderWidth: 1,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+              </View>
+
+            </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
