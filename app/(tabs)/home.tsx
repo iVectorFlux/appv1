@@ -174,6 +174,43 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
+        {/* Competency Sprint Promo Banner */}
+        <Animated.View style={{ opacity: greetAnim, marginBottom: Spacing.lg }}>
+          <TouchableOpacity
+            style={[
+              {
+                borderRadius: Radius.xl,
+                borderWidth: 1,
+                borderColor: colors.primary + '40',
+                backgroundColor: colors.primary + '10',
+                padding: Spacing.lg,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: Spacing.md,
+                ...Shadows.card
+              }
+            ]}
+            onPress={() => router.push('/competency-sprint')}
+            activeOpacity={0.8}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + '22', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="flash" size={24} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.primary, letterSpacing: 1, textTransform: 'uppercase' }}>
+                NEW PILOT EXPERIENCE
+              </Text>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.textPrimary }}>
+                Competency Sprint
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 16 }}>
+                Master "Having Difficult Conversations" in 10 mins with immersive AI simulations and live telemetry.
+              </Text>
+            </View>
+            <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </Animated.View>
+
         <Text style={[st.sectionHeading, { marginBottom: Spacing.sm }]}>Explore</Text>
 
         {isWebLaptop ? (
