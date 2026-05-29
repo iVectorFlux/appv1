@@ -7,7 +7,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Spacing, Typography } from '@/constants/design-tokens';
+import { Spacing, Typography, Radius } from '@/constants/design-tokens';
 import type { GroundingMode, GroundingModeProps, EmotionalTone } from '@/types/grounding';
 import {
   BREATH_TECHNIQUE_MODES,
