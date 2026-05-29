@@ -1,0 +1,89 @@
+import { describe, it, expect } from 'vitest';
+import {
+  TRAIT_DIMENSIONS,
+  TRAIT_QUESTION_POOL,
+  TRAIT_TEST_INSTRUMENT_VERSION,
+  TRAIT_FIRST_WAVE_LEN,
+  buildInitialTraitQuestionOrder,
+  pickAdaptiveFollowUps,
+  responseToTraitSignal,
+} from '@/data/trait-test';
+import { scoreTraitTest } from '@/services/trait-test-scoring';
+
+describe('trait-test adaptive bank', () => {
+  it('has 18 dimensions and 72 pool items (4 each)', () => {
+    expect(TRAIT_DIMENSIONS).toHaveLength(18);
+    expect(TRAIT_QUESTION_POOL).toHaveLength(72);
+    const byTrait = new Map<string, number>();
+    for (const q of TRAIT_QUESTION_POOL) {
+      byTrait.set(q.traitId, (byTrait.get(q.traitId) ?? 0) + 1);
+    }
+    expect(byTrait.size).toBe(18);
+    for (const n of byTrait.values()) {
+      expect(n).toBe(4);
+    }
+  });
+
+  it('scenario prompts and four-pattern options are consistent', () => {
+    const subs = ['dominant_pattern', 'healthy_pattern', 'neutral_pattern', 'risk_pattern'] as const;
+    for (const q of TRAIT_QUESTION_POOL) {
+      if (q.type !== 'scenario') continue;
+      expect(q.prompt.startsWith('Think about the last time ')).toBe(true);
+      expect(q.prompt.endsWith(' What did you do first?')).toBe(true);
+      expect(q.options).toHaveLength(4);
+      const gotSubs = [...q.options.map((o) => o.sub)].sort();
+      expect(gotSubs).toEqual([...subs].sort());
+      expect(q.options.map((o) => o.traitSignal)).toEqual([1, 3, 4, 5]);
+    }
+  });
+
+  it('buildInitialTraitQuestionOrder returns two items per trait', () => {
+    const wave = buildInitialTraitQuestionOrder(42_001);
+    expect(wave).toHaveLength(TRAIT_FIRST_WAVE_LEN);
+    const byTrait = new Map<string, number>();
+    for (const q of wave) byTrait.set(q.traitId, (byTrait.get(q.traitId) ?? 0) + 1);
+    expect(byTrait.size).toBe(18);
+    for (const n of byTrait.values()) {
+      expect(n).toBe(2);
+    }
+  });
+
+  it('pickAdaptiveFollowUps returns 7 unused items', () => {
+    const wave = buildInitialTraitQuestionOrder(99_001);
+    const responses: Record<string, number> = {};
+    for (const q of wave) {
+      responses[q.id] = 3;
+    }
+    const extras = pickAdaptiveFollowUps(wave, responses);
+    expect(extras).toHaveLength(7);
+    const used = new Set(wave.map((q) => q.id));
+    for (const e of extras) {
+      expect(used.has(e.id)).toBe(false);
+    }
+    const traitCounts = new Map<string, number>();
+    for (const q of [...wave, ...extras]) {
+      traitCounts.set(q.traitId, (traitCounts.get(q.traitId) ?? 0) + 1);
+    }
+    for (const n of traitCounts.values()) {
+      expect(n).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('responseToTraitSignal: scenario passthrough', () => {
+    const a = TRAIT_QUESTION_POOL.find((x) => x.id === 'irr_1')!;
+    expect(responseToTraitSignal(a, 5)).toBe(5);
+    const b = TRAIT_QUESTION_POOL.find((x) => x.id === 'rp_1')!;
+    expect(responseToTraitSignal(b, 1)).toBe(1);
+  });
+
+  it('scoreTraitTest maps all-neutral to ~50', () => {
+    const wave = buildInitialTraitQuestionOrder(7);
+    const responses: Record<string, number> = {};
+    for (const q of wave) responses[q.id] = 3;
+    const extras = pickAdaptiveFollowUps(wave, responses);
+    for (const q of extras) responses[q.id] = 3;
+    const r = scoreTraitTest(responses, TRAIT_TEST_INSTRUMENT_VERSION);
+    expect(r.overall0to100).toBeGreaterThanOrEqual(48);
+    expect(r.overall0to100).toBeLessThanOrEqual(52);
+  });
+});
