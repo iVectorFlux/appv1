@@ -55,8 +55,8 @@ export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Prop
     const d = Math.max(200, durationMs);
     master.stopAnimation();
 
-    const easeExpand = Easing.bezier(0.25, 1, 0.5, 1); // Sleek iOS out-expo curve
-    const easeContract = Easing.bezier(0.25, 1, 0.5, 1);
+    const easeExpand = Easing.inOut(Easing.sin);
+    const easeContract = Easing.inOut(Easing.sin);
 
     let run: Animated.CompositeAnimation;
 
@@ -77,37 +77,19 @@ export function PhotonBreathCluster({ visualKey, durationMs, orb, accent }: Prop
         useNativeDriver: useND,
       });
     } else if (orb === 'holdHigh') {
-      const reach = Math.min(600, d * 0.15);
-      master.setValue(0);
-      run = Animated.sequence([
-        Animated.timing(master, {
-          toValue: 1,
-          duration: reach,
-          easing: easeExpand,
-          useNativeDriver: useND,
-        }),
-        Animated.timing(master, {
-          toValue: 1,
-          duration: Math.max(0, d - reach),
-          useNativeDriver: useND,
-        }),
-      ]);
-    } else if (orb === 'holdLow') {
-      const reach = Math.min(600, d * 0.15);
       master.setValue(1);
-      run = Animated.sequence([
-        Animated.timing(master, {
-          toValue: 0,
-          duration: reach,
-          easing: easeContract,
-          useNativeDriver: useND,
-        }),
-        Animated.timing(master, {
-          toValue: 0,
-          duration: Math.max(0, d - reach),
-          useNativeDriver: useND,
-        }),
-      ]);
+      run = Animated.timing(master, {
+        toValue: 1,
+        duration: d,
+        useNativeDriver: useND,
+      });
+    } else if (orb === 'holdLow') {
+      master.setValue(0);
+      run = Animated.timing(master, {
+        toValue: 0,
+        duration: d,
+        useNativeDriver: useND,
+      });
     } else if (orb === 'pulse') {
       master.setValue(0.5);
       run = Animated.loop(

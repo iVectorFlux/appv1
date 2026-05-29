@@ -284,6 +284,7 @@ const s = StyleSheet.create({
     fontFamily: Typography.fontFamily.primary,
     letterSpacing: 1.5,
     marginBottom: Spacing.xs,
+    textAlign: 'center',
   },
   countBig: {
     fontSize: 72,
@@ -292,6 +293,7 @@ const s = StyleSheet.create({
     lineHeight: 76,
     marginBottom: Spacing.md,
     letterSpacing: -1.5,
+    textAlign: 'center',
   },
   prompt: {
     fontSize: 24,

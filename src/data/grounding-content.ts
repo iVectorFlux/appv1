@@ -95,7 +95,7 @@ export const EMOTIONAL_TONES: { id: EmotionalTone; label: string }[] = [
 
 // Physiological sigh pattern (2 short inhales, long exhale)
 export const PHYSIOLOGICAL_SIGH_PATTERN = {
-  inhale: 2,
+  inhale: 4,
   sighInhale: 2,
   exhale: 6,
 } as const;

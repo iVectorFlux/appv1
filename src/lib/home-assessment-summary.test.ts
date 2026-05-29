@@ -37,7 +37,7 @@ describe('home-assessment-summary', () => {
 
   it('assessmentTypeLabel', () => {
     expect(assessmentTypeLabel('check_in')).toBe('Check in');
-    expect(assessmentTypeLabel('full_test')).toBe('Full test');
+    expect(assessmentTypeLabel('full_test')).toBe('Full assessment');
   });
 
   it('formatShortDate returns null for bad input', () => {

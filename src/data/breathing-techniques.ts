@@ -32,7 +32,7 @@ const SEGMENT_EXTENDED: BreathSegment = {
   id: 'extended',
   label: 'Extended exhale',
   emotionGuide: 'Anger · frustration · feeling “too fired up”',
-  cycles: 6,
+  cycles: 5,
   steps: [
     { key: 'in', label: 'Inhale', sub: '4 seconds', durationMs: S(4000), color: '#7DD3FC', orb: 'expand' },
     { key: 'out', label: 'Long exhale', sub: '7 seconds · longer than in', durationMs: S(7000), color: '#FB923C', orb: 'contract' },
@@ -43,7 +43,7 @@ const SEGMENT_COHERENT: BreathSegment = {
   id: 'coherent',
   label: 'Coherent breathing',
   emotionGuide: 'Focus · scattered mind · steady rhythm before work',
-  cycles: 6,
+  cycles: 5,
   steps: [
     { key: 'in', label: 'Inhale', sub: '5 seconds · smooth', durationMs: S(5000), color: '#2DD4BF', orb: 'expand' },
     { key: 'out', label: 'Exhale', sub: '5 seconds · smooth', durationMs: S(5000), color: '#14B8A6', orb: 'contract' },

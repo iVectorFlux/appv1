@@ -325,7 +325,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
 
-  scroll: { flexGrow: 1, paddingBottom: Spacing['2xl'] },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingBottom: Spacing['2xl'] },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -362,6 +362,7 @@ const s = StyleSheet.create({
     color: TEXT_MUTED,
     fontFamily: Typography.fontFamily.primary,
     opacity: 0.9,
+    textAlign: 'center',
   },
 
   /* Reflection glass sheets */
