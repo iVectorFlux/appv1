@@ -1,16 +1,15 @@
 /**
- * Pre-Meeting Reset - Mode 4 (2-3 min)
+ * Pre-Meeting Reset - Mode 4 (2-3 min grounding)
  *
- * Steps:
- *  1. Breath downshift - 3 breaths (4-2-6) with glowing orb
- *  2. Goal framing - "What is your goal?"
- *  3. Tone priming - tag selection
- *  4. Posture cue + anchor sentence
- *
- * Dark immersive background, atmospheric orb, clean card-like inputs.
+ * Overhauled to deliver a premium, minimalist stock iOS mindfulness layout:
+ *  - Overlapping translucent ambient color shifts.
+ *  - Re-uses our unified, silky-smooth Lotus Breathe visualizer.
+ *  - Sleek glassmorphic reflection sheets and focus cards.
+ *  - Elegant, glowing focus text input borders.
+ *  - Premium bento-style tone tags with delicate borders.
  */
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,13 +19,17 @@ import {
   Animated,
   Easing,
   Platform,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { Spacing, Typography, Radius, useColors } from '@/constants/design-tokens';
 import { PRE_MEETING_STEPS } from '@/data/grounding-content';
 import type { GroundingModeProps } from '@/types/grounding';
 import { TagChip } from '@/components/ui/tag-chip';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PhotonBreathCluster } from '@/components/grounding/photon-breath-cluster';
 
 const useND = Platform.OS !== 'web';
 
@@ -39,51 +42,39 @@ const TONE_OPTIONS = PRE_MEETING_STEPS[2].options;
 const STEP_ORDER: Step[] = ['breathe', 'goal', 'tone', 'anchor'];
 
 const BG = '#0C1222';
-const SURFACE = 'rgba(255,255,255,0.06)';
-const BORDER = 'rgba(255,255,255,0.10)';
+const SURFACE = 'rgba(255,255,255,0.04)';
+const BORDER = 'rgba(255,255,255,0.08)';
 const TEXT_PRIMARY = '#E2E8F0';
-const TEXT_MUTED = '#64748B';
-const ACCENT = '#F59E0B';
+const TEXT_MUTED = '#94A3B8';
+const ACCENT = '#fb923c'; // Warm amber tone for pre-meeting focus
 
 export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
+  const colors = useColors();
   const [step, setStep] = useState<Step>('breathe');
   const [breathPhase, setBreathPhase] = useState<'in' | 'hold' | 'out'>('in');
   const [breathCycle, setBreathCycle] = useState(0);
   const [goalText, setGoalText] = useState('');
   const [selectedTone, setSelectedTone] = useState<string | null>(null);
   const [anchorCountdown, setAnchorCountdown] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
 
   const textFade = useRef(new Animated.Value(1)).current;
-  const orbScale = useRef(new Animated.Value(1)).current;
-  const orbOpacity = useRef(new Animated.Value(0.5)).current;
-  const ring3Pulse = useRef(new Animated.Value(1)).current;
-  const ring4Pulse = useRef(new Animated.Value(1)).current;
+  const pulseRing = useRef(new Animated.Value(1)).current;
 
   const currentStepIdx = STEP_ORDER.indexOf(step);
 
-  const ring4Scale = useMemo(() => Animated.multiply(orbScale, ring4Pulse), [orbScale, ring4Pulse]);
-  const ring3Scale = useMemo(() => Animated.multiply(orbScale, ring3Pulse), [orbScale, ring3Pulse]);
-  const ring4Opa = useMemo(() => Animated.multiply(orbOpacity, new Animated.Value(0.08)), [orbOpacity]);
-  const ring3Opa = useMemo(() => Animated.multiply(orbOpacity, new Animated.Value(0.14)), [orbOpacity]);
-  const ring2Opa = useMemo(() => Animated.multiply(orbOpacity, new Animated.Value(0.25)), [orbOpacity]);
-
+  // continuous breathing-like pulses for orbital rings
   useEffect(() => {
-    const p3 = Animated.loop(
+    if (step === 'breathe') return;
+    const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(ring3Pulse, { toValue: 1.06, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: useND }),
-        Animated.timing(ring3Pulse, { toValue: 1, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: useND }),
-      ]),
+        Animated.timing(pulseRing, { toValue: 1.08, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: useND }),
+        Animated.timing(pulseRing, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.sin), useNativeDriver: useND }),
+      ])
     );
-    const p4 = Animated.loop(
-      Animated.sequence([
-        Animated.timing(ring4Pulse, { toValue: 1.1, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: useND }),
-        Animated.timing(ring4Pulse, { toValue: 1, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: useND }),
-      ]),
-    );
-    p3.start();
-    p4.start();
-    return () => { p3.stop(); p4.stop(); };
-  }, [ring3Pulse, ring4Pulse]);
+    pulse.start();
+    return () => pulse.stop();
+  }, [step]);
 
   const fadeToStep = useCallback(
     (next: Step) => {
@@ -101,21 +92,17 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
       if (cycle >= BREATH_CYCLES) { fadeToStep('goal'); return; }
       setBreathCycle(cycle);
       setBreathPhase('in');
-      Animated.parallel([
-        Animated.timing(orbScale, { toValue: 1.35, duration: BREATH.inhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: useND }),
-        Animated.timing(orbOpacity, { toValue: 0.88, duration: BREATH.inhale, useNativeDriver: useND }),
-      ]).start(() => {
+      setTimeout(() => {
         setBreathPhase('hold');
         setTimeout(() => {
           setBreathPhase('out');
-          Animated.parallel([
-            Animated.timing(orbScale, { toValue: 1, duration: BREATH.exhale, easing: Easing.inOut(Easing.cubic), useNativeDriver: useND }),
-            Animated.timing(orbOpacity, { toValue: 0.5, duration: BREATH.exhale, useNativeDriver: useND }),
-          ]).start(() => runBreathCycle(cycle + 1));
+          setTimeout(() => {
+            runBreathCycle(cycle + 1);
+          }, BREATH.exhale);
         }, BREATH.hold);
-      });
+      }, BREATH.inhale);
     },
-    [fadeToStep, orbScale, orbOpacity],
+    [fadeToStep],
   );
 
   useEffect(() => { runBreathCycle(0); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -132,16 +119,24 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
     return () => clearInterval(iv);
   }, [step, onComplete]);
 
-  const phaseLabel = breathPhase === 'in' ? 'Breathe in' : breathPhase === 'hold' ? 'Hold' : 'Breathe out';
-  const phaseColor = breathPhase === 'in' ? '#6EA8FE' : breathPhase === 'hold' ? '#A78BFA' : '#F97316';
+  const phaseLabel = breathPhase === 'in' ? 'Breathe in slowly' : breathPhase === 'hold' ? 'Hold' : 'Exhale deeply';
+  const phaseColor = breathPhase === 'in' ? '#38bdf8' : breathPhase === 'hold' ? '#a78bfa' : '#fb923c';
+  const activeColor = step === 'breathe' ? phaseColor : ACCENT;
 
   return (
-    <View style={s.container}>
-      <LinearGradient colors={[BG, '#111827', BG]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={s.container}
+    >
+      <LinearGradient colors={[BG, '#080d1a', BG]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} />
 
+      {/* Deep atmospheric metal glow overlay */}
+      <View style={[s.accentGlow, { backgroundColor: activeColor }]} />
+
+      {/* Top Header Bar */}
       <View style={s.topBar}>
         <Text style={s.stepLabel}>
-          {step === 'breathe' ? 'Step 1 of 4 · Breath Downshift' : step === 'goal' ? 'Step 2 of 4 · Goal' : step === 'tone' ? 'Step 3 of 4 · Tone' : 'Step 4 of 4 · Anchor'}
+          {step === 'breathe' ? 'Step 1 of 4 · Breath downshift' : step === 'goal' ? 'Step 2 of 4 · Clear intent' : step === 'tone' ? 'Step 3 of 4 · Relational tone' : 'Step 4 of 4 · Presence'}
         </Text>
         <TouchableOpacity
           style={s.closeBtn}
@@ -150,148 +145,372 @@ export function PreMeeting({ onComplete, onExit }: GroundingModeProps) {
           accessibilityRole="button"
           accessibilityLabel="Exit exercise"
         >
-          <Ionicons name="chevron-back" size={22} color={TEXT_MUTED} />
+          <Ionicons name="chevron-back" size={20} color={TEXT_MUTED} />
         </TouchableOpacity>
       </View>
 
+      {/* Bento Progress Segments */}
       <View style={s.progressRow}>
         {STEP_ORDER.map((st, i) => (
-          <View key={st} style={[s.progressSeg, i <= currentStepIdx && { backgroundColor: ACCENT }]} />
+          <View key={st} style={[s.progressSeg, i <= currentStepIdx && { backgroundColor: activeColor, opacity: 0.85 }]} />
         ))}
       </View>
 
-      <Animated.View style={[s.center, { opacity: textFade }]}>
-        {step === 'breathe' && (
-          <>
-            <View style={s.orbWrap}>
-              <Animated.View style={[s.ring4, { backgroundColor: phaseColor, transform: [{ scale: ring4Scale }], opacity: ring4Opa }]} />
-              <Animated.View style={[s.ring3, { backgroundColor: phaseColor, transform: [{ scale: ring3Scale }], opacity: ring3Opa }]} />
-              <Animated.View style={[s.ring2, { backgroundColor: phaseColor, transform: [{ scale: orbScale }], opacity: ring2Opa }]} />
-              <Animated.View
-                style={[
-                  s.core,
-                  {
-                    backgroundColor: phaseColor,
-                    transform: [{ scale: orbScale }],
-                    opacity: orbOpacity,
-                    ...(Platform.OS === 'ios' ? { shadowColor: phaseColor, shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 0 } } : {}),
-                  },
-                ]}
-              />
-            </View>
-            <Text style={[s.heading, { color: TEXT_PRIMARY }]}>{phaseLabel}</Text>
-            <Text style={s.counterText}>Breath {breathCycle + 1} of {BREATH_CYCLES}</Text>
-          </>
-        )}
-
-        {step === 'goal' && (
-          <>
-            <View style={s.promptIcon}><Ionicons name="flag-outline" size={36} color={ACCENT} /></View>
-            <Text style={s.heading}>What's your goal{'\n'}for this?</Text>
-            <View style={s.inputCard}>
-              <TextInput
-                value={goalText}
-                onChangeText={setGoalText}
-                placeholder="e.g. Stay calm and listen"
-                placeholderTextColor={TEXT_MUTED}
-                style={s.input}
-                multiline
-                textAlignVertical="top"
-              />
-            </View>
-            <TouchableOpacity
-              style={[s.primaryBtn, !goalText.trim() && { opacity: 0.35 }]}
-              onPress={() => goalText.trim() && fadeToStep('tone')}
-              activeOpacity={0.8}
-              disabled={!goalText.trim()}
-            >
-              <Text style={s.primaryBtnText}>Next</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
-            </TouchableOpacity>
-          </>
-        )}
-
-        {step === 'tone' && (
-          <>
-            <View style={s.promptIcon}><Ionicons name="mic-outline" size={36} color={ACCENT} /></View>
-            <Text style={s.heading}>How do you want{'\n'}to come across?</Text>
-            <View style={s.toneWrap}>
-              {TONE_OPTIONS.map((t) => (
-                <TagChip
-                  key={t}
-                  label={t}
-                  selected={selectedTone === t}
-                  selectedColor={ACCENT}
-                  onPress={() => setSelectedTone(selectedTone === t ? null : t)}
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Animated.View style={[s.center, { opacity: textFade }]}>
+          {step === 'breathe' && (
+            <View style={s.fullWidthCenter}>
+              <View style={s.orbWrap}>
+                <PhotonBreathCluster
+                  visualKey={`pre-meeting-breath-${breathCycle}-${breathPhase}`}
+                  durationMs={breathPhase === 'in' ? BREATH.inhale : breathPhase === 'hold' ? BREATH.hold : BREATH.exhale}
+                  orb={breathPhase === 'in' ? 'expand' : breathPhase === 'hold' ? 'holdHigh' : 'contract'}
+                  accent={phaseColor}
                 />
-              ))}
+              </View>
+              <Text style={s.breathHeading}>{phaseLabel}</Text>
+              <Text style={s.counterText}>Breath {breathCycle + 1} of {BREATH_CYCLES}</Text>
             </View>
-            <TouchableOpacity
-              style={[s.primaryBtn, !selectedTone && { opacity: 0.35 }]}
-              onPress={() => selectedTone && fadeToStep('anchor')}
-              activeOpacity={0.8}
-              disabled={!selectedTone}
-            >
-              <Text style={s.primaryBtnText}>Next</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
-            </TouchableOpacity>
-          </>
-        )}
+          )}
 
-        {step === 'anchor' && (
-          <>
-            <View style={s.promptIcon}><Ionicons name="body-outline" size={36} color={ACCENT} /></View>
-            <Text style={s.anchorInstruction}>Sit tall. Shoulders back.{'\n'}Feet flat on the floor.</Text>
-            <View style={s.anchorCard}>
-              <Text style={s.anchorQuote}>"</Text>
-              <Text style={[s.anchorSentence, { color: ACCENT }]}>I am prepared and present.</Text>
-              <Text style={[s.anchorQuote, { textAlign: 'right' }]}>"</Text>
-            </View>
-            <View style={[s.timerRing, { borderColor: ACCENT + '40' }]}>
-              <Text style={[s.timerNum, { color: ACCENT }]}>{anchorCountdown}</Text>
-            </View>
-          </>
-        )}
-      </Animated.View>
-    </View>
+          {step === 'goal' && (
+            <GlassCard style={s.glassContainer}>
+              <View style={s.iconGlowWrapper}>
+                <Animated.View style={[s.glowRingOutline, { borderColor: ACCENT + '30', transform: [{ scale: pulseRing }] }]} />
+                <View style={s.promptIcon}><Ionicons name="flag-outline" size={30} color={ACCENT} /></View>
+              </View>
+
+              <Text style={s.heading}>Define your goal</Text>
+              <Text style={s.subheading}>Specify a simple focal intention for this meeting.</Text>
+
+              <View style={[s.inputCard, isFocused && { borderColor: ACCENT + '80' }]}>
+                <TextInput
+                  value={goalText}
+                  onChangeText={setGoalText}
+                  placeholder="e.g. Listen deeply, speak with clarity..."
+                  placeholderTextColor="rgba(255,255,255,0.2)"
+                  style={s.input}
+                  multiline
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[s.primaryBtn, !goalText.trim() && { opacity: 0.35 }]}
+                onPress={() => goalText.trim() && fadeToStep('tone')}
+                activeOpacity={0.85}
+                disabled={!goalText.trim()}
+              >
+                <Text style={s.primaryBtnText}>Set Intention</Text>
+                <Ionicons name="arrow-forward" size={16} color="#fff" />
+              </TouchableOpacity>
+            </GlassCard>
+          )}
+
+          {step === 'tone' && (
+            <GlassCard style={s.glassContainer}>
+              <View style={s.iconGlowWrapper}>
+                <Animated.View style={[s.glowRingOutline, { borderColor: ACCENT + '30', transform: [{ scale: pulseRing }] }]} />
+                <View style={s.promptIcon}><Ionicons name="mic-outline" size={30} color={ACCENT} /></View>
+              </View>
+
+              <Text style={s.heading}>Prime your tone</Text>
+              <Text style={s.subheading}>Select the primary energy you want to convey.</Text>
+
+              <View style={s.toneWrap}>
+                {TONE_OPTIONS.map((t) => (
+                  <TagChip
+                    key={t}
+                    label={t}
+                    selected={selectedTone === t}
+                    selectedColor={ACCENT}
+                    onPress={() => setSelectedTone(selectedTone === t ? null : t)}
+                  />
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[s.primaryBtn, !selectedTone && { opacity: 0.35 }]}
+                onPress={() => selectedTone && fadeToStep('anchor')}
+                activeOpacity={0.85}
+                disabled={!selectedTone}
+              >
+                <Text style={s.primaryBtnText}>Apply Tone</Text>
+                <Ionicons name="arrow-forward" size={16} color="#fff" />
+              </TouchableOpacity>
+            </GlassCard>
+          )}
+
+          {step === 'anchor' && (
+            <GlassCard style={s.glassContainer}>
+              <View style={s.iconGlowWrapper}>
+                <Animated.View style={[s.glowRingOutline, { borderColor: ACCENT + '30', transform: [{ scale: pulseRing }] }]} />
+                <View style={s.promptIcon}><Ionicons name="body-outline" size={30} color={ACCENT} /></View>
+              </View>
+
+              <Text style={s.anchorInstruction}>Sit tall. Shoulders back.{'\n'}Feet flat on the floor.</Text>
+              
+              <View style={s.anchorCard}>
+                <Text style={s.anchorQuote}>“</Text>
+                <Text style={s.anchorSentence}>I am fully prepared and present.</Text>
+                <Text style={[s.anchorQuote, { textAlign: 'right' }]}>”</Text>
+              </View>
+
+              <View style={[s.timerRing, { borderColor: ACCENT + '25' }]}>
+                <Text style={[s.timerNum, { color: ACCENT }]}>{anchorCountdown}</Text>
+              </View>
+            </GlassCard>
+          )}
+        </Animated.View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.sm },
-  stepLabel: { fontSize: Typography.fontSize.sm, color: TEXT_MUTED, fontFamily: Typography.fontFamily.primary, fontWeight: Typography.fontWeight.medium },
-  closeBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.full, backgroundColor: SURFACE, borderWidth: 1, borderColor: BORDER },
 
-  progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing.lg, marginTop: Spacing.sm },
-  progressSeg: { flex: 1, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.06)' },
+  accentGlow: {
+    position: 'absolute',
+    top: -200,
+    left: -120,
+    right: -120,
+    height: 550,
+    borderRadius: 275,
+    opacity: 0.08,
+  },
 
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.lg },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+    zIndex: 10,
+  },
+  stepLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: TEXT_MUTED,
+    fontFamily: Typography.fontFamily.primary,
+    fontWeight: Typography.fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    opacity: 0.8,
+  },
+  closeBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
 
-  orbWrap: { width: 240, height: 240, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
-  ring4: { position: 'absolute', width: 240, height: 240, borderRadius: 120 },
-  ring3: { position: 'absolute', width: 200, height: 200, borderRadius: 100 },
-  ring2: { position: 'absolute', width: 160, height: 160, borderRadius: 80 },
-  core: { width: 110, height: 110, borderRadius: 55 },
+  progressRow: {
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.xs,
+    zIndex: 10,
+  },
+  progressSeg: {
+    flex: 1,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
 
-  heading: { fontSize: 24, fontWeight: Typography.fontWeight.semibold, color: TEXT_PRIMARY, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 34, marginBottom: Spacing.md },
-  counterText: { fontSize: Typography.fontSize.sm, color: TEXT_MUTED, fontFamily: Typography.fontFamily.primary },
+  scroll: { flexGrow: 1, paddingBottom: Spacing['2xl'] },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+    minHeight: 460,
+  },
+  fullWidthCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
 
-  promptIcon: { width: 76, height: 76, borderRadius: 38, backgroundColor: ACCENT + '12', borderWidth: 1.5, borderColor: ACCENT + '25', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
+  /* Step 1 visuals */
+  orbWrap: {
+    width: 220,
+    height: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xl,
+  },
+  breathHeading: {
+    fontSize: 28,
+    fontWeight: Typography.fontWeight.medium,
+    color: TEXT_PRIMARY,
+    fontFamily: Typography.fontFamily.heading,
+    textAlign: 'center',
+    lineHeight: 34,
+    letterSpacing: -0.5,
+    marginBottom: Spacing.xs,
+  },
+  counterText: {
+    fontSize: Typography.fontSize.sm,
+    color: TEXT_MUTED,
+    fontFamily: Typography.fontFamily.primary,
+    opacity: 0.9,
+  },
 
-  inputCard: { width: '100%', backgroundColor: SURFACE, borderRadius: Radius.lg, borderWidth: 1, borderColor: BORDER, marginBottom: Spacing.lg, overflow: 'hidden' },
-  input: { padding: Spacing.md, fontSize: Typography.fontSize.base, color: TEXT_PRIMARY, fontFamily: Typography.fontFamily.primary, minHeight: 80 },
+  /* Reflection glass sheets */
+  glassContainer: {
+    width: '100%',
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.xl,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  iconGlowWrapper: {
+    width: 110,
+    height: 110,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  glowRingOutline: {
+    position: 'absolute',
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    borderWidth: 1,
+  },
+  promptIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: SURFACE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: Typography.fontWeight.semibold,
+    color: TEXT_PRIMARY,
+    fontFamily: Typography.fontFamily.heading,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+    marginBottom: Spacing.xs,
+  },
+  subheading: {
+    fontSize: Typography.fontSize.sm,
+    color: TEXT_MUTED,
+    fontFamily: Typography.fontFamily.primary,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.sm,
+    lineHeight: 18,
+  },
 
-  toneWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.sm, marginBottom: Spacing['2xl'] },
+  /* Focus text input fields */
+  inputCard: {
+    width: '100%',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: Spacing.lg,
+    overflow: 'hidden',
+  },
+  input: {
+    padding: Spacing.md,
+    fontSize: Typography.fontSize.base,
+    color: TEXT_PRIMARY,
+    fontFamily: Typography.fontFamily.primary,
+    minHeight: 90,
+  },
 
-  anchorInstruction: { fontSize: 24, fontWeight: Typography.fontWeight.semibold, color: TEXT_PRIMARY, fontFamily: Typography.fontFamily.heading, textAlign: 'center', lineHeight: 34, marginBottom: Spacing['2xl'] },
-  anchorCard: { backgroundColor: SURFACE, borderRadius: Radius.xl, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, borderWidth: 1, borderColor: BORDER, marginBottom: Spacing.lg, width: '100%' },
-  anchorQuote: { fontSize: 36, color: ACCENT + '30', fontFamily: Typography.fontFamily.heading, lineHeight: 36 },
-  anchorSentence: { fontSize: 22, fontWeight: Typography.fontWeight.medium, fontFamily: Typography.fontFamily.heading, textAlign: 'center', fontStyle: 'italic', paddingVertical: Spacing.sm },
+  /* Bento tags list */
+  toneWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl,
+    maxWidth: 320,
+  },
 
-  timerRing: { width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
-  timerNum: { fontSize: 24, fontWeight: Typography.fontWeight.bold, fontFamily: Typography.fontFamily.heading },
+  /* Anchor cues styling */
+  anchorInstruction: {
+    fontSize: 22,
+    fontWeight: Typography.fontWeight.semibold,
+    color: TEXT_PRIMARY,
+    fontFamily: Typography.fontFamily.heading,
+    textAlign: 'center',
+    lineHeight: 32,
+    letterSpacing: -0.3,
+    marginBottom: Spacing.lg,
+  },
+  anchorCard: {
+    backgroundColor: SURFACE,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: Spacing.lg,
+    width: '100%',
+  },
+  anchorQuote: {
+    fontSize: 28,
+    color: ACCENT + '30',
+    fontFamily: Typography.fontFamily.heading,
+    lineHeight: 28,
+  },
+  anchorSentence: {
+    fontSize: 20,
+    fontWeight: Typography.fontWeight.medium,
+    fontFamily: Typography.fontFamily.heading,
+    color: ACCENT,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingVertical: Spacing.xs,
+  },
 
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: ACCENT, borderRadius: Radius.md, paddingVertical: 14, paddingHorizontal: Spacing.xl },
-  primaryBtnText: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, color: '#fff', fontFamily: Typography.fontFamily.primary },
+  timerRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timerNum: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    fontVariant: ['tabular-nums'],
+    fontFamily: Typography.fontFamily.heading,
+  },
+
+  primaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: ACCENT,
+    borderRadius: Radius.md,
+    paddingVertical: 13,
+    paddingHorizontal: Spacing.xl,
+  },
+  primaryBtnText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: '#fff',
+    fontFamily: Typography.fontFamily.primary,
+  },
 });

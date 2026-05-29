@@ -227,25 +227,26 @@ export function GuidedBreathSession({
 
   return (
     <View style={s.container}>
-      <LinearGradient colors={[BG, '#111827', BG]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} />
+      <LinearGradient colors={[BG, '#080d1a', BG]} style={StyleSheet.absoluteFill} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} />
 
-      <View style={[s.accentGlow, { backgroundColor: currentStep.color + '12' }]} />
+      {/* Dynamic ambient metal/color aura shifts based on current step */}
+      <View style={[s.accentGlow, { backgroundColor: currentStep.color }]} />
 
       <View style={s.header}>
-        <TouchableOpacity onPress={onExit} hitSlop={16} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={TEXT_PRIMARY} />
+        <TouchableOpacity onPress={onExit} hitSlop={16} style={s.backBtn} accessibilityRole="button" accessibilityLabel="Back">
+          <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
         </TouchableOpacity>
         <Text style={s.headerTitle} numberOfLines={2}>
           {flowTitle(mode)}
         </Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 44 }} />
       </View>
 
       {phaseTotal > 0 ? (
         <View style={s.topStepBlock} accessibilityRole="summary" accessibilityLabel={`Step ${phaseCurrent} of ${phaseTotal}`}>
           <View style={s.stepRowInline}>
             <Text style={s.stepMeta} accessibilityLiveRegion="polite" numberOfLines={1}>
-              Step {phaseCurrent} of {phaseTotal}
+              {phaseCurrent} / {phaseTotal}
             </Text>
             <View style={s.phaseSegRow}>
               {Array.from({ length: phaseTotal }, (_, i) => (
@@ -253,7 +254,7 @@ export function GuidedBreathSession({
                   key={i}
                   style={[
                     s.phaseSeg,
-                    i < phaseCurrent && { backgroundColor: currentStep.color },
+                    i < phaseCurrent && { backgroundColor: currentStep.color, opacity: 0.8 },
                   ]}
                 />
               ))}
@@ -263,7 +264,7 @@ export function GuidedBreathSession({
       ) : null}
 
       <View style={s.progressOuter}>
-        <Animated.View style={[s.progressInner, { width: progressWidth }]} />
+        <Animated.View style={[s.progressInner, { width: progressWidth, backgroundColor: currentStep.color }]} />
       </View>
 
       <View style={s.center}>
@@ -277,7 +278,7 @@ export function GuidedBreathSession({
         </View>
 
         <View style={s.phaseLineRow} accessibilityRole="text" accessibilityLabel={`${currentStep.label}${tick > 0 && currentStep.durationMs >= 3000 ? `, ${tick} seconds` : ''}`}>
-          <Text style={[s.phaseLabel, { color: currentStep.color }]} numberOfLines={1}>
+          <Text style={[s.phaseLabel, { color: TEXT_PRIMARY }]} numberOfLines={1}>
             {currentStep.label}
           </Text>
           {tick > 0 && currentStep.durationMs >= 3000 ? (
@@ -298,17 +299,17 @@ export function GuidedBreathSession({
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
-  error: { color: TEXT_MUTED, textAlign: 'center', marginTop: 80, paddingHorizontal: Spacing.lg },
+  error: { color: TEXT_MUTED, textAlign: 'center', marginTop: 80, paddingHorizontal: Spacing.lg, fontFamily: Typography.fontFamily.primary },
   btn: { alignSelf: 'center', marginTop: Spacing.lg, padding: Spacing.md },
-  btnText: { color: '#93C5FD', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold },
+  btnText: { color: '#93C5FD', fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.semibold, fontFamily: Typography.fontFamily.primary },
   accentGlow: {
     position: 'absolute',
-    top: 0,
-    left: '15%',
-    right: '15%',
-    height: 160,
-    borderBottomLeftRadius: 120,
-    borderBottomRightRadius: 120,
+    top: -150,
+    left: -100,
+    right: -100,
+    height: 520,
+    borderRadius: 260,
+    opacity: 0.08,
   },
   header: {
     flexDirection: 'row',
@@ -316,8 +317,19 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: Spacing.md,
     paddingHorizontal: Spacing.sm,
+    zIndex: 10,
   },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  backBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginLeft: Spacing.sm,
+  },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
@@ -326,10 +338,13 @@ const s = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontFamily: Typography.fontFamily.heading,
     lineHeight: 20,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    opacity: 0.85,
   },
   topStepBlock: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.md,
     paddingBottom: Spacing.xs,
   },
   stepRowInline: {
@@ -338,41 +353,42 @@ const s = StyleSheet.create({
     gap: Spacing.md,
   },
   stepMeta: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     color: TEXT_MUTED,
     fontFamily: Typography.fontFamily.primary,
-    fontWeight: Typography.fontWeight.medium,
+    fontWeight: Typography.fontWeight.semibold,
     flexShrink: 0,
+    opacity: 0.8,
   },
   phaseSegRow: {
     flex: 1,
     flexDirection: 'row',
-    gap: 3,
+    gap: 4,
     alignItems: 'center',
     minWidth: 0,
   },
   phaseSeg: {
     flex: 1,
-    height: 3,
-    borderRadius: 2,
+    height: 2,
+    borderRadius: 1,
     backgroundColor: SURFACE_SEG,
+    opacity: 0.4,
   },
   progressOuter: {
     marginTop: Spacing.sm,
-    marginHorizontal: Spacing.md,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: Spacing.lg,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     overflow: 'hidden',
   },
   progressInner: {
-    height: 3,
-    backgroundColor: '#38BDF8',
+    height: 2,
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.lg },
   orbSlot: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
   phaseLineRow: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.xl,
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
@@ -382,20 +398,22 @@ const s = StyleSheet.create({
   },
   phaseLabel: {
     fontSize: 28,
-    fontWeight: Typography.fontWeight.semibold,
+    fontWeight: Typography.fontWeight.medium,
     fontFamily: Typography.fontFamily.heading,
     flexShrink: 1,
+    letterSpacing: -0.5,
   },
   phaseSep: {
     fontSize: 28,
     fontWeight: Typography.fontWeight.medium,
-    color: TEXT_MUTED,
+    color: 'rgba(255, 255, 255, 0.25)',
     fontFamily: Typography.fontFamily.heading,
   },
   phaseTick: {
     fontSize: 28,
-    fontWeight: Typography.fontWeight.bold,
+    fontWeight: Typography.fontWeight.semibold,
     fontVariant: ['tabular-nums'],
     fontFamily: Typography.fontFamily.heading,
+    letterSpacing: -0.5,
   },
 });
