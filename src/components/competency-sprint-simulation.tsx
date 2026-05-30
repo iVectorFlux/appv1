@@ -1,9 +1,44 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Platform, KeyboardAvoidingView, Animated, Easing } from 'react-native';
 import { useColors, Spacing, Radius, Typography, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompetencySprintStore } from '@/stores/competency-sprint-store';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
+
+function TypingIndicator({ color }: { color: string }) {
+  const dot0 = useRef(new Animated.Value(0.3)).current;
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const dots = [dot0, dot1, dot2];
+    const anims = dots.map((dot, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 200),
+          Animated.timing(dot, { toValue: 1, duration: 400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0.3, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.delay(400),
+        ])
+      )
+    );
+    anims.forEach((a) => a.start());
+    return () => anims.forEach((a) => a.stop());
+  }, [dot0, dot1, dot2]);
+
+  return (
+    <View style={typingStyles.row}>
+      {[dot0, dot1, dot2].map((dot, i) => (
+        <Animated.View key={i} style={[typingStyles.dot, { backgroundColor: color, opacity: dot }]} />
+      ))}
+    </View>
+  );
+}
+
+const typingStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingLeft: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+});
 
 export function CompetencySprintSimulation() {
   const colors = useColors();
@@ -16,7 +51,6 @@ export function CompetencySprintSimulation() {
     startSimulation,
     submitSimulationTurn,
     completeActiveSimulation,
-    error,
   } = useCompetencySprintStore();
 
   const [freeText, setFreeText] = useState('');
@@ -36,7 +70,7 @@ export function CompetencySprintSimulation() {
   // Initialize simulation chat on mount
   useEffect(() => {
     void startSimulation();
-  }, [currentStage]);
+  }, [currentStage, startSimulation]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -104,7 +138,6 @@ export function CompetencySprintSimulation() {
     // Messages bubble styles
     messageRow: {
       flexDirection: 'row',
-      marginBottom: Spacing.lg,
       width: '100%',
     },
     systemRow: {
@@ -130,12 +163,17 @@ export function CompetencySprintSimulation() {
       letterSpacing: 1.2,
     },
     assistantRow: {
+      flexDirection: 'row',
       justifyContent: 'flex-start',
       paddingRight: 48,
+      marginBottom: Spacing.xl,
+      gap: 10,
     },
     userRow: {
+      alignItems: 'flex-end',
       justifyContent: 'flex-end',
       paddingLeft: 48,
+      marginBottom: Spacing.md,
     },
     avatar: {
       width: 32,
@@ -143,71 +181,45 @@ export function CompetencySprintSimulation() {
       borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: Spacing.sm,
       marginTop: 2,
-      borderWidth: 1.5,
-      borderColor: '#FFFFFF',
-      ...Shadows.sm,
+      flexShrink: 0,
     },
     avatarText: {
       color: '#FFFFFF',
       fontSize: 12,
       fontWeight: Typography.fontWeight.bold,
     },
-    bubble: {
-      borderRadius: Radius.xl,
-      paddingVertical: Spacing.md,
-      paddingHorizontal: Spacing.lg,
-      flexShrink: 1,
-      ...Shadows.sm,
-    },
-    assistantBubble: {
-      backgroundColor: colors.glass,
-      borderColor: colors.glassBorder,
-      borderWidth: 1,
-      borderTopLeftRadius: 3,
+    assistantContent: {
+      flex: 1,
     },
     userBubble: {
       backgroundColor: colors.primary,
-      borderTopRightRadius: 3,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
+      borderRadius: Radius.xl,
+      borderBottomRightRadius: 6,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      maxWidth: '85%',
+      ...Shadows.sm,
+    },
+    userText: {
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.fontSize.sm * 1.45,
+      color: '#FFFFFF',
     },
     msgName: {
       fontFamily: Typography.fontFamily.heading,
       fontSize: 9,
       fontWeight: Typography.fontWeight.bold,
       color: colors.textMuted,
-      marginBottom: 3,
+      marginBottom: 4,
       letterSpacing: 0.5,
+      textTransform: 'uppercase',
     },
     msgText: {
       fontFamily: Typography.fontFamily.primary,
       fontSize: Typography.fontSize.sm,
       lineHeight: Typography.fontSize.sm * 1.45,
-    },
-    typingIndicator: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.xs,
-      paddingVertical: Spacing.xs,
-      paddingHorizontal: Spacing.sm,
-      backgroundColor: colors.glass,
-      borderColor: colors.glassBorder,
-      borderWidth: 1,
-      borderRadius: Radius.md,
-      alignSelf: 'flex-start',
-      marginLeft: 40,
-      marginBottom: Spacing.md,
-      ...Shadows.sm,
-    },
-    typingText: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
-      fontFamily: Typography.fontFamily.primary,
-      fontWeight: Typography.fontWeight.medium,
     },
     // Guided choice selection
     optionsContainer: {
@@ -267,7 +279,7 @@ export function CompetencySprintSimulation() {
       fontSize: Typography.fontSize.sm,
       maxHeight: 100,
       ...Shadows.sm,
-      ...(Platform.OS === 'web' ? { outlineWidth: 0 } : {}),
+      ...(Platform.OS === 'web' ? { outlineStyle: 'none', outlineWidth: 0 } : {}),
     },
     sendBtn: {
       width: 44,
@@ -319,40 +331,35 @@ export function CompetencySprintSimulation() {
       borderTopWidth: 0,
       gap: Spacing.lg,
     },
-    tabBarContainer: {
+    headerRow: {
       flexDirection: 'row',
-      backgroundColor: colors.glass,
-      borderColor: colors.glassBorder,
-      borderWidth: 1,
-      borderRadius: Radius.xl,
-      marginHorizontal: Spacing.lg,
-      marginTop: Spacing.md,
-      marginBottom: Spacing.xs,
-      padding: 3,
-      ...Shadows.sm,
-    },
-    tabButton: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
       justifyContent: 'center',
-      gap: Spacing.xs,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+      paddingBottom: 4,
+      marginTop: Spacing.sm,
+      gap: Spacing.lg,
+    },
+    modeTab: {
+      paddingHorizontal: Spacing.md,
       paddingVertical: Spacing.sm,
-      borderRadius: Radius.lg,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
     },
-    tabButtonActive: {
-      backgroundColor: colors.primary,
-      ...Shadows.sm,
+    modeTabActive: {
+      borderBottomColor: colors.primary,
     },
-    tabButtonText: {
-      fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.semibold,
+    modeTabText: {
+      fontFamily: Typography.fontFamily.heading,
+      fontSize: 15,
+      fontWeight: '600',
+      letterSpacing: 0.2,
+    },
+    modeTabTextActive: {
+      color: colors.textPrimary,
+    },
+    modeTabTextInactive: {
       color: colors.textMuted,
-    },
-    tabButtonTextActive: {
-      color: '#FFFFFF',
-      fontWeight: Typography.fontWeight.bold,
     },
     sideTitle: {
       fontFamily: Typography.fontFamily.heading,
@@ -545,36 +552,148 @@ export function CompetencySprintSimulation() {
     if (isWebLaptop) return null;
 
     return (
-      <View style={styles.tabBarContainer}>
+      <View style={styles.headerRow}>
         <TouchableOpacity
-          style={[styles.tabButton, activeMobileTab === 'chat' && styles.tabButtonActive]}
+          style={[styles.modeTab, activeMobileTab === 'chat' && styles.modeTabActive]}
           onPress={() => setActiveMobileTab('chat')}
         >
-          <Ionicons
-            name="chatbubble-ellipses-outline"
-            size={16}
-            color={activeMobileTab === 'chat' ? '#FFFFFF' : colors.textMuted}
-          />
-          <Text style={[styles.tabButtonText, activeMobileTab === 'chat' && styles.tabButtonTextActive]}>
-            Chat Dialogue
+          <Text style={[styles.modeTabText, activeMobileTab === 'chat' ? styles.modeTabTextActive : styles.modeTabTextInactive]}>
+            Chat
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabButton, activeMobileTab === 'telemetry' && styles.tabButtonActive]}
+          style={[styles.modeTab, activeMobileTab === 'telemetry' && styles.modeTabActive]}
           onPress={() => setActiveMobileTab('telemetry')}
         >
-          <Ionicons
-            name="analytics-outline"
-            size={16}
-            color={activeMobileTab === 'telemetry' ? '#FFFFFF' : colors.textMuted}
-          />
-          <Text style={[styles.tabButtonText, activeMobileTab === 'telemetry' && styles.tabButtonTextActive]}>
-            Live EQ Telemetry
+          <Text style={[styles.modeTabText, activeMobileTab === 'telemetry' ? styles.modeTabTextActive : styles.modeTabTextInactive]}>
+            Telemetry & Tip
           </Text>
         </TouchableOpacity>
       </View>
     );
   };
+
+  const renderChatColumn = () => (
+    <View style={styles.chatColumn}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.chatScroll}
+        contentContainerStyle={styles.chatContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderSimHeader()}
+
+        {chatHistory.map((msg) => {
+          const isSarah = msg.role === 'assistant';
+          return (
+            <View
+              key={msg.id}
+              style={[
+                styles.messageRow,
+                isSarah ? styles.assistantRow : styles.userRow,
+              ]}
+            >
+              {isSarah ? (
+                <>
+                  <View style={[styles.avatar, { backgroundColor: colors.accentTerracotta }]}>
+                    <Text style={styles.avatarText}>S</Text>
+                  </View>
+                  <View style={styles.assistantContent}>
+                    <Text style={styles.msgName}>SARAH (COLLEAGUE)</Text>
+                    <Text style={[styles.msgText, { color: colors.textPrimary }]}>
+                      {msg.content}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.userBubble}>
+                  <Text style={styles.userText}>
+                    {msg.content}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        {/* Active typing indicator */}
+        {submittingSimTurn && (
+          <View style={styles.assistantRow}>
+            <View style={[styles.avatar, { backgroundColor: colors.accentTerracotta }]}>
+              <Text style={styles.avatarText}>S</Text>
+            </View>
+            <View style={styles.assistantContent}>
+              <Text style={styles.msgName}>SARAH (COLLEAGUE)</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
+                <Text style={[styles.msgText, { color: colors.textMuted, fontStyle: 'italic' }]}>
+                  Sarah is typing
+                </Text>
+                <TypingIndicator color={colors.textMuted} />
+              </View>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* User inputs */}
+      {!isConcluded ? (
+        activeOptions.length > 0 && currentStage === 'guided' ? (
+          <View style={styles.optionsContainer}>
+            <Text style={styles.optionsLabel}>Select your guided response:</Text>
+            {activeOptions.map((opt: any) => (
+              <TouchableOpacity
+                key={opt.id}
+                style={styles.optionCard}
+                onPress={() => handleSelectOption(opt)}
+              >
+                <Text style={styles.optionText}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          // Free Text input
+          <View style={styles.freeTextContainer}>
+            <TextInput
+              value={freeText}
+              onChangeText={setFreeText}
+              placeholder="Draft your custom response..."
+              placeholderTextColor={colors.textMuted}
+              style={styles.freeInput}
+              multiline
+              maxLength={500}
+              editable={!submittingSimTurn}
+            />
+            <TouchableOpacity
+              disabled={submittingSimTurn || !freeText.trim()}
+              style={[
+                styles.sendBtn,
+                { opacity: submittingSimTurn || !freeText.trim() ? 0.6 : 1 }
+              ]}
+              onPress={handleSendFreeText}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="send" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        )
+      ) : (
+        // Concluded state
+        <View style={styles.concludeCard}>
+          <Text style={styles.concludeText}>Conversation Concluded</Text>
+          <TouchableOpacity style={styles.concludeBtn} onPress={completeActiveSimulation}>
+            <Text style={styles.concludeBtnText}>
+              {currentStage === 'guided'
+                ? 'Begin Independent simulation'
+                : currentStage === 'independent'
+                  ? 'Begin Escalated simulation'
+                  : 'Generate Sprint Report'}
+            </Text>
+            <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -589,212 +708,12 @@ export function CompetencySprintSimulation() {
         {/* If web: show both side by side. If mobile: show selected tab */}
         {isWebLaptop ? (
           <>
-            <View style={styles.chatColumn}>
-              <ScrollView
-                ref={scrollViewRef}
-                style={styles.chatScroll}
-                contentContainerStyle={styles.chatContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {renderSimHeader()}
-
-                {chatHistory.map((msg, index) => {
-                  const isSarah = msg.role === 'assistant';
-                  const nameText = isSarah ? 'SARAH (COLLEAGUE)' : 'YOU';
-                  const avatarColor = isSarah ? colors.accentTerracotta : colors.primary;
-
-                  return (
-                    <View
-                      key={msg.id}
-                      style={[
-                        styles.messageRow,
-                        isSarah ? styles.assistantRow : styles.userRow,
-                      ]}
-                    >
-                      {isSarah && (
-                        <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-                          <Text style={styles.avatarText}>S</Text>
-                        </View>
-                      )}
-                      <View
-                        style={[
-                          styles.bubble,
-                          isSarah ? styles.assistantBubble : styles.userBubble,
-                        ]}
-                      >
-                        <Text style={styles.msgName}>
-                          {nameText}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.msgText,
-                            { color: isSarah ? colors.textPrimary : '#FFFFFF' },
-                          ]}
-                        >
-                          {msg.content}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-
-                {/* Active typing indicator */}
-                {submittingSimTurn && (
-                  <View style={styles.typingIndicator}>
-                    <ActivityIndicator size="small" color={colors.textMuted} />
-                    <Text style={styles.typingText}>Sarah is writing spec feedback...</Text>
-                  </View>
-                )}
-              </ScrollView>
-
-              {/* User inputs */}
-              {!isConcluded ? (
-                // Free Text input
-                <View style={styles.freeTextContainer}>
-                  <TextInput
-                    value={freeText}
-                    onChangeText={setFreeText}
-                    placeholder="Draft your custom response..."
-                    placeholderTextColor={colors.textMuted}
-                    style={styles.freeInput}
-                    multiline
-                    maxLength={500}
-                    editable={!submittingSimTurn}
-                  />
-                  <TouchableOpacity
-                    disabled={submittingSimTurn || !freeText.trim()}
-                    style={[
-                      styles.sendBtn,
-                      { opacity: submittingSimTurn || !freeText.trim() ? 0.6 : 1 }
-                    ]}
-                    onPress={handleSendFreeText}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="send" size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                // Concluded state
-                <View style={styles.concludeCard}>
-                  <Text style={styles.concludeText}>Conversation Concluded</Text>
-                  <TouchableOpacity style={styles.concludeBtn} onPress={completeActiveSimulation}>
-                    <Text style={styles.concludeBtnText}>
-                      {currentStage === 'guided'
-                        ? 'Begin Independent simulation'
-                        : currentStage === 'independent'
-                          ? 'Begin Escalated simulation'
-                          : 'Generate Sprint Report'}
-                    </Text>
-                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+            {renderChatColumn()}
             {sidebarContent}
           </>
         ) : (
           activeMobileTab === 'chat' ? (
-            <View style={styles.chatColumn}>
-              <ScrollView
-                ref={scrollViewRef}
-                style={styles.chatScroll}
-                contentContainerStyle={styles.chatContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {renderSimHeader()}
-
-                {chatHistory.map((msg, index) => {
-                  const isSarah = msg.role === 'assistant';
-                  const nameText = isSarah ? 'SARAH (COLLEAGUE)' : 'YOU';
-                  const avatarColor = isSarah ? colors.accentTerracotta : colors.primary;
-
-                  return (
-                    <View
-                      key={msg.id}
-                      style={[
-                        styles.messageRow,
-                        isSarah ? styles.assistantRow : styles.userRow,
-                      ]}
-                    >
-                      {isSarah && (
-                        <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-                          <Text style={styles.avatarText}>S</Text>
-                        </View>
-                      )}
-                      <View
-                        style={[
-                          styles.bubble,
-                          isSarah ? styles.assistantBubble : styles.userBubble,
-                        ]}
-                      >
-                        <Text style={styles.msgName}>
-                          {nameText}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.msgText,
-                            { color: isSarah ? colors.textPrimary : '#FFFFFF' },
-                          ]}
-                        >
-                          {msg.content}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-
-                {/* Active typing indicator */}
-                {submittingSimTurn && (
-                  <View style={styles.typingIndicator}>
-                    <ActivityIndicator size="small" color={colors.textMuted} />
-                    <Text style={styles.typingText}>Sarah is writing spec feedback...</Text>
-                  </View>
-                )}
-              </ScrollView>
-
-              {/* User inputs */}
-              {!isConcluded ? (
-                // Free Text input
-                <View style={styles.freeTextContainer}>
-                  <TextInput
-                    value={freeText}
-                    onChangeText={setFreeText}
-                    placeholder="Draft your custom response..."
-                    placeholderTextColor={colors.textMuted}
-                    style={styles.freeInput}
-                    multiline
-                    maxLength={500}
-                    editable={!submittingSimTurn}
-                  />
-                  <TouchableOpacity
-                    disabled={submittingSimTurn || !freeText.trim()}
-                    style={[
-                      styles.sendBtn,
-                      { opacity: submittingSimTurn || !freeText.trim() ? 0.6 : 1 }
-                    ]}
-                    onPress={handleSendFreeText}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="send" size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                // Concluded state
-                <View style={styles.concludeCard}>
-                  <Text style={styles.concludeText}>Conversation Concluded</Text>
-                  <TouchableOpacity style={styles.concludeBtn} onPress={completeActiveSimulation}>
-                    <Text style={styles.concludeBtnText}>
-                      {currentStage === 'guided'
-                        ? 'Begin Independent simulation'
-                        : currentStage === 'independent'
-                          ? 'Begin Escalated simulation'
-                          : 'Generate Sprint Report'}
-                    </Text>
-                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+            renderChatColumn()
           ) : (
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
               {sidebarContent}

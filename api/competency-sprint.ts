@@ -428,9 +428,17 @@ Review these transcript summaries:
 - Independent Simulation with ${simChar.name}: ${JSON.stringify(independentTrans)}
 - Escalated Simulation with ${simChar.name}: ${JSON.stringify(escalatedTrans)}
 
-Evaluate their traits (empathy, clarity, assertiveness, de-escalation, problem solving) out of 100.
-Compute an overall score (0-100).
-Decide how many more repeats of the simulation are recommended (1 to 4) based on their scores (scores < 70 get 3-4, 70-85 get 2, >85 get 1).
+CRITICAL SCORING COMPILATION INSTRUCTIONS:
+You MUST calculate the scores mathematically and truthfully based on the actual transcript evaluation history:
+1. "empathy" (0-100): Take the average of all telemetry "empathy" scores recorded in the simulation transcripts, combined with the score of the active validation drill (scale 1-10 score to 100).
+2. "clarity" (0-100): Take the average of all telemetry "clarity" scores recorded in the simulation, combined with the score of the objective framing drill (scaled to 100).
+3. "assertiveness" (0-100): Take the average of all telemetry "assertiveness" scores in the simulation, combined with the score of the clear assertion drill (scaled to 100).
+4. "deEscalation" (0-100): Take the average of all telemetry "deEscalation" scores in the simulation, combined with the score of the emotional containment drill (scaled to 100).
+5. "problemSolving" (0-100): Assess the co-creative problem solving drill score (scaled to 100) and how constructively the user pivoted the counterpart in the latter stages of the simulations.
+
+"overallScore" (0-100) MUST be calculated exactly as the mathematical average of the 5 traits above (rounded to the nearest integer). Do NOT generate random, unrelated, or blanket low scores. If they did well (e.g. scores of 8/10 on drills, and high telemetry scores), their overall score should be in the 80s or 90s. If they used aggressive phrases like "shut up" which yielded 0 telemetry, ensure the deEscalation and empathy scores are heavily penalized and drop below 50.
+
+Decide how many more repeats of the simulation are recommended (1 to 4) based on their overall score (scores < 70 get 3-4, 70-85 get 2, >85 get 1).
 
 Return a JSON object in this exact format:
 {

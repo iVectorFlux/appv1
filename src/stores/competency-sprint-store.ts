@@ -325,9 +325,9 @@ export const useCompetencySprintStore = create<CompetencySprintState>((set, get)
     try {
       const result = await invokeSprintApi('generate_final_report', {
         drills: sprint.microDrillsProgress,
-        guidedTrans: sprint.guidedSimChat.map((c) => ({ role: c.role, content: c.content })),
-        independentTrans: sprint.independentSimChat.map((c) => ({ role: c.role, content: c.content })),
-        escalatedTrans: sprint.escalatedSimChat.map((c) => ({ role: c.role, content: c.content })),
+        guidedTrans: sprint.guidedSimChat.map((c) => ({ role: c.role, content: c.content, telemetry: c.telemetry })),
+        independentTrans: sprint.independentSimChat.map((c) => ({ role: c.role, content: c.content, telemetry: c.telemetry })),
+        escalatedTrans: sprint.escalatedSimChat.map((c) => ({ role: c.role, content: c.content, telemetry: c.telemetry })),
         customContext: sprint.finalReport?.customContext,
       });
 
