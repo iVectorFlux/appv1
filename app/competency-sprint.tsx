@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCompetencySprintStore } from '@/stores/competency-sprint-store';
 import { useColors, Spacing } from '@/constants/design-tokens';
@@ -15,6 +16,7 @@ import { CompetencySprintReport } from '@/components/competency-sprint-report';
 import { getUserProfileContext, type UserProfileContext } from '@/services/profile-context';
 
 export default function CompetencySprintScreen() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [profileContext, setProfileContext] = useState<UserProfileContext | null>(null);
   const colors = useColors();
@@ -27,6 +29,7 @@ export default function CompetencySprintScreen() {
     startNewSprintWithContext,
     moveToStage,
     checkOffMicroSkill,
+    resetSprint,
   } = useCompetencySprintStore();
 
   const skillId = 'difficult_conversations';
@@ -34,6 +37,21 @@ export default function CompetencySprintScreen() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleBackOrReset = () => {
+    if (sprint) {
+      Alert.alert(
+        'Restart Sprint',
+        'Are you sure you want to restart this sprint? This will clear your current progress and let you configure a new custom context.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Restart', style: 'destructive', onPress: () => void resetSprint() },
+        ]
+      );
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
 
   useEffect(() => {
     if (mounted && user?.id) {
@@ -145,7 +163,8 @@ export default function CompetencySprintScreen() {
       <View style={styles.container}>
         <ScreenHeader
           title="Competency Sprint"
-          backFallbackHref="/(tabs)/home"
+          onBackPress={handleBackOrReset}
+          leftIcon={sprint ? 'arrow-undo-outline' : undefined}
           showHomeButton
         />
 

@@ -20,6 +20,7 @@ export function CompetencySprintSimulation() {
   } = useCompetencySprintStore();
 
   const [freeText, setFreeText] = useState('');
+  const [activeMobileTab, setActiveMobileTab] = useState<'chat' | 'telemetry'>('chat');
 
   // Determine active stage
   const currentStage = sprint?.currentStage || 'guided';
@@ -311,12 +312,46 @@ export function CompetencySprintSimulation() {
     },
     // Right: Sidebar / Mobile Telemetry Card
     sidebarColumn: {
-      flex: isWebLaptop ? 1.5 : undefined,
+      flex: isWebLaptop ? 1.5 : 1,
       padding: Spacing.lg,
       backgroundColor: isWebLaptop ? colors.glass : 'transparent',
-      borderTopWidth: !isWebLaptop ? 1 : 0,
-      borderTopColor: colors.glassBorder,
+      borderTopWidth: 0,
       gap: Spacing.lg,
+    },
+    tabBarContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.glass,
+      borderColor: colors.glassBorder,
+      borderWidth: 1,
+      borderRadius: Radius.xl,
+      marginHorizontal: Spacing.lg,
+      marginTop: Spacing.md,
+      marginBottom: Spacing.xs,
+      padding: 3,
+      ...Shadows.sm,
+    },
+    tabButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.xs,
+      paddingVertical: Spacing.sm,
+      borderRadius: Radius.lg,
+    },
+    tabButtonActive: {
+      backgroundColor: colors.primary,
+      ...Shadows.sm,
+    },
+    tabButtonText: {
+      fontFamily: Typography.fontFamily.primary,
+      fontSize: Typography.fontSize.xs,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textMuted,
+    },
+    tabButtonTextActive: {
+      color: '#FFFFFF',
+      fontWeight: Typography.fontWeight.bold,
     },
     sideTitle: {
       fontFamily: Typography.fontFamily.heading,
@@ -505,6 +540,41 @@ export function CompetencySprintSimulation() {
     </View>
   );
 
+  const renderMobileTabs = () => {
+    if (isWebLaptop) return null;
+
+    return (
+      <View style={styles.tabBarContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeMobileTab === 'chat' && styles.tabButtonActive]}
+          onPress={() => setActiveMobileTab('chat')}
+        >
+          <Ionicons
+            name="chatbubble-ellipses-outline"
+            size={16}
+            color={activeMobileTab === 'chat' ? '#FFFFFF' : colors.textMuted}
+          />
+          <Text style={[styles.tabButtonText, activeMobileTab === 'chat' && styles.tabButtonTextActive]}>
+            Chat Dialogue
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeMobileTab === 'telemetry' && styles.tabButtonActive]}
+          onPress={() => setActiveMobileTab('telemetry')}
+        >
+          <Ionicons
+            name="analytics-outline"
+            size={16}
+            color={activeMobileTab === 'telemetry' ? '#FFFFFF' : colors.textMuted}
+          />
+          <Text style={[styles.tabButtonText, activeMobileTab === 'telemetry' && styles.tabButtonTextActive]}>
+            Live EQ Telemetry
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -512,111 +582,224 @@ export function CompetencySprintSimulation() {
     >
       <View style={styles.container}>
         
-        {/* Dialogue Scroll Column */}
-        <View style={styles.chatColumn}>
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.chatScroll}
-            contentContainerStyle={styles.chatContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {renderSimHeader()}
+        {/* Render Mobile Tab selector if not on web */}
+        {renderMobileTabs()}
 
-            {chatHistory.map((msg, index) => {
-              const isSarah = msg.role === 'assistant';
-              const nameText = isSarah ? 'SARAH (COLLEAGUE)' : 'YOU';
-              const avatarColor = isSarah ? colors.accentTerracotta : colors.primary;
+        {/* If web: show both side by side. If mobile: show selected tab */}
+        {isWebLaptop ? (
+          <>
+            <View style={styles.chatColumn}>
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.chatScroll}
+                contentContainerStyle={styles.chatContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {renderSimHeader()}
 
-              return (
-                <View
-                  key={msg.id}
-                  style={[
-                    styles.messageRow,
-                    isSarah ? styles.assistantRow : styles.userRow,
-                  ]}
-                >
-                  {isSarah && (
-                    <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-                      <Text style={styles.avatarText}>S</Text>
-                    </View>
-                  )}
-                  <View
-                    style={[
-                      styles.bubble,
-                      isSarah ? styles.assistantBubble : styles.userBubble,
-                    ]}
-                  >
-                    <Text style={styles.msgName}>
-                      {nameText}
-                    </Text>
-                    <Text
+                {chatHistory.map((msg, index) => {
+                  const isSarah = msg.role === 'assistant';
+                  const nameText = isSarah ? 'SARAH (COLLEAGUE)' : 'YOU';
+                  const avatarColor = isSarah ? colors.accentTerracotta : colors.primary;
+
+                  return (
+                    <View
+                      key={msg.id}
                       style={[
-                        styles.msgText,
-                        { color: isSarah ? colors.textPrimary : '#FFFFFF' },
+                        styles.messageRow,
+                        isSarah ? styles.assistantRow : styles.userRow,
                       ]}
                     >
-                      {msg.content}
-                    </Text>
+                      {isSarah && (
+                        <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+                          <Text style={styles.avatarText}>S</Text>
+                        </View>
+                      )}
+                      <View
+                        style={[
+                          styles.bubble,
+                          isSarah ? styles.assistantBubble : styles.userBubble,
+                        ]}
+                      >
+                        <Text style={styles.msgName}>
+                          {nameText}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.msgText,
+                            { color: isSarah ? colors.textPrimary : '#FFFFFF' },
+                          ]}
+                        >
+                          {msg.content}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {/* Active typing indicator */}
+                {submittingSimTurn && (
+                  <View style={styles.typingIndicator}>
+                    <ActivityIndicator size="small" color={colors.textMuted} />
+                    <Text style={styles.typingText}>Sarah is writing spec feedback...</Text>
                   </View>
+                )}
+              </ScrollView>
+
+              {/* User inputs */}
+              {!isConcluded ? (
+                // Free Text input
+                <View style={styles.freeTextContainer}>
+                  <TextInput
+                    value={freeText}
+                    onChangeText={setFreeText}
+                    placeholder="Draft your custom response..."
+                    placeholderTextColor={colors.textMuted}
+                    style={styles.freeInput}
+                    multiline
+                    maxLength={500}
+                    editable={!submittingSimTurn}
+                  />
+                  <TouchableOpacity
+                    disabled={submittingSimTurn || !freeText.trim()}
+                    style={[
+                      styles.sendBtn,
+                      { opacity: submittingSimTurn || !freeText.trim() ? 0.6 : 1 }
+                    ]}
+                    onPress={handleSendFreeText}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="send" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
                 </View>
-              );
-            })}
-
-            {/* Active typing indicator */}
-            {submittingSimTurn && (
-              <View style={styles.typingIndicator}>
-                <ActivityIndicator size="small" color={colors.textMuted} />
-                <Text style={styles.typingText}>Sarah is writing spec feedback...</Text>
-              </View>
-            )}
-          </ScrollView>
-
-          {/* User inputs */}
-          {!isConcluded ? (
-            // Free Text input
-            <View style={styles.freeTextContainer}>
-              <TextInput
-                value={freeText}
-                onChangeText={setFreeText}
-                placeholder="Draft your custom response..."
-                placeholderTextColor={colors.textMuted}
-                style={styles.freeInput}
-                multiline
-                maxLength={500}
-                editable={!submittingSimTurn}
-              />
-              <TouchableOpacity
-                disabled={submittingSimTurn || !freeText.trim()}
-                style={[
-                  styles.sendBtn,
-                  { opacity: submittingSimTurn || !freeText.trim() ? 0.6 : 1 }
-                ]}
-                onPress={handleSendFreeText}
-                activeOpacity={0.8}
+              ) : (
+                // Concluded state
+                <View style={styles.concludeCard}>
+                  <Text style={styles.concludeText}>Conversation Concluded</Text>
+                  <TouchableOpacity style={styles.concludeBtn} onPress={completeActiveSimulation}>
+                    <Text style={styles.concludeBtnText}>
+                      {currentStage === 'guided'
+                        ? 'Begin Independent simulation'
+                        : currentStage === 'independent'
+                          ? 'Begin Escalated simulation'
+                          : 'Generate Sprint Report'}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+            {sidebarContent}
+          </>
+        ) : (
+          activeMobileTab === 'chat' ? (
+            <View style={styles.chatColumn}>
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.chatScroll}
+                contentContainerStyle={styles.chatContent}
+                showsVerticalScrollIndicator={false}
               >
-                <Ionicons name="send" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
+                {renderSimHeader()}
+
+                {chatHistory.map((msg, index) => {
+                  const isSarah = msg.role === 'assistant';
+                  const nameText = isSarah ? 'SARAH (COLLEAGUE)' : 'YOU';
+                  const avatarColor = isSarah ? colors.accentTerracotta : colors.primary;
+
+                  return (
+                    <View
+                      key={msg.id}
+                      style={[
+                        styles.messageRow,
+                        isSarah ? styles.assistantRow : styles.userRow,
+                      ]}
+                    >
+                      {isSarah && (
+                        <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+                          <Text style={styles.avatarText}>S</Text>
+                        </View>
+                      )}
+                      <View
+                        style={[
+                          styles.bubble,
+                          isSarah ? styles.assistantBubble : styles.userBubble,
+                        ]}
+                      >
+                        <Text style={styles.msgName}>
+                          {nameText}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.msgText,
+                            { color: isSarah ? colors.textPrimary : '#FFFFFF' },
+                          ]}
+                        >
+                          {msg.content}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {/* Active typing indicator */}
+                {submittingSimTurn && (
+                  <View style={styles.typingIndicator}>
+                    <ActivityIndicator size="small" color={colors.textMuted} />
+                    <Text style={styles.typingText}>Sarah is writing spec feedback...</Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* User inputs */}
+              {!isConcluded ? (
+                // Free Text input
+                <View style={styles.freeTextContainer}>
+                  <TextInput
+                    value={freeText}
+                    onChangeText={setFreeText}
+                    placeholder="Draft your custom response..."
+                    placeholderTextColor={colors.textMuted}
+                    style={styles.freeInput}
+                    multiline
+                    maxLength={500}
+                    editable={!submittingSimTurn}
+                  />
+                  <TouchableOpacity
+                    disabled={submittingSimTurn || !freeText.trim()}
+                    style={[
+                      styles.sendBtn,
+                      { opacity: submittingSimTurn || !freeText.trim() ? 0.6 : 1 }
+                    ]}
+                    onPress={handleSendFreeText}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="send" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                // Concluded state
+                <View style={styles.concludeCard}>
+                  <Text style={styles.concludeText}>Conversation Concluded</Text>
+                  <TouchableOpacity style={styles.concludeBtn} onPress={completeActiveSimulation}>
+                    <Text style={styles.concludeBtnText}>
+                      {currentStage === 'guided'
+                        ? 'Begin Independent simulation'
+                        : currentStage === 'independent'
+                          ? 'Begin Escalated simulation'
+                          : 'Generate Sprint Report'}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           ) : (
-            // Concluded state
-            <View style={styles.concludeCard}>
-              <Text style={styles.concludeText}>Conversation Concluded</Text>
-              <TouchableOpacity style={styles.concludeBtn} onPress={completeActiveSimulation}>
-                <Text style={styles.concludeBtnText}>
-                  {currentStage === 'guided'
-                    ? 'Begin Independent simulation'
-                    : currentStage === 'independent'
-                      ? 'Begin Escalated simulation'
-                      : 'Generate Sprint Report'}
-                </Text>
-                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Telemetry panel (Sidebar on Web, inline on mobile) */}
-        {isWebLaptop ? sidebarContent : !isConcluded && sidebarContent}
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+              {sidebarContent}
+            </ScrollView>
+          )
+        )}
 
       </View>
     </KeyboardAvoidingView>

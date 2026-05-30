@@ -361,15 +361,32 @@ Mode of simulation: ${
       : `INDEPENDENT SIMULATION (HARD DIFFICULTY). You are professional but defensive, skeptical, and expect clear business logic and mutual respect.`
 }
 
+CRITICAL INSTRUCTIONS FOR LIVE EQ EVALUATION (telemetry):
+You MUST perform a rigorous, realistic, and highly critical evaluation of the user's latest input. Be honest and strict:
+1. "empathy" (0-100): Evaluate how well the user validates, acknowledges, or shows empathy for ${simChar.name}'s feelings, constraints, or workload situation.
+   - If the user's input is hostile, rude, dismissive, or aggressive (such as "shut up", "go away", "stop complaining", "be quiet", "I don't care", "you are wrong", or any insults), the empathy score MUST be exactly 0.
+   - If the user completely ignores ${simChar.name}'s perspective or feelings, the score must be under 20.
+   - A score above 70 is only given if the user explicitly validates or restates ${simChar.name}'s feelings and workload situation before offering a resolution.
+2. "deEscalation" (0-100): How calm, composed, and productive is the user's communication?
+   - If the user uses hostile commands, angry outbursts, or aggressive phrases like "shut up", the deEscalation score MUST be exactly 0.
+   - If the user matches ${simChar.name}'s defensive or hostile energy, the score must be under 30.
+3. "assertiveness" (0-100): How well does the user maintain professional boundaries and objective targets?
+   - Over-apologizing or completely surrendering to ${simChar.name}'s pushback must score below 45.
+   - Hostility, blame-shifting, or aggressive attacks must score below 30.
+   - Calm, firm, and objective boundaries score 75-100.
+4. "clarity" (0-100): How clear, factual, and direct is the communication?
+   - Vague, general, or purely emotional arguments must score below 40.
+   - Objective facts and clear, collaborative proposals score 75-100.
+
 Generate ${simChar.name}'s next dynamic response (2-3 sentences), evaluate the user's emotional intelligence live, and provide a coaching tip.
 Return a JSON object in this exact format:
 {
   "characterReply": "Your short 2-3 sentence conversational reply.",
   "telemetry": {
-    "empathy": 80, // Integer 0 to 100 on how validated you feel
-    "clarity": 85, // Integer 0 to 100 on how clear the user's focus is
-    "assertiveness": 75, // Integer 0 to 100 on how firmly the user held boundaries without aggressive shifts
-    "deEscalation": 90 // Integer 0 to 100 on how calm and composed the user kept the dialogue
+    "empathy": 0, // Integer 0 to 100
+    "clarity": 85, // Integer 0 to 100
+    "assertiveness": 75, // Integer 0 to 100
+    "deEscalation": 0 // Integer 0 to 100
   },
   "tip": "${
     isGuided

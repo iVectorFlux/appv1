@@ -22,6 +22,8 @@ export interface ScreenHeaderProps {
   showHomeButton?: boolean;
   /** Custom right element (e.g. history). Ignored if `showHomeButton` is true. */
   right?: React.ReactNode;
+  /** Optional custom left icon name instead of chevron-back */
+  leftIcon?: keyof typeof Ionicons.glyphMap;
 }
 
 export function ScreenHeader({
@@ -30,6 +32,7 @@ export function ScreenHeader({
   backFallbackHref = '/(tabs)/home',
   showHomeButton,
   right,
+  leftIcon,
 }: ScreenHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -72,7 +75,7 @@ export function ScreenHeader({
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+          <Ionicons name={leftIcon || "chevron-back"} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
       <View style={styles.titleWrap}>
