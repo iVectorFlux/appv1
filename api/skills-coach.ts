@@ -22,7 +22,8 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, handleCorsPreflight } from './_lib/cors';
-import { GROQ_CHAT_COMPLETIONS_URL, getGroqEnv } from './_lib/groq-config';
+import { getGroqEnv } from './_lib/groq-config';
+import { getGeminiEnv, callSmartLlm } from './_lib/llm-service';
 
 type PracticeMode =
   | 'decision_simulator'
@@ -538,43 +539,8 @@ scoreOutOf10: integer 0-10 for how well the response meets the exercise (accurac
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Groq call
+// Unified LLM call
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Match api/chat.ts: surface Groq error.message to the client for debugging (bad key, deprecated model, etc.). */
-function parseGroqUpstreamError(errText: string): string {
-  let message = 'AI request failed.';
-  try {
-    const j = JSON.parse(errText) as { error?: { message?: string } };
-    if (typeof j?.error?.message === 'string') message = j.error.message;
-  } catch {
-    if (errText.length > 0 && errText.length < 400) message = errText;
-  }
-  return message;
-}
-
-/** Models sometimes wrap JSON in ```json fences or add a short preamble. */
-function extractJsonObjectFromModelText(raw: string): Record<string, unknown> {
-  const s = raw.trim();
-  const fence = /```(?:json)?\s*([\s\S]*?)```/m.exec(s);
-  const candidate = fence ? fence[1].trim() : s;
-
-  try {
-    return JSON.parse(candidate) as Record<string, unknown>;
-  } catch {
-    const scan = candidate;
-    const start = scan.indexOf('{');
-    const end = scan.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      return JSON.parse(scan.slice(start, end + 1)) as Record<string, unknown>;
-    }
-    throw new Error('The AI returned text that is not valid JSON. Please try again.');
-  }
-}
-
-type GroqCompletionResult =
-  | { ok: true; content: string }
-  | { ok: false; status: number; message: string };
 
 function isGroqFailure<TSuccess>(
   result: { ok: true } & TSuccess | { ok: false; message: string }
@@ -582,85 +548,16 @@ function isGroqFailure<TSuccess>(
   return result.ok === false;
 }
 
-async function groqChatCompletionContent(args: {
-  prompt: string;
-  apiKey: string;
-  model: string;
-  maxTokens: number;
-  jsonObjectMode: boolean;
-}): Promise<GroqCompletionResult> {
-  const { prompt, apiKey, model, maxTokens, jsonObjectMode } = args;
-  const body: Record<string, unknown> = {
-    model,
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: maxTokens,
-    temperature: 0.72,
-  };
-  if (jsonObjectMode) {
-    body.response_format = { type: 'json_object' };
-  }
-
-  const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error('[skills-coach] Groq HTTP', response.status, errText.slice(0, 500));
-    return { ok: false, status: response.status, message: parseGroqUpstreamError(errText) };
-  }
-
-  const data = (await response.json()) as {
-    choices: { message: { content: string | null } }[];
-  };
-
-  return { ok: true, content: data.choices?.[0]?.message?.content ?? '{}' };
-}
-
-/**
- * Calls Groq and returns parsed JSON. Retries once without `response_format: json_object` on HTTP 400
- * (some model/env combinations reject json_object mode while chat completions still work).
- */
-async function callGroqAndParseSkillsJson(
+async function callLlmAndParseSkillsJson(
   prompt: string,
-  apiKey: string,
-  model: string,
   maxTokens: number
 ): Promise<{ ok: true; parsed: Record<string, unknown> } | { ok: false; message: string }> {
-  let completion = await groqChatCompletionContent({
-    prompt,
-    apiKey,
-    model,
-    maxTokens,
-    jsonObjectMode: true,
-  });
-
-  if (!completion.ok && 'status' in completion && completion.status === 400) {
-    completion = await groqChatCompletionContent({
-      prompt: `${prompt}\n\nReturn a single JSON object only. No markdown, no prose outside the JSON.`,
-      apiKey,
-      model,
-      maxTokens,
-      jsonObjectMode: false,
-    });
-  }
-
-  if (isGroqFailure(completion)) {
-    return { ok: false, message: completion.message };
-  }
-
   try {
-    const parsed = extractJsonObjectFromModelText(completion.content);
+    const parsed = await callSmartLlm([{ role: 'user', content: prompt }], maxTokens);
     return { ok: true, parsed };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Invalid JSON from model.';
-    console.error('[skills-coach] JSON parse failed. Raw (truncated):', completion.content.slice(0, 400));
-    return { ok: false, message: msg };
+  } catch (err: any) {
+    console.error('[skills-coach] LLM parse failed:', err);
+    return { ok: false, message: err.message || 'LLM call failed' };
   }
 }
 
@@ -845,11 +742,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   const groq = getGroqEnv();
-  if (!groq) {
-    res.status(500).json({ error: 'Groq API key not configured.' });
+  const gemini = getGeminiEnv();
+  const hasLlmKey = !!(groq?.apiKey || gemini?.apiKey);
+  if (!hasLlmKey) {
+    res.status(500).json({ error: 'Neither Gemini nor Groq API key is configured.' });
     return;
   }
-  const { apiKey, model } = groq;
 
   const body = readJsonBody(req);
   if (!body) {
@@ -901,7 +799,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       promptText = appendScenarioLearnerTail(promptText, body);
 
       const scenarioMaxTokens = practiceMode === 'quick_round' ? 850 : 1000;
-      const groqScenario = await callGroqAndParseSkillsJson(promptText, apiKey, model, scenarioMaxTokens);
+      const groqScenario = await callLlmAndParseSkillsJson(promptText, scenarioMaxTokens);
       if (isGroqFailure(groqScenario)) {
         res.status(502).json({ error: groqScenario.message });
         return;
@@ -967,7 +865,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       if (ctxBlock !== '(none supplied)') {
         prompt += `\n\nLearner context (for tone; do not quote labels verbatim):\n${ctxBlock}`;
       }
-      const groqFbDecision = await callGroqAndParseSkillsJson(prompt, apiKey, model, 900);
+      const groqFbDecision = await callLlmAndParseSkillsJson(prompt, 900);
       if (isGroqFailure(groqFbDecision)) {
         res.status(502).json({ error: groqFbDecision.message });
         return;
@@ -1004,7 +902,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       if (ctxOpen !== '(none supplied)') {
         prompt += `\n\nLearner context (for tone; do not quote labels verbatim):\n${ctxOpen}`;
       }
-      const groqFbOpen = await callGroqAndParseSkillsJson(prompt, apiKey, model, 900);
+      const groqFbOpen = await callLlmAndParseSkillsJson(prompt, 900);
       if (isGroqFailure(groqFbOpen)) {
         res.status(502).json({ error: groqFbOpen.message });
         return;
