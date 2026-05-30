@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, handleCorsPreflight } from './_lib/cors';
-import { GROQ_CHAT_COMPLETIONS_URL, getGroqEnv } from './_lib/groq-config';
+import { getGroqEnv } from './_lib/groq-config';
+import { getGeminiEnv, callSmartLlm } from './_lib/llm-service';
 
 // Pre-seeded master templates for Have Difficult Conversations demo
 const DEFAULT_MICRO_SKILLS = [
@@ -72,34 +73,7 @@ const DEFAULT_DRILLS = {
 
 
 
-// Groq Upstream helper
-async function callGroqChat(messages: any[], apiKey: string, model: string, maxTokens = 800) {
-  const body = {
-    model,
-    messages,
-    max_tokens: maxTokens,
-    temperature: 0.7,
-    response_format: { type: 'json_object' }
-  };
 
-  const res = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Groq failed: ${text}`);
-  }
-
-  const data = await res.json();
-  const rawContent = data.choices?.[0]?.message?.content ?? '{}';
-  return JSON.parse(rawContent.trim());
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   applyCors(res);
@@ -111,8 +85,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   const groq = getGroqEnv();
-  const apiKey = groq?.apiKey ?? '';
-  const model = groq?.model ?? 'llama-3.3-70b-versatile';
+  const gemini = getGeminiEnv();
+  const hasLlmKey = !!(groq?.apiKey || gemini?.apiKey);
 
   const body = req.body || {};
   const action = body.action;
@@ -123,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const context = body.context || {};
       const { industry = '', role = '', function: workSetting = '', situation = '' } = context;
 
-      if (!apiKey) {
+      if (!hasLlmKey) {
         // Fallback if no API key is configured
         res.status(200).json({
           microSkills: DEFAULT_MICRO_SKILLS,
@@ -148,58 +122,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         return;
       }
 
-      const prompt = `You are a world-class EQ and executive communication coach.
+      const prompt = `You are an elite, world-class executive communication coach and corporate organizational psychologist.
 The user is a professional with the following background:
 - Industry: ${industry || 'General Workplace'}
 - Role: ${role || 'Team Member'}
 - Work Setting / Function: ${workSetting || 'Collaborative'}
 - Specific Friction Situation: ${situation || 'A defensive colleague causing delays or misalignment'}
 
-Create a fully custom, highly realistic Competency Sprint package on "Having Difficult Conversations" tailored specifically to their work context.
-If the Specific Friction Situation is not provided, design a highly realistic, specific workplace friction scenario that would typically occur in their Industry and Role.
+Create a masterfully designed, highly realistic and bespoke Competency Sprint training package on "Having Difficult Conversations" tailored specifically to their exact professional context.
+If the Specific Friction Situation is not provided, analyze their Industry, Role, and Function, and design an incredibly realistic, highly specific, high-stakes workplace friction scenario (e.g., missed handoffs, conflicting priorities, passive-aggressive communication, or pushback on scope).
 
-Generate the exact custom micro-skills, micro-drills, and simulation counterpart details.
+The generated material must be professional, direct, emotionally nuanced, and completely avoid generic corporate clichés, platitudes, or robotic coaching fluff. All examples, scenarios, and prompts should feel 100% realistic and mimic real office dynamics.
+
+Generate exactly 5 custom micro-skills, 5 custom micro-drills, and the detailed simulation counterpart character.
 You MUST return a JSON object in this exact format:
 {
   "microSkills": [
     {
       "id": "skill_1_id", // alphanumeric string, e.g. "active_validation", "objective_framing", "clear_assertion", "emotional_containment", "co_creative_problem_solving"
       "name": "Skill Name",
-      "description": "Clear explanation of how to use this micro-skill.",
-      "why": "Why this skill is crucial in resolving friction.",
-      "goodExample": "A realistic, perfect quote of what to say using this skill in the situation.",
-      "badExample": "A realistic, poor quote of what NOT to say."
+      "description": "Clear, highly actionable, non-generic instruction on how to execute this micro-skill under pressure.",
+      "why": "Why this specific psychological technique works to lower defenses and keep the dialogue collaborative.",
+      "goodExample": "A realistic, perfectly phrased verbatim quote of exactly what to say using this skill in this specific context.",
+      "badExample": "A realistic, passive-aggressive or poorly handled verbatim quote of what NOT to say."
     }
     // Generate exactly 5 distinct micro-skills
   ],
   "drills": [
     {
       "microSkillId": "skill_1_id", // must match one of the micro-skills id generated above
-      "scenario": "A highly realistic, single-sentence quote from their colleague/counterpart confronting the user.",
-      "question": "A specific coach instruction detailing how to respond using the mapped micro-skill."
+      "scenario": "A highly realistic, single-sentence verbatim quote from the defensive counterpart confronting the user.",
+      "question": "Specific, firm, and tactical coach instruction directing the user on how to reply to this counterpart utilizing the mapped micro-skill."
     }
     // Generate exactly 5 drills, each mapped to one of the 5 microSkills
   ],
   "simCharacter": {
     "name": "Firstname of counterpart",
-    "role": "Their professional role",
-    "personality": "Short description of their personality and defensiveness profile",
-    "situation": "Short 1-sentence description of the core situation/friction",
-    "openingGuided": "Their opening message (2 sentences) for the Guided simulation.",
-    "openingIndependent": "Their opening message (2 sentences) for the Independent simulation.",
-    "openingEscalated": "Their opening message (2 sentences) for the Escalated simulation.",
-    "tipGuided": "Initial coaching tip (2 sentences) explaining the counterpart's mindset and what the user should do first.",
-    "tipIndependent": "1-sentence coaching advice for the start of Independent mode.",
-    "tipEscalated": "1-sentence coaching advice for the start of Escalated mode."
+    "role": "Their professional role in the company",
+    "personality": "Detailed description of their defensiveness profile, communication style, and psychological motivators.",
+    "situation": "Short 1-sentence summary of the core friction/disagreement.",
+    "openingGuided": "Their opening message (2 highly realistic, conversational sentences) for the Guided simulation.",
+    "openingIndependent": "Their opening message (2 highly realistic, conversational sentences) for the Independent simulation.",
+    "openingEscalated": "Their opening message (2 highly realistic, hostile/emotional sentences) for the Escalated simulation.",
+    "tipGuided": "Initial coaching tip (2 sentences) explaining the counterpart's active triggers and outlining what specific communication strategy the user should deploy first.",
+    "tipIndependent": "1-sentence tactical coaching advice for the start of Independent mode.",
+    "tipEscalated": "1-sentence high-stakes advice on how to handle the counterpart's emotional escalations."
   }
 }`;
 
       try {
-        const result = await callGroqChat([{ role: 'user', content: prompt }], apiKey, model, 1500);
+        const result = await callSmartLlm([{ role: 'user', content: prompt }], 1500);
         res.status(200).json(result);
         return;
-      } catch (err) {
-        console.error("Groq generate_micro_skills failed, fallback to static defaults", err);
+      } catch (err: any) {
+        console.error("LLM generate_micro_skills failed, fallback to static defaults", err);
         res.status(200).json({
           microSkills: DEFAULT_MICRO_SKILLS,
           drills: Object.entries(DEFAULT_DRILLS).map(([k, v]) => ({
@@ -231,7 +207,6 @@ You MUST return a JSON object in this exact format:
       res.status(200).json(drill);
       return;
     }
-
     // 3. EVALUATE DRILL
     if (action === 'evaluate_drill') {
       const { scenario, question, userAnswer, microSkillName } = body;
@@ -240,7 +215,7 @@ You MUST return a JSON object in this exact format:
         return;
       }
 
-      if (!apiKey) {
+      if (!hasLlmKey) {
         // Fallback when API key is missing
         res.status(200).json({
           score: 8,
@@ -270,11 +245,11 @@ Return a JSON object in this exact format:
 }`;
 
       try {
-        const evalResult = await callGroqChat([{ role: 'user', content: prompt }], apiKey, model, 600);
+        const evalResult = await callSmartLlm([{ role: 'user', content: prompt }], 600);
         res.status(200).json(evalResult);
         return;
-      } catch (err) {
-        console.error("Groq evaluation failed, falling back to static", err);
+      } catch (err: any) {
+        console.error("LLM evaluation failed, falling back to static", err);
         res.status(200).json({
           score: 7,
           feedback: "A good, cooperative response. You validated their frustration which is excellent for de-escalation. To elevate your impact, anchor your assertion around concrete facts rather than justifications.",
@@ -325,8 +300,8 @@ Return a JSON object in this exact format:
         return;
       }
 
-      if (!apiKey) {
-        // Fallback telemetry if Groq is offline
+      if (!hasLlmKey) {
+        // Fallback telemetry if LLM is offline
         const charReply = mode === 'escalated'
           ? `Fine, I get it. But I am drowning in work here! If I pause to slow down, the main project will slip! What do you want me to do?`
           : isGuided
@@ -401,10 +376,10 @@ Return a JSON object in this exact format:
       ];
 
       try {
-        const result = await callGroqChat(aiMessages, apiKey, model, 700);
+        const result = await callSmartLlm(aiMessages, 700);
         res.status(200).json(result);
         return;
-      } catch (err) {
+      } catch (err: any) {
         console.error("AI turn generation failed, fallback", err);
         res.status(200).json({
           characterReply: `Let's just agree to keep things simple. If we can freeze requirements ahead of time, my work will be clean.`,
@@ -420,7 +395,7 @@ Return a JSON object in this exact format:
       const { drills = [], guidedTrans = [], independentTrans = [], escalatedTrans = [], customContext } = body;
       const simChar = customContext?.simCharacter || { name: 'Sarah', role: 'database developer', situation: 'code handoff delays' };
 
-      if (!apiKey) {
+      if (!hasLlmKey) {
         res.status(200).json({
           overallScore: 84,
           traits: {
@@ -474,10 +449,10 @@ Return a JSON object in this exact format:
 }`;
 
       try {
-        const report = await callGroqChat([{ role: 'user', content: prompt }], apiKey, model, 1000);
+        const report = await callSmartLlm([{ role: 'user', content: prompt }], 1000);
         res.status(200).json(report);
         return;
-      } catch (err) {
+      } catch (err: any) {
         console.error("AI report failed, fallback", err);
         res.status(200).json({
           overallScore: 80,
