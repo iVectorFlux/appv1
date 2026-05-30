@@ -53,6 +53,18 @@ export default function CompetencySprintScreen() {
     }
   };
 
+  const handleRestartSprint = () => {
+    Alert.alert(
+      'Restart Sprint',
+      'Are you sure you want to restart this sprint? This will clear your current progress and let you configure a new custom context from scratch.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Restart', style: 'destructive', onPress: () => void resetSprint() },
+      ]
+    );
+  };
+
+
   useEffect(() => {
     if (mounted && user?.id) {
       void loadOrCreateSprint(user.id, skillId);
@@ -166,6 +178,7 @@ export default function CompetencySprintScreen() {
           onBackPress={handleBackOrReset}
           leftIcon={sprint ? 'arrow-undo-outline' : undefined}
           showHomeButton
+          onRestartPress={sprint ? handleRestartSprint : undefined}
         />
 
         {sprint && <CompetencySprintStepper currentStage={sprint.currentStage} />}

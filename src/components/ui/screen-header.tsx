@@ -24,6 +24,8 @@ export interface ScreenHeaderProps {
   right?: React.ReactNode;
   /** Optional custom left icon name instead of chevron-back */
   leftIcon?: keyof typeof Ionicons.glyphMap;
+  /** Optional custom action to restart the sprint or current module */
+  onRestartPress?: () => void;
 }
 
 export function ScreenHeader({
@@ -33,6 +35,7 @@ export function ScreenHeader({
   showHomeButton,
   right,
   leftIcon,
+  onRestartPress,
 }: ScreenHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -51,18 +54,33 @@ export function ScreenHeader({
 
   const goHome = () => router.replace('/(tabs)/home');
 
-  const trailing = showHomeButton ? (
-    <TouchableOpacity
-      onPress={goHome}
-      style={styles.sideTap}
-      hitSlop={16}
-      accessibilityRole="button"
-      accessibilityLabel="Home"
-    >
-      <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
-    </TouchableOpacity>
-  ) : (
-    right ?? <View style={styles.sideTap} />
+  const trailing = (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      {onRestartPress && (
+        <TouchableOpacity
+          onPress={onRestartPress}
+          style={styles.sideTap}
+          hitSlop={16}
+          accessibilityRole="button"
+          accessibilityLabel="Restart Sprint"
+        >
+          <Ionicons name="refresh-outline" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+      )}
+      {showHomeButton ? (
+        <TouchableOpacity
+          onPress={goHome}
+          style={styles.sideTap}
+          hitSlop={16}
+          accessibilityRole="button"
+          accessibilityLabel="Home"
+        >
+          <Ionicons name="home-outline" size={22} color={colors.textPrimary} />
+        </TouchableOpacity>
+      ) : (
+        right
+      )}
+    </View>
   );
 
   return (
@@ -99,7 +117,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   sideCol: {
-    width: SIDE_W,
+    minWidth: SIDE_W,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
