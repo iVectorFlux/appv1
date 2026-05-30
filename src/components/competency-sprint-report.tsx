@@ -268,12 +268,12 @@ export function CompetencySprintReport() {
 
   // Trigger report compilation on mount if missing
   useEffect(() => {
-    if (sprint && !sprint.finalReport && !generatingReport) {
+    if (sprint && !sprint.finalReport?.traits && !generatingReport) {
       void generateReport();
     }
-  }, [sprint]);
+  }, [sprint, generateReport, generatingReport]);
 
-  if (generatingReport || !sprint || !sprint.finalReport) {
+  if (generatingReport || !sprint || !sprint.finalReport || !sprint.finalReport.traits) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
