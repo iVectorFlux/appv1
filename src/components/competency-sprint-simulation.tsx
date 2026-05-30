@@ -158,6 +158,7 @@ export function CompetencySprintSimulation() {
       borderRadius: Radius.xl,
       paddingVertical: Spacing.md,
       paddingHorizontal: Spacing.lg,
+      flexShrink: 1,
       ...Shadows.sm,
     },
     assistantBubble: {
