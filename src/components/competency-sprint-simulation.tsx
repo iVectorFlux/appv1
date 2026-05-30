@@ -276,7 +276,7 @@ export function CompetencySprintSimulation() {
       paddingVertical: Spacing.sm,
       color: colors.textPrimary,
       fontFamily: Typography.fontFamily.primary,
-      fontSize: Typography.fontSize.sm,
+      fontSize: 16,
       maxHeight: 100,
       ...Shadows.sm,
       ...(Platform.OS === 'web' ? { outlineStyle: 'none', outlineWidth: 0 } : {}),
@@ -449,101 +449,120 @@ export function CompetencySprintSimulation() {
       <View style={styles.sideCard}>
         <Text style={[styles.sideTitle, { marginBottom: Spacing.md }]}>Live EQ Telemetry</Text>
         
-        {/* Empathy */}
-        <View style={styles.telemetryRow}>
-          <View style={styles.telemetryHeader}>
-            <Text style={styles.telemetryLabel}>Empathy & Validation</Text>
-            <Text style={[styles.telemetryVal, { color: getTelemetryBarColor(activeTelemetry.empathy) }]}>
-              {activeTelemetry.empathy}%
+        {currentStage === 'guided' ? (
+          <>
+            {/* Empathy */}
+            <View style={styles.telemetryRow}>
+              <View style={styles.telemetryHeader}>
+                <Text style={styles.telemetryLabel}>Empathy & Validation</Text>
+                <Text style={[styles.telemetryVal, { color: getTelemetryBarColor(activeTelemetry.empathy) }]}>
+                  {activeTelemetry.empathy}%
+                </Text>
+              </View>
+              <View style={styles.telemetryTrack}>
+                <View
+                  style={[
+                    styles.telemetryFill,
+                    {
+                      width: `${activeTelemetry.empathy}%`,
+                      backgroundColor: getTelemetryBarColor(activeTelemetry.empathy),
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+
+            {/* Assertiveness */}
+            <View style={styles.telemetryRow}>
+              <View style={styles.telemetryHeader}>
+                <Text style={styles.telemetryLabel}>Healthy Assertiveness</Text>
+                <Text style={[styles.telemetryVal, { color: getTelemetryBarColor(activeTelemetry.assertiveness) }]}>
+                  {activeTelemetry.assertiveness}%
+                </Text>
+              </View>
+              <View style={styles.telemetryTrack}>
+                <View
+                  style={[
+                    styles.telemetryFill,
+                    {
+                      width: `${activeTelemetry.assertiveness}%`,
+                      backgroundColor: getTelemetryBarColor(activeTelemetry.assertiveness),
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+
+            {/* Clarity */}
+            <View style={styles.telemetryRow}>
+              <View style={styles.telemetryHeader}>
+                <Text style={styles.telemetryLabel}>Objective Clarity</Text>
+                <Text style={[styles.telemetryVal, { color: getTelemetryBarColor(activeTelemetry.clarity) }]}>
+                  {activeTelemetry.clarity}%
+                </Text>
+              </View>
+              <View style={styles.telemetryTrack}>
+                <View
+                  style={[
+                    styles.telemetryFill,
+                    {
+                      width: `${activeTelemetry.clarity}%`,
+                      backgroundColor: getTelemetryBarColor(activeTelemetry.clarity),
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+
+            {/* De-escalation */}
+            <View style={styles.telemetryRow}>
+              <View style={styles.telemetryHeader}>
+                <Text style={styles.telemetryLabel}>Emotional Containment</Text>
+                <Text style={[styles.telemetryVal, { color: getTelemetryBarColor(activeTelemetry.deEscalation) }]}>
+                  {activeTelemetry.deEscalation}%
+                </Text>
+              </View>
+              <View style={styles.telemetryTrack}>
+                <View
+                  style={[
+                    styles.telemetryFill,
+                    {
+                      width: `${activeTelemetry.deEscalation}%`,
+                      backgroundColor: getTelemetryBarColor(activeTelemetry.deEscalation),
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          </>
+        ) : (
+          <View style={{ paddingVertical: Spacing.md, alignItems: 'center', gap: Spacing.sm }}>
+            <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
+            <Text style={{ fontFamily: Typography.fontFamily.primary, fontSize: Typography.fontSize.xs, color: colors.textMuted, textAlign: 'center', lineHeight: 16 }}>
+              Live telemetry is locked in {currentStage === 'independent' ? 'Independent Practice' : 'Escalation Challenge'} mode to evaluate your skills.
             </Text>
           </View>
-          <View style={styles.telemetryTrack}>
-            <View
-              style={[
-                styles.telemetryFill,
-                {
-                  width: `${activeTelemetry.empathy}%`,
-                  backgroundColor: getTelemetryBarColor(activeTelemetry.empathy),
-                },
-              ]}
-            />
-          </View>
-        </View>
-
-        {/* Assertiveness */}
-        <View style={styles.telemetryRow}>
-          <View style={styles.telemetryHeader}>
-            <Text style={styles.telemetryLabel}>Healthy Assertiveness</Text>
-            <Text style={[styles.telemetryVal, { color: getTelemetryBarColor(activeTelemetry.assertiveness) }]}>
-              {activeTelemetry.assertiveness}%
-            </Text>
-          </View>
-          <View style={styles.telemetryTrack}>
-            <View
-              style={[
-                styles.telemetryFill,
-                {
-                  width: `${activeTelemetry.assertiveness}%`,
-                  backgroundColor: getTelemetryBarColor(activeTelemetry.assertiveness),
-                },
-              ]}
-            />
-          </View>
-        </View>
-
-        {/* Clarity */}
-        <View style={styles.telemetryRow}>
-          <View style={styles.telemetryHeader}>
-            <Text style={styles.telemetryLabel}>Objective Clarity</Text>
-            <Text style={[styles.telemetryVal, { color: getTelemetryBarColor(activeTelemetry.clarity) }]}>
-              {activeTelemetry.clarity}%
-            </Text>
-          </View>
-          <View style={styles.telemetryTrack}>
-            <View
-              style={[
-                styles.telemetryFill,
-                {
-                  width: `${activeTelemetry.clarity}%`,
-                  backgroundColor: getTelemetryBarColor(activeTelemetry.clarity),
-                },
-              ]}
-            />
-          </View>
-        </View>
-
-        {/* De-escalation */}
-        <View style={styles.telemetryRow}>
-          <View style={styles.telemetryHeader}>
-            <Text style={styles.telemetryLabel}>Emotional Containment</Text>
-            <Text style={[styles.telemetryVal, { color: getTelemetryBarColor(activeTelemetry.deEscalation) }]}>
-              {activeTelemetry.deEscalation}%
-            </Text>
-          </View>
-          <View style={styles.telemetryTrack}>
-            <View
-              style={[
-                styles.telemetryFill,
-                {
-                  width: `${activeTelemetry.deEscalation}%`,
-                  backgroundColor: getTelemetryBarColor(activeTelemetry.deEscalation),
-                },
-              ]}
-            />
-          </View>
-        </View>
-
+        )}
       </View>
 
       {/* Real-time tips */}
       <View style={styles.sideCard}>
-        <View style={styles.tipBox}>
-          <View style={styles.tipIconRow}>
-            <Ionicons name="bulb" size={16} color={colors.accentTerracotta} />
-            <Text style={styles.tipLabel}>COACHING TIP</Text>
+        {currentStage === 'guided' ? (
+          <View style={styles.tipBox}>
+            <View style={styles.tipIconRow}>
+              <Ionicons name="bulb" size={16} color={colors.accentTerracotta} />
+              <Text style={styles.tipLabel}>COACHING TIP</Text>
+            </View>
+            <Text style={styles.tipText}>{activeTip}</Text>
           </View>
-          <Text style={styles.tipText}>{activeTip}</Text>
-        </View>
+        ) : (
+          <View style={{ paddingVertical: Spacing.xs, alignItems: 'center', gap: Spacing.sm }}>
+            <Ionicons name="help-circle-outline" size={20} color={colors.textMuted} />
+            <Text style={{ fontFamily: Typography.fontFamily.primary, fontSize: Typography.fontSize.xs, color: colors.textMuted, textAlign: 'center', lineHeight: 16 }}>
+              Real-time hints and tips are disabled in this mode.
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
