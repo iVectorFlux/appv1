@@ -16,13 +16,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   useColors,
   Spacing,
   Typography,
   Radius,
-  Shadows,
 } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
@@ -176,92 +174,6 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {/* Competency Sprint Promo Banner */}
-        <Animated.View style={{ opacity: greetAnim, marginBottom: Spacing.lg }}>
-          <TouchableOpacity
-            onPress={() => router.push('/competency-sprint')}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={[colors.primary + '18', colors.accentIndigo + '12']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                borderRadius: Radius.xl,
-                borderWidth: 1,
-                borderColor: colors.primary + '30',
-                padding: Spacing.lg,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: Spacing.md,
-                ...Shadows.card,
-                overflow: 'hidden',
-                position: 'relative'
-              }}
-            >
-              {/* Glowing absolute background design element */}
-              <View style={{
-                position: 'absolute',
-                right: -20,
-                top: -20,
-                width: 120,
-                height: 120,
-                borderRadius: 60,
-                backgroundColor: colors.primary + '0A',
-              } as any} />
-
-              <View style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: colors.primary + '1F',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: colors.primary + '30',
-                ...Shadows.sm
-              }}>
-                <Ionicons name="flash" size={22} color={colors.primary} />
-              </View>
-
-              <View style={{ flex: 1, gap: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
-                  <View style={{ backgroundColor: colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#FFFFFF', letterSpacing: 0.5 }}>
-                      ACTIVE PILOT
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textSecondary, letterSpacing: 0.5 }}>
-                    COMPETENCY SPRINT
-                  </Text>
-                </View>
-                
-                <Text style={{ fontSize: Typography.fontSize.cardTitle, fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, letterSpacing: -0.5 }}>
-                  Difficult Conversations
-                </Text>
-                
-                <Text style={{ fontSize: Typography.fontSize.xs, color: colors.textSecondary, lineHeight: Typography.fontSize.xs * 1.4 }}>
-                  Master this critical leadership boundary with immersive AI simulations and real-time telemetry analytics.
-                </Text>
-              </View>
-
-              <View style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: colors.glass,
-                borderColor: colors.glassBorder,
-                borderWidth: 1,
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-              </View>
-
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-
         <Text style={[st.sectionHeading, { marginBottom: Spacing.sm }]}>Explore</Text>
 
         {isWebLaptop ? (
@@ -304,6 +216,18 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          <TouchableOpacity
+            style={[st.competencyBtn, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}
+            onPress={() => router.push('/competency-sprint')}
+            activeOpacity={0.75}
+          >
+            <View style={[st.competencyIcon, { backgroundColor: colors.primary + '22' }]}>
+              <Ionicons name="flash-outline" size={16} color={colors.primary} />
+            </View>
+            <Text style={st.competencyTitle}>Difficult Conversations</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
         </Animated.View>
 
         <View style={st.footer}>
@@ -417,6 +341,29 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.xs,
       color: colors.textMuted,
       lineHeight: Typography.fontSize.xs * 1.4,
+    },
+    competencyBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginTop: GAP,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      paddingVertical: Spacing.sm + 2,
+      paddingHorizontal: Spacing.md,
+    },
+    competencyIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    competencyTitle: {
+      flex: 1,
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
     },
 
     gridRow: {
