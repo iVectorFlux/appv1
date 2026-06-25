@@ -4,6 +4,9 @@
   "framework": null,
   "functions": {
     "api/chat.ts": { "maxDuration": 60 },
+    "api/inner-ally-memory.ts": { "maxDuration": 30 },
+    "api/agent.ts": { "maxDuration": 60 },
+    "api/competency-agent.ts": { "maxDuration": 60 },
     "api/skills-coach.ts": { "maxDuration": 60 },
     "api/big5-leadership-insights.ts": { "maxDuration": 60 },
     "api/health.ts": { "maxDuration": 10 }

@@ -1,0 +1,23 @@
+{
+  "name": "lumi6-eq-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "agent.ts",
+  "scripts": {
+    "dev": "npx adk web",
+    "run": "npx adk run agent.ts",
+    "deploy": "npx adk deploy cloud_run --project=$GOOGLE_CLOUD_PROJECT --region=$GOOGLE_CLOUD_LOCATION --service_name=lumi6-eq-agent --with_ui ."
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google/adk": "^1.2.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@google/adk-devtools": "^1.2.0",
+    "typescript": "^5.3.3"
+  }
+}

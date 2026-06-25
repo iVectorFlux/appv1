@@ -39,7 +39,7 @@ import {
 } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
 import { isSkillLabSkillId } from '@/data/future-skills';
-import { requestChatCompletion } from '@/utils/vercel-api';
+import { refreshInnerAllyMemory, requestChatCompletion } from '@/utils/vercel-api';
 import { breathToneParamFromEmotions } from '@/data/breathing-techniques';
 import { ChatHistoryPanel } from '@/components/chat/chat-history-panel';
 
@@ -47,7 +47,7 @@ interface ChatScreenProps {
   asTab?: boolean;
   /** When true (tab bar hidden on Companion), show Home in header and use safe-area-only bottom inset */
   hideBottomTabBar?: boolean;
-  /** Companion tab: each visit starts a new Inner Ally thread (no restored transcript). */
+  /** Companion tab: fresh Inner Ally thread each visit; long-term memory still applies server-side. */
   resetInnerAllySessionOnFocus?: boolean;
 }
 
@@ -605,11 +605,15 @@ export default function ChatScreen({
       .filter((m) => m.id !== 'intro')
       .map((m) => ({ role: m.role, content: m.content }));
 
+    const priorUserTurns = messages.filter((m) => m.role === 'user' && m.id !== 'intro').length;
+    const isNewSession = mode === 'inner_ally' && priorUserTurns === 0;
+
     try {
       const data = await requestChatCompletion({
         mode,
         messages: [...history, { role: 'user', content: text }],
         userId: user?.id,
+        isNewSession,
       });
 
       const suggestion: ChatSuggestion = {
@@ -644,6 +648,16 @@ export default function ChatScreen({
             assistantMessageId: assistantMsg.id,
             createdAt: assistantMsg.createdAt,
           });
+          if (mode === 'inner_ally') {
+            void refreshInnerAllyMemory({
+              userId: user.id,
+              userMessage: text,
+              assistantReply: data.reply,
+              emotions: suggestion.emotions,
+              lifeContexts: suggestion.lifeContexts,
+              markFollowUpsNudged: isNewSession,
+            });
+          }
         } catch (persistErr) {
           console.error('[Chat] Failed to persist assistant turn:', persistErr);
         }

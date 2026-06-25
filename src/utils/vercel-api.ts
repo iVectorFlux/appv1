@@ -181,6 +181,29 @@ export async function requestChatCompletion(body: object): Promise<ChatApiSucces
   }
 }
 
+/** Fire-and-forget: merge an Inner Ally turn into long-term memory (Coach must not call this). */
+export function refreshInnerAllyMemory(body: {
+  userId: string;
+  userMessage: string;
+  assistantReply: string;
+  emotions?: string[];
+  lifeContexts?: string[];
+  markFollowUpsNudged?: boolean;
+}): void {
+  try {
+    const url = joinApiUrl('/api/inner-ally-memory');
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => {
+      /* non-fatal background sync */
+    });
+  } catch {
+    /* ignore local web guard — memory refresh is best-effort */
+  }
+}
+
 const BIG5_LEADERSHIP_TIMEOUT_MS = 60_000;
 
 /** POST /api/big5-leadership-insights - extended workplace / leadership narrative from Groq. */

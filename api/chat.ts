@@ -10,6 +10,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { FUTURE_SKILLS } from '../src/data/future-skills';
 import { applyCors, handleCorsPreflight } from './_lib/cors';
 import { GROQ_CHAT_COMPLETIONS_URL, getGroqEnv } from './_lib/groq-config';
+import { buildInnerAllyMemoryBlock } from './_lib/inner-ally-memory';
 
 const COACH_SKILL_LAB_IDS = new Set(FUTURE_SKILLS.map((s) => s.id));
 
@@ -87,6 +88,12 @@ GROUNDING TECHNIQUES - only these exact string IDs (snake_case) for "groundingOp
 OTHER:
 - Infer 0–3 "lifeContexts" from the allowed list only; use [] if unclear.
 - Never diagnose or prescribe. Crisis language → compassion + crisis line (e.g. 988 US).
+
+PROACTIVE AGENT (when LONG-TERM MEMORY is present):
+- You are an agent who **knows them over time**, even when this chat thread is new.
+- **Sometimes** follow up on past low moments, goals, or open concerns — like a caring friend checking in days later.
+- One warm sentence is enough; never stack multiple follow-ups in one reply.
+- Do not mention databases, memory, or "last session".
 
 COGNITIVE REFRAME - JSON field "reframe" (critical - quality over filler):
 - Purpose: **one** sentence that gives a **specific, plausible** alternative lens tied to **what they actually said** (job, money, relationship detail, etc.). It should feel like insight, not a sticker.
@@ -315,15 +322,26 @@ function readJsonBody(req: VercelRequest): {
   mode?: string;
   messages?: { role: string; content: string }[];
   userId?: string;
+  isNewSession?: boolean;
 } | null {
   const raw = req.body;
   if (raw == null) return null;
   if (typeof raw === 'object' && !Buffer.isBuffer(raw)) {
-    return raw as { mode?: string; messages?: { role: string; content: string }[]; userId?: string };
+    return raw as {
+      mode?: string;
+      messages?: { role: string; content: string }[];
+      userId?: string;
+      isNewSession?: boolean;
+    };
   }
   if (typeof raw === 'string') {
     try {
-      return JSON.parse(raw) as { mode?: string; messages?: { role: string; content: string }[]; userId?: string };
+      return JSON.parse(raw) as {
+        mode?: string;
+        messages?: { role: string; content: string }[];
+        userId?: string;
+        isNewSession?: boolean;
+      };
     } catch {
       return null;
     }
@@ -438,7 +456,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     detected = { skillId: null, confidence: 0 };
   }
 
-  const systemPrompt = mode === 'inner_ally' ? INNER_ALLY_SYSTEM_PROMPT : COACH_SYSTEM_PROMPT;
+  let systemPrompt = mode === 'inner_ally' ? INNER_ALLY_SYSTEM_PROMPT : COACH_SYSTEM_PROMPT;
+
+  if (mode === 'inner_ally') {
+    const uid =
+      typeof body.userId === 'string' && body.userId.length > 0 ? body.userId : null;
+    const isNewSession = Boolean(body.isNewSession);
+    if (uid) {
+      try {
+        const memoryBlock = await buildInnerAllyMemoryBlock(uid, { isNewSession });
+        if (memoryBlock) {
+          systemPrompt = `${systemPrompt}\n\n${memoryBlock}`;
+        }
+      } catch (e) {
+        console.error('[chat] Inner Ally memory load failed:', e);
+      }
+    }
+  }
+
   const chatMessages = [
     { role: 'system' as const, content: systemPrompt },
     ...userMessages.map((m) => ({ role: m.role, content: m.content })),
