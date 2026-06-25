@@ -16,7 +16,7 @@ Your `api/_lib/llm-service.ts` and `api/chat.ts` are **wrappers**. Google’s ta
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Lumi6 app (Expo)                                           │
-│  Companion · Skill Lab · Competency Sprint                  │
+│  Companion · Skill Lab · Learn                              │
 └───────────────────────────┬─────────────────────────────────┘
                             │ POST /api/agent (session + message)
                             ▼
@@ -28,7 +28,7 @@ Your `api/_lib/llm-service.ts` and `api/chat.ts` are **wrappers**. Google’s ta
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Cloud Run — ADK agent service (agents/lumi6)               │
-│  rootAgent (Gemini via ADK)                               │
+│  rootAgent (Gemini via ADK)                                 │
 │    ├── inner_ally tools (grounding, reframe, emotions)      │
 │    ├── coach tools (skill routing, micro-lessons)           │
 │    └── eq_context tools (profile, assessments — Supabase)   │
@@ -65,31 +65,16 @@ The model **decides when** to call tools; the app **executes** navigation (groun
 
 Split into `inner_ally_agent` and `coach_agent` with ADK workflow/orchestration when the single agent grows too large.
 
-## Repo layout (multiple ADK agents)
-
-Each agent is its own folder with `export const rootAgent` — deploy separately to Cloud Run.
+## Repo layout
 
 ```
 agents/
   lumi6/                    # Companion: Inner Ally + Coach
     agent.ts
     tools/eq-tools.ts
-  lumi6-competency/         # Competency Sprint + Upstash Vector RAG
-    agent.ts
-    tools/competency-tools.ts
-    lib/upstash-vector.ts
-    scripts/seed-playbook.mjs
 
 api/agent.ts                # Proxy → lumi6-eq-agent (Cloud Run)
-api/competency-agent.ts     # Proxy → lumi6-competency-agent (Cloud Run)
 ```
-
-### Upstash Vector (competency showcase)
-
-- **Index:** micro-skills, drills, session insights for "Difficult Conversations"
-- **Seed:** `cd agents/lumi6-competency && npm run seed`
-- **Agent tools:** `search_competency_playbook`, `store_competency_insight`
-- Shows Google: ADK tool loop + external vector memory (not a prompt wrapper)
 
 ## Environment variables
 
@@ -110,7 +95,6 @@ SUPABASE_SERVICE_ROLE_KEY=...         # for fetch_eq_context tool only
 
 ```bash
 LUMI6_AGENT_SERVICE_URL=https://lumi6-eq-agent-xxxxx.run.app
-# Optional: require Cloud Run identity token in production
 ```
 
 ## Deploy to Cloud Run (Google deliverable)
@@ -146,7 +130,6 @@ npx adk web            # http://localhost:8000
 1. **Ship ADK agent** on Cloud Run with tools + ADK UI demo (Google milestone 1).
 2. **Add `api/agent.ts` proxy**; feature-flag Companion to call `/api/agent` instead of `/api/chat`.
 3. **Retire wrapper** in `api/chat.ts` once parity is verified.
-4. **Move Competency Sprint / Skill Lab** to the same agent or specialized sub-agents.
 
 ## What to show Google
 

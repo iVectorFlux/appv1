@@ -2,8 +2,6 @@
 
 Native [Agent Development Kit](https://adk.dev) agent for the Lumi6 **Companion** (Inner Ally + Coach) — **not** a Gemini API wrapper.
 
-**Sibling agent:** Competency Sprint with Upstash Vector lives in [`../lumi6-competency/`](../lumi6-competency/README.md).
-
 ## Quick start
 
 ```bash

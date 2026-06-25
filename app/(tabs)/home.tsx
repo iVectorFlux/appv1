@@ -216,18 +216,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
-
-          <TouchableOpacity
-            style={[st.competencyBtn, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}
-            onPress={() => router.push('/competency-sprint')}
-            activeOpacity={0.75}
-          >
-            <View style={[st.competencyIcon, { backgroundColor: colors.primary + '22' }]}>
-              <Ionicons name="flash-outline" size={16} color={colors.primary} />
-            </View>
-            <Text style={st.competencyTitle}>Difficult Conversations</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-          </TouchableOpacity>
         </Animated.View>
 
         <View style={st.footer}>
@@ -341,29 +329,6 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.xs,
       color: colors.textMuted,
       lineHeight: Typography.fontSize.xs * 1.4,
-    },
-    competencyBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-      marginTop: GAP,
-      borderRadius: Radius.lg,
-      borderWidth: 1,
-      paddingVertical: Spacing.sm + 2,
-      paddingHorizontal: Spacing.md,
-    },
-    competencyIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    competencyTitle: {
-      flex: 1,
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textPrimary,
     },
 
     gridRow: {
