@@ -51,6 +51,7 @@ export default function HomeScreen() {
     { key: 'learn', title: 'Learn EQ', icon: 'book-outline', accent: colors.accentIndigo, route: '/(tabs)/learn' },
     { key: 'companion', title: 'AI Companion', icon: 'chatbubble-ellipses-outline', accent: colors.accentTerracotta, route: '/(tabs)/companion' },
     { key: 'skill-lab', title: 'Skill Lab', icon: 'rocket-outline', accent: colors.accentSage, route: '/skill-lab' },
+    { key: 'game-theory', title: 'Game Theory', icon: 'git-network-outline', accent: '#7C3AED', route: '/game-theory' },
     { key: 'recover', title: 'Recover', icon: 'leaf-outline', accent: colors.accentCalm, route: '/grounding' },
   ];
 
@@ -146,7 +147,7 @@ export default function HomeScreen() {
           <Text style={st.gridTitle}>{f.title}</Text>
         </View>
       </GlassCard>,
-      isWebLaptop ? st.webTileWrap : st.gridCell
+      isWebLaptop ? st.webTileWrap : undefined
     );
   };
 
@@ -183,15 +184,12 @@ export default function HomeScreen() {
             ))}
           </View>
         ) : (
-          <View style={st.exploreSection}>
-            <View style={st.gridRow}>
-              {renderExploreTile(0)}
-              {renderExploreTile(1)}
-            </View>
-            <View style={st.gridRow}>
-              {renderExploreTile(2)}
-              {renderExploreTile(3)}
-            </View>
+          <View style={[st.exploreSection, st.exploreWrap]}>
+            {exploreFeatures.map((_, i) => (
+              <View key={exploreFeatures[i].key} style={st.exploreWrapCell}>
+                {renderExploreTile(i)}
+              </View>
+            ))}
           </View>
         )}
 
@@ -295,6 +293,15 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     },
     exploreSection: {
       marginBottom: Spacing.lg + 4,
+    },
+    exploreWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: GAP,
+    },
+    exploreWrapCell: {
+      width: '48%' as any,
+      flexGrow: 1,
     },
     assessSection: {
       marginBottom: Spacing.lg + 4,
