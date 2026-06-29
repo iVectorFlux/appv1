@@ -67,7 +67,7 @@ export default function GameTheoryHubScreen() {
             Learn game theory through {GAME_THEORY_GAMES.length} classic games
           </Text>
           <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-            Matrix games, three-door puzzles, scenario choices — each with a step-by-step mathematical explanation.
+            Each game has its own mini-lab — strategy duels, coin flips, door puzzles, auctions, and more. Plain-language math included.
           </Text>
           <View style={styles.progressRow}>
             <Ionicons name="trophy-outline" size={16} color={colors.accentTerracotta} />

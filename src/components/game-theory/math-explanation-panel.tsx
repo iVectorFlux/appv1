@@ -11,7 +11,7 @@ export function MathExplanationPanel({ math }: { math: MathExplanation }) {
       <Text style={[styles.title, { color: colors.textPrimary }]}>{math.title}</Text>
       <Text style={[styles.intro, { color: colors.textSecondary }]}>{math.intro}</Text>
 
-      <Text style={[styles.stepsHeading, { color: colors.primary }]}>Step by step</Text>
+      <Text style={[styles.stepsHeading, { color: colors.primary }]}>How it works</Text>
       {math.steps.map((step, i) => (
         <View key={step} style={styles.stepRow}>
           <View style={[styles.stepNum, { backgroundColor: colors.primary + '18' }]}>
@@ -23,13 +23,13 @@ export function MathExplanationPanel({ math }: { math: MathExplanation }) {
 
       {math.formula ? (
         <View style={[styles.formulaBox, { borderColor: colors.primary + '35', backgroundColor: colors.primary + '08' }]}>
-          <Text style={[styles.formulaLabel, { color: colors.primary }]}>Formula / notation</Text>
+          <Text style={[styles.formulaLabel, { color: colors.primary }]}>The numbers</Text>
           <Text style={[styles.formula, { color: colors.textPrimary }]}>{math.formula}</Text>
         </View>
       ) : null}
 
       <View style={[styles.takeawayBox, { borderColor: colors.accentSage + '40', backgroundColor: colors.accentSage + '10' }]}>
-        <Text style={[styles.takeawayLabel, { color: colors.accentSage }]}>Takeaway</Text>
+        <Text style={[styles.takeawayLabel, { color: colors.accentSage }]}>Remember</Text>
         <Text style={[styles.takeaway, { color: colors.textPrimary }]}>{math.takeaway}</Text>
       </View>
     </View>

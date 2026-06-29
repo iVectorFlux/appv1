@@ -11,11 +11,24 @@ export type EnrichedGameTheoryGame = GameTheoryGame & {
   math?: MathExplanation;
 };
 
+const PLAY_MODE_OVERRIDES: Record<string, GamePlayMode> = {
+  matching_pennies: 'coin_flip',
+  chicken: 'brinkmanship',
+  ultimatum_game: 'split_offer',
+  dictator_game: 'split_offer',
+  divide_dollar: 'split_offer',
+  centipede: 'take_or_pass',
+  trust_game: 'trust_invest',
+  first_price_auction: 'bid',
+  second_price_auction: 'bid',
+  monty_hall: 'monty_hall',
+};
+
 function resolvePlayMode(game: GameTheoryGame): GamePlayMode {
   if (game.playMode) return game.playMode;
-  if (game.id === 'monty_hall') return 'monty_hall';
-  if (game.matrix) return 'matrix';
-  return 'choices';
+  if (PLAY_MODE_OVERRIDES[game.id]) return PLAY_MODE_OVERRIDES[game.id];
+  if (game.matrix) return 'matrix_duel';
+  return 'scenario';
 }
 
 export const GAME_THEORY_CATEGORIES: GameTheoryCategory[] = [
@@ -81,13 +94,13 @@ export const GAME_THEORY_GAMES: GameTheoryGame[] = [
     color: '#6366F1',
     storyHook: 'Two suspects are questioned separately. Each can stay silent or betray the other.',
     description:
-      'Each player does better by defecting no matter what the other does — yet both would earn more if they both cooperated. This is the classic tension between individual incentive and collective outcome.',
-    players: '2 players · simultaneous',
-    keyConcept: 'Dominant strategy & Nash equilibrium',
+      'Betraying always looks like the safer move for you — but if you both betray, you both do worse than if you had stayed quiet together.',
+    players: '2 players · at the same time',
+    keyConcept: 'Why smart people still fail to cooperate',
     whatYouLearn: [
-      'Individual rationality can produce collectively worse outcomes.',
-      'Trust breaks when people cannot enforce agreements.',
-      'Repeated interaction and reputation can restore cooperation.',
+      'Doing what is best for you alone can hurt the group.',
+      'Trust breaks when nobody can enforce a deal.',
+      'Playing again and again can bring cooperation back.',
     ],
     workplaceExample:
       'Two teams hoard data instead of sharing — each protects itself, but the company moves slower.',
@@ -109,7 +122,8 @@ export const GAME_THEORY_GAMES: GameTheoryGame[] = [
           [1, 1],
         ],
       ],
-      equilibriumNote: 'Defect–Defect is the Nash equilibrium even though Cooperate–Cooperate pays both more.',
+      equilibriumNote:
+        'If both pick Defect, neither wants to switch alone — yet both Cooperate would have paid you more (3 each vs 1 each).',
     },
   },
   {
@@ -1224,13 +1238,13 @@ export const GAME_THEORY_GAMES: GameTheoryGame[] = [
     storyHook:
       'Three doors: one hides a car, two hide goats. You pick one. The host — who knows what is behind each door — opens another door showing a goat. Do you switch?',
     description:
-      'Most people think it is 50/50 after one goat is revealed. Conditional probability says otherwise: switching wins two-thirds of the time. This is the classic statistics puzzle that separates intuition from Bayes.',
-    players: 'You vs host (knows all) · sequential reveal',
-    keyConcept: 'Conditional probability & Bayes’ rule',
+      'Most people think it is 50/50 after a goat is shown. It is not — switching wins about 2 out of 3 times. The host always opens a goat on purpose, and that changes the odds.',
+    players: 'You vs host · one door at a time',
+    keyConcept: 'Updating odds when you learn something new',
     whatYouLearn: [
-      'New information updates probabilities — not all “remaining options” are equally likely.',
-      'The host’s rule (never open the car) creates asymmetry between doors.',
-      'Switching doubles your win chance from 1/3 to 2/3.',
+      'New information changes probabilities — not every remaining door is equally likely.',
+      'The host never opens the car — that is a rule, not random luck.',
+      'Switching moves your chance from 1/3 to 2/3.',
     ],
     workplaceExample:
       'After a hiring screen removes one bad candidate, the odds on the remaining finalists are not automatically equal — how the filter works matters.',

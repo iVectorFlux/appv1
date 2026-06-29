@@ -14,15 +14,40 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { ScreenHeader } from '@/components/ui/screen-header';
-import { PayoffMatrix } from '@/components/game-theory/payoff-matrix';
+import { MatrixDuelPlay } from '@/components/game-theory/matrix-duel-play';
+import { CoinFlipPlay } from '@/components/game-theory/coin-flip-play';
 import { MontyHallPlay } from '@/components/game-theory/monty-hall-play';
+import { SplitOfferPlay } from '@/components/game-theory/split-offer-play';
+import { TakeOrPassPlay } from '@/components/game-theory/take-or-pass-play';
+import { BrinkmanshipPlay } from '@/components/game-theory/brinkmanship-play';
+import { TrustInvestPlay } from '@/components/game-theory/trust-invest-play';
+import { BidPlay } from '@/components/game-theory/bid-play';
+import { ScenarioPlay } from '@/components/game-theory/scenario-play';
 import { MathExplanationPanel } from '@/components/game-theory/math-explanation-panel';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { getGameById, getCategoryMeta } from '@/data/game-theory-catalog';
-import type { GamePlayChoice } from '@/data/game-theory-types';
+import type { SplitOfferVariant } from '@/components/game-theory/split-offer-play';
 import { markGameTheoryComplete } from '@/services/game-theory-progress';
 
 type Tab = 'learn' | 'play' | 'math';
+
+const PLAY_TYPE_LABELS: Record<string, string> = {
+  matrix_duel: 'Strategy duel',
+  coin_flip: 'Coin flip',
+  monty_hall: 'Three doors',
+  split_offer: 'Split the money',
+  take_or_pass: 'Growing pot',
+  brinkmanship: 'Chicken standoff',
+  trust_invest: 'Trust investment',
+  bid: 'Auction bid',
+  scenario: 'Your choice',
+};
+
+function splitVariant(gameId: string): SplitOfferVariant {
+  if (gameId === 'dictator_game') return 'dictator';
+  if (gameId === 'divide_dollar') return 'divide';
+  return 'ultimatum';
+}
 
 export default function GameTheoryDetailScreen() {
   const { gameId } = useLocalSearchParams<{ gameId: string }>();
@@ -31,9 +56,6 @@ export default function GameTheoryDetailScreen() {
   const game = getGameById(String(gameId ?? ''));
 
   const [tab, setTab] = useState<Tab>('learn');
-  const [selectedRow, setSelectedRow] = useState<number | null>(null);
-  const [selectedCol, setSelectedCol] = useState<number | null>(null);
-  const [choiceResult, setChoiceResult] = useState<GamePlayChoice | null>(null);
   const [playedOnce, setPlayedOnce] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -51,11 +73,7 @@ export default function GameTheoryDetailScreen() {
 
   const category = getCategoryMeta(game.category);
   const playMode = game.playMode;
-
-  const matrixInsight =
-    game.matrix && selectedRow != null && selectedCol != null
-      ? game.matrix.payoffs[selectedRow][selectedCol]
-      : null;
+  const onPlayed = () => setPlayedOnce(true);
 
   const handleComplete = async () => {
     setCompleting(true);
@@ -67,12 +85,7 @@ export default function GameTheoryDetailScreen() {
     }
   };
 
-  const playTypeLabel =
-    playMode === 'matrix'
-      ? 'Payoff matrix'
-      : playMode === 'monty_hall'
-        ? 'Three doors'
-        : 'Scenario choices';
+  const playTypeLabel = PLAY_TYPE_LABELS[playMode] ?? 'Interactive';
 
   return (
     <GlassBackground>
@@ -131,13 +144,13 @@ export default function GameTheoryDetailScreen() {
               <Text style={[styles.body, { color: colors.textSecondary }]}>{game.description}</Text>
             </Section>
 
-            <Section title={`Key concept: ${game.keyConcept}`} colors={colors}>
+            <Section title={`Key idea: ${game.keyConcept}`} colors={colors}>
               {game.whatYouLearn.map((line) => (
                 <Bullet key={line} text={line} colors={colors} />
               ))}
             </Section>
 
-            <Section title="At work" colors={colors}>
+            <Section title="Real life example" colors={colors}>
               <Text style={[styles.body, { color: colors.textSecondary }]}>{game.workplaceExample}</Text>
             </Section>
 
@@ -156,9 +169,9 @@ export default function GameTheoryDetailScreen() {
             {game.math ? (
               <MathExplanationPanel math={game.math} />
             ) : (
-              <Section title="Mathematical lens" colors={colors}>
+              <Section title="The numbers" colors={colors}>
                 <Text style={[styles.body, { color: colors.textSecondary }]}>
-                  Mathematical explanation coming soon for this game.
+                  Explanation coming soon for this game.
                 </Text>
               </Section>
             )}
@@ -174,77 +187,33 @@ export default function GameTheoryDetailScreen() {
         {tab === 'play' ? (
           <View style={styles.section}>
             <Section title="Your move" colors={colors}>
-              {playMode === 'matrix' && game.matrix ? (
-                <>
-                  <Text style={[styles.hint, { color: colors.textSecondary }]}>
-                    Tap a cell to see payoffs ({game.matrix.rowPlayer}, {game.matrix.colPlayer}).
-                  </Text>
-                  <PayoffMatrix
-                    matrix={game.matrix}
-                    selectedRow={selectedRow}
-                    selectedCol={selectedCol}
-                    onSelectCell={(row, col) => {
-                      setSelectedRow(row);
-                      setSelectedCol(col);
-                      setPlayedOnce(true);
-                    }}
-                  />
-                  {matrixInsight ? (
-                    <View
-                      style={[
-                        styles.resultBox,
-                        { borderColor: colors.primary + '40', backgroundColor: colors.primary + '10' },
-                      ]}
-                    >
-                      <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>
-                        Payoff: you {matrixInsight[0]}, them {matrixInsight[1]}
-                      </Text>
-                      <Text style={[styles.body, { color: colors.textSecondary }]}>
-                        {game.matrix.equilibriumNote}
-                      </Text>
-                    </View>
-                  ) : null}
-                </>
+              {playMode === 'matrix_duel' && game.matrix ? (
+                <MatrixDuelPlay matrix={game.matrix} onComplete={onPlayed} />
               ) : null}
 
-              {playMode === 'monty_hall' ? (
-                <MontyHallPlay onComplete={() => setPlayedOnce(true)} />
+              {playMode === 'coin_flip' ? <CoinFlipPlay onComplete={onPlayed} /> : null}
+
+              {playMode === 'monty_hall' ? <MontyHallPlay onComplete={onPlayed} /> : null}
+
+              {playMode === 'split_offer' ? (
+                <SplitOfferPlay variant={splitVariant(game.id)} onComplete={onPlayed} />
               ) : null}
 
-              {playMode === 'choices' && game.choices ? (
-                <View style={{ gap: Spacing.sm }}>
-                  {!choiceResult ? (
-                    game.choices.map((c) => (
-                      <TouchableOpacity
-                        key={c.id}
-                        style={[styles.choiceBtn, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}
-                        onPress={() => {
-                          setChoiceResult(c);
-                          setPlayedOnce(true);
-                        }}
-                      >
-                        <Text style={[styles.choiceLabel, { color: colors.textPrimary }]}>{c.label}</Text>
-                      </TouchableOpacity>
-                    ))
-                  ) : (
-                    <View
-                      style={[
-                        styles.resultBox,
-                        { borderColor: colors.accentSage + '50', backgroundColor: colors.accentSage + '12' },
-                      ]}
-                    >
-                      <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>{choiceResult.outcome}</Text>
-                      <Text style={[styles.body, { color: colors.textSecondary, marginTop: Spacing.sm }]}>
-                        {choiceResult.lesson}
-                      </Text>
-                      <TouchableOpacity onPress={() => setChoiceResult(null)} style={{ marginTop: Spacing.sm }}>
-                        <Text style={{ color: colors.primary, fontWeight: Typography.fontWeight.semibold }}>
-                          Try another move
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
+              {playMode === 'take_or_pass' ? <TakeOrPassPlay onComplete={onPlayed} /> : null}
+
+              {playMode === 'brinkmanship' ? <BrinkmanshipPlay onComplete={onPlayed} /> : null}
+
+              {playMode === 'trust_invest' ? <TrustInvestPlay onComplete={onPlayed} /> : null}
+
+              {playMode === 'bid' ? (
+                <BidPlay
+                  variant={game.id === 'second_price_auction' ? 'second_price' : 'first_price'}
+                  onComplete={onPlayed}
+                />
+              ) : null}
+
+              {playMode === 'scenario' && game.choices ? (
+                <ScenarioPlay choices={game.choices} accentColor={game.color} onComplete={onPlayed} />
               ) : null}
             </Section>
 
@@ -262,7 +231,7 @@ export default function GameTheoryDetailScreen() {
               <TouchableOpacity onPress={() => setTab('math')} style={styles.mathLink}>
                 <Ionicons name="calculator-outline" size={16} color={colors.primary} />
                 <Text style={{ color: colors.primary, fontWeight: Typography.fontWeight.semibold }}>
-                  Read the full mathematical explanation
+                  See the simple math behind this
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -369,19 +338,6 @@ const styles = StyleSheet.create({
   body: { fontSize: Typography.fontSize.sm, lineHeight: Typography.fontSize.sm * 1.55 },
   hint: { fontSize: Typography.fontSize.xs, marginBottom: Spacing.sm },
   bulletRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
-  resultBox: {
-    marginTop: Spacing.md,
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-  },
-  resultTitle: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.bold },
-  choiceBtn: {
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    padding: Spacing.md,
-  },
-  choiceLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
   cta: {
     flexDirection: 'row',
     alignItems: 'center',

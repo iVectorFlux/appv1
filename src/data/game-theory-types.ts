@@ -38,8 +38,17 @@ export interface GamePlayChoice {
   lesson: string;
 }
 
-/** How the Play tab renders interaction — not every game is a payoff matrix. */
-export type GamePlayMode = 'matrix' | 'choices' | 'monty_hall';
+/** How the Play tab renders — each mode has its own interactive experience. */
+export type GamePlayMode =
+  | 'matrix_duel'
+  | 'coin_flip'
+  | 'monty_hall'
+  | 'split_offer'
+  | 'take_or_pass'
+  | 'brinkmanship'
+  | 'trust_invest'
+  | 'bid'
+  | 'scenario';
 
 export interface GameTheoryGame {
   id: string;
