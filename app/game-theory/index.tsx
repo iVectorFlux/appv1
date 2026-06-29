@@ -64,10 +64,10 @@ export default function GameTheoryHubScreen() {
         <View style={[styles.hero, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}>
           <Text style={[styles.heroTag, { color: colors.primary }]}>STRATEGY LAB</Text>
           <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
-            Learn game theory through 30 classic games
+            Learn game theory through {GAME_THEORY_GAMES.length} classic games
           </Text>
           <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-            Each game explains a real strategic situation, lets you try a move, and shows what to take into work and life.
+            Matrix games, three-door puzzles, scenario choices — each with a step-by-step mathematical explanation.
           </Text>
           <View style={styles.progressRow}>
             <Ionicons name="trophy-outline" size={16} color={colors.accentTerracotta} />

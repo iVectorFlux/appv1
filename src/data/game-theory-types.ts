@@ -38,6 +38,9 @@ export interface GamePlayChoice {
   lesson: string;
 }
 
+/** How the Play tab renders interaction — not every game is a payoff matrix. */
+export type GamePlayMode = 'matrix' | 'choices' | 'monty_hall';
+
 export interface GameTheoryGame {
   id: string;
   order: number;
@@ -53,6 +56,8 @@ export interface GameTheoryGame {
   whatYouLearn: string[];
   workplaceExample: string;
   reflectionPrompt: string;
+  /** Preferred play UI; inferred from matrix / choices / id if omitted */
+  playMode?: GamePlayMode;
   matrix?: PayoffMatrixSpec;
   choices?: GamePlayChoice[];
 }

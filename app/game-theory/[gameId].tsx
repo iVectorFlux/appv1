@@ -1,5 +1,5 @@
 /**
- * Single game theory lesson — learn, play, reflect.
+ * Single game theory lesson — learn, play, reflect, and math.
  */
 
 import React, { useState } from 'react';
@@ -15,12 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { PayoffMatrix } from '@/components/game-theory/payoff-matrix';
+import { MontyHallPlay } from '@/components/game-theory/monty-hall-play';
+import { MathExplanationPanel } from '@/components/game-theory/math-explanation-panel';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { getGameById, getCategoryMeta } from '@/data/game-theory-catalog';
 import type { GamePlayChoice } from '@/data/game-theory-types';
 import { markGameTheoryComplete } from '@/services/game-theory-progress';
 
-type Phase = 'learn' | 'play' | 'done';
+type Tab = 'learn' | 'play' | 'math';
 
 export default function GameTheoryDetailScreen() {
   const { gameId } = useLocalSearchParams<{ gameId: string }>();
@@ -28,11 +30,13 @@ export default function GameTheoryDetailScreen() {
   const colors = useColors();
   const game = getGameById(String(gameId ?? ''));
 
-  const [phase, setPhase] = useState<Phase>('learn');
+  const [tab, setTab] = useState<Tab>('learn');
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [selectedCol, setSelectedCol] = useState<number | null>(null);
   const [choiceResult, setChoiceResult] = useState<GamePlayChoice | null>(null);
+  const [playedOnce, setPlayedOnce] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   if (!game) {
     return (
@@ -46,30 +50,29 @@ export default function GameTheoryDetailScreen() {
   }
 
   const category = getCategoryMeta(game.category);
-
-  const handleMatrixCell = (row: number, col: number) => {
-    setSelectedRow(row);
-    setSelectedCol(col);
-  };
-
-  const handleChoice = (choice: GamePlayChoice) => {
-    setChoiceResult(choice);
-  };
-
-  const handleComplete = async () => {
-    setCompleting(true);
-    try {
-      await markGameTheoryComplete(game.id);
-      setPhase('done');
-    } finally {
-      setCompleting(false);
-    }
-  };
+  const playMode = game.playMode;
 
   const matrixInsight =
     game.matrix && selectedRow != null && selectedCol != null
       ? game.matrix.payoffs[selectedRow][selectedCol]
       : null;
+
+  const handleComplete = async () => {
+    setCompleting(true);
+    try {
+      await markGameTheoryComplete(game.id);
+      setCompleted(true);
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  const playTypeLabel =
+    playMode === 'matrix'
+      ? 'Payoff matrix'
+      : playMode === 'monty_hall'
+        ? 'Three doors'
+        : 'Scenario choices';
 
   return (
     <GlassBackground>
@@ -84,39 +87,44 @@ export default function GameTheoryDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.tagline, { color: game.color }]}>{game.tagline}</Text>
             <Text style={[styles.meta, { color: colors.textMuted }]}>
-              {category?.label} · {game.players}
+              {category?.label} · {game.players} · {playTypeLabel}
             </Text>
           </View>
         </View>
 
-        {/* Phase tabs */}
         <View style={styles.tabs}>
-          {(['learn', 'play'] as const).map((p) => (
+          {(
+            [
+              { id: 'learn' as const, label: 'Learn' },
+              { id: 'play' as const, label: 'Play' },
+              { id: 'math' as const, label: 'Math' },
+            ] as const
+          ).map((t) => (
             <TouchableOpacity
-              key={p}
-              onPress={() => setPhase(p)}
+              key={t.id}
+              onPress={() => setTab(t.id)}
               style={[
                 styles.tab,
                 {
-                  borderColor: phase === p ? colors.primary : colors.glassBorder,
-                  backgroundColor: phase === p ? colors.primary + '14' : colors.glass,
+                  borderColor: tab === t.id ? colors.primary : colors.glassBorder,
+                  backgroundColor: tab === t.id ? colors.primary + '14' : colors.glass,
                 },
               ]}
             >
               <Text
                 style={{
                   fontSize: Typography.fontSize.sm,
-                  fontWeight: phase === p ? Typography.fontWeight.bold : Typography.fontWeight.medium,
-                  color: phase === p ? colors.primary : colors.textSecondary,
+                  fontWeight: tab === t.id ? Typography.fontWeight.bold : Typography.fontWeight.medium,
+                  color: tab === t.id ? colors.primary : colors.textSecondary,
                 }}
               >
-                {p === 'learn' ? '1 · Learn' : '2 · Play'}
+                {t.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {phase === 'learn' ? (
+        {tab === 'learn' ? (
           <View style={styles.section}>
             <Section title="The situation" colors={colors}>
               <Text style={[styles.hook, { color: colors.textPrimary }]}>{game.storyHook}</Text>
@@ -135,16 +143,38 @@ export default function GameTheoryDetailScreen() {
 
             <TouchableOpacity
               style={[styles.cta, { backgroundColor: colors.primary }]}
-              onPress={() => setPhase('play')}
+              onPress={() => setTab('play')}
             >
               <Text style={styles.ctaText}>Try the game</Text>
               <Ionicons name="arrow-forward" size={18} color="#FFF" />
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : null}
+
+        {tab === 'math' ? (
+          <View style={styles.section}>
+            {game.math ? (
+              <MathExplanationPanel math={game.math} />
+            ) : (
+              <Section title="Mathematical lens" colors={colors}>
+                <Text style={[styles.body, { color: colors.textSecondary }]}>
+                  Mathematical explanation coming soon for this game.
+                </Text>
+              </Section>
+            )}
+            <TouchableOpacity
+              style={[styles.ctaOutline, { borderColor: colors.primary }]}
+              onPress={() => setTab('play')}
+            >
+              <Text style={[styles.ctaOutlineText, { color: colors.primary }]}>Practice in Play tab</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {tab === 'play' ? (
           <View style={styles.section}>
             <Section title="Your move" colors={colors}>
-              {game.matrix ? (
+              {playMode === 'matrix' && game.matrix ? (
                 <>
                   <Text style={[styles.hint, { color: colors.textSecondary }]}>
                     Tap a cell to see payoffs ({game.matrix.rowPlayer}, {game.matrix.colPlayer}).
@@ -153,10 +183,19 @@ export default function GameTheoryDetailScreen() {
                     matrix={game.matrix}
                     selectedRow={selectedRow}
                     selectedCol={selectedCol}
-                    onSelectCell={handleMatrixCell}
+                    onSelectCell={(row, col) => {
+                      setSelectedRow(row);
+                      setSelectedCol(col);
+                      setPlayedOnce(true);
+                    }}
                   />
                   {matrixInsight ? (
-                    <View style={[styles.resultBox, { borderColor: colors.primary + '40', backgroundColor: colors.primary + '10' }]}>
+                    <View
+                      style={[
+                        styles.resultBox,
+                        { borderColor: colors.primary + '40', backgroundColor: colors.primary + '10' },
+                      ]}
+                    >
                       <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>
                         Payoff: you {matrixInsight[0]}, them {matrixInsight[1]}
                       </Text>
@@ -168,20 +207,32 @@ export default function GameTheoryDetailScreen() {
                 </>
               ) : null}
 
-              {game.choices ? (
+              {playMode === 'monty_hall' ? (
+                <MontyHallPlay onComplete={() => setPlayedOnce(true)} />
+              ) : null}
+
+              {playMode === 'choices' && game.choices ? (
                 <View style={{ gap: Spacing.sm }}>
                   {!choiceResult ? (
                     game.choices.map((c) => (
                       <TouchableOpacity
                         key={c.id}
                         style={[styles.choiceBtn, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}
-                        onPress={() => handleChoice(c)}
+                        onPress={() => {
+                          setChoiceResult(c);
+                          setPlayedOnce(true);
+                        }}
                       >
                         <Text style={[styles.choiceLabel, { color: colors.textPrimary }]}>{c.label}</Text>
                       </TouchableOpacity>
                     ))
                   ) : (
-                    <View style={[styles.resultBox, { borderColor: colors.accentSage + '50', backgroundColor: colors.accentSage + '12' }]}>
+                    <View
+                      style={[
+                        styles.resultBox,
+                        { borderColor: colors.accentSage + '50', backgroundColor: colors.accentSage + '12' },
+                      ]}
+                    >
                       <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>{choiceResult.outcome}</Text>
                       <Text style={[styles.body, { color: colors.textSecondary, marginTop: Spacing.sm }]}>
                         {choiceResult.lesson}
@@ -197,20 +248,41 @@ export default function GameTheoryDetailScreen() {
               ) : null}
             </Section>
 
+            {!playedOnce ? (
+              <Text style={[styles.hint, { color: colors.textMuted, textAlign: 'center' }]}>
+                Make at least one move to unlock completion.
+              </Text>
+            ) : null}
+
             <Section title="Reflect" colors={colors}>
               <Text style={[styles.body, { color: colors.textSecondary }]}>{game.reflectionPrompt}</Text>
             </Section>
 
-            {phase === 'done' ? (
+            {game.math ? (
+              <TouchableOpacity onPress={() => setTab('math')} style={styles.mathLink}>
+                <Ionicons name="calculator-outline" size={16} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontWeight: Typography.fontWeight.semibold }}>
+                  Read the full mathematical explanation
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {completed ? (
               <View style={[styles.doneBox, { borderColor: colors.accentSage }]}>
                 <Ionicons name="checkmark-circle" size={24} color={colors.accentSage} />
                 <Text style={[styles.doneText, { color: colors.textPrimary }]}>Marked complete</Text>
               </View>
             ) : (
               <TouchableOpacity
-                style={[styles.cta, { backgroundColor: colors.primary, opacity: completing ? 0.7 : 1 }]}
+                style={[
+                  styles.cta,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: completing || !playedOnce ? 0.55 : 1,
+                  },
+                ]}
                 onPress={handleComplete}
-                disabled={completing}
+                disabled={completing || !playedOnce}
               >
                 <Text style={styles.ctaText}>Complete lesson</Text>
               </TouchableOpacity>
@@ -223,7 +295,7 @@ export default function GameTheoryDetailScreen() {
               <Text style={{ color: colors.textSecondary }}>Back to all games</Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
       </ScrollView>
     </GlassBackground>
   );
@@ -320,6 +392,20 @@ const styles = StyleSheet.create({
     ...Shadows.sm,
   },
   ctaText: { color: '#FFF', fontWeight: Typography.fontWeight.bold, fontSize: Typography.fontSize.base },
+  ctaOutline: {
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.xl,
+    borderWidth: 1.5,
+    alignItems: 'center',
+  },
+  ctaOutlineText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.bold },
+  mathLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+  },
   secondaryBtn: { alignItems: 'center', paddingVertical: Spacing.md },
   doneBox: {
     flexDirection: 'row',

@@ -2,7 +2,21 @@ import type {
   GameTheoryCategory,
   GameTheoryCategoryId,
   GameTheoryGame,
+  GamePlayMode,
 } from './game-theory-types';
+import { getMathExplanation, type MathExplanation } from './game-theory-math';
+
+export type EnrichedGameTheoryGame = GameTheoryGame & {
+  playMode: GamePlayMode;
+  math?: MathExplanation;
+};
+
+function resolvePlayMode(game: GameTheoryGame): GamePlayMode {
+  if (game.playMode) return game.playMode;
+  if (game.id === 'monty_hall') return 'monty_hall';
+  if (game.matrix) return 'matrix';
+  return 'choices';
+}
 
 export const GAME_THEORY_CATEGORIES: GameTheoryCategory[] = [
   {
@@ -1198,10 +1212,41 @@ export const GAME_THEORY_GAMES: GameTheoryGame[] = [
       },
     ],
   },
+  {
+    id: 'monty_hall',
+    order: 31,
+    category: 'information',
+    title: 'Monty Hall Problem',
+    tagline: 'Three doors — should you switch?',
+    icon: 'albums-outline',
+    color: '#0EA5E9',
+    playMode: 'monty_hall',
+    storyHook:
+      'Three doors: one hides a car, two hide goats. You pick one. The host — who knows what is behind each door — opens another door showing a goat. Do you switch?',
+    description:
+      'Most people think it is 50/50 after one goat is revealed. Conditional probability says otherwise: switching wins two-thirds of the time. This is the classic statistics puzzle that separates intuition from Bayes.',
+    players: 'You vs host (knows all) · sequential reveal',
+    keyConcept: 'Conditional probability & Bayes’ rule',
+    whatYouLearn: [
+      'New information updates probabilities — not all “remaining options” are equally likely.',
+      'The host’s rule (never open the car) creates asymmetry between doors.',
+      'Switching doubles your win chance from 1/3 to 2/3.',
+    ],
+    workplaceExample:
+      'After a hiring screen removes one bad candidate, the odds on the remaining finalists are not automatically equal — how the filter works matters.',
+    reflectionPrompt:
+      'Where do you treat remaining options as 50/50 when the selection process actually gives you asymmetric information?',
+  },
 ];
 
-export function getGameById(id: string): GameTheoryGame | undefined {
-  return GAME_THEORY_GAMES.find((g) => g.id === id);
+export function getGameById(id: string): EnrichedGameTheoryGame | undefined {
+  const game = GAME_THEORY_GAMES.find((g) => g.id === id);
+  if (!game) return undefined;
+  return {
+    ...game,
+    playMode: resolvePlayMode(game),
+    math: getMathExplanation(id),
+  };
 }
 
 export function getGamesByCategory(category: GameTheoryCategoryId): GameTheoryGame[] {
