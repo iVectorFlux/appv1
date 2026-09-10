@@ -13,7 +13,9 @@ export async function requestThinkingNode(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as { error?: string }).error ?? `Request failed (${res.status})`);
+    const body = err as { error?: string; detail?: string };
+    const msg = [body.error, body.detail].filter(Boolean).join(' — ');
+    throw new Error(msg || `Request failed (${res.status})`);
   }
 
   return res.json() as Promise<ThinkingModeResponse>;

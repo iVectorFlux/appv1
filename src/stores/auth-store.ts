@@ -9,8 +9,26 @@
 
 import { create } from 'zustand';
 import Constants from 'expo-constants';
-import { supabase } from '@/lib/supabase';
+import { supabase, getSupabaseConnectionInfo, isSupabaseConfigured } from '@/lib/supabase';
+import {
+  isOnboardingCompleteLocal,
+  markOnboardingCompleteLocal,
+} from '@/services/onboarding-progress';
 import type { User, AuthState } from '@/types';
+
+async function resolveOnboardingComplete(userId: string): Promise<boolean> {
+  try {
+    const { data: row } = await supabase
+      .from('user_onboarding')
+      .select('completed_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (row?.completed_at) return true;
+  } catch {
+    // Table missing or RLS — fall through to local cache
+  }
+  return isOnboardingCompleteLocal(userId);
+}
 
 /** URL to redirect to after email confirmation. On web uses current origin; otherwise env EXPO_PUBLIC_APP_URL. */
 function getAuthRedirectUrl(): string | undefined {
@@ -23,8 +41,9 @@ interface AuthStore extends AuthState {
   hasCompletedOnboarding: boolean | null;
   /** True when Supabase requires email confirmation and user has not confirmed yet. */
   needsEmailConfirmation: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
   /** Mark onboarding complete (writes to Supabase user_onboarding, sets hasCompletedOnboarding). */
@@ -107,17 +126,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         const needsEmailConfirmation =
           typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
           !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
-        let hasCompletedOnboarding = false;
-        try {
-          const { data: row } = await supabase
-            .from('user_onboarding')
-            .select('completed_at')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-          hasCompletedOnboarding = !!row?.completed_at;
-        } catch {
-          // Table may not exist or RLS; treat as not completed
-        }
+        const hasCompletedOnboarding = await resolveOnboardingComplete(session.user.id);
         set({
           user,
           isAuthenticated: true,
@@ -152,13 +161,28 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  login: async (email: string, password: string): Promise<boolean> => {
+  login: async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      const conn = getSupabaseConnectionInfo();
+      if (!isSupabaseConfigured()) {
+        const hint = conn.isPlaceholder
+          ? 'App is still using the placeholder Supabase URL (your-project). Fix .env, then run: npx expo start -c'
+          : 'Supabase is not configured. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY in .env.';
+        return { success: false, error: hint };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
 
       if (error) {
         console.error('Supabase login error:', error.message);
-        return false;
+        let msg = error.message;
+        if (error.message === 'Invalid login credentials') {
+          msg = 'Invalid email or password. If you just signed up, confirm your email first.';
+        } else if (error.message === 'Failed to fetch' || error.message.includes('fetch')) {
+          msg =
+            'Cannot reach Supabase. Your app may still be on the old placeholder URL — stop Expo, run npx expo start -c, and hard-refresh the browser.';
+        }
+        return { success: false, error: msg };
       }
 
       if (data.user) {
@@ -166,17 +190,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         const needsEmailConfirmation =
           typeof (data.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
           !(data.user as { email_confirmed_at?: string | null }).email_confirmed_at;
-        let hasCompletedOnboarding = false;
-        try {
-          const { data: row } = await supabase
-            .from('user_onboarding')
-            .select('completed_at')
-            .eq('user_id', data.user.id)
-            .maybeSingle();
-          hasCompletedOnboarding = !!row?.completed_at;
-        } catch {
-          // ignore
-        }
+        const hasCompletedOnboarding = await resolveOnboardingComplete(data.user.id);
         set({
           user,
           isAuthenticated: true,
@@ -185,13 +199,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           needsEmailConfirmation: !!needsEmailConfirmation,
         });
         recordSessionStart(data.user.id);
-        return true;
+        return { success: true };
       }
 
-      return false;
+      return { success: false, error: 'Sign in failed. Please try again.' };
     } catch (error) {
       console.error('Login failed:', error);
-      return false;
+      return { success: false, error: 'Sign in failed. Please try again.' };
     }
   },
 
@@ -230,6 +244,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
+  resetPassword: async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const redirectTo = getAuthRedirectUrl();
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        ...(redirectTo && { redirectTo }),
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Could not send reset email. Try again.' };
+    }
+  },
+
   logout: async () => {
     const userId = get().user?.id;
     // 1) Global: revoke refresh token on server (may fail offline).
@@ -263,12 +290,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
-      const { data: row } = await supabase
-        .from('user_onboarding')
-        .select('completed_at')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-      set({ hasCompletedOnboarding: !!row?.completed_at });
+      const done = await resolveOnboardingComplete(session.user.id);
+      set({ hasCompletedOnboarding: done });
     } catch {
       // ignore
     }
@@ -278,6 +301,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const { user } = get();
     if (!user) return;
     const userId = user.id;
+    let savedRemote = false;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const uid = session?.user?.id ?? userId;
@@ -294,11 +318,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       );
       if (error) {
         console.error('[Auth] user_onboarding upsert failed:', error.message, error.code);
+      } else {
+        savedRemote = true;
       }
-      set({ hasCompletedOnboarding: true });
     } catch (error) {
       console.error('[Auth] Failed to save onboarding completion:', error);
-      set({ hasCompletedOnboarding: true });
+    }
+    await markOnboardingCompleteLocal(userId);
+    set({ hasCompletedOnboarding: true });
+    if (!savedRemote) {
+      console.warn('[Auth] Onboarding saved locally; Supabase sync may have failed.');
     }
   },
 
@@ -324,17 +353,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         const needsEmailConfirmation =
           typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
           !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
-        let hasCompletedOnboarding = false;
-        try {
-          const { data: row } = await supabase
-            .from('user_onboarding')
-            .select('completed_at')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-          hasCompletedOnboarding = !!row?.completed_at;
-        } catch {
-          // ignore
-        }
+        const hasCompletedOnboarding = await resolveOnboardingComplete(session.user.id);
         set({
           user,
           isAuthenticated: true,

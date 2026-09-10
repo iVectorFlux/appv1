@@ -6,7 +6,8 @@
 export const GROQ_CHAT_COMPLETIONS_URL =
   'https://api.groq.com/openai/v1/chat/completions';
 
-export const GROQ_DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+/** Groq retired llama-3.3-70b-versatile Aug 2026; GPT-OSS 120B is the recommended replacement. */
+export const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 export function getGroqEnv(): { apiKey: string; model: string } | null {
   let apiKey = process.env.GROQ_API_KEY?.trim();

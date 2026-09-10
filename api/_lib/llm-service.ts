@@ -1,3 +1,4 @@
+import { extractJsonText } from './extract-json';
 import { getGroqEnv, GROQ_CHAT_COMPLETIONS_URL } from './groq-config';
 
 export const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
@@ -86,7 +87,7 @@ export async function callSmartLlm(messages: any[], maxTokens = 1000): Promise<a
         throw new Error('Gemini API returned an empty text generation response.');
       }
 
-      return JSON.parse(rawText.trim());
+      return JSON.parse(extractJsonText(rawText));
     } catch (err: any) {
       console.warn(`[LLM-Service] Gemini primary call failed. Falling back to Groq... Error: ${err.message}`);
     }
@@ -120,7 +121,7 @@ export async function callSmartLlm(messages: any[], maxTokens = 1000): Promise<a
 
     const data = await res.json();
     const rawContent = data.choices?.[0]?.message?.content ?? '{}';
-    return JSON.parse(rawContent.trim());
+    return JSON.parse(extractJsonText(rawContent));
   }
 
   throw new Error('No working LLM provider (Gemini or Groq) is configured with a valid API key.');

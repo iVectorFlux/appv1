@@ -5,6 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyCors, handleCorsPreflight } from './_lib/cors';
+import { parseLlmJson } from './_lib/extract-json';
 import { getGroqEnv } from './_lib/groq-config';
 import { callSmartLlm } from './_lib/llm-service';
 
@@ -107,19 +108,20 @@ Return challengeFeedback (encouraging, specific — what they got right, what to
 }
 
 function parseResponse(raw: unknown): { node: Record<string, unknown>; challengeFeedback?: string } {
-  if (typeof raw === 'string') {
-    const parsed = JSON.parse(raw);
-    return parsed;
+  const obj = parseLlmJson(raw);
+  if (obj.node && typeof obj.node === 'object') {
+    return {
+      node: obj.node as Record<string, unknown>,
+      challengeFeedback: obj.challengeFeedback ? String(obj.challengeFeedback) : undefined,
+    };
   }
-  if (raw && typeof raw === 'object') {
-    const obj = raw as Record<string, unknown>;
-    if (obj.node) return obj as { node: Record<string, unknown>; challengeFeedback?: string };
-    if (obj.text) {
-      const inner = JSON.parse(String(obj.text));
-      return inner;
-    }
+  if (typeof obj.question === 'string' && typeof obj.explanation === 'string') {
+    return {
+      node: obj,
+      challengeFeedback: obj.challengeFeedback ? String(obj.challengeFeedback) : undefined,
+    };
   }
-  throw new Error('Invalid LLM response shape');
+  throw new Error('Invalid LLM response shape — missing node');
 }
 
 function normalizeNode(raw: Record<string, unknown>, fallbackId: string): Record<string, unknown> {
@@ -209,7 +211,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       challengeFeedback: parsed.challengeFeedback ? String(parsed.challengeFeedback) : undefined,
     });
   } catch (err) {
-    console.error('[thinking-mode]', err);
-    res.status(500).json({ error: 'Failed to generate thinking node' });
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[thinking-mode]', message);
+    const hint =
+      message.includes('Groq') || message.includes('model')
+        ? 'LLM error — set GROQ_MODEL=openai/gpt-oss-120b on Vercel and redeploy.'
+        : message.includes('Gemini')
+          ? 'Gemini error — check GEMINI_API_KEY on Vercel or rely on Groq.'
+          : 'Failed to generate thinking node';
+    res.status(500).json({ error: hint, detail: message.slice(0, 200) });
   }
 }
