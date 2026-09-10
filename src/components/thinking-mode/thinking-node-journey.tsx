@@ -22,7 +22,55 @@ import {
   pickNodeEmoji,
 } from './thinking-ui-utils';
 
-type JourneyPhase = 'think' | 'gist' | 'visual' | 'learn' | 'extra' | 'explore';
+type StepKind =
+  | 'think'
+  | 'gist'
+  | 'visual'
+  | 'learn'
+  | 'evidence'
+  | 'concepts'
+  | 'challenge'
+  | 'explore';
+
+interface JourneyStep {
+  kind: StepKind;
+  bulletIndex?: number;
+}
+
+function buildSteps(node: ThinkingNode, bullets: string[]): JourneyStep[] {
+  const steps: JourneyStep[] = [];
+  if (node.socraticQuestion) steps.push({ kind: 'think' });
+  steps.push({ kind: 'gist' }, { kind: 'visual' });
+  bullets.forEach((_, i) => steps.push({ kind: 'learn', bulletIndex: i }));
+  if (node.evidence) steps.push({ kind: 'evidence' });
+  if (node.concepts.length > 0) steps.push({ kind: 'concepts' });
+  if (node.challengePrompt) steps.push({ kind: 'challenge' });
+  steps.push({ kind: 'explore' });
+  return steps;
+}
+
+function stepLabel(step: JourneyStep, bulletsLen: number): string {
+  switch (step.kind) {
+    case 'think':
+      return 'Think first';
+    case 'gist':
+      return 'The gist';
+    case 'visual':
+      return 'Picture it';
+    case 'learn':
+      return bulletsLen > 1 ? `Learn more (${(step.bulletIndex ?? 0) + 1}/${bulletsLen})` : 'Learn more';
+    case 'evidence':
+      return 'Real example';
+    case 'concepts':
+      return 'Quick detour';
+    case 'challenge':
+      return 'Your turn';
+    case 'explore':
+      return 'Where next?';
+    default:
+      return '';
+  }
+}
 
 interface ThinkingNodeJourneyProps {
   node: ThinkingNode;
@@ -31,17 +79,6 @@ interface ThinkingNodeJourneyProps {
   onExpandBranch: (branch: ThinkingBranch) => void;
   onExploreConcept: (term: string) => void;
   onSubmitChallenge: (answer: string) => void;
-}
-
-function phaseList(node: ThinkingNode): JourneyPhase[] {
-  const phases: JourneyPhase[] = [];
-  if (node.socraticQuestion) phases.push('think');
-  phases.push('gist', 'visual', 'learn');
-  if (node.evidence || node.whyItMatters || node.concepts.length > 0 || node.challengePrompt) {
-    phases.push('extra');
-  }
-  phases.push('explore');
-  return phases;
 }
 
 export function ThinkingNodeJourney({
@@ -55,109 +92,103 @@ export function ThinkingNodeJourney({
   const colors = useColors();
   const heroEmoji = pickNodeEmoji(node);
   const bullets = useMemo(() => explanationBullets(node), [node]);
-  const phases = useMemo(() => phaseList(node), [node]);
-  const [phaseIndex, setPhaseIndex] = useState(0);
-  const [bulletIndex, setBulletIndex] = useState(0);
-  const [thinkRevealed, setThinkRevealed] = useState(false);
+  const steps = useMemo(() => buildSteps(node, bullets), [node, bullets]);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [thinkGuess, setThinkGuess] = useState('');
   const [challengeAnswer, setChallengeAnswer] = useState('');
   const fade = React.useRef(new Animated.Value(1)).current;
 
-  const phase = phases[phaseIndex] ?? 'explore';
+  const step = steps[stepIndex] ?? steps[steps.length - 1];
+  const isFirst = stepIndex === 0;
+  const isLast = stepIndex >= steps.length - 1;
 
   useEffect(() => {
-    setPhaseIndex(0);
-    setBulletIndex(0);
-    setThinkRevealed(false);
+    setStepIndex(0);
+    setThinkGuess('');
     setChallengeAnswer('');
     fade.setValue(1);
   }, [node.id, fade]);
 
-  const animateNext = (next: () => void) => {
-    Animated.timing(fade, { toValue: 0, duration: 120, useNativeDriver: true }).start(() => {
-      next();
-      Animated.timing(fade, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+  const animateStep = (nextIndex: number) => {
+    Animated.timing(fade, { toValue: 0, duration: 100, useNativeDriver: true }).start(() => {
+      setStepIndex(nextIndex);
+      Animated.timing(fade, { toValue: 1, duration: 160, useNativeDriver: true }).start();
     });
   };
 
   const goNext = () => {
-    if (phase === 'learn' && bulletIndex < bullets.length - 1) {
-      setBulletIndex((i) => i + 1);
-      return;
-    }
-    if (phaseIndex < phases.length - 1) {
-      animateNext(() => {
-        setPhaseIndex((i) => i + 1);
-        setBulletIndex(0);
-      });
-    }
+    if (stepIndex < steps.length - 1) animateStep(stepIndex + 1);
   };
 
   const goBack = () => {
-    if (phase === 'learn' && bulletIndex > 0) {
-      setBulletIndex((i) => i - 1);
-      return;
-    }
-    if (phaseIndex > 0) {
-      animateNext(() => {
-        setPhaseIndex((i) => i - 1);
-        setBulletIndex(Math.max(0, bullets.length - 1));
-      });
-    }
+    if (stepIndex > 0) animateStep(stepIndex - 1);
   };
-
-  const canGoBack = phaseIndex > 0 || (phase === 'learn' && bulletIndex > 0);
-  const isLastPhase = phaseIndex >= phases.length - 1;
-  const learnHasMore = phase === 'learn' && bulletIndex < bullets.length - 1;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.progressRow}>
-        {phases.map((p, i) => (
-          <View
-            key={p}
-            style={[
-              styles.progressDot,
-              {
-                backgroundColor: i <= phaseIndex ? colors.primary : colors.glassBorder,
-                width: i === phaseIndex ? 18 : 8,
-              },
-            ]}
-          />
+        {steps.map((s, i) => (
+          <TouchableOpacity
+            key={`${s.kind}-${s.bulletIndex ?? i}`}
+            onPress={() => i <= stepIndex && animateStep(i)}
+            disabled={i > stepIndex}
+            hitSlop={6}
+          >
+            <View
+              style={[
+                styles.progressDot,
+                {
+                  backgroundColor: i <= stepIndex ? colors.primary : colors.glassBorder,
+                  width: i === stepIndex ? 18 : 8,
+                },
+              ]}
+            />
+          </TouchableOpacity>
         ))}
       </View>
 
-      <Animated.View style={[styles.card, { borderColor: colors.glassBorder, backgroundColor: colors.surface, opacity: fade }]}>
-        {phase === 'think' ? (
+      <Text style={[styles.stepHint, { color: colors.textMuted }]}>
+        Step {stepIndex + 1} of {steps.length} · {stepLabel(step, bullets.length)}
+      </Text>
+
+      <Animated.View
+        style={[styles.card, { borderColor: colors.glassBorder, backgroundColor: colors.surface, opacity: fade }]}
+      >
+        {step.kind === 'think' ? (
           <>
             <Text style={styles.heroEmoji}>{heroEmoji}</Text>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{friendlyLabel(node.question)}</Text>
             <View style={[styles.thinkBox, { borderColor: colors.primary + '30', backgroundColor: colors.primary + '08' }]}>
-              <Text style={[styles.thinkLabel, { color: colors.primary }]}>🤔 Pause — what do you think?</Text>
+              <Text style={[styles.thinkLabel, { color: colors.primary }]}>🤔 Think first</Text>
+              <Text style={[styles.thinkHint, { color: colors.textMuted }]}>
+                Just reflect for a moment — no wrong answers. You can optionally write a guess below.
+              </Text>
               <Text style={[styles.thinkQ, { color: colors.textPrimary }]}>{node.socraticQuestion}</Text>
+              <TextInput
+                value={thinkGuess}
+                onChangeText={setThinkGuess}
+                placeholder="Optional: type your guess here…"
+                placeholderTextColor={colors.textMuted}
+                multiline
+                style={[
+                  styles.thinkInput,
+                  { borderColor: colors.glassBorder, color: colors.textPrimary, backgroundColor: colors.glass },
+                ]}
+              />
             </View>
-            {!thinkRevealed ? (
-              <View style={styles.thinkActions}>
-                <TouchableOpacity
-                  style={[styles.secondaryBtn, { borderColor: colors.glassBorder }]}
-                  onPress={() => setThinkRevealed(true)}
-                >
-                  <Text style={[styles.secondaryBtnText, { color: colors.textSecondary }]}>Skip for now</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-                  onPress={() => setThinkRevealed(true)}
-                >
-                  <Text style={styles.primaryBtnText}>Show me</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
           </>
         ) : null}
 
-        {phase === 'gist' ? (
+        {step.kind === 'gist' ? (
           <>
             <Text style={styles.heroEmoji}>{heroEmoji}</Text>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{friendlyLabel(node.question)}</Text>
+            {thinkGuess.trim() ? (
+              <View style={[styles.guessRecall, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+                <Text style={[styles.guessRecallLabel, { color: colors.textMuted }]}>Your guess</Text>
+                <Text style={[styles.guessRecallText, { color: colors.textSecondary }]}>{thinkGuess.trim()}</Text>
+              </View>
+            ) : null}
             <View style={[styles.gistBubble, { backgroundColor: colors.accentIndigo + '12', borderColor: colors.accentIndigo + '28' }]}>
               <Text style={[styles.gistLabel, { color: colors.accentIndigo }]}>✨ The gist</Text>
               <Text style={[styles.gistText, { color: colors.textPrimary }]}>{nodeTldr(node)}</Text>
@@ -168,95 +199,88 @@ export function ThinkingNodeJourney({
           </>
         ) : null}
 
-        {phase === 'visual' ? (
+        {step.kind === 'visual' ? (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>👀 Picture it</Text>
             <ThinkingRepresentationView node={node} />
-            {node.visualizationHint && node.processSteps?.length ? (
+            {node.visualizationHint ? (
               <Text style={[styles.visualCaption, { color: colors.textMuted }]}>{node.visualizationHint}</Text>
             ) : null}
           </>
         ) : null}
 
-        {phase === 'learn' ? (
+        {step.kind === 'learn' ? (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              📖 Learn more {bullets.length > 1 ? `(${bulletIndex + 1}/${bullets.length})` : ''}
+              📖 {stepLabel(step, bullets.length)}
             </Text>
             <View style={[styles.bulletCard, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}>
               <ExplorableText
-                text={bullets[bulletIndex] ?? node.explanation}
+                text={bullets[step.bulletIndex ?? 0] ?? node.explanation}
                 concepts={node.concepts}
                 onExploreConcept={onExploreConcept}
               />
             </View>
-            {bullets.length > 1 ? (
-              <View style={styles.bulletDots}>
-                {bullets.map((_, i) => (
-                  <View
-                    key={i}
-                    style={[styles.bulletDot, { backgroundColor: i === bulletIndex ? colors.primary : colors.glassBorder }]}
-                  />
-                ))}
-              </View>
-            ) : null}
           </>
         ) : null}
 
-        {phase === 'extra' ? (
-          <>
-            {node.evidence ? (
-              <View style={[styles.extraBlock, { borderColor: colors.accentSage + '35', backgroundColor: colors.accentSage + '10' }]}>
-                <Text style={[styles.extraTitle, { color: colors.accentSage }]}>🌍 Real example</Text>
-                <Text style={[styles.extraBody, { color: colors.textPrimary }]}>{node.evidence}</Text>
-              </View>
-            ) : null}
-
-            {node.concepts.length > 0 ? (
-              <View style={styles.conceptBlock}>
-                <Text style={[styles.extraTitle, { color: colors.textSecondary }]}>🔍 Need a quick detour?</Text>
-                <View style={styles.conceptRow}>
-                  {node.concepts.map((c) => (
-                    <ConceptChip key={c.term} concept={c} onPress={() => onExploreConcept(c.term)} />
-                  ))}
-                </View>
-              </View>
-            ) : null}
-
-            {node.challengePrompt ? (
-              <View style={[styles.challenge, { borderColor: colors.accentTerracotta + '40', backgroundColor: colors.accentTerracotta + '08' }]}>
-                <Text style={[styles.extraTitle, { color: colors.accentTerracotta }]}>🎯 Your turn</Text>
-                <Text style={[styles.challengeQ, { color: colors.textPrimary }]}>{node.challengePrompt}</Text>
-                {challengeFeedback ? (
-                  <Text style={[styles.feedback, { color: colors.textSecondary }]}>{challengeFeedback}</Text>
-                ) : (
-                  <>
-                    <TextInput
-                      value={challengeAnswer}
-                      onChangeText={setChallengeAnswer}
-                      placeholder="What do you think?"
-                      placeholderTextColor={colors.textMuted}
-                      multiline
-                      style={[styles.input, { borderColor: colors.glassBorder, color: colors.textPrimary, backgroundColor: colors.glass }]}
-                    />
-                    <TouchableOpacity
-                      disabled={!challengeAnswer.trim() || loading}
-                      onPress={() => {
-                        onSubmitChallenge(challengeAnswer.trim());
-                        setChallengeAnswer('');
-                      }}
-                      style={[styles.primaryBtn, { backgroundColor: colors.accentTerracotta, opacity: challengeAnswer.trim() ? 1 : 0.5 }]}
-                    >
-                      <Text style={styles.primaryBtnText}>Check my thinking</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            ) : null}
-          </>
+        {step.kind === 'evidence' ? (
+          <View style={[styles.extraBlock, { borderColor: colors.accentSage + '35', backgroundColor: colors.accentSage + '10' }]}>
+            <Text style={[styles.sectionTitle, { color: colors.accentSage }]}>🌍 Real example</Text>
+            <Text style={[styles.extraBody, { color: colors.textPrimary }]}>{node.evidence}</Text>
+          </View>
         ) : null}
 
-        {phase === 'explore' ? (
+        {step.kind === 'concepts' ? (
+          <View style={styles.conceptBlock}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🔍 Need a quick detour?</Text>
+            <Text style={[styles.conceptHint, { color: colors.textMuted }]}>
+              Tap a term if something is unclear — you will return here after.
+            </Text>
+            <View style={styles.conceptRow}>
+              {node.concepts.map((c) => (
+                <ConceptChip key={c.term} concept={c} onPress={() => onExploreConcept(c.term)} />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {step.kind === 'challenge' ? (
+          <View style={[styles.challenge, { borderColor: colors.accentTerracotta + '40', backgroundColor: colors.accentTerracotta + '08' }]}>
+            <Text style={[styles.sectionTitle, { color: colors.accentTerracotta }]}>🎯 Your turn</Text>
+            <Text style={[styles.challengeHint, { color: colors.textMuted }]}>Write your answer — we will check your thinking.</Text>
+            <Text style={[styles.challengeQ, { color: colors.textPrimary }]}>{node.challengePrompt}</Text>
+            {challengeFeedback ? (
+              <Text style={[styles.feedback, { color: colors.textSecondary }]}>{challengeFeedback}</Text>
+            ) : (
+              <>
+                <TextInput
+                  value={challengeAnswer}
+                  onChangeText={setChallengeAnswer}
+                  placeholder="Type your answer here…"
+                  placeholderTextColor={colors.textMuted}
+                  multiline
+                  style={[styles.input, { borderColor: colors.glassBorder, color: colors.textPrimary, backgroundColor: colors.glass }]}
+                />
+                <TouchableOpacity
+                  disabled={!challengeAnswer.trim() || loading}
+                  onPress={() => {
+                    onSubmitChallenge(challengeAnswer.trim());
+                    setChallengeAnswer('');
+                  }}
+                  style={[
+                    styles.inlinePrimaryBtn,
+                    { backgroundColor: colors.accentTerracotta, opacity: challengeAnswer.trim() ? 1 : 0.5 },
+                  ]}
+                >
+                  <Text style={styles.inlinePrimaryBtnText}>Check my thinking</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        ) : null}
+
+        {step.kind === 'explore' ? (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🧭 Where next?</Text>
             <Text style={[styles.exploreSub, { color: colors.textMuted }]}>Pick a path — your map grows as you go.</Text>
@@ -287,33 +311,30 @@ export function ThinkingNodeJourney({
         ) : null}
       </Animated.View>
 
-      {phase !== 'explore' && !(phase === 'think' && !thinkRevealed) ? (
-        <View style={styles.navRow}>
-          {canGoBack ? (
-            <TouchableOpacity style={[styles.navBtn, { borderColor: colors.glassBorder }]} onPress={goBack}>
-              <Ionicons name="arrow-back" size={16} color={colors.textSecondary} />
-              <Text style={[styles.navBtnText, { color: colors.textSecondary }]}>Back</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.navSpacer} />
-          )}
-          {!isLastPhase || learnHasMore ? (
-            <TouchableOpacity style={[styles.navBtnPrimary, { backgroundColor: colors.primary }]} onPress={goNext}>
-              <Text style={styles.navBtnPrimaryText}>{learnHasMore ? 'Next point' : 'Continue'}</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFF" />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.navSpacer} />
-          )}
-        </View>
-      ) : null}
+      <View style={styles.navRow}>
+        {!isFirst ? (
+          <TouchableOpacity style={[styles.navBtn, { borderColor: colors.glassBorder }]} onPress={goBack}>
+            <Ionicons name="arrow-back" size={16} color={colors.textSecondary} />
+            <Text style={[styles.navBtnText, { color: colors.textSecondary }]}>Back</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.navSpacer} />
+        )}
 
-      {phase === 'think' && thinkRevealed ? (
-        <TouchableOpacity style={[styles.navBtnPrimary, { backgroundColor: colors.primary, alignSelf: 'stretch' }]} onPress={goNext}>
-          <Text style={styles.navBtnPrimaryText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={16} color="#FFF" />
-        </TouchableOpacity>
-      ) : null}
+        {step.kind === 'think' ? (
+          <TouchableOpacity style={[styles.navBtnPrimary, { backgroundColor: colors.primary, flex: 1 }]} onPress={goNext}>
+            <Text style={styles.navBtnPrimaryText}>Show me the answer</Text>
+            <Ionicons name="arrow-forward" size={16} color="#FFF" />
+          </TouchableOpacity>
+        ) : !isLast ? (
+          <TouchableOpacity style={[styles.navBtnPrimary, { backgroundColor: colors.primary }]} onPress={goNext}>
+            <Text style={styles.navBtnPrimaryText}>Continue</Text>
+            <Ionicons name="arrow-forward" size={16} color="#FFF" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.navSpacer} />
+        )}
+      </View>
 
       {loading ? (
         <View style={styles.loadingRow}>
@@ -329,32 +350,45 @@ const styles = StyleSheet.create({
   wrap: { gap: Spacing.md },
   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 4 },
   progressDot: { height: 8, borderRadius: 4 },
-  card: { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.lg, gap: Spacing.md, minHeight: 200 },
+  stepHint: { fontSize: Typography.fontSize.xs, textAlign: 'center' },
+  card: { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.lg, gap: Spacing.md, minHeight: 180 },
   heroEmoji: { fontSize: 40, textAlign: 'center' },
   cardTitle: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.bold, textAlign: 'center', lineHeight: 26 },
   thinkBox: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, gap: Spacing.sm },
   thinkLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
-  thinkQ: { fontSize: Typography.fontSize.base, lineHeight: 24 },
-  thinkActions: { flexDirection: 'row', gap: Spacing.sm },
+  thinkHint: { fontSize: Typography.fontSize.xs, lineHeight: 18 },
+  thinkQ: { fontSize: Typography.fontSize.base, lineHeight: 24, fontWeight: Typography.fontWeight.medium },
+  thinkInput: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    minHeight: 56,
+    fontSize: Typography.fontSize.sm,
+    textAlignVertical: 'top',
+    marginTop: Spacing.xs,
+  },
+  guessRecall: { padding: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, gap: 2 },
+  guessRecallLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold },
+  guessRecallText: { fontSize: Typography.fontSize.sm, lineHeight: 20, fontStyle: 'italic' },
   gistBubble: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, gap: 6 },
   gistLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
   gistText: { fontSize: Typography.fontSize.base, lineHeight: 24, fontWeight: Typography.fontWeight.medium },
   whyLine: { fontSize: Typography.fontSize.sm, lineHeight: 20, textAlign: 'center' },
   sectionTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.bold },
-  visualCaption: { fontSize: Typography.fontSize.xs, lineHeight: 18, textAlign: 'center', fontStyle: 'italic' },
+  visualCaption: { fontSize: Typography.fontSize.sm, lineHeight: 20, textAlign: 'center', fontStyle: 'italic' },
   bulletCard: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1 },
-  bulletText: { fontSize: Typography.fontSize.sm, lineHeight: 22 },
-  bulletDots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
-  bulletDot: { width: 8, height: 8, borderRadius: 4 },
-  extraBlock: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, gap: 6 },
-  extraTitle: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
+  extraBlock: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, gap: Spacing.sm },
   extraBody: { fontSize: Typography.fontSize.sm, lineHeight: 22 },
   conceptBlock: { gap: Spacing.sm },
+  conceptHint: { fontSize: Typography.fontSize.xs, lineHeight: 18, marginTop: -Spacing.xs },
   conceptRow: { gap: Spacing.sm },
-  challenge: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, gap: Spacing.sm },
+  challenge: { gap: Spacing.sm },
+  challengeHint: { fontSize: Typography.fontSize.xs, lineHeight: 18 },
   challengeQ: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, lineHeight: 22 },
   feedback: { fontSize: Typography.fontSize.sm, lineHeight: 22 },
   input: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm, minHeight: 72, fontSize: Typography.fontSize.sm, textAlignVertical: 'top' },
+  inlinePrimaryBtn: { paddingVertical: Spacing.sm, borderRadius: Radius.md, alignItems: 'center' },
+  inlinePrimaryBtnText: { color: '#FFF', fontWeight: Typography.fontWeight.bold, fontSize: Typography.fontSize.sm },
   exploreSub: { fontSize: Typography.fontSize.sm, marginTop: -Spacing.sm },
   branchGrid: { gap: Spacing.sm },
   branchBtn: {
@@ -370,7 +404,7 @@ const styles = StyleSheet.create({
   branchType: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, textTransform: 'capitalize' },
   branchLabel: { fontSize: Typography.fontSize.sm, lineHeight: 20 },
   navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  navSpacer: { flex: 1 },
+  navSpacer: { minWidth: 72 },
   navBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -391,9 +425,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   navBtnPrimaryText: { color: '#FFF', fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.bold },
-  primaryBtn: { paddingVertical: Spacing.sm, borderRadius: Radius.md, alignItems: 'center', flex: 1 },
-  primaryBtnText: { color: '#FFF', fontWeight: Typography.fontWeight.bold, fontSize: Typography.fontSize.sm },
-  secondaryBtn: { paddingVertical: Spacing.sm, borderRadius: Radius.md, alignItems: 'center', flex: 1, borderWidth: 1 },
-  secondaryBtnText: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
   loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
 });
