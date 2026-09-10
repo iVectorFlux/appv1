@@ -16,18 +16,45 @@ import {
 } from '@/services/onboarding-progress';
 import type { User, AuthState } from '@/types';
 
+function hasSavedOnboardingGoals(goals: unknown): boolean {
+  return Array.isArray(goals) && goals.some((g) => typeof g === 'string' && g.trim().length > 0);
+}
+
+/** True when onboarding is done — local cache first, then Supabase, then saved goals. */
 async function resolveOnboardingComplete(userId: string): Promise<boolean> {
+  if (await isOnboardingCompleteLocal(userId)) return true;
+
   try {
-    const { data: row } = await supabase
+    const { data: row, error: onboardingError } = await supabase
       .from('user_onboarding')
       .select('completed_at')
       .eq('user_id', userId)
       .maybeSingle();
-    if (row?.completed_at) return true;
-  } catch {
-    // Table missing or RLS — fall through to local cache
+    if (onboardingError) {
+      console.warn('[Auth] user_onboarding read:', onboardingError.message);
+    }
+    if (row?.completed_at) {
+      await markOnboardingCompleteLocal(userId);
+      return true;
+    }
+
+    const { data: prefs, error: prefsError } = await supabase
+      .from('user_preferences')
+      .select('goals')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (prefsError) {
+      console.warn('[Auth] user_preferences read:', prefsError.message);
+    }
+    if (hasSavedOnboardingGoals(prefs?.goals)) {
+      await markOnboardingCompleteLocal(userId);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[Auth] resolveOnboardingComplete failed:', err);
   }
-  return isOnboardingCompleteLocal(userId);
+
+  return false;
 }
 
 /** URL to redirect to after email confirmation. On web uses current origin; otherwise env EXPO_PUBLIC_APP_URL. */
@@ -139,7 +166,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({ user: null, isAuthenticated: false, isLoading: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
       }
 
-      supabase.auth.onAuthStateChange(async (_event, session) => {
+      supabase.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
           const user = await getUserWithProfile(session.user);
           const needsEmailConfirmation =
@@ -150,7 +177,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             isAuthenticated: true,
             needsEmailConfirmation: !!needsEmailConfirmation,
           });
-          get().refreshOnboardingStatus();
+          // Token refresh on app resume must not re-run onboarding checks (RLS race → false redirect).
+          if (event !== 'TOKEN_REFRESHED' && event !== 'INITIAL_SESSION') {
+            get().refreshOnboardingStatus();
+          }
         } else {
           set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
         }
@@ -285,13 +315,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   refreshOnboardingStatus: async () => {
-    const { user, isAuthenticated } = get();
+    const { user, isAuthenticated, hasCompletedOnboarding } = get();
     if (!isAuthenticated || !user) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
       const done = await resolveOnboardingComplete(session.user.id);
-      set({ hasCompletedOnboarding: done });
+      set({ hasCompletedOnboarding: hasCompletedOnboarding === true || done });
     } catch {
       // ignore
     }
@@ -347,17 +377,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   revalidateSession: async () => {
     try {
+      const { hasCompletedOnboarding: wasOnboarded } = get();
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const user = await getUserWithProfile(session.user);
         const needsEmailConfirmation =
           typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
           !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
-        const hasCompletedOnboarding = await resolveOnboardingComplete(session.user.id);
+        const resolved = await resolveOnboardingComplete(session.user.id);
         set({
           user,
           isAuthenticated: true,
-          hasCompletedOnboarding,
+          hasCompletedOnboarding: wasOnboarded === true || resolved,
           needsEmailConfirmation: !!needsEmailConfirmation,
         });
       } else {

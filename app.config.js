@@ -2,7 +2,7 @@
  * Expo app config with env loading.
  * Loads .env so EXPO_PUBLIC_* and extra vars are available in the app.
  */
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const { expo } = require('./app.json');
 

@@ -380,7 +380,7 @@ export default function TraitTestScreen() {
                         activeOpacity={0.75}
                       >
                         <Text style={[st.optionLetter, isSelected && st.optionLetterSelected]}>
-                          {String.fromCharCode(65 + i)}.
+                          {`${String.fromCharCode(65 + i)}.`}
                         </Text>
                         <Text style={[st.optionLabel, isSelected && st.optionLabelSelected]}>{opt.label}</Text>
                         {isSelected ? (

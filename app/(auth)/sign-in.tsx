@@ -17,18 +17,22 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
+import { getSupabaseConnectionInfo } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 
 export default function SignInScreen() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { login, resetPassword } = useAuthStore();
   const colors = useColors();
+  const supabaseInfo = getSupabaseConnectionInfo();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -38,20 +42,45 @@ export default function SignInScreen() {
 
     setLoading(true);
     setError('');
+    setInfo('');
 
     try {
-      const success = await login(email.trim(), password);
+      const result = await login(email.trim(), password);
 
-      if (success) {
+      if (result.success) {
         router.replace('/');
       } else {
-        setError('Invalid email or password');
+        const base = result.error ?? 'Invalid email or password';
+        const projectHint = supabaseInfo.projectRef
+          ? ` (app connected to Supabase project: ${supabaseInfo.projectRef})`
+          : ' (Supabase is not configured — check .env and restart Expo)';
+        setError(`${base}${projectHint}`);
       }
     } catch (err) {
       setError('Sign in failed. Please try again.');
       console.error('Sign in error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Enter your email above, then tap Forgot password');
+      return;
+    }
+    setResetLoading(true);
+    setError('');
+    setInfo('');
+    try {
+      const result = await resetPassword(email.trim());
+      if (result.success) {
+        setInfo('Password reset email sent — check your inbox.');
+      } else {
+        setError(result.error ?? 'Could not send reset email');
+      }
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -105,6 +134,8 @@ export default function SignInScreen() {
               error={error}
             />
 
+            {info ? <Text style={styles.infoText}>{info}</Text> : null}
+
             <Button
               title="Sign In"
               onPress={handleSignIn}
@@ -112,6 +143,16 @@ export default function SignInScreen() {
               fullWidth
               size="lg"
             />
+
+            <TouchableOpacity
+              style={styles.forgotLink}
+              onPress={handleForgotPassword}
+              disabled={resetLoading}
+            >
+              <Text style={styles.forgotLinkText}>
+                {resetLoading ? 'Sending reset email…' : 'Forgot password?'}
+              </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.signUpLink}
@@ -126,6 +167,17 @@ export default function SignInScreen() {
             <Text style={styles.privacyText}>
               Your privacy is protected. Your data is encrypted and stays private.
             </Text>
+            {supabaseInfo.isPlaceholder ? (
+              <Text style={styles.debugTextWarn}>
+                Wrong Supabase URL loaded (your-project). Stop Expo → npx expo start -c → hard refresh browser.
+              </Text>
+            ) : supabaseInfo.projectRef ? (
+              <Text style={styles.debugText}>Auth server: {supabaseInfo.projectRef}</Text>
+            ) : (
+              <Text style={styles.debugTextWarn}>
+                Supabase not loaded — run npx expo start -c after editing .env
+              </Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -174,6 +226,21 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   form: {
     marginBottom: Spacing.xl,
   },
+  infoText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.accentSage,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  forgotLink: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+  },
+  forgotLinkText: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: Typography.fontWeight.medium,
+  },
   signUpLink: {
     marginTop: Spacing.lg,
     alignItems: 'center',
@@ -196,5 +263,18 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
     textAlign: 'center',
     fontFamily: Typography.fontFamily.primary,
+  },
+  debugText: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+  },
+  debugTextWarn: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.destructive,
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    fontWeight: Typography.fontWeight.semibold,
   },
 });

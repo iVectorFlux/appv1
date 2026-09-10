@@ -46,12 +46,64 @@ export function convertMessagesToGemini(messages: any[]) {
   return payload;
 }
 
+/** Groq JSON completion — same path as /api/chat (reliable on Vercel). */
+export async function callGroqJson(messages: any[], maxTokens = 1000): Promise<any> {
+  const groqEnv = getGroqEnv();
+  if (!groqEnv?.apiKey) {
+    throw new Error('Groq is not configured (GROQ_API_KEY missing on server).');
+  }
+
+  const body = {
+    model: groqEnv.model,
+    messages,
+    max_tokens: maxTokens,
+    temperature: 0.7,
+    response_format: { type: 'json_object' },
+  };
+
+  const res = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${groqEnv.apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Groq request failed (HTTP ${res.status}): ${text.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const rawContent = data.choices?.[0]?.message?.content ?? '{}';
+  return JSON.parse(extractJsonText(rawContent));
+}
+
+export type CallSmartLlmOptions = {
+  /** Use Groq first (recommended for large JSON payloads / strict latency budgets). */
+  preferGroq?: boolean;
+};
+
 /**
  * Robust caller that uses Gemini as primary and falls back to Groq if needed.
+ * Pass preferGroq: true for routes that must match /api/chat reliability on Vercel.
  */
-export async function callSmartLlm(messages: any[], maxTokens = 1000): Promise<any> {
+export async function callSmartLlm(
+  messages: any[],
+  maxTokens = 1000,
+  options?: CallSmartLlmOptions
+): Promise<any> {
   const geminiEnv = getGeminiEnv();
   const groqEnv = getGroqEnv();
+
+  if (options?.preferGroq && groqEnv?.apiKey) {
+    try {
+      return await callGroqJson(messages, maxTokens);
+    } catch (err: any) {
+      console.warn(`[LLM-Service] Groq primary call failed. Trying Gemini... Error: ${err.message}`);
+    }
+  }
 
   // 1. Try Gemini first
   if (geminiEnv?.apiKey) {
@@ -97,31 +149,7 @@ export async function callSmartLlm(messages: any[], maxTokens = 1000): Promise<a
 
   // 2. Fall back to Groq
   if (groqEnv?.apiKey) {
-    const body = {
-      model: groqEnv.model,
-      messages,
-      max_tokens: maxTokens,
-      temperature: 0.7,
-      response_format: { type: 'json_object' }
-    };
-
-    const res = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${groqEnv.apiKey}`
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Groq fallback failed (HTTP ${res.status}): ${text}`);
-    }
-
-    const data = await res.json();
-    const rawContent = data.choices?.[0]?.message?.content ?? '{}';
-    return JSON.parse(extractJsonText(rawContent));
+    return callGroqJson(messages, maxTokens);
   }
 
   throw new Error('No working LLM provider (Gemini or Groq) is configured with a valid API key.');

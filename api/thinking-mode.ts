@@ -201,7 +201,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { role: 'user', content: buildUserPrompt(body as Record<string, unknown>) },
     ];
 
-    const raw = await callSmartLlm(messages, 1800);
+    const raw = await callSmartLlm(messages, 1400, { preferGroq: true });
     const parsed = parseResponse(raw);
     const fallbackId = `node_${Date.now()}`;
     const node = normalizeNode(parsed.node as Record<string, unknown>, fallbackId);
