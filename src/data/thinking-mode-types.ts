@@ -42,6 +42,8 @@ export interface ThinkingNode {
   emoji?: string;
   /** One-sentence hook — the gist before details. */
   tldr?: string;
+  /** First-principles explanation in plain language (2–4 sentences). */
+  firstPrinciples?: string;
   whyItMatters?: string;
   explanation: string;
   /** 2–3 short bullets; preferred over one long paragraph. */

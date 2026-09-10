@@ -77,6 +77,18 @@ export function nodeTldr(node: ThinkingNode): string {
   return bullets[0] ?? node.explanation.slice(0, 140);
 }
 
+/** Core first-principles explanation — the "why it works" chain. */
+export function nodeFirstPrinciples(node: ThinkingNode): string {
+  if (node.firstPrinciples?.trim()) return node.firstPrinciples.trim();
+  const bullets = explanationBullets(node);
+  if (bullets.length >= 2) return bullets.join(' ');
+  return node.explanation.trim() || nodeTldr(node);
+}
+
+export function branchKey(parentNodeId: string, branch: { type: string; label: string }): string {
+  return `${parentNodeId}|${branch.type}|${branch.label}`;
+}
+
 /** Sentence-case labels — no shouting uppercase. */
 export function friendlyLabel(text: string): string {
   const t = text.trim();

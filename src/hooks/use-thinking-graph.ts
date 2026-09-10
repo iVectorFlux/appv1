@@ -5,6 +5,13 @@ import type {
   ThinkingPathItem,
 } from '@/data/thinking-mode-types';
 import { requestThinkingNode } from '@/services/thinking-mode-api';
+import { branchKey } from '@/components/thinking-mode/thinking-ui-utils';
+
+export interface GraphEdge {
+  fromId: string;
+  branch: ThinkingBranch;
+  toId: string;
+}
 
 interface DetourState {
   node: ThinkingNode;
@@ -12,31 +19,55 @@ interface DetourState {
   returnLabel: string;
 }
 
+function initialBranchOrder(node: ThinkingNode): string[] {
+  return node.branches.map((b) => branchKey(node.id, b));
+}
+
 export function useThinkingGraph(rootQuestion: string) {
   const [nodes, setNodes] = useState<Map<string, ThinkingNode>>(new Map());
-  const [pathIds, setPathIds] = useState<string[]>([]);
-  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+  const [rootNodeId, setRootNodeId] = useState<string | null>(null);
+  const [edges, setEdges] = useState<GraphEdge[]>([]);
+  /** Per parent node: display order of branch keys (expanded ones sink to bottom). */
+  const [branchOrders, setBranchOrders] = useState<Map<string, string[]>>(new Map());
+  /** Which branch keys have loaded child content. */
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [openBranchKey, setOpenBranchKey] = useState<string | null>(null);
+  const [loadingBranchKey, setLoadingBranchKey] = useState<string | null>(null);
   const [detour, setDetour] = useState<DetourState | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [challengeFeedback, setChallengeFeedback] = useState<string | null>(null);
 
-  const depth = pathIds.length;
+  const rootNode = rootNodeId ? nodes.get(rootNodeId) : undefined;
+  const activeNode = detour?.node ?? rootNode;
 
-  const sessionPath: ThinkingPathItem[] = useMemo(
-    () =>
-      pathIds.map((id) => {
-        const n = nodes.get(id);
-        return { nodeId: id, label: n?.question ?? id };
-      }),
-    [pathIds, nodes]
-  );
-
-  const currentNodeId = detour?.node.id ?? activeNodeId;
-  const activeNode = currentNodeId ? nodes.get(currentNodeId) : undefined;
+  const sessionPath: ThinkingPathItem[] = useMemo(() => {
+    const ids = new Set<string>();
+    if (rootNodeId) ids.add(rootNodeId);
+    edges.forEach((e) => {
+      ids.add(e.fromId);
+      ids.add(e.toId);
+    });
+    return Array.from(ids).map((id) => {
+      const n = nodes.get(id);
+      return { nodeId: id, label: n?.question ?? id };
+    });
+  }, [rootNodeId, edges, nodes]);
 
   const storeNode = useCallback((node: ThinkingNode) => {
     setNodes((prev) => new Map(prev).set(node.id, node));
+  }, []);
+
+  const sinkBranchToBottom = useCallback((parentNodeId: string, key: string) => {
+    setBranchOrders((prev) => {
+      const next = new Map(prev);
+      const order = [...(next.get(parentNodeId) ?? [])];
+      const idx = order.indexOf(key);
+      if (idx >= 0) order.splice(idx, 1);
+      order.push(key);
+      next.set(parentNodeId, order);
+      return next;
+    });
   }, []);
 
   const startRoot = useCallback(async () => {
@@ -44,6 +75,10 @@ export function useThinkingGraph(rootQuestion: string) {
     setError(null);
     setDetour(null);
     setChallengeFeedback(null);
+    setEdges([]);
+    setExpandedKeys(new Set());
+    setOpenBranchKey(null);
+    setBranchOrders(new Map());
     try {
       const { node } = await requestThinkingNode({
         action: 'root',
@@ -51,8 +86,8 @@ export function useThinkingGraph(rootQuestion: string) {
         depth: 0,
       });
       storeNode(node);
-      setPathIds([node.id]);
-      setActiveNodeId(node.id);
+      setRootNodeId(node.id);
+      setBranchOrders(new Map([[node.id, initialBranchOrder(node)]]));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start');
     } finally {
@@ -61,43 +96,52 @@ export function useThinkingGraph(rootQuestion: string) {
   }, [rootQuestion, storeNode]);
 
   const expandBranch = useCallback(
-    async (branch: ThinkingBranch) => {
-      const fromId = detour?.node.id ?? activeNodeId;
-      if (!fromId || loading) return;
-      const parent = nodes.get(fromId);
-      if (!parent) return;
+    async (parentNodeId: string, branch: ThinkingBranch) => {
+      const parent = nodes.get(parentNodeId);
+      if (!parent || loadingBranchKey) return;
 
-      setLoading(true);
+      const key = branchKey(parentNodeId, branch);
+      setOpenBranchKey(key);
+      sinkBranchToBottom(parentNodeId, key);
+
+      if (expandedKeys.has(key)) return;
+
+      setLoadingBranchKey(key);
       setError(null);
-      setChallengeFeedback(null);
-      setDetour(null);
 
       try {
+        const depth = parentNodeId === rootNodeId ? 1 : 2;
         const { node } = await requestThinkingNode({
           action: 'expand_branch',
           rootQuestion,
-          currentNodeId: fromId,
+          currentNodeId: parentNodeId,
           branchType: branch.type,
           branchLabel: branch.label,
-          parentContext: `${parent.question}: ${parent.explanation.slice(0, 200)}`,
+          parentContext: `${parent.question}: ${parent.firstPrinciples ?? parent.explanation}`.slice(0, 400),
           sessionPath,
-          depth: depth + 1,
+          depth,
         });
         storeNode(node);
-        setPathIds((prev) => [...prev, node.id]);
-        setActiveNodeId(node.id);
+        setEdges((prev) => {
+          if (prev.some((e) => e.fromId === parentNodeId && e.toId === node.id)) return prev;
+          return [...prev, { fromId: parentNodeId, branch, toId: node.id }];
+        });
+        setExpandedKeys((prev) => new Set(prev).add(key));
+        if (!branchOrders.has(node.id)) {
+          setBranchOrders((prev) => new Map(prev).set(node.id, initialBranchOrder(node)));
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to expand');
       } finally {
-        setLoading(false);
+        setLoadingBranchKey(null);
       }
     },
-    [activeNodeId, depth, detour, loading, nodes, rootQuestion, sessionPath, storeNode]
+    [branchOrders, expandedKeys, loadingBranchKey, nodes, rootNodeId, rootQuestion, sessionPath, sinkBranchToBottom, storeNode]
   );
 
   const exploreConcept = useCallback(
-    async (term: string) => {
-      const fromId = detour?.node.id ?? activeNodeId;
+    async (term: string, fromNodeId?: string) => {
+      const fromId = fromNodeId ?? rootNodeId;
       if (!fromId || loading) return;
       const parent = nodes.get(fromId);
       if (!parent) return;
@@ -113,7 +157,7 @@ export function useThinkingGraph(rootQuestion: string) {
           conceptTerm: term,
           parentContext: parent.question,
           sessionPath,
-          depth: depth + 1,
+          depth: 2,
         });
         storeNode(node);
         setDetour({
@@ -127,7 +171,7 @@ export function useThinkingGraph(rootQuestion: string) {
         setLoading(false);
       }
     },
-    [activeNodeId, depth, detour, loading, nodes, rootQuestion, sessionPath, storeNode]
+    [loading, nodes, rootNodeId, rootQuestion, sessionPath, storeNode]
   );
 
   const exitDetour = useCallback(() => {
@@ -136,9 +180,10 @@ export function useThinkingGraph(rootQuestion: string) {
   }, []);
 
   const submitChallenge = useCallback(
-    async (answer: string) => {
-      if (!activeNodeId || loading) return;
-      const parent = nodes.get(activeNodeId);
+    async (answer: string, fromNodeId?: string) => {
+      const nodeId = fromNodeId ?? rootNodeId;
+      if (!nodeId || loading) return;
+      const parent = nodes.get(nodeId);
       if (!parent) return;
 
       setLoading(true);
@@ -148,16 +193,14 @@ export function useThinkingGraph(rootQuestion: string) {
         const { node, challengeFeedback: fb } = await requestThinkingNode({
           action: 'evaluate_challenge',
           rootQuestion,
-          currentNodeId: activeNodeId,
+          currentNodeId: nodeId,
           parentContext: `${parent.question} | Challenge: ${parent.challengePrompt}`,
           challengeAnswer: answer,
           sessionPath,
-          depth: depth + 1,
+          depth: 2,
         });
         setChallengeFeedback(fb ?? 'Good effort — keep exploring.');
         storeNode(node);
-        setPathIds((prev) => [...prev, node.id]);
-        setActiveNodeId(node.id);
         setDetour(null);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to evaluate');
@@ -165,39 +208,42 @@ export function useThinkingGraph(rootQuestion: string) {
         setLoading(false);
       }
     },
-    [activeNodeId, depth, loading, nodes, rootQuestion, sessionPath, storeNode]
+    [loading, nodes, rootNodeId, rootQuestion, sessionPath, storeNode]
   );
 
-  const jumpToNode = useCallback(
-    (nodeId: string) => {
-      const idx = pathIds.indexOf(nodeId);
-      if (idx >= 0) {
-        setPathIds((prev) => prev.slice(0, idx + 1));
-        setActiveNodeId(nodeId);
-        setDetour(null);
-        setChallengeFeedback(null);
-      }
+  const getChildNodeForBranch = useCallback(
+    (parentNodeId: string, branch: ThinkingBranch): ThinkingNode | undefined => {
+      const key = branchKey(parentNodeId, branch);
+      if (!expandedKeys.has(key)) return undefined;
+      const edge = edges.find((e) => e.fromId === parentNodeId && branchKey(parentNodeId, e.branch) === key);
+      return edge ? nodes.get(edge.toId) : undefined;
     },
-    [pathIds]
+    [edges, expandedKeys, nodes]
   );
 
-  const trail = useMemo(
-    () =>
-      pathIds.map((id) => {
-        const n = nodes.get(id);
-        return { id, label: n?.question ?? '…' };
-      }),
-    [pathIds, nodes]
-  );
+  const visitedNodes = useMemo(() => {
+    const list: ThinkingNode[] = [];
+    if (rootNode) list.push(rootNode);
+    edges.forEach((e) => {
+      const child = nodes.get(e.toId);
+      if (child && !list.some((n) => n.id === child.id)) list.push(child);
+    });
+    return list;
+  }, [rootNode, edges, nodes]);
 
   return {
     rootQuestion,
+    rootNode,
+    rootNodeId,
     nodes,
-    pathIds,
+    edges,
+    branchOrders,
+    expandedKeys,
+    openBranchKey,
+    loadingBranchKey,
     activeNode,
-    activeNodeId,
     detour,
-    trail,
+    visitedNodes,
     loading,
     error,
     challengeFeedback,
@@ -206,6 +252,7 @@ export function useThinkingGraph(rootQuestion: string) {
     exploreConcept,
     exitDetour,
     submitChallenge,
-    jumpToNode,
+    getChildNodeForBranch,
+    setOpenBranchKey,
   };
-}
+};

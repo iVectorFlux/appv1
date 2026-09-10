@@ -1,17 +1,21 @@
 /**
- * Thinking Mode session — lazy-loaded thinking graph exploration.
+ * Thinking Mode session — lesson steps + inline branch exploration + memory map.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { ThinkingNodeView } from '@/components/thinking-mode/thinking-node-view';
-import { ThinkingTrail } from '@/components/thinking-mode/thinking-trail';
+import { ThinkingBranchHub } from '@/components/thinking-mode/thinking-branch-hub';
+import { ThinkingBranchPanel } from '@/components/thinking-mode/thinking-branch-panel';
+import { ThinkingMemoryStrip } from '@/components/thinking-mode/thinking-memory-strip';
 import { ThinkingLandscape } from '@/components/thinking-mode/thinking-landscape';
+import { branchKey } from '@/components/thinking-mode/thinking-ui-utils';
 import { useThinkingGraph } from '@/hooks/use-thinking-graph';
+import type { ThinkingBranch, ThinkingNode } from '@/data/thinking-mode-types';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 
 export default function ThinkingModeSessionScreen() {
@@ -29,6 +33,35 @@ export default function ThinkingModeSessionScreen() {
     startedRef.current = true;
     graph.startRoot();
   }, [question, graph.startRoot]);
+
+  const handleBranchToggle = useCallback(
+    (parentNodeId: string, branch: ThinkingBranch) => {
+      const key = branchKey(parentNodeId, branch);
+      if (graph.openBranchKey === key) {
+        graph.setOpenBranchKey(null);
+        return;
+      }
+      void graph.expandBranch(parentNodeId, branch);
+    },
+    [graph]
+  );
+
+  const renderBranchHub = useCallback(
+    (parentNode: ThinkingNode, nested = false) => (
+      <ThinkingBranchHub
+        nested={nested}
+        parentNode={parentNode}
+        branchOrder={graph.branchOrders.get(parentNode.id) ?? parentNode.branches.map((b) => branchKey(parentNode.id, b))}
+        openBranchKey={graph.openBranchKey}
+        loadingBranchKey={graph.loadingBranchKey}
+        getChildNode={(branch) => graph.getChildNodeForBranch(parentNode.id, branch)}
+        onToggleBranch={(branch) => handleBranchToggle(parentNode.id, branch)}
+        onExploreConcept={(term) => graph.exploreConcept(term, parentNode.id)}
+        renderNestedHub={(child) => renderBranchHub(child, true)}
+      />
+    ),
+    [graph, handleBranchToggle]
+  );
 
   if (!question) {
     return (
@@ -59,16 +92,16 @@ export default function ThinkingModeSessionScreen() {
             style={[styles.toolBtn, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}
           >
             <Ionicons name="map-outline" size={16} color={colors.primary} />
-            <Text style={[styles.toolBtnText, { color: colors.primary }]}>Landscape</Text>
+            <Text style={[styles.toolBtnText, { color: colors.primary }]}>Memory map</Text>
           </TouchableOpacity>
         </View>
 
-        <ThinkingTrail
-          rootLabel={question}
-          trail={graph.trail}
-          detourLabel={graph.detour ? graph.detour.returnLabel : null}
-          onJumpTo={graph.jumpToNode}
-          onBackFromDetour={graph.detour ? graph.exitDetour : undefined}
+        <ThinkingMemoryStrip
+          rootQuestion={question}
+          rootNode={graph.rootNode}
+          edges={graph.edges}
+          nodes={graph.nodes}
+          onOpenMap={() => setLandscapeOpen(true)}
         />
 
         {graph.error ? (
@@ -82,29 +115,38 @@ export default function ThinkingModeSessionScreen() {
           </View>
         ) : null}
 
-        {!graph.activeNode && graph.loading ? (
+        {!graph.rootNode && graph.loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.textMuted }]}>Building your first step…</Text>
           </View>
         ) : null}
 
-        {graph.activeNode ? (
+        {graph.detour ? (
           <View>
-            {graph.detour ? (
-              <View style={[styles.detourBadge, { backgroundColor: colors.primary + '15' }]}>
-                <Ionicons name="telescope-outline" size={14} color={colors.primary} />
-                <Text style={[styles.detourBadgeText, { color: colors.primary }]}>🔍 Concept detour</Text>
-              </View>
-            ) : null}
+            <TouchableOpacity
+              onPress={graph.exitDetour}
+              style={[styles.detourBar, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '35' }]}
+            >
+              <Ionicons name="arrow-back" size={16} color={colors.primary} />
+              <Text style={[styles.detourText, { color: colors.primary }]} numberOfLines={1}>
+                Back to lesson
+              </Text>
+            </TouchableOpacity>
+            <ThinkingBranchPanel node={graph.detour.node} onExploreConcept={(t) => graph.exploreConcept(t, graph.detour!.returnToNodeId)} />
+          </View>
+        ) : null}
+
+        {graph.rootNode && !graph.detour ? (
+          <View>
             <ThinkingNodeView
-              node={graph.activeNode}
+              node={graph.rootNode}
               loading={graph.loading}
               challengeFeedback={graph.challengeFeedback}
-              onExpandBranch={graph.expandBranch}
-              onExploreConcept={graph.exploreConcept}
-              onSubmitChallenge={graph.submitChallenge}
+              onExploreConcept={(term) => graph.exploreConcept(term, graph.rootNode!.id)}
+              onSubmitChallenge={(answer) => graph.submitChallenge(answer, graph.rootNode!.id)}
             />
+            {renderBranchHub(graph.rootNode)}
           </View>
         ) : null}
       </ScrollView>
@@ -112,10 +154,10 @@ export default function ThinkingModeSessionScreen() {
       <ThinkingLandscape
         visible={landscapeOpen}
         rootQuestion={question}
+        rootNode={graph.rootNode}
         nodes={graph.nodes}
-        pathIds={graph.pathIds}
+        edges={graph.edges}
         onClose={() => setLandscapeOpen(false)}
-        onSelectNode={graph.jumpToNode}
       />
     </GlassBackground>
   );
@@ -138,15 +180,15 @@ const styles = StyleSheet.create({
   },
   toolBtnText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold },
   errorBox: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.md },
-  detourBadge: {
+  detourBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingVertical: 4,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: Radius.sm,
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
     marginBottom: Spacing.sm,
   },
-  detourBadgeText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold },
+  detourText: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
 });

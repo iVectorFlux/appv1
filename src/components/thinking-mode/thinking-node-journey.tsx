@@ -10,27 +10,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
-import type { ThinkingBranch, ThinkingNode } from '@/data/thinking-mode-types';
-import { BRANCH_LABELS } from '@/data/thinking-mode-types';
+import type { ThinkingNode } from '@/data/thinking-mode-types';
 import { ConceptChip, ExplorableText } from './explorable-text';
 import { ThinkingRepresentationView } from './thinking-representation-view';
 import {
-  branchEmoji,
   explanationBullets,
   friendlyLabel,
+  nodeFirstPrinciples,
   nodeTldr,
   pickNodeEmoji,
 } from './thinking-ui-utils';
 
-type StepKind =
-  | 'think'
-  | 'gist'
-  | 'visual'
-  | 'learn'
-  | 'evidence'
-  | 'concepts'
-  | 'challenge'
-  | 'explore';
+type StepKind = 'think' | 'gist' | 'visual' | 'learn' | 'evidence' | 'concepts' | 'challenge';
 
 interface JourneyStep {
   kind: StepKind;
@@ -45,7 +36,6 @@ function buildSteps(node: ThinkingNode, bullets: string[]): JourneyStep[] {
   if (node.evidence) steps.push({ kind: 'evidence' });
   if (node.concepts.length > 0) steps.push({ kind: 'concepts' });
   if (node.challengePrompt) steps.push({ kind: 'challenge' });
-  steps.push({ kind: 'explore' });
   return steps;
 }
 
@@ -65,8 +55,6 @@ function stepLabel(step: JourneyStep, bulletsLen: number): string {
       return 'Quick detour';
     case 'challenge':
       return 'Your turn';
-    case 'explore':
-      return 'Where next?';
     default:
       return '';
   }
@@ -76,7 +64,6 @@ interface ThinkingNodeJourneyProps {
   node: ThinkingNode;
   loading?: boolean;
   challengeFeedback?: string | null;
-  onExpandBranch: (branch: ThinkingBranch) => void;
   onExploreConcept: (term: string) => void;
   onSubmitChallenge: (answer: string) => void;
 }
@@ -85,7 +72,6 @@ export function ThinkingNodeJourney({
   node,
   loading,
   challengeFeedback,
-  onExpandBranch,
   onExploreConcept,
   onSubmitChallenge,
 }: ThinkingNodeJourneyProps) {
@@ -190,8 +176,12 @@ export function ThinkingNodeJourney({
               </View>
             ) : null}
             <View style={[styles.gistBubble, { backgroundColor: colors.accentIndigo + '12', borderColor: colors.accentIndigo + '28' }]}>
-              <Text style={[styles.gistLabel, { color: colors.accentIndigo }]}>✨ The gist</Text>
+              <Text style={[styles.gistLabel, { color: colors.accentIndigo }]}>✨ Quick hook</Text>
               <Text style={[styles.gistText, { color: colors.textPrimary }]}>{nodeTldr(node)}</Text>
+            </View>
+            <View style={[styles.fpBox, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+              <Text style={[styles.fpLabel, { color: colors.primary }]}>🔬 From first principles</Text>
+              <Text style={[styles.fpText, { color: colors.textPrimary }]}>{nodeFirstPrinciples(node)}</Text>
             </View>
             {node.whyItMatters ? (
               <Text style={[styles.whyLine, { color: colors.textSecondary }]}>💡 {node.whyItMatters}</Text>
@@ -280,36 +270,13 @@ export function ThinkingNodeJourney({
           </View>
         ) : null}
 
-        {step.kind === 'explore' ? (
-          <>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>🧭 Where next?</Text>
-            <Text style={[styles.exploreSub, { color: colors.textMuted }]}>Pick a path — your map grows as you go.</Text>
-            <View style={styles.branchGrid}>
-              {node.branches.map((b) => {
-                const meta = BRANCH_LABELS[b.type] ?? { icon: 'arrow-forward-outline', color: colors.primary };
-                const em = branchEmoji(b);
-                return (
-                  <TouchableOpacity
-                    key={`${b.type}-${b.label}`}
-                    disabled={loading}
-                    onPress={() => onExpandBranch(b)}
-                    style={[styles.branchBtn, { borderColor: meta.color + '45', backgroundColor: meta.color + '10' }]}
-                  >
-                    <Text style={styles.branchEmoji}>{em}</Text>
-                    <View style={styles.branchTextCol}>
-                      <Text style={[styles.branchType, { color: meta.color }]}>{friendlyLabel(b.type.replace('_', ' '))}</Text>
-                      <Text style={[styles.branchLabel, { color: colors.textPrimary }]} numberOfLines={2}>
-                        {b.label}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={meta.color} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </>
-        ) : null}
       </Animated.View>
+
+      {isLast && step.kind !== 'think' ? (
+        <Text style={[styles.scrollHint, { color: colors.textMuted }]}>
+          ↓ Scroll down to explore Why, How, What if, and more — answers open right under each card.
+        </Text>
+      ) : null}
 
       <View style={styles.navRow}>
         {!isFirst ? (
@@ -373,7 +340,11 @@ const styles = StyleSheet.create({
   gistBubble: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, gap: 6 },
   gistLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
   gistText: { fontSize: Typography.fontSize.base, lineHeight: 24, fontWeight: Typography.fontWeight.medium },
+  fpBox: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, gap: Spacing.sm },
+  fpLabel: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
+  fpText: { fontSize: Typography.fontSize.sm, lineHeight: 22 },
   whyLine: { fontSize: Typography.fontSize.sm, lineHeight: 20, textAlign: 'center' },
+  scrollHint: { fontSize: Typography.fontSize.sm, lineHeight: 20, textAlign: 'center', paddingHorizontal: Spacing.sm },
   sectionTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.bold },
   visualCaption: { fontSize: Typography.fontSize.sm, lineHeight: 20, textAlign: 'center', fontStyle: 'italic' },
   bulletCard: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1 },
@@ -389,20 +360,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm, minHeight: 72, fontSize: Typography.fontSize.sm, textAlignVertical: 'top' },
   inlinePrimaryBtn: { paddingVertical: Spacing.sm, borderRadius: Radius.md, alignItems: 'center' },
   inlinePrimaryBtnText: { color: '#FFF', fontWeight: Typography.fontWeight.bold, fontSize: Typography.fontSize.sm },
-  exploreSub: { fontSize: Typography.fontSize.sm, marginTop: -Spacing.sm },
-  branchGrid: { gap: Spacing.sm },
-  branchBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-  },
-  branchEmoji: { fontSize: 24 },
-  branchTextCol: { flex: 1, gap: 2 },
-  branchType: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, textTransform: 'capitalize' },
-  branchLabel: { fontSize: Typography.fontSize.sm, lineHeight: 20 },
   navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
   navSpacer: { minWidth: 72 },
   navBtn: {

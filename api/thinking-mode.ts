@@ -19,8 +19,9 @@ Your job: generate ONE learning node at a time — never a full tree upfront.
 Rules:
 - Plain language. A curious 12-year-old should follow.
 - BITE-SIZED ONLY: no walls of text. The UI shows one card at a time.
-- "tldr" = ONE sentence hook (max 120 chars). This is the first thing they read.
-- "explanationBullets" = 2–3 short bullets (max 2 sentences each). Put detail here, NOT in one long paragraph.
+- "tldr" = ONE sentence hook (max 120 chars).
+- "firstPrinciples" = REQUIRED 2–4 sentences building from basics (start with what we know → step → step → answer). No jargon without defining it. This is the main teaching moment.
+- "explanationBullets" = 2–3 short bullets that extend firstPrinciples (max 2 sentences each).
 - "explanation" = same content as bullets joined; use [concept terms] in brackets for explorable prerequisites.
 - "emoji" = one fitting emoji for the topic (e.g. 🌤️ for sky, 🌱 for plants).
 - Mark 0–3 prerequisite concepts in "concepts" ONLY when understanding truly depends on them.
@@ -38,7 +39,8 @@ Return ONLY valid JSON matching this schema:
     "id": "unique_snake_case_id",
     "emoji": "string — single emoji",
     "question": "string — sentence case",
-    "tldr": "string — one sentence gist",
+    "tldr": "string — one sentence hook",
+    "firstPrinciples": "string — 2–4 sentences from first principles",
     "whyItMatters": "string optional — one short line",
     "explanationBullets": ["bullet 1", "bullet 2", "bullet 3 optional"],
     "explanation": "string — bullets combined; [bracketed] concept terms",
@@ -71,7 +73,7 @@ function buildUserPrompt(body: Record<string, unknown>): string {
 ROOT QUESTION: ${rootQuestion}
 DEPTH: 0
 
-Generate the root node: decompose the question, give a clear first explanation, suggest the most useful branches to explore next.`;
+Generate the root node: build firstPrinciples from the ground up (e.g. for "why is the sky blue": sunlight has all colors → air molecules scatter short wavelengths → blue reaches our eyes). Then branches for deeper paths.`;
   }
 
   if (action === 'expand_branch') {
@@ -84,7 +86,7 @@ PARENT CONTEXT: ${body.parentContext ?? ''}
 SESSION PATH: ${pathSummary}
 DEPTH: ${depth}
 
-Generate the child node for this branch. Go deeper or wider as appropriate.`;
+Generate the child node for this branch. Answer THIS branch directly with firstPrinciples — do not restart the whole topic from scratch.`;
   }
 
   if (action === 'explore_concept') {
@@ -185,6 +187,7 @@ function normalizeNode(raw: Record<string, unknown>, fallbackId: string): Record
     emoji: raw.emoji ? String(raw.emoji).trim() : undefined,
     question: String(raw.question ?? 'Thinking…').trim(),
     tldr: raw.tldr ? String(raw.tldr).trim() : undefined,
+    firstPrinciples: raw.firstPrinciples ? String(raw.firstPrinciples).trim() : undefined,
     whyItMatters: raw.whyItMatters ? String(raw.whyItMatters).trim() : undefined,
     explanation,
     explanationBullets,
