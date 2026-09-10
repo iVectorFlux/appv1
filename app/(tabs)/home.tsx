@@ -52,6 +52,7 @@ export default function HomeScreen() {
     { key: 'companion', title: 'AI Companion', icon: 'chatbubble-ellipses-outline', accent: colors.accentTerracotta, route: '/(tabs)/companion' },
     { key: 'skill-lab', title: 'Skill Lab', icon: 'rocket-outline', accent: colors.accentSage, route: '/skill-lab' },
     { key: 'game-theory', title: 'Game Theory', icon: 'git-network-outline', accent: '#7C3AED', route: '/game-theory' },
+    { key: 'thinking-mode', title: 'Thinking Mode', icon: 'bulb-outline', accent: '#6366F1', route: '/thinking-mode' },
     { key: 'recover', title: 'Recover', icon: 'leaf-outline', accent: colors.accentCalm, route: '/grounding' },
   ];
 
