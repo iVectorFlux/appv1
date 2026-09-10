@@ -56,7 +56,7 @@ export function ConceptChip({ concept, onPress }: ConceptChipProps) {
       onPress={onPress}
       style={[styles.chip, { borderColor: colors.primary + '40', backgroundColor: colors.primary + '10' }]}
     >
-      <Text style={[styles.chipTerm, { color: colors.primary }]}>{concept.term}</Text>
+      <Text style={[styles.chipTerm, { color: colors.primary }]}>🔎 {concept.term}</Text>
       <Text style={[styles.chipReason, { color: colors.textMuted }]} numberOfLines={2}>
         {concept.reason}
       </Text>

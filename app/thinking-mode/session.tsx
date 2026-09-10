@@ -90,11 +90,11 @@ export default function ThinkingModeSessionScreen() {
         ) : null}
 
         {graph.activeNode ? (
-          <View style={[styles.nodeCard, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}>
+          <View>
             {graph.detour ? (
               <View style={[styles.detourBadge, { backgroundColor: colors.primary + '15' }]}>
                 <Ionicons name="telescope-outline" size={14} color={colors.primary} />
-                <Text style={[styles.detourBadgeText, { color: colors.primary }]}>Concept detour</Text>
+                <Text style={[styles.detourBadgeText, { color: colors.primary }]}>🔍 Concept detour</Text>
               </View>
             ) : null}
             <ThinkingNodeView
@@ -138,7 +138,6 @@ const styles = StyleSheet.create({
   },
   toolBtnText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold },
   errorBox: { padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, marginBottom: Spacing.md },
-  nodeCard: { borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md },
   detourBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -149,5 +148,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     marginBottom: Spacing.sm,
   },
-  detourBadgeText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.bold },
+  detourBadgeText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold },
 });

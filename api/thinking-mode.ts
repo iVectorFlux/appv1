@@ -18,32 +18,38 @@ Your job: generate ONE learning node at a time — never a full tree upfront.
 
 Rules:
 - Plain language. A curious 12-year-old should follow.
-- Each node is a mini lesson: question → think → explain → evidence → next branches.
-- Mark 0–3 prerequisite concepts in "concepts" ONLY when understanding the current node truly depends on them.
-- Do NOT mark every noun as a concept — avoid cognitive overload.
-- Offer 3–5 branches max (why, how, what, what_if, example, challenge, connect, simulate — pick what fits).
+- BITE-SIZED ONLY: no walls of text. The UI shows one card at a time.
+- "tldr" = ONE sentence hook (max 120 chars). This is the first thing they read.
+- "explanationBullets" = 2–3 short bullets (max 2 sentences each). Put detail here, NOT in one long paragraph.
+- "explanation" = same content as bullets joined; use [concept terms] in brackets for explorable prerequisites.
+- "emoji" = one fitting emoji for the topic (e.g. 🌤️ for sky, 🌱 for plants).
+- Mark 0–3 prerequisite concepts in "concepts" ONLY when understanding truly depends on them.
+- Offer 3–5 branches max. Each branch needs "emoji" + short "label" (sentence case, not ALL CAPS).
 - Choose "representation" by content: flow for processes, cause_effect for causal chains, timeline for history, comparison for contrasts, concept_tree for hierarchies, text otherwise.
-- "processSteps" only when representation is flow or cause_effect (3–6 short steps).
-- "visualizationHint" = one sentence describing a mental picture or simple demo.
-- "socraticQuestion" = one question that makes the learner think before reading on.
+- "processSteps" = 3–5 steps as { "emoji": "1️⃣", "label": "short step" } for visual cards.
+- "visualizationHint" = vivid scene to picture (e.g. "Imagine sunlight as a bundle of colored pencils…").
+- "socraticQuestion" = one question before the answer is revealed.
 - Stay coherent with rootQuestion and sessionPath — do not repeat nodes already on the path.
-- depth is how far from root; if depth >= 6, favor synthesis and challenge over endless drilling.
+- depth >= 6: favor synthesis and challenge over endless drilling.
 
 Return ONLY valid JSON matching this schema:
 {
   "node": {
     "id": "unique_snake_case_id",
-    "question": "string",
-    "whyItMatters": "string optional",
-    "explanation": "string — use [concept terms] in brackets for explorable prerequisites",
+    "emoji": "string — single emoji",
+    "question": "string — sentence case",
+    "tldr": "string — one sentence gist",
+    "whyItMatters": "string optional — one short line",
+    "explanationBullets": ["bullet 1", "bullet 2", "bullet 3 optional"],
+    "explanation": "string — bullets combined; [bracketed] concept terms",
     "socraticQuestion": "string optional",
     "concepts": [{ "term": "string", "reason": "why explore this now" }],
-    "processSteps": ["string"] optional,
-    "evidence": "string optional — real-world example or fact",
+    "processSteps": [{ "emoji": "string", "label": "string" }],
+    "evidence": "string optional — one concrete real-world example",
     "visualizationHint": "string optional",
     "representation": "text|flow|concept_tree|timeline|comparison|cause_effect",
-    "branches": [{ "type": "why|how|what|what_if|example|challenge|connect|simulate", "label": "short button label" }],
-    "challengePrompt": "string optional — prediction question for the learner"
+    "branches": [{ "type": "why|how|what|what_if|example|challenge|connect|simulate", "emoji": "string", "label": "short button label" }],
+    "challengePrompt": "string optional"
   },
   "challengeFeedback": "string optional — only when action is evaluate_challenge"
 }`;
@@ -143,22 +149,48 @@ function normalizeNode(raw: Record<string, unknown>, fallbackId: string): Record
         .map((b: Record<string, unknown>) => ({
           type: String(b.type ?? 'why').trim(),
           label: String(b.label ?? 'Explore').trim(),
+          emoji: b.emoji ? String(b.emoji).trim() : undefined,
         }))
-    : [{ type: 'why', label: 'Explore why' }];
+    : [{ type: 'why', label: 'Explore why', emoji: '🤔' }];
 
   const rep = String(raw.representation ?? 'text');
   const validReps = ['text', 'flow', 'concept_tree', 'timeline', 'comparison', 'cause_effect'];
 
+  const explanationBullets = Array.isArray(raw.explanationBullets)
+    ? raw.explanationBullets.map((s) => String(s).trim()).filter(Boolean).slice(0, 3)
+    : undefined;
+
+  const processSteps = Array.isArray(raw.processSteps)
+    ? raw.processSteps
+        .slice(0, 6)
+        .map((s) => {
+          if (s && typeof s === 'object') {
+            const o = s as Record<string, unknown>;
+            const label = String(o.label ?? o.step ?? '').trim();
+            if (!label) return null;
+            return { emoji: o.emoji ? String(o.emoji).trim() : undefined, label };
+          }
+          const label = String(s).trim();
+          return label ? { label } : null;
+        })
+        .filter(Boolean)
+    : undefined;
+
+  const explanation =
+    String(raw.explanation ?? '').trim() ||
+    (explanationBullets?.length ? explanationBullets.join(' ') : '');
+
   return {
     id: String(raw.id ?? fallbackId).trim() || fallbackId,
+    emoji: raw.emoji ? String(raw.emoji).trim() : undefined,
     question: String(raw.question ?? 'Thinking…').trim(),
+    tldr: raw.tldr ? String(raw.tldr).trim() : undefined,
     whyItMatters: raw.whyItMatters ? String(raw.whyItMatters).trim() : undefined,
-    explanation: String(raw.explanation ?? '').trim(),
+    explanation,
+    explanationBullets,
     socraticQuestion: raw.socraticQuestion ? String(raw.socraticQuestion).trim() : undefined,
     concepts,
-    processSteps: Array.isArray(raw.processSteps)
-      ? raw.processSteps.map((s) => String(s)).filter(Boolean).slice(0, 6)
-      : undefined,
+    processSteps: processSteps?.length ? processSteps : undefined,
     evidence: raw.evidence ? String(raw.evidence).trim() : undefined,
     visualizationHint: raw.visualizationHint ? String(raw.visualizationHint).trim() : undefined,
     representation: validReps.includes(rep) ? rep : 'text',

@@ -52,13 +52,13 @@ export default function ThinkingModeHubScreen() {
             <View style={[styles.heroIcon, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="git-network-outline" size={32} color={colors.primary} />
             </View>
-            <Text style={[styles.heroTag, { color: colors.primary }]}>THINKING MODE</Text>
+            <Text style={[styles.heroTag, { color: colors.primary }]}>💭 Thinking Mode</Text>
             <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
-              Don't just get an answer — explore the question
+              Learn step by step — with pictures, not walls of text
             </Text>
             <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-              Lumi6 builds a living map as you go. Tap Why, How, or What. Zoom into any concept you don't know. Come back
-              exactly where you left off.
+              One card at a time: pause and think, see a visual, then pick where to go next. Tap any concept for a quick
+              detour without losing your place.
             </Text>
           </View>
 
@@ -91,9 +91,9 @@ export default function ThinkingModeHubScreen() {
           <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Try a starter question</Text>
           <View style={styles.starters}>
             {THINKING_STARTER_QUESTIONS.map((q) => (
-              <GlassCard key={q} onPress={() => start(q)} style={styles.starterCard}>
-                <Ionicons name="help-circle-outline" size={20} color={colors.accentIndigo} />
-                <Text style={[styles.starterText, { color: colors.textPrimary }]}>{q}</Text>
+              <GlassCard key={q.text} onPress={() => start(q.text)} style={styles.starterCard}>
+                <Text style={styles.starterEmoji}>{q.emoji}</Text>
+                <Text style={[styles.starterText, { color: colors.textPrimary }]}>{q.text}</Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </GlassCard>
             ))}
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: Spacing.xs,
   },
-  heroTag: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.bold, letterSpacing: 1 },
+  heroTag: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
   heroTitle: {
     fontSize: Typography.fontSize.xl,
     fontWeight: Typography.fontWeight.bold,
@@ -167,10 +167,8 @@ const styles = StyleSheet.create({
   },
   startBtnText: { color: '#FFF', fontWeight: Typography.fontWeight.bold, fontSize: Typography.fontSize.base },
   sectionTitle: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.bold,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
   },
   starters: { gap: Spacing.sm },
   starterCard: {
@@ -179,6 +177,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     padding: Spacing.md,
   },
+  starterEmoji: { fontSize: 22, width: 28, textAlign: 'center' },
   starterText: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.medium },
   howItWorks: { borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
   howRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },

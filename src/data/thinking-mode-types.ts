@@ -27,16 +27,28 @@ export interface ThinkingConceptLink {
 export interface ThinkingBranch {
   type: ThinkingBranchType | string;
   label: string;
+  emoji?: string;
+}
+
+export interface ThinkingProcessStep {
+  emoji?: string;
+  label: string;
 }
 
 export interface ThinkingNode {
   id: string;
   question: string;
+  /** Topic emoji for the card hero (e.g. 🌤️). */
+  emoji?: string;
+  /** One-sentence hook — the gist before details. */
+  tldr?: string;
   whyItMatters?: string;
   explanation: string;
+  /** 2–3 short bullets; preferred over one long paragraph. */
+  explanationBullets?: string[];
   socraticQuestion?: string;
   concepts: ThinkingConceptLink[];
-  processSteps?: string[];
+  processSteps?: Array<string | ThinkingProcessStep>;
   evidence?: string;
   visualizationHint?: string;
   representation: ThinkingRepresentation;
@@ -74,11 +86,11 @@ export interface ThinkingModeResponse {
 }
 
 export const THINKING_STARTER_QUESTIONS = [
-  'How does a rainbow appear during rain?',
-  'Why is the sky blue?',
-  'How do plants make food from sunlight?',
-  'Why do we dream?',
-  'How does the internet send a message across the world?',
+  { emoji: '🌈', text: 'How does a rainbow appear during rain?' },
+  { emoji: '🌤️', text: 'Why is the sky blue?' },
+  { emoji: '🌱', text: 'How do plants make food from sunlight?' },
+  { emoji: '💤', text: 'Why do we dream?' },
+  { emoji: '🌐', text: 'How does the internet send a message across the world?' },
 ] as const;
 
 export const BRANCH_LABELS: Record<string, { icon: string; color: string }> = {
