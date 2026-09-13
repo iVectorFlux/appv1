@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx expo export --platform web",
+  "buildCommand": "mkdir -p public/interectives && cp interectives/gravity-v2.html interectives/pythagoras-v2.html interectives/wave-v2.html interectives/addition-subtraction.html public/interectives/ && npx expo export --platform web",
   "outputDirectory": "dist",
   "framework": null,
   "functions": {
@@ -12,7 +12,7 @@
     "api/health.ts": { "maxDuration": 10 }
   },
   "rewrites": [
-    { "source": "/((?!api/|_expo/|static/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|_expo/|static/|interectives/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

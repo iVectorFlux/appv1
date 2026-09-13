@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pythagorean Theorem: Adaptive Layouts & Resolution Guide</title>
+  
+  <!-- Inter Font & KaTeX -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 20px 40px;
+    }
+
+    /* Top Navigation & Resolution Specs Header */
+    .top-header {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .specs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .spec-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .spec-item strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .spec-pill {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .spec-divider {
+      color: #cbd5e1;
+    }
+
+    /* Tab Mode Switcher */
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .switch-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .switch-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .switch-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Main Showcase Container */
+    .showcase-container {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      align-items: center;
+    }
+
+    /* Side-by-side top row for Pill and Mobile Phone on desktop screens */
+    .showcase-grid-top {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+
+    /* View Sections */
+    .view-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-badge {
+      background: #e2e8f0;
+      color: #334155;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* ======================================================== */
+    /* 1. CHAT PILL VIEW                                        */
+    /* ======================================================== */
+
+    /* Mobile Chat Pill Component */
+    .chat-pill-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+    }
+
+    .chat-pill-card:hover {
+      border-color: #cbd5e1;
+      transform: translateY(-1.5px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+    }
+
+    .pill-icon-box {
+      width: 44px;
+      height: 38px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .pill-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pill-title {
+      font-family: 'KaTeX_Math', 'Cambria Math', serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-sub {
+      font-size: 11.5px;
+      color: #64748b;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-action-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #475569;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .chat-pill-card:hover .pill-action-btn {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    .pill-hint {
+      font-size: 11.5px;
+      color: #94a3b8;
+      text-align: center;
+      margin-top: 2px;
+    }
+
+    /* ======================================================== */
+    /* 2. MOBILE 5" - 6" PHONE VIEW (375px × 540px)             */
+    /* ======================================================== */
+    .mobile-phone-frame {
+      width: 100%;
+      max-width: 375px;
+      height: 540px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.09);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Top: Geometry Stage on Mobile (285px) */
+    .mobile-phone-frame .phone-stage {
+      height: 285px;
+      min-height: 285px;
+      background: #fafafa;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #f1f5f9;
+      overflow: hidden;
+    }
+
+    /* Bottom: Math & Sliders on Mobile (255px) */
+    .mobile-phone-frame .phone-controls {
+      height: 255px;
+      padding: 16px 18px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .mobile-phone-frame .math-header {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .mobile-phone-frame .primary-equation {
+      font-size: 24px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .mobile-phone-frame .live-substitution {
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.4;
+      min-height: 20px;
+    }
+
+    .mobile-phone-frame .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ======================================================== */
+    /* 3. DESKTOP SPLIT VIEW (880px × 490px)                    */
+    /* ======================================================== */
+    .desktop-card {
+      width: 100%;
+      max-width: 880px;
+      height: 490px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+      display: grid;
+      grid-template-columns: 370px 1fr;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .desktop-card .math-panel {
+      padding: 26px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid #f1f5f9;
+      background: #ffffff;
+    }
+
+    .desktop-card .math-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+
+    .desktop-card .formula-display {
+      margin-bottom: 16px;
+    }
+
+    .desktop-card .primary-equation {
+      font-size: 30px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .desktop-card .live-substitution {
+      font-size: 14.5px;
+      color: #475569;
+      line-height: 1.5;
+      min-height: 24px;
+    }
+
+    .desktop-card .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .desktop-card .stage-panel {
+      position: relative;
+      background: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Shared Slider Elements */
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .var-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .var-name.a { color: #2563eb; }
+    .var-name.b { color: #7c3aed; }
+
+    .var-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+      cursor: grab;
+      transition: transform 0.1s ease;
+    }
+
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    /* Toggle Button */
+    .toggle-btn {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      transition: all 0.15s ease;
+      z-index: 10;
+    }
+
+    .toggle-btn:hover {
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ======================================================== */
+    /* 4. SLIDE-OVER DRAWER (When Chat Pill is Clicked)         */
+    /* ======================================================== */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-content {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      max-height: 90vh;
+    }
+
+    .drawer-overlay.open .drawer-content {
+      transform: translateY(0);
+    }
+
+    .drawer-handle-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .drawer-left-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .drawer-icon-btn {
+      background: none;
+      border: none;
+      color: #475569;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .drawer-icon-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .drawer-close-btn {
+      background: #f1f5f9;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 15px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .drawer-close-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 960px) {
+      .desktop-card {
+        grid-template-columns: 1fr;
+        height: auto;
+        max-width: 100%;
+      }
+      .desktop-card .stage-panel {
+        height: 320px;
+        order: 1;
+      }
+      .desktop-card .math-panel {
+        order: 2;
+        border-right: none;
+        border-top: 1px solid #f1f5f9;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Mode Switcher -->
+  <div class="top-header">
+    <div class="view-switcher">
+      <button class="switch-btn active" id="btnShowAll" onclick="setMode('all')">
+        👁️ View All Modes
+      </button>
+      <button class="switch-btn" id="btnPillView" onclick="setMode('pill')">
+        💊 1. Pill Mode
+      </button>
+      <button class="switch-btn" id="btnDrawerView" onclick="setMode('drawer')">
+        📱 2. Mobile Card Drawer
+      </button>
+      <button class="switch-btn" id="btnMobileView" onclick="setMode('mobile')">
+        📲 3. Mobile Screen (375×540)
+      </button>
+      <button class="switch-btn" id="btnDesktopView" onclick="setMode('desktop')">
+        🖥️ 4. Desktop Mode (880×490)
+      </button>
+    </div>
+  </div>
+
+  <!-- Showcase Container -->
+  <div class="showcase-container">
+
+    <!-- Side-by-Side Top Row (In-Chat Pill + Mobile 5"-6" Screen) -->
+    <div class="showcase-grid-top" id="gridTop">
+
+      <!-- ======================================================== -->
+      <!-- SECTION 1: IN-CHAT PILL VIEW                             -->
+      <!-- ======================================================== -->
+      <div class="view-section" id="sectionPill">
+        <div class="section-title">
+          <span>💊 1. Pill Mode (Tap to Open Mobile Card)</span>
+          <span class="section-badge">Compact Capsule</span>
+        </div>
+
+        <!-- The Clean Standalone Interactive Pill Card -->
+        <div class="chat-pill-card" id="chatPillTrigger" onclick="openDrawer()" style="width: 360px;">
+          <div class="pill-icon-box">
+            <svg id="pillSvg" width="32" height="24" viewBox="0 0 32 24">
+              <polygon points="6,20 26,20 6,6" fill="rgba(37, 99, 235, 0.12)" stroke="#2563eb" stroke-width="1.8"/>
+              <rect x="6" y="15" width="5" height="5" fill="none" stroke="#94a3b8" stroke-width="1"/>
+            </svg>
+          </div>
+          <div class="pill-info">
+            <div class="pill-title">a² + b² = c²</div>
+            <div class="pill-sub" id="pillSubText">a = 3, b = 4 • c = 5 • Tap to explore</div>
+          </div>
+          <div class="pill-action-btn" title="Open Interactive Playground">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 2: 5" - 6" MOBILE TOP-TO-BOTTOM VIEW             -->
+      <!-- ======================================================== -->
+      <div class="view-section" id="sectionMobile">
+        <div class="section-title">
+          <span>📲 2. Mobile Screen Mode (Top Stage, Bottom Controls)</span>
+          <span class="section-badge">375 × 540 px</span>
+        </div>
+
+        <div class="mobile-phone-frame">
+          <!-- Top: Geometry Canvas (285px) -->
+          <div class="phone-stage">
+            <canvas id="mobileCanvas"></canvas>
+            <button class="toggle-btn" id="mobileToggleBtn" onclick="toggleSquares()">Hide squares</button>
+          </div>
+
+          <!-- Bottom: Math Panel & Sliders (255px) -->
+          <div class="phone-controls">
+            <div>
+              <div class="math-header">Pythagorean theorem</div>
+              <div class="primary-equation" id="mobilePrimaryEq">a^2 + b^2 = c^2</div>
+              <div class="live-substitution" id="mobileSubEq">3^2 + 4^2 = 9 + 16 = 25 \implies c = 5</div>
+            </div>
+
+            <div class="sliders-list">
+              <!-- Slider a -->
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="var-name a">Side a</span>
+                  <span class="var-val" id="mobileValA">3</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSliderA" min="1" max="10" step="1" value="3">
+              </div>
+
+              <!-- Slider b -->
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="var-name b">Side b</span>
+                  <span class="var-val" id="mobileValB">4</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSliderB" min="1" max="10" step="1" value="4">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /showcase-grid-top -->
+
+    <!-- ======================================================== -->
+    <!-- SECTION 3: DESKTOP SIDE-BY-SIDE SPLIT VIEW               -->
+    <!-- ======================================================== -->
+    <div class="view-section" id="sectionDesktop">
+      <div class="section-title">
+        <span>🖥️ 3. Desktop Mode (Left Controls, Right Stage)</span>
+        <span class="section-badge">880 × 490 px</span>
+      </div>
+
+      <div class="desktop-card">
+        <!-- Left: Math & Sliders Panel (370px) -->
+        <div class="math-panel">
+          <div>
+            <div class="math-header">Pythagorean theorem</div>
+            <div class="formula-display">
+              <div class="primary-equation" id="desktopPrimaryEq">a^2 + b^2 = c^2</div>
+              <div class="live-substitution" id="desktopSubEq">
+                3^2 + 4^2 = 9 + 16 = 25 \implies c = 5
+              </div>
+            </div>
+          </div>
+
+          <div class="sliders-list">
+            <!-- Slider a -->
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="var-name a">Side a</span>
+                <span class="var-val" id="desktopValA">3</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderA" min="1" max="10" step="1" value="3">
+            </div>
+
+            <!-- Slider b -->
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="var-name b">Side b</span>
+                <span class="var-val" id="desktopValB">4</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderB" min="1" max="10" step="1" value="4">
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Geometry Canvas Stage (510px) -->
+        <div class="stage-panel">
+          <canvas id="desktopCanvas"></canvas>
+          <button class="toggle-btn" id="desktopToggleBtn" onclick="toggleSquares()">Hide squares</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- SLIDE-OVER DRAWER (When Chat Pill is Clicked)             -->
+  <!-- ======================================================== -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="if(event.target === this) closeDrawer()">
+    <div class="drawer-content">
+      <div class="drawer-handle-bar">
+        <div style="width: 28px;"></div>
+        <div class="drawer-pill-notch" style="width: 36px; height: 4px; border-radius: 999px; background: #cbd5e1; margin: 0 auto;"></div>
+        <button class="drawer-close-btn" onclick="closeDrawer()" title="Close drawer">✕</button>
+      </div>
+
+      <!-- Drawer Phone Frame Layout (Top Canvas, Bottom Controls) -->
+      <div style="height: 270px; background: #fafafa; position: relative;">
+        <canvas id="drawerCanvas"></canvas>
+        <button class="toggle-btn" id="drawerToggleBtn" onclick="toggleSquares()">Hide squares</button>
+      </div>
+
+      <div style="padding: 16px 18px 22px; background: #ffffff; display: flex; flex-direction: column; gap: 14px;">
+        <div>
+          <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 2px;">Pythagorean theorem</div>
+          <div style="font-size: 22px; font-weight: 600; color: #0f172a; margin-bottom: 3px;" id="drawerPrimaryEq">a^2 + b^2 = c^2</div>
+          <div style="font-size: 13px; color: #475569;" id="drawerSubEq">3^2 + 4^2 = 25 \implies c = 5</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Drawer Slider a -->
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="var-name a">Side a</span>
+              <span class="var-val" id="drawerValA">3</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderA" min="1" max="10" step="1" value="3">
+          </div>
+
+          <!-- Drawer Slider b -->
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="var-name b">Side b</span>
+              <span class="var-val" id="drawerValB">4</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderB" min="1" max="10" step="1" value="4">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global State
+    let sideA = 3;
+    let sideB = 4;
+    let showSquares = true;
+
+    // Elements
+    const secPill = document.getElementById('sectionPill');
+    const secMobile = document.getElementById('sectionMobile');
+    const secDesktop = document.getElementById('sectionDesktop');
+
+    const btnShowAll = document.getElementById('btnShowAll');
+    const btnPillView = document.getElementById('btnPillView');
+    const btnDrawerView = document.getElementById('btnDrawerView');
+    const btnMobileView = document.getElementById('btnMobileView');
+    const btnDesktopView = document.getElementById('btnDesktopView');
+
+    const drawerOverlay = document.getElementById('drawerOverlay');
+
+    // Canvases
+    const mobileCanvas = document.getElementById('mobileCanvas');
+    const desktopCanvas = document.getElementById('desktopCanvas');
+    const drawerCanvas = document.getElementById('drawerCanvas');
+
+    // Sliders & Values
+    const mobileSliderA = document.getElementById('mobileSliderA');
+    const mobileSliderB = document.getElementById('mobileSliderB');
+    const desktopSliderA = document.getElementById('desktopSliderA');
+    const desktopSliderB = document.getElementById('desktopSliderB');
+    const drawerSliderA = document.getElementById('drawerSliderA');
+    const drawerSliderB = document.getElementById('drawerSliderB');
+
+    const gridTop = document.getElementById('gridTop');
+
+    // Tab switcher
+    function setMode(mode) {
+      [btnShowAll, btnPillView, btnDrawerView, btnMobileView, btnDesktopView].forEach(b => b.classList.remove('active'));
+      
+      if (mode === 'all') {
+        btnShowAll.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'flex';
+        secDesktop.style.display = 'flex';
+        closeDrawer();
+      } else if (mode === 'pill') {
+        btnPillView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'none';
+        secDesktop.style.display = 'none';
+        closeDrawer();
+      } else if (mode === 'drawer') {
+        btnDrawerView.classList.add('active');
+        openDrawer();
+      } else if (mode === 'mobile') {
+        btnMobileView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'none';
+        secMobile.style.display = 'flex';
+        secDesktop.style.display = 'none';
+        closeDrawer();
+      } else if (mode === 'desktop') {
+        btnDesktopView.classList.add('active');
+        gridTop.style.display = 'none';
+        secPill.style.display = 'none';
+        secMobile.style.display = 'none';
+        secDesktop.style.display = 'flex';
+        closeDrawer();
+      }
+
+      setTimeout(resizeAllCanvases, 40);
+    }
+
+    function openDrawer() {
+      drawerOverlay.classList.add('open');
+      setTimeout(() => {
+        resizeCanvas(drawerCanvas);
+      }, 50);
+    }
+
+    function closeDrawer() {
+      drawerOverlay.classList.remove('open');
+    }
+
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        const header = document.querySelector('.top-header');
+        if (header) header.style.display = 'none';
+        document.body.style.padding = '8px';
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      if (mode && typeof setMode === 'function') {
+        setTimeout(() => setMode(mode), 40);
+      }
+    })();
+
+    function toggleSquares() {
+      showSquares = !showSquares;
+      const text = showSquares ? 'Hide squares' : 'Show squares';
+      document.getElementById('mobileToggleBtn').innerText = text;
+      document.getElementById('desktopToggleBtn').innerText = text;
+      document.getElementById('drawerToggleBtn').innerText = text;
+      renderAll();
+    }
+
+    // Synchronized Input Handlers
+    function setSideA(val) {
+      sideA = parseInt(val, 10);
+      mobileSliderA.value = sideA;
+      desktopSliderA.value = sideA;
+      drawerSliderA.value = sideA;
+      document.getElementById('mobileValA').innerText = sideA;
+      document.getElementById('desktopValA').innerText = sideA;
+      document.getElementById('drawerValA').innerText = sideA;
+      updateMath();
+      renderAll();
+    }
+
+    function setSideB(val) {
+      sideB = parseInt(val, 10);
+      mobileSliderB.value = sideB;
+      desktopSliderB.value = sideB;
+      drawerSliderB.value = sideB;
+      document.getElementById('mobileValB').innerText = sideB;
+      document.getElementById('desktopValB').innerText = sideB;
+      document.getElementById('drawerValB').innerText = sideB;
+      updateMath();
+      renderAll();
+    }
+
+    [mobileSliderA, desktopSliderA, drawerSliderA].forEach(sl => {
+      sl.addEventListener('input', e => setSideA(e.target.value));
+    });
+
+    [mobileSliderB, desktopSliderB, drawerSliderB].forEach(sl => {
+      sl.addEventListener('input', e => setSideB(e.target.value));
+    });
+
+    // KaTeX and Pill Math Update
+    function updateMath() {
+      const a2 = sideA * sideA;
+      const b2 = sideB * sideB;
+      const c2 = a2 + b2;
+      const c = Math.sqrt(c2);
+      const cFormatted = Number.isInteger(c) ? c.toString() : c.toFixed(2);
+
+      const subLatex = `${sideA}^2 + ${sideB}^2 = ${a2} + ${b2} = ${c2} \\implies c = ${cFormatted}`;
+
+      if (window.katex) {
+        ['mobilePrimaryEq', 'desktopPrimaryEq', 'drawerPrimaryEq'].forEach(id => {
+          katex.render("a^2 + b^2 = c^2", document.getElementById(id), { displayMode: false });
+        });
+        ['mobileSubEq', 'desktopSubEq', 'drawerSubEq'].forEach(id => {
+          katex.render(subLatex, document.getElementById(id), { displayMode: false });
+        });
+      } else {
+        ['mobilePrimaryEq', 'desktopPrimaryEq', 'drawerPrimaryEq'].forEach(id => {
+          document.getElementById(id).innerText = "a² + b² = c²";
+        });
+        ['mobileSubEq', 'desktopSubEq', 'drawerSubEq'].forEach(id => {
+          document.getElementById(id).innerText = `${sideA}² + ${sideB}² = ${a2} + ${b2} = ${c2} => c = ${cFormatted}`;
+        });
+      }
+
+      // Pill Summary Text
+      document.getElementById('pillSubText').innerText = `a = ${sideA}, b = ${sideB} • c = ${cFormatted} • Tap to explore`;
+    }
+
+    // Geometry Renderer for Any Canvas
+    function drawGeometryOnCanvas(cv) {
+      if (!cv || !cv.parentElement) return;
+      const rect = cv.parentElement.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w <= 0 || h <= 0) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      if (cv.width !== w * dpr || cv.height !== h * dpr) {
+        cv.width = w * dpr;
+        cv.height = h * dpr;
+      }
+
+      const ctx = cv.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const a = sideA;
+      const b = sideB;
+      const c = Math.hypot(a, b);
+
+      const colA = '#2563eb';
+      const colAFill = 'rgba(37, 99, 235, 0.08)';
+      const colB = '#7c3aed';
+      const colBFill = 'rgba(124, 58, 237, 0.08)';
+      const colC = '#059669';
+      const colCFill = 'rgba(5, 150, 105, 0.08)';
+
+      let scale, ox, oy;
+
+      if (showSquares) {
+        const totalW = 2 * a + b;
+        const totalH = a + 2 * b;
+        const padding = Math.min(26, w * 0.08);
+
+        scale = Math.min((w - padding * 2) / totalW, (h - padding * 2) / totalH);
+
+        const midX = b / 2;
+        const midY = a / 2;
+
+        ox = w / 2 - midX * scale;
+        oy = h / 2 + midY * scale;
+      } else {
+        const padding = Math.min(42, w * 0.12);
+        scale = Math.min((w - padding * 2) / b, (h - padding * 2) / a);
+
+        const midX = b / 2;
+        const midY = a / 2;
+
+        ox = w / 2 - midX * scale;
+        oy = h / 2 + midY * scale;
+      }
+
+      function toX(mx) { return ox + mx * scale; }
+      function toY(my) { return oy - my * scale; }
+
+      const ptC = { x: toX(0), y: toY(0) };
+      const ptA = { x: toX(0), y: toY(a) };
+      const ptB = { x: toX(b), y: toY(0) };
+
+      // 1. Squares
+      if (showSquares) {
+        // Square on side a
+        ctx.fillStyle = colAFill;
+        ctx.strokeStyle = colA;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(ptC.x, ptC.y);
+        ctx.lineTo(toX(-a), toY(0));
+        ctx.lineTo(toX(-a), toY(a));
+        ctx.lineTo(ptA.x, ptA.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Subgrid a
+        ctx.strokeStyle = 'rgba(37, 99, 235, 0.12)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < a; i++) {
+          const gx = -a * (i / a);
+          ctx.beginPath(); ctx.moveTo(toX(gx), toY(0)); ctx.lineTo(toX(gx), toY(a)); ctx.stroke();
+          const gy = a * (i / a);
+          ctx.beginPath(); ctx.moveTo(toX(0), toY(gy)); ctx.lineTo(toX(-a), toY(gy)); ctx.stroke();
+        }
+
+        // Label a
+        ctx.fillStyle = colA;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const sizeA_px = a * scale;
+        if (sizeA_px >= 42) {
+          ctx.font = '500 11.5px Inter, sans-serif';
+          ctx.fillText(`a = ${a}`, toX(-a / 2), toY(a / 2) - 8);
+          ctx.font = '700 13px Inter, sans-serif';
+          ctx.fillText(`a² = ${a * a}`, toX(-a / 2), toY(a / 2) + 8);
+        } else {
+          ctx.font = '600 11px Inter, sans-serif';
+          ctx.fillText(`a² = ${a * a}`, toX(-a / 2), toY(a / 2));
+        }
+
+        // Square on side b
+        ctx.fillStyle = colBFill;
+        ctx.strokeStyle = colB;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(ptC.x, ptC.y);
+        ctx.lineTo(ptB.x, ptB.y);
+        ctx.lineTo(toX(b), toY(-b));
+        ctx.lineTo(toX(0), toY(-b));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Subgrid b
+        ctx.strokeStyle = 'rgba(124, 58, 237, 0.12)';
+        for (let i = 1; i < b; i++) {
+          const gx = b * (i / b);
+          ctx.beginPath(); ctx.moveTo(toX(gx), toY(0)); ctx.lineTo(toX(gx), toY(-b)); ctx.stroke();
+          const gy = -b * (i / b);
+          ctx.beginPath(); ctx.moveTo(toX(0), toY(gy)); ctx.lineTo(toX(b), toY(gy)); ctx.stroke();
+        }
+
+        // Label b
+        ctx.fillStyle = colB;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const sizeB_px = b * scale;
+        if (sizeB_px >= 42) {
+          ctx.font = '500 11.5px Inter, sans-serif';
+          ctx.fillText(`b = ${b}`, toX(b / 2), toY(-b / 2) - 8);
+          ctx.font = '700 13px Inter, sans-serif';
+          ctx.fillText(`b² = ${b * b}`, toX(b / 2), toY(-b / 2) + 8);
+        } else {
+          ctx.font = '600 11px Inter, sans-serif';
+          ctx.fillText(`b² = ${b * b}`, toX(b / 2), toY(-b / 2));
+        }
+
+        // Square on hypotenuse c
+        ctx.fillStyle = colCFill;
+        ctx.strokeStyle = colC;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(ptA.x, ptA.y);
+        ctx.lineTo(ptB.x, ptB.y);
+        ctx.lineTo(toX(b + a), toY(b));
+        ctx.lineTo(toX(a), toY(a + b));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Label c
+        ctx.fillStyle = colC;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const centerCX = (0 + b + (b + a) + a) / 4;
+        const centerCY = (a + 0 + b + (a + b)) / 4;
+        const cFormatted = Number.isInteger(c) ? c.toString() : c.toFixed(2);
+        ctx.font = '500 11.5px Inter, sans-serif';
+        ctx.fillText(`c = ${cFormatted}`, toX(centerCX), toY(centerCY) - 8);
+        ctx.font = '700 13px Inter, sans-serif';
+        ctx.fillText(`c² = ${a * a + b * b}`, toX(centerCX), toY(centerCY) + 8);
+      }
+
+      // 2. Right Triangle Outline
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(ptC.x, ptC.y);
+      ctx.lineTo(ptA.x, ptA.y);
+      ctx.lineTo(ptB.x, ptB.y);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Right angle marker
+      const sqSize = Math.min(13, Math.min(a, b) * scale * 0.28);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(ptC.x, ptC.y - sqSize);
+      ctx.lineTo(ptC.x + sqSize, ptC.y - sqSize);
+      ctx.lineTo(ptC.x + sqSize, ptC.y);
+      ctx.stroke();
+
+      // Side Labels when squares are hidden
+      if (!showSquares) {
+        ctx.font = '600 13px Inter, sans-serif';
+        ctx.fillStyle = colA;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`a = ${a}`, ptC.x - 10, toY(a / 2));
+
+        ctx.fillStyle = colB;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`b = ${b}`, toX(b / 2), ptC.y + 10);
+
+        ctx.fillStyle = colC;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        const cFormatted = Number.isInteger(c) ? c.toString() : c.toFixed(2);
+        ctx.fillText(`c = ${cFormatted}`, toX(b / 2) + 10, toY(a / 2) - 6);
+      }
+
+      // Corner vertices
+      [ptC, ptA, ptB].forEach(pt => {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function resizeCanvas(cv) {
+      if (cv && cv.parentElement) {
+        drawGeometryOnCanvas(cv);
+      }
+    }
+
+    function renderAll() {
+      if (mobileCanvas.offsetParent !== null) drawGeometryOnCanvas(mobileCanvas);
+      if (desktopCanvas.offsetParent !== null) drawGeometryOnCanvas(desktopCanvas);
+      if (drawerCanvas.offsetParent !== null) drawGeometryOnCanvas(drawerCanvas);
+    }
+
+    function resizeAllCanvases() {
+      renderAll();
+    }
+
+    window.addEventListener('resize', resizeAllCanvases);
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        updateMath();
+        renderAll();
+      }, 120);
+    });
+    setTimeout(renderAll, 100);
+  </script>
+</body>
+</html>

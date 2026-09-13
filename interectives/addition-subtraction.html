@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Addition and Subtraction: Adaptive Layouts & Resolution Guide</title>
+  
+  <!-- Inter Font & KaTeX -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 20px 40px;
+    }
+
+    /* Top Navigation & Resolution Specs Header */
+    .top-header {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .specs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .spec-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .spec-item strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .spec-pill {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .spec-divider {
+      color: #cbd5e1;
+    }
+
+    /* Tab Mode Switcher */
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .switch-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .switch-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .switch-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Main Showcase Container */
+    .showcase-container {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      align-items: center;
+    }
+
+    /* Side-by-side top row for Pill and Mobile Phone */
+    .showcase-grid-top {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+
+    /* View Sections */
+    .view-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-badge {
+      background: #e2e8f0;
+      color: #334155;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* ======================================================== */
+    /* 1. CHAT PILL VIEW (Standalone, 360 × 60 px)               */
+    /* ======================================================== */
+    .chat-pill-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+      width: 360px;
+    }
+
+    .chat-pill-card:hover {
+      border-color: #cbd5e1;
+      transform: translateY(-1.5px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+    }
+
+    .pill-icon-box {
+      width: 44px;
+      height: 38px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .pill-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pill-title {
+      font-family: 'KaTeX_Math', 'Cambria Math', serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-sub {
+      font-size: 11.5px;
+      color: #64748b;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-action-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #475569;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .chat-pill-card:hover .pill-action-btn {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Operation Toggle Segment */
+    .op-toggle {
+      display: inline-flex;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      padding: 3px;
+      gap: 3px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .op-btn {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      padding: 4px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .op-btn:hover {
+      background: #f8fafc;
+      color: #0f172a;
+      border-color: #cbd5e1;
+      transform: translateY(-0.5px);
+    }
+
+    .op-btn.active#mBtnAdd,
+    .op-btn.active#dBtnAdd,
+    .op-btn.active#drBtnAdd {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff;
+      border: 1px solid #1e40af;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    }
+
+    .op-btn.active#mBtnSub,
+    .op-btn.active#dBtnSub,
+    .op-btn.active#drBtnSub {
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      color: #ffffff;
+      border: 1px solid #5b21b6;
+      box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    }
+
+    .op-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* ======================================================== */
+    /* 2. MOBILE 5" - 6" PHONE VIEW (375px × 540px)             */
+    /* ======================================================== */
+    .mobile-phone-frame {
+      width: 100%;
+      max-width: 375px;
+      height: 540px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.09);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Top: Visual Model Stage (285px) */
+    .mobile-phone-frame .phone-stage {
+      height: 285px;
+      min-height: 285px;
+      background: #fafafa;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #f1f5f9;
+      overflow: hidden;
+    }
+
+    /* Bottom: Math & Sliders (255px) */
+    .mobile-phone-frame .phone-controls {
+      height: 255px;
+      padding: 14px 18px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .mobile-phone-frame .math-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .mobile-phone-frame .math-header {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .mobile-phone-frame .primary-equation {
+      font-size: 24px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+
+    .mobile-phone-frame .live-substitution {
+      font-size: 12.5px;
+      color: #475569;
+      min-height: 18px;
+      line-height: 1.4;
+    }
+
+    .mobile-phone-frame .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ======================================================== */
+    /* 3. DESKTOP SPLIT VIEW (880px × 490px)                    */
+    /* ======================================================== */
+    .desktop-card {
+      width: 100%;
+      max-width: 880px;
+      height: 490px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+      display: grid;
+      grid-template-columns: 370px 1fr;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .desktop-card .math-panel {
+      padding: 24px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid #f1f5f9;
+      background: #ffffff;
+    }
+
+    .desktop-card .math-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .desktop-card .math-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .desktop-card .formula-display {
+      margin-bottom: 16px;
+    }
+
+    .desktop-card .primary-equation {
+      font-size: 30px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+
+    .desktop-card .live-substitution {
+      font-size: 14px;
+      color: #475569;
+      line-height: 1.5;
+      min-height: 24px;
+    }
+
+    .desktop-card .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .desktop-card .stage-panel {
+      position: relative;
+      background: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Shared Slider Elements */
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .var-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .var-name.a { color: #2563eb; }
+    .var-name.b { color: #7c3aed; }
+    .var-name.b-sub { color: #e11d48; }
+
+    .var-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+      cursor: grab;
+      transition: transform 0.1s ease;
+    }
+
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ======================================================== */
+    /* 4. SLIDE-OVER DRAWER (When Chat Pill is Clicked)         */
+    /* ======================================================== */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-content {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      max-height: 90vh;
+    }
+
+    .drawer-overlay.open .drawer-content {
+      transform: translateY(0);
+    }
+
+    .drawer-handle-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .drawer-pill-notch {
+      width: 36px;
+      height: 4px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      margin: 0 auto;
+    }
+
+    .drawer-close-btn {
+      background: #f1f5f9;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 13px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+
+    .drawer-close-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    @media (max-width: 960px) {
+      .desktop-card {
+        grid-template-columns: 1fr;
+        height: auto;
+        max-width: 100%;
+      }
+      .desktop-card .stage-panel {
+        height: 300px;
+        order: 1;
+      }
+      .desktop-card .math-panel {
+        order: 2;
+        border-right: none;
+        border-top: 1px solid #f1f5f9;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Mode Switcher -->
+  <div class="top-header">
+    <div class="view-switcher">
+      <button class="switch-btn active" id="btnShowAll" onclick="setMode('all')">
+        👁️ View All Modes
+      </button>
+      <button class="switch-btn" id="btnPillView" onclick="setMode('pill')">
+        💊 1. Pill Mode
+      </button>
+      <button class="switch-btn" id="btnDrawerView" onclick="setMode('drawer')">
+        📱 2. Mobile Card Drawer
+      </button>
+      <button class="switch-btn" id="btnMobileView" onclick="setMode('mobile')">
+        📲 3. Mobile Screen (375×540)
+      </button>
+      <button class="switch-btn" id="btnDesktopView" onclick="setMode('desktop')">
+        🖥️ 4. Desktop Mode (880×490)
+      </button>
+    </div>
+  </div>
+
+  <!-- Showcase Container -->
+  <div class="showcase-container">
+
+    <!-- Side-by-Side Top Row (In-Chat Pill + Mobile 5"-6" Screen) -->
+    <div class="showcase-grid-top" id="gridTop">
+
+      <!-- ======================================================== -->
+      <!-- SECTION 1: IN-CHAT PILL VIEW                             -->
+      <!-- ======================================================== -->
+      <div class="view-section" id="sectionPill">
+        <div class="section-title">
+          <span>💊 1. Pill Mode (Tap to Open Mobile Card)</span>
+          <span class="section-badge">Compact Capsule</span>
+        </div>
+
+        <!-- The Clean Standalone Interactive Pill Card -->
+        <div class="chat-pill-card" id="chatPillTrigger" onclick="openDrawer()">
+          <div class="pill-icon-box">
+            <svg id="pillSvg" width="34" height="24" viewBox="0 0 34 24">
+              <line x1="2" y1="18" x2="32" y2="18" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M 4 18 Q 11 4 18 18" fill="none" stroke="#2563eb" stroke-width="2"/>
+              <path d="M 18 18 Q 23 9 28 18" fill="none" stroke="#7c3aed" stroke-width="2"/>
+              <circle cx="28" cy="18" r="2.5" fill="#059669"/>
+            </svg>
+          </div>
+          <div class="pill-info">
+            <div class="pill-title" id="pillTitle">5 + 3 = 8</div>
+            <div class="pill-sub" id="pillSubText">Sum = 8 • Tap to explore</div>
+          </div>
+          <div class="pill-action-btn" title="Open Interactive Playground">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 2: 5" - 6" MOBILE TOP-TO-BOTTOM VIEW             -->
+      <!-- ======================================================== -->
+      <div class="view-section" id="sectionMobile">
+        <div class="section-title">
+          <span>📲 2. Mobile Screen Mode (Top Stage, Bottom Controls)</span>
+          <span class="section-badge">375 × 540 px</span>
+        </div>
+
+        <div class="mobile-phone-frame">
+          <!-- Top: Geometry / Simulation Canvas (285px) -->
+          <div class="phone-stage">
+            <canvas id="mobileCanvas"></canvas>
+          </div>
+
+          <!-- Bottom: Math Panel & Sliders (255px) -->
+          <div class="phone-controls">
+            <div>
+              <div class="math-header-row">
+                <div class="math-header">Addition and subtraction</div>
+                <div class="op-toggle">
+                  <button class="op-btn active" id="mBtnAdd" onclick="setOperation('add')">+ Add</button>
+                  <button class="op-btn" id="mBtnSub" onclick="setOperation('sub')">− Subtract</button>
+                </div>
+              </div>
+              <div class="primary-equation" id="mobilePrimaryEq">5 + 3 = 8</div>
+              <div class="live-substitution" id="mobileSubEq">Combine 5 and 3 to make 8</div>
+            </div>
+
+            <div class="sliders-list">
+              <!-- Slider a -->
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="var-name a" id="mLabelA">First number (a)</span>
+                  <span class="var-val" id="mobileValA">5</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSliderA" min="1" max="10" step="1" value="5">
+              </div>
+
+              <!-- Slider b -->
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="var-name b" id="mLabelB">Second number (b)</span>
+                  <span class="var-val" id="mobileValB">3</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSliderB" min="1" max="10" step="1" value="3">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /showcase-grid-top -->
+
+    <!-- ======================================================== -->
+    <!-- SECTION 3: DESKTOP SIDE-BY-SIDE SPLIT VIEW               -->
+    <!-- ======================================================== -->
+    <div class="view-section" id="sectionDesktop">
+      <div class="section-title">
+        <span>🖥️ 3. Desktop Mode (Left Controls, Right Stage)</span>
+        <span class="section-badge">880 × 490 px</span>
+      </div>
+
+      <div class="desktop-card">
+        <!-- Left: Math & Sliders Panel (370px) -->
+        <div class="math-panel">
+          <div>
+            <div class="math-header-row">
+              <div class="math-header">Addition and subtraction</div>
+              <div class="op-toggle">
+                <button class="op-btn active" id="dBtnAdd" onclick="setOperation('add')">+ Addition</button>
+                <button class="op-btn" id="dBtnSub" onclick="setOperation('sub')">− Subtraction</button>
+              </div>
+            </div>
+
+            <div class="formula-display">
+              <div class="primary-equation" id="desktopPrimaryEq">5 + 3 = 8</div>
+              <div class="live-substitution" id="desktopSubEq">
+                5 items combined with 3 items gives 8 in total
+              </div>
+            </div>
+          </div>
+
+          <div class="sliders-list">
+            <!-- Slider a -->
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="var-name a" id="dLabelA">First number (a)</span>
+                <span class="var-val" id="desktopValA">5</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderA" min="1" max="10" step="1" value="5">
+            </div>
+
+            <!-- Slider b -->
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="var-name b" id="dLabelB">Second number (b)</span>
+                <span class="var-val" id="desktopValB">3</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderB" min="1" max="10" step="1" value="3">
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Geometry / Simulation Canvas Stage (510px) -->
+        <div class="stage-panel">
+          <canvas id="desktopCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- SLIDE-OVER DRAWER (When Chat Pill is Clicked)             -->
+  <!-- ======================================================== -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="if(event.target === this) closeDrawer()">
+    <div class="drawer-content">
+      <div class="drawer-handle-bar">
+        <div style="width: 28px;"></div>
+        <div class="drawer-pill-notch"></div>
+        <button class="drawer-close-btn" onclick="closeDrawer()" title="Close drawer">✕</button>
+      </div>
+
+      <!-- Drawer Phone Frame Layout (Top Canvas, Bottom Controls) -->
+      <div style="height: 270px; background: #fafafa; position: relative;">
+        <canvas id="drawerCanvas"></canvas>
+      </div>
+
+      <div style="padding: 14px 18px 20px; background: #ffffff; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 11px; font-weight: 600; color: #64748b;">Addition and subtraction</div>
+          <div class="op-toggle">
+            <button class="op-btn active" id="drBtnAdd" onclick="setOperation('add')">+ Add</button>
+            <button class="op-btn" id="drBtnSub" onclick="setOperation('sub')">− Sub</button>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size: 22px; font-weight: 600; color: #0f172a; margin-bottom: 2px;" id="drawerPrimaryEq">5 + 3 = 8</div>
+          <div style="font-size: 12.5px; color: #475569;" id="drawerSubEq">Combine 5 and 3 to make 8</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Drawer Slider a -->
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="var-name a" id="drLabelA">First number (a)</span>
+              <span class="var-val" id="drawerValA">5</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderA" min="1" max="10" step="1" value="5">
+          </div>
+
+          <!-- Drawer Slider b -->
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="var-name b" id="drLabelB">Second number (b)</span>
+              <span class="var-val" id="drawerValB">3</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderB" min="1" max="10" step="1" value="3">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let numA = 5;
+    let numB = 3;
+    let currentOp = 'add'; // 'add' | 'sub'
+
+    // DOM Elements
+    const secPill = document.getElementById('sectionPill');
+    const secMobile = document.getElementById('sectionMobile');
+    const secDesktop = document.getElementById('sectionDesktop');
+    const gridTop = document.getElementById('gridTop');
+
+    const btnShowAll = document.getElementById('btnShowAll');
+    const btnPillView = document.getElementById('btnPillView');
+    const btnDrawerView = document.getElementById('btnDrawerView');
+    const btnMobileView = document.getElementById('btnMobileView');
+    const btnDesktopView = document.getElementById('btnDesktopView');
+
+    const drawerOverlay = document.getElementById('drawerOverlay');
+
+    // Canvases
+    const mobileCanvas = document.getElementById('mobileCanvas');
+    const desktopCanvas = document.getElementById('desktopCanvas');
+    const drawerCanvas = document.getElementById('drawerCanvas');
+
+    // Sliders
+    const mobileSliderA = document.getElementById('mobileSliderA');
+    const mobileSliderB = document.getElementById('mobileSliderB');
+    const desktopSliderA = document.getElementById('desktopSliderA');
+    const desktopSliderB = document.getElementById('desktopSliderB');
+    const drawerSliderA = document.getElementById('drawerSliderA');
+    const drawerSliderB = document.getElementById('drawerSliderB');
+
+    // Tab mode switcher
+    function setMode(mode) {
+      [btnShowAll, btnPillView, btnDrawerView, btnMobileView, btnDesktopView].forEach(b => b.classList.remove('active'));
+      
+      if (mode === 'all') {
+        btnShowAll.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'flex';
+        secDesktop.style.display = 'flex';
+        closeDrawer();
+      } else if (mode === 'pill') {
+        btnPillView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'none';
+        secDesktop.style.display = 'none';
+        closeDrawer();
+      } else if (mode === 'drawer') {
+        btnDrawerView.classList.add('active');
+        openDrawer();
+      } else if (mode === 'mobile') {
+        btnMobileView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'none';
+        secMobile.style.display = 'flex';
+        secDesktop.style.display = 'none';
+        closeDrawer();
+      } else if (mode === 'desktop') {
+        btnDesktopView.classList.add('active');
+        gridTop.style.display = 'none';
+        secPill.style.display = 'none';
+        secMobile.style.display = 'none';
+        secDesktop.style.display = 'flex';
+        closeDrawer();
+      }
+
+      setTimeout(resizeAllCanvases, 40);
+    }
+
+    function openDrawer() {
+      drawerOverlay.classList.add('open');
+      setTimeout(() => resizeCanvas(drawerCanvas), 50);
+    }
+
+    function closeDrawer() {
+      drawerOverlay.classList.remove('open');
+    }
+
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        const header = document.querySelector('.top-header');
+        if (header) header.style.display = 'none';
+        document.body.style.padding = '8px';
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      if (mode && typeof setMode === 'function') {
+        setTimeout(() => setMode(mode), 40);
+      }
+    })();
+
+    function setOperation(op) {
+      currentOp = op;
+      
+      const isAdd = op === 'add';
+      ['mBtnAdd', 'dBtnAdd', 'drBtnAdd'].forEach(id => {
+        document.getElementById(id).classList.toggle('active', isAdd);
+      });
+      ['mBtnSub', 'dBtnSub', 'drBtnSub'].forEach(id => {
+        document.getElementById(id).classList.toggle('active', !isAdd);
+      });
+
+      // Update labels
+      const labelBText = isAdd ? 'Second number (b)' : 'Subtracted amount (b)';
+      ['mLabelB', 'dLabelB', 'drLabelB'].forEach(id => {
+        const el = document.getElementById(id);
+        el.innerText = labelBText;
+        el.className = isAdd ? 'var-name b' : 'var-name b-sub';
+      });
+
+      // If subtraction, ensure b <= a so result is non-negative
+      if (currentOp === 'sub' && numB > numA) {
+        setNumB(numA);
+      }
+
+      updateMath();
+      renderAll();
+    }
+
+    // Input handlers
+    function setNumA(val) {
+      numA = parseInt(val, 10);
+      [mobileSliderA, desktopSliderA, drawerSliderA].forEach(s => s.value = numA);
+      ['mobileValA', 'desktopValA', 'drawerValA'].forEach(id => document.getElementById(id).innerText = numA);
+      
+      // In subtraction, clamp b to a
+      if (currentOp === 'sub' && numB > numA) {
+        setNumB(numA);
+      }
+
+      updateMath();
+      renderAll();
+    }
+
+    function setNumB(val) {
+      let bVal = parseInt(val, 10);
+      if (currentOp === 'sub' && bVal > numA) {
+        bVal = numA;
+      }
+      numB = bVal;
+      [mobileSliderB, desktopSliderB, drawerSliderB].forEach(s => s.value = numB);
+      ['mobileValB', 'desktopValB', 'drawerValB'].forEach(id => document.getElementById(id).innerText = numB);
+      updateMath();
+      renderAll();
+    }
+
+    [mobileSliderA, desktopSliderA, drawerSliderA].forEach(sl => {
+      sl.addEventListener('input', e => setNumA(e.target.value));
+    });
+
+    [mobileSliderB, desktopSliderB, drawerSliderB].forEach(sl => {
+      sl.addEventListener('input', e => setNumB(e.target.value));
+    });
+
+    // Math Updates
+    function updateMath() {
+      const isAdd = currentOp === 'add';
+      const result = isAdd ? (numA + numB) : (numA - numB);
+      const symbol = isAdd ? '+' : '−';
+      const mathFormula = `${numA} ${symbol} ${numB} = ${result}`;
+
+      const descText = isAdd
+        ? `${numA} items combined with ${numB} items gives ${result} in total`
+        : `${numB} items taken away from ${numA} items leaves ${result}`;
+
+      if (window.katex) {
+        ['mobilePrimaryEq', 'desktopPrimaryEq', 'drawerPrimaryEq'].forEach(id => {
+          katex.render(mathFormula, document.getElementById(id), { displayMode: false });
+        });
+      } else {
+        ['mobilePrimaryEq', 'desktopPrimaryEq', 'drawerPrimaryEq'].forEach(id => {
+          document.getElementById(id).innerText = mathFormula;
+        });
+      }
+
+      ['mobileSubEq', 'desktopSubEq', 'drawerSubEq'].forEach(id => {
+        document.getElementById(id).innerText = descText;
+      });
+
+      // Pill Summary
+      document.getElementById('pillTitle').innerText = mathFormula;
+      document.getElementById('pillSubText').innerText = isAdd
+        ? `Sum = ${result} • Tap to explore`
+        : `Difference = ${result} • Tap to explore`;
+    }
+
+    // Geometry & Model Renderer on Any Canvas
+    function drawModelOnCanvas(cv) {
+      if (!cv || !cv.parentElement) return;
+      const rect = cv.parentElement.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w <= 0 || h <= 0) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      if (cv.width !== w * dpr || cv.height !== h * dpr) {
+        cv.width = w * dpr;
+        cv.height = h * dpr;
+      }
+
+      const ctx = cv.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const isAdd = currentOp === 'add';
+      const a = numA;
+      const b = numB;
+      const result = isAdd ? (a + b) : (a - b);
+
+      // Color Palette
+      const colA = '#2563eb';
+      const colAFill = 'rgba(37, 99, 235, 0.12)';
+      const colB = isAdd ? '#7c3aed' : '#e11d48';
+      const colBFill = isAdd ? 'rgba(124, 58, 237, 0.12)' : 'rgba(225, 29, 72, 0.12)';
+      const colRes = '#059669';
+      const colResFill = 'rgba(5, 150, 105, 0.14)';
+
+      // ----------------------------------------------------
+      // PART 1: UPPER VISUAL MODEL — UNIT COUNTER TILES STRIP
+      // ----------------------------------------------------
+      const maxTotal = isAdd ? (a + b) : a;
+      const tilePadding = Math.min(22, w * 0.06);
+      const availWidth = w - tilePadding * 2;
+      
+      // Calculate unit block size
+      const maxSlots = Math.max(10, maxTotal);
+      const gap = 4;
+      const tileSize = Math.min(28, Math.max(14, (availWidth - (maxSlots - 1) * gap) / maxSlots));
+      const stripWidth = maxTotal * tileSize + (maxTotal - 1) * gap;
+      const startX = (w - stripWidth) / 2;
+      const stripY = Math.max(22, h * 0.14);
+
+      // Draw Tiles
+      if (isAdd) {
+        // First group A (Blue)
+        for (let i = 0; i < a; i++) {
+          const tx = startX + i * (tileSize + gap);
+          ctx.fillStyle = colAFill;
+          ctx.strokeStyle = colA;
+          ctx.lineWidth = 1.4;
+          drawRoundedRect(ctx, tx, stripY, tileSize, tileSize, 5);
+          ctx.fill();
+          ctx.stroke();
+
+          // Value inside tile
+          ctx.fillStyle = colA;
+          ctx.font = `600 ${Math.max(10, tileSize * 0.44)}px 'JetBrains Mono', monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(i + 1, tx + tileSize / 2, stripY + tileSize / 2);
+        }
+
+        // Second group B (Violet)
+        for (let j = 0; j < b; j++) {
+          const tx = startX + (a + j) * (tileSize + gap);
+          ctx.fillStyle = colBFill;
+          ctx.strokeStyle = colB;
+          ctx.lineWidth = 1.4;
+          drawRoundedRect(ctx, tx, stripY, tileSize, tileSize, 5);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = colB;
+          ctx.font = `600 ${Math.max(10, tileSize * 0.44)}px 'JetBrains Mono', monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`+${j + 1}`, tx + tileSize / 2, stripY + tileSize / 2);
+        }
+      } else {
+        // Subtraction: a total tiles, last b tiles are crossed out
+        const remaining = a - b;
+        for (let i = 0; i < a; i++) {
+          const tx = startX + i * (tileSize + gap);
+          const isCrossed = i >= remaining;
+
+          ctx.fillStyle = isCrossed ? colBFill : colAFill;
+          ctx.strokeStyle = isCrossed ? colB : colA;
+          ctx.lineWidth = 1.4;
+          
+          if (isCrossed) {
+            ctx.setLineDash([3, 2]);
+          } else {
+            ctx.setLineDash([]);
+          }
+
+          drawRoundedRect(ctx, tx, stripY, tileSize, tileSize, 5);
+          ctx.fill();
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          if (isCrossed) {
+            // Draw cross-out line
+            ctx.strokeStyle = colB;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(tx + 4, stripY + 4);
+            ctx.lineTo(tx + tileSize - 4, stripY + tileSize - 4);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = colA;
+            ctx.font = `600 ${Math.max(10, tileSize * 0.44)}px 'JetBrains Mono', monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(i + 1, tx + tileSize / 2, stripY + tileSize / 2);
+          }
+        }
+      }
+
+      // Group labels above tiles
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      if (isAdd) {
+        const centerAX = startX + (a * (tileSize + gap) - gap) / 2;
+        ctx.fillStyle = colA;
+        ctx.fillText(`${a} units`, centerAX, stripY - 5);
+
+        const centerBX = startX + a * (tileSize + gap) + (b * (tileSize + gap) - gap) / 2;
+        ctx.fillStyle = colB;
+        ctx.fillText(`+${b} units`, centerBX, stripY - 5);
+      } else {
+        const remaining = a - b;
+        if (remaining > 0) {
+          const centerRemX = startX + (remaining * (tileSize + gap) - gap) / 2;
+          ctx.fillStyle = colRes;
+          ctx.fillText(`${remaining} left`, centerRemX, stripY - 5);
+        }
+        if (b > 0) {
+          const centerSubX = startX + remaining * (tileSize + gap) + (b * (tileSize + gap) - gap) / 2;
+          ctx.fillStyle = colB;
+          ctx.fillText(`−${b} taken`, centerSubX, stripY - 5);
+        }
+      }
+
+      // ----------------------------------------------------
+      // PART 2: LOWER VISUAL MODEL — DYNAMIC NUMBER LINE
+      // ----------------------------------------------------
+      const axisY = Math.min(h - 38, h * 0.76);
+      const axisPadding = Math.min(32, w * 0.08);
+      const axisStart = axisPadding;
+      const axisEnd = w - axisPadding;
+      const axisWidth = axisEnd - axisStart;
+
+      // Determine max tick on number line
+      const maxNum = isAdd ? Math.max(12, Math.min(20, Math.ceil((a + b) * 1.25))) : Math.max(10, Math.ceil(a * 1.25));
+      const stepPx = axisWidth / maxNum;
+
+      function numToX(n) {
+        return axisStart + n * stepPx;
+      }
+
+      // Axis base line
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(axisStart - 8, axisY);
+      ctx.lineTo(axisEnd + 8, axisY);
+      ctx.stroke();
+
+      // Axis ticks & numbers
+      ctx.fillStyle = '#64748b';
+      ctx.font = '500 11px \'JetBrains Mono\', monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      for (let n = 0; n <= maxNum; n++) {
+        const tx = numToX(n);
+        ctx.strokeStyle = (n === result) ? colRes : '#94a3b8';
+        ctx.lineWidth = (n === result) ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(tx, axisY - 4);
+        ctx.lineTo(tx, axisY + 5);
+        ctx.stroke();
+
+        // Tick number
+        ctx.fillStyle = (n === result) ? colRes : (n === a ? colA : '#64748b');
+        ctx.font = (n === result) ? '700 12px \'JetBrains Mono\', monospace' : '500 11px \'JetBrains Mono\', monospace';
+        ctx.fillText(n, tx, axisY + 8);
+      }
+
+      // ----------------------------------------------------
+      // JUMP ARCS ON NUMBER LINE
+      // ----------------------------------------------------
+      if (isAdd) {
+        // Arc 1: 0 to a (Cobalt)
+        const x0 = numToX(0);
+        const xA = numToX(a);
+        const arcHeightA = Math.min(54, Math.max(26, (xA - x0) * 0.35));
+
+        ctx.strokeStyle = colA;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(x0, axisY);
+        ctx.quadraticCurveTo((x0 + xA) / 2, axisY - arcHeightA * 2, xA, axisY);
+        ctx.stroke();
+
+        // Apex badge for Arc 1
+        drawBadge(ctx, (x0 + xA) / 2, axisY - arcHeightA - 2, `+${a}`, colA, '#ffffff');
+
+        // Arc 2: a to a + b (Violet)
+        const xRes = numToX(a + b);
+        const arcHeightB = Math.min(50, Math.max(24, (xRes - xA) * 0.35));
+
+        ctx.strokeStyle = colB;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(xA, axisY);
+        ctx.quadraticCurveTo((xA + xRes) / 2, axisY - arcHeightB * 2, xRes, axisY);
+        ctx.stroke();
+
+        // Apex badge for Arc 2
+        drawBadge(ctx, (xA + xRes) / 2, axisY - arcHeightB - 2, `+${b}`, colB, '#ffffff');
+
+        // Result Landing Pin (Emerald)
+        drawLandingPin(ctx, xRes, axisY, result, colRes);
+
+      } else {
+        // Subtraction
+        // Arc 1: 0 to a (Cobalt forward)
+        const x0 = numToX(0);
+        const xA = numToX(a);
+        const arcHeightA = Math.min(56, Math.max(28, (xA - x0) * 0.35));
+
+        ctx.strokeStyle = colA;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(x0, axisY);
+        ctx.quadraticCurveTo((x0 + xA) / 2, axisY - arcHeightA * 2, xA, axisY);
+        ctx.stroke();
+
+        drawBadge(ctx, (x0 + xA) / 2, axisY - arcHeightA - 2, `+${a}`, colA, '#ffffff');
+
+        // Arc 2: a back to a - b (Rose/Red backward)
+        const xRes = numToX(a - b);
+        const arcHeightB = Math.min(48, Math.max(22, (xA - xRes) * 0.35));
+
+        ctx.strokeStyle = colB;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(xA, axisY);
+        ctx.quadraticCurveTo((xA + xRes) / 2, axisY - arcHeightB * 1.8, xRes, axisY);
+        ctx.stroke();
+
+        drawBadge(ctx, (xA + xRes) / 2, axisY - arcHeightB - 2, `−${b}`, colB, '#ffffff');
+
+        // Result Landing Pin (Emerald)
+        drawLandingPin(ctx, xRes, axisY, result, colRes);
+      }
+    }
+
+    // Helper: Rounded Rectangle
+    function drawRoundedRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    // Helper: Arc Apex Badge
+    function drawBadge(ctx, cx, cy, text, bgCol, textCol) {
+      ctx.font = '600 11px \'JetBrains Mono\', monospace';
+      const tw = ctx.measureText(text).width;
+      const bw = tw + 10;
+      const bh = 17;
+      const bx = cx - bw / 2;
+      const by = cy - bh / 2;
+
+      ctx.fillStyle = bgCol;
+      drawRoundedRect(ctx, bx, by, bw, bh, 5);
+      ctx.fill();
+
+      ctx.fillStyle = textCol;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, cx, cy);
+    }
+
+    // Helper: Landing Pin Marker
+    function drawLandingPin(ctx, x, y, val, color) {
+      // Dashed vertical guide line
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([3, 2]);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - 18);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Pin head
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer pulse halo
+      ctx.strokeStyle = 'rgba(5, 150, 105, 0.25)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    function resizeCanvas(cv) {
+      if (cv && cv.parentElement) {
+        drawModelOnCanvas(cv);
+      }
+    }
+
+    function renderAll() {
+      if (mobileCanvas.offsetParent !== null) drawModelOnCanvas(mobileCanvas);
+      if (desktopCanvas.offsetParent !== null) drawModelOnCanvas(desktopCanvas);
+      if (drawerCanvas.offsetParent !== null) drawModelOnCanvas(drawerCanvas);
+    }
+
+    function resizeAllCanvases() {
+      renderAll();
+    }
+
+    window.addEventListener('resize', resizeAllCanvases);
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        updateMath();
+        renderAll();
+      }, 120);
+    });
+    setTimeout(renderAll, 100);
+  </script>
+</body>
+</html>

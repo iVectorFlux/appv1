@@ -64,6 +64,7 @@ export default function RootLayout() {
         <Stack.Screen name="skill-lab" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="game-theory" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="thinking-mode" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+        <Stack.Screen name="interactive" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="future-skills" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       </Stack>
     </SafeAreaProvider>
