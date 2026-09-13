@@ -6,10 +6,11 @@ interface InteractiveFrameProps {
   file: string;
   mode: InteractiveViewMode;
   title: string;
-  height?: number;
+  height?: number | string;
+  fill?: boolean;
 }
 
-export function InteractiveFrame({ file, mode, title, height = 540 }: InteractiveFrameProps) {
+export function InteractiveFrame({ file, mode, title, height = 540, fill }: InteractiveFrameProps) {
   const src = interactiveAssetUrl(file, mode);
   return (
     <iframe
@@ -17,10 +18,11 @@ export function InteractiveFrame({ file, mode, title, height = 540 }: Interactiv
       title={title}
       style={{
         width: '100%',
-        height,
+        height: fill ? '100%' : height,
         border: 'none',
-        borderRadius: 16,
-        backgroundColor: '#f8fafc',
+        borderRadius: fill ? 0 : 16,
+        backgroundColor: 'transparent',
+        display: 'block',
       }}
     />
   );

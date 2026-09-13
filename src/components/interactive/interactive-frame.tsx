@@ -8,10 +8,11 @@ interface InteractiveFrameProps {
   file: string;
   mode: InteractiveViewMode;
   title: string;
-  height?: number;
+  height?: number | string;
+  fill?: boolean;
 }
 
-export function InteractiveFrame({ file, mode, title, height = 540 }: InteractiveFrameProps) {
+export function InteractiveFrame({ file, mode, title, height = 540, fill }: InteractiveFrameProps) {
   const colors = useColors();
   const src = interactiveAssetUrl(file, mode);
 
@@ -19,7 +20,7 @@ export function InteractiveFrame({ file, mode, title, height = 540 }: Interactiv
     return (
       <View style={[styles.fallback, { borderColor: colors.glassBorder, backgroundColor: colors.glass }]}>
         <Text style={[styles.fallbackText, { color: colors.textSecondary }]}>
-          Open Interactive Mode on the web to play this simulation.
+          Play this interactive on the web.
         </Text>
       </View>
     );
@@ -31,10 +32,9 @@ export function InteractiveFrame({ file, mode, title, height = 540 }: Interactiv
       title={title}
       style={{
         width: '100%',
-        height,
+        height: fill ? '100%' : height,
         border: 'none',
-        borderRadius: 16,
-        backgroundColor: '#f8fafc',
+        backgroundColor: 'transparent',
       }}
     />
   );

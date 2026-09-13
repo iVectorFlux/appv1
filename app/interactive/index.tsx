@@ -1,18 +1,9 @@
 /**
- * Interactive Mode hub — four HTML simulations in pill, drawer, and full mobile views.
+ * Interactive Mode hub — four simulations as pills; expand opens a sheet, Play opens full page.
  */
 
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  Pressable,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassBackground } from '@/components/ui/glass-background';
@@ -24,7 +15,7 @@ import { useColors, Spacing, Typography, Radius } from '@/constants/design-token
 export default function InteractiveHubScreen() {
   const router = useRouter();
   const colors = useColors();
-  const [drawerItem, setDrawerItem] = useState<InteractiveItem | null>(null);
+  const [openItem, setOpenItem] = useState<InteractiveItem | null>(null);
 
   return (
     <GlassBackground>
@@ -36,28 +27,21 @@ export default function InteractiveHubScreen() {
       >
         <View style={[styles.hero, { borderColor: colors.primary + '35', backgroundColor: colors.primary + '10' }]}>
           <Text style={styles.heroEmoji}>🎮</Text>
-          <Text style={[styles.heroTag, { color: colors.primary }]}>Interactive Mode</Text>
+          <Text style={[styles.heroTag, { color: colors.primary }]}>Interactive</Text>
           <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
-            Play science and math — as a pill, a card, or a full phone
+            Learn by playing with science and math
           </Text>
           <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-            Tap a pill to open the mobile card drawer. Use Full mobile for the 375×540 phone screen. Desktop is hidden
-            on purpose.
+            Tap a topic to peek at it, or open it full screen to explore.
           </Text>
         </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Four interactives</Text>
 
         {INTERACTIVES.map((item) => (
           <View
             key={item.id}
             style={[styles.pillCard, { borderColor: colors.glassBorder, backgroundColor: colors.surface }]}
           >
-            <TouchableOpacity
-              style={styles.pillRow}
-              onPress={() => setDrawerItem(item)}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={styles.pillRow} onPress={() => setOpenItem(item)} activeOpacity={0.85}>
               <View style={[styles.emojiBox, { backgroundColor: item.accent + '18' }]}>
                 <Text style={styles.emoji}>{item.emoji}</Text>
               </View>
@@ -68,71 +52,54 @@ export default function InteractiveHubScreen() {
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => setDrawerItem(item)}
+                onPress={() => setOpenItem(item)}
                 style={[styles.expandBtn, { backgroundColor: item.accent }]}
-                accessibilityLabel={`Expand ${item.title}`}
+                accessibilityLabel={`Open ${item.title}`}
               >
                 <Ionicons name="expand-outline" size={16} color="#FFF" />
               </TouchableOpacity>
             </TouchableOpacity>
 
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={[styles.ghostBtn, { borderColor: colors.glassBorder }]}
-                onPress={() => setDrawerItem(item)}
-              >
-                <Text style={[styles.ghostBtnText, { color: colors.textSecondary }]}>💊 Pill → drawer</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.ghostBtn, { borderColor: item.accent + '50', backgroundColor: item.accent + '12' }]}
-                onPress={() => router.push(`/interactive/${item.id}` as never)}
-              >
-                <Text style={[styles.ghostBtnText, { color: item.accent }]}>📲 Full mobile view</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[styles.playBtn, { backgroundColor: item.accent }]}
+              onPress={() => router.push(`/interactive/${item.id}` as never)}
+            >
+              <Text style={styles.playBtnText}>Play full screen</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFF" />
+            </TouchableOpacity>
           </View>
         ))}
       </ScrollView>
 
-      <Modal visible={!!drawerItem} animationType="slide" transparent onRequestClose={() => setDrawerItem(null)}>
-        <Pressable style={styles.overlay} onPress={() => setDrawerItem(null)}>
+      <Modal visible={!!openItem} animationType="slide" transparent onRequestClose={() => setOpenItem(null)}>
+        <Pressable style={styles.overlay} onPress={() => setOpenItem(null)}>
           <Pressable
-            style={[styles.drawer, { backgroundColor: colors.background, borderColor: colors.glassBorder }]}
+            style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.glassBorder }]}
             onPress={(e) => e.stopPropagation()}
           >
-            <View style={styles.drawerHandle} />
-            <View style={styles.drawerHeader}>
-              <Text style={[styles.drawerTitle, { color: colors.textPrimary }]}>
-                {drawerItem ? `${drawerItem.emoji} ${drawerItem.title}` : ''}
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+                {openItem ? `${openItem.emoji} ${openItem.title}` : ''}
               </Text>
-              <TouchableOpacity onPress={() => setDrawerItem(null)} hitSlop={12}>
+              <TouchableOpacity onPress={() => setOpenItem(null)} hitSlop={12}>
                 <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <Text style={[styles.drawerHint, { color: colors.textMuted }]}>
-              Mobile card view · 375 × 540 · tap Full mobile for the phone screen
-            </Text>
-            {drawerItem ? (
-              <View style={styles.phoneCard}>
-                <InteractiveFrame
-                  file={drawerItem.file}
-                  mode="mobile"
-                  title={drawerItem.title}
-                  height={Platform.OS === 'web' ? 540 : 420}
-                />
-              </View>
+            {openItem ? (
+              <InteractiveFrame file={openItem.file} mode="drawer" title={openItem.title} height={520} />
             ) : null}
-            {drawerItem ? (
+            {openItem ? (
               <TouchableOpacity
-                style={[styles.fullBtn, { backgroundColor: drawerItem.accent }]}
+                style={[styles.playBtn, { backgroundColor: openItem.accent, marginTop: Spacing.md }]}
                 onPress={() => {
-                  const id = drawerItem.id;
-                  setDrawerItem(null);
+                  const id = openItem.id;
+                  setOpenItem(null);
                   router.push(`/interactive/${id}` as never);
                 }}
               >
-                <Text style={styles.fullBtnText}>Open full mobile view</Text>
-                <Ionicons name="phone-portrait-outline" size={16} color="#FFF" />
+                <Text style={styles.playBtnText}>Play full screen</Text>
+                <Ionicons name="arrow-forward" size={16} color="#FFF" />
               </TouchableOpacity>
             ) : null}
           </Pressable>
@@ -161,7 +128,6 @@ const styles = StyleSheet.create({
     lineHeight: Typography.fontSize.xl * 1.25,
   },
   heroSub: { fontSize: Typography.fontSize.sm, lineHeight: 20, textAlign: 'center' },
-  sectionTitle: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
   pillCard: { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   emojiBox: {
@@ -182,42 +148,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionRow: { flexDirection: 'row', gap: Spacing.sm },
-  ghostBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: Radius.full,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  ghostBtnText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    justifyContent: 'flex-end',
-  },
-  drawer: {
-    maxHeight: '92%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    padding: Spacing.md,
-    paddingBottom: Spacing['3xl'],
-  },
-  drawerHandle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#CBD5E1',
-    marginBottom: Spacing.sm,
-  },
-  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  drawerTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.bold, flex: 1 },
-  drawerHint: { fontSize: Typography.fontSize.xs, marginBottom: Spacing.sm },
-  phoneCard: { alignSelf: 'center', width: '100%', maxWidth: 375 },
-  fullBtn: {
-    marginTop: Spacing.md,
+  playBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -225,5 +156,28 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: Radius.full,
   },
-  fullBtnText: { color: '#FFF', fontWeight: Typography.fontWeight.bold, fontSize: Typography.fontSize.sm },
+  playBtnText: { color: '#FFF', fontWeight: Typography.fontWeight.bold, fontSize: Typography.fontSize.sm },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    maxHeight: '90%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: Spacing.md,
+    paddingBottom: Spacing['3xl'],
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
+    marginBottom: Spacing.sm,
+  },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm },
+  sheetTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.bold, flex: 1 },
 });

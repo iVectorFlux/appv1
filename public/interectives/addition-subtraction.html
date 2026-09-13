@@ -924,7 +924,13 @@
       if (params.get('embed') === '1') {
         const header = document.querySelector('.top-header');
         if (header) header.style.display = 'none';
-        document.body.style.padding = '8px';
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge').forEach((el) => {
+          el.style.display = 'none';
+        });
         ['btnDesktopView', 'btnShowAll'].forEach((id) => {
           const el = document.getElementById(id);
           if (el) el.style.display = 'none';
