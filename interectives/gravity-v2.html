@@ -124,48 +124,51 @@
       font-weight: 500;
     }
 
-    /* 1. Pill Mode — same card pattern as addition / Pythagoras */
+    /* 1. Pill Mode — Standard In-Chat Capsule */
     .chat-pill-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 14px;
-      padding: 10px 14px;
+      border-radius: 18px;
+      padding: 8px 14px 8px 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       cursor: pointer;
-      transition: all 0.18s ease;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       user-select: none;
-      width: 360px;
+      width: 100%;
+      max-width: 350px;
     }
 
     .chat-pill-card:hover {
-      border-color: #cbd5e1;
-      transform: translateY(-1.5px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+      border-color: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
     }
 
     .pill-icon-box {
-      width: 44px;
-      height: 38px;
-      border-radius: 10px;
+      width: 76px;
+      height: 52px;
+      border-radius: 12px;
       background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #f1f5f9;
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
       flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
     }
 
     .pill-icon-box canvas {
       width: 100%;
       height: 100%;
+      display: block;
     }
 
-    .pill-info {
+    .pill-content {
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -173,18 +176,14 @@
       min-width: 0;
     }
 
-    .pill-title {
-      font-family: 'KaTeX_Math', 'Cambria Math', serif;
-      font-size: 16px;
+    .pill-formula {
+      font-size: 19px;
       font-weight: 600;
       color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
-    .pill-sub {
-      font-size: 11.5px;
+    .pill-subtitle {
+      font-size: 11px;
       color: #64748b;
       font-family: 'JetBrains Mono', monospace;
       white-space: nowrap;
@@ -192,24 +191,25 @@
       text-overflow: ellipsis;
     }
 
-    .pill-action-btn {
-      width: 28px;
-      height: 28px;
+    .pill-expand-btn {
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      background: #f1f5f9;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #475569;
+      color: #334155;
       flex-shrink: 0;
-      transition: background 0.15s ease;
+      transition: all 0.15s ease;
     }
 
-    .chat-pill-card:hover .pill-action-btn {
-      background: #0f172a;
+    .chat-pill-card:hover .pill-expand-btn {
+      background: #2563eb;
       color: #ffffff;
+      border-color: #2563eb;
     }
-
 
     /* 2. Mobile Phone Frame (375x540) */
     .mobile-phone-frame {
@@ -226,8 +226,8 @@
     }
 
     .phone-stage {
-      height: 300px;
-      background: #f8fafc;
+      height: 270px;
+      background: #ffffff;
       position: relative;
       border-bottom: 1px solid #f1f5f9;
     }
@@ -239,13 +239,13 @@
     }
 
     .phone-controls {
-      height: 240px;
+      height: 270px;
       background: #ffffff;
       padding: 10px 14px 10px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      overflow: hidden;
+      overflow-y: auto;
     }
 
     /* 3. Desktop Split Card (880x490) */
@@ -273,7 +273,7 @@
     }
 
     .stage-panel {
-      background: #f8fafc;
+      background: #ffffff;
       position: relative;
       overflow: hidden;
     }
@@ -422,27 +422,94 @@
       -webkit-appearance: none;
       appearance: none;
       width: 100%;
-      height: 5px;
-      border-radius: 3px;
-      background: #e2e8f0;
+      height: 36px;
+      background: transparent;
       outline: none;
-      margin: 4px 0;
+      cursor: pointer;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      cursor: pointer;
     }
 
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 16px;
-      height: 16px;
+      width: 24px;
+      height: 24px;
+      margin-top: -9px;
       border-radius: 50%;
       background: #2563eb;
       cursor: pointer;
-      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
-      transition: transform 0.1s ease;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+      border: 2.5px solid #ffffff;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
     }
 
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.22);
+      box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.15), 0 3px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    }
+
+    /* Dynamic Takeaway Card (One-Glance Understanding) */
+    .takeaway-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .takeaway-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .takeaway-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .takeaway-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    .takeaway-text {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #1e40af;
+      line-height: 1.35;
     }
 
     /* Action Buttons Row */
@@ -583,7 +650,7 @@
 
     .drawer-stage {
       height: 260px;
-      background: #f8fafc;
+      background: #ffffff;
       position: relative;
       border-bottom: 1px solid #f1f5f9;
     }
@@ -683,20 +750,25 @@
       <!-- SECTION 1: PILL MODE -->
       <div class="view-section" id="sectionPill">
         <div class="section-title">
-          <span>💊 1. Pill Mode (Tap to Open Mobile Card)</span>
-          <span class="section-badge">Compact Capsule</span>
+          <span>💊 1. Pill mode</span>
+          <span class="section-badge">Compact capsule (350px)</span>
         </div>
 
         <div class="chat-pill-card" id="chatPillTrigger" onclick="openDrawer()">
           <div class="pill-icon-box">
-            <canvas id="pillCanvas"></canvas>
+            <canvas id="pillCanvas" width="152" height="104"></canvas>
           </div>
-          <div class="pill-info">
-            <div class="pill-title" id="pillFormula"></div>
-            <div class="pill-sub" id="pillSubText">Earth (9.8 m/s²), h = 20 m • Tap to explore</div>
+          <div class="pill-content">
+            <div class="pill-formula" id="pillFormula"></div>
+            <div class="pill-subtitle" id="pillSubText">Earth (9.8 m/s²), h = 20 m • Vacuum</div>
           </div>
-          <div class="pill-action-btn" title="Open Interactive Playground">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          <div class="pill-expand-btn" title="Expand to mobile card">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <polyline points="15 3 21 3 21 9"/>
+              <polyline points="9 21 3 21 3 15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/>
+              <line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
           </div>
         </div>
       </div>
@@ -728,6 +800,15 @@
                 <button class="segment-btn active" data-planet="earth" onclick="selectPlanet('earth')">Earth (9.8)</button>
                 <button class="segment-btn" data-planet="moon" onclick="selectPlanet('moon')">Moon (1.6)</button>
                 <button class="segment-btn" data-planet="jupiter" onclick="selectPlanet('jupiter')">Jupiter (24.8)</button>
+              </div>
+
+              <!-- Atmosphere Chamber Toggle -->
+              <div class="atmosphere-toggle">
+                <span class="toggle-label" id="mobileChamberLabel">Air chamber (with drag)</span>
+                <div class="chamber-btn-group">
+                  <button class="ch-btn active" id="mBtnAir" onclick="setChamber(false)">Air</button>
+                  <button class="ch-btn" id="mBtnVac" onclick="setChamber(true)">Vacuum</button>
+                </div>
               </div>
 
               <!-- Height Slider -->
@@ -827,14 +908,17 @@
               <div class="katex-row" id="desktopKatexFormula"></div>
             </div>
 
-            <div class="metrics-strip">
-              <div class="metric-pill">
-                <span class="metric-name">Elapsed time</span>
-                <span class="metric-value" id="desktopElapsedMetric">0.00 s</span>
+            <!-- One-Glance Principle Takeaway -->
+            <div class="takeaway-card" id="desktopTakeawayCard" style="margin-top: 10px;">
+              <div class="takeaway-header-row">
+                <span class="takeaway-badge" id="desktopTakeawayBadge">
+                  <span class="takeaway-dot"></span>
+                  <span id="desktopTakeawayBadgeText">Galileo's principle</span>
+                </span>
+                <span style="font-size: 11px; color: #2563eb; font-weight: 500;">One-glance principle</span>
               </div>
-              <div class="metric-pill">
-                <span class="metric-name">Impact velocity</span>
-                <span class="metric-value" id="desktopVelocityMetric">0.0 m/s</span>
+              <div class="takeaway-text" id="desktopTakeawayText">
+                In air, feather is slowed by air drag while bowling ball falls freely!
               </div>
             </div>
           </div>
@@ -1019,29 +1103,6 @@
       drawerOverlay.classList.remove('open');
     }
 
-    (function applyEmbedMode() {
-      const params = new URLSearchParams(location.search);
-      const mode = params.get('mode');
-      if (params.get('embed') === '1') {
-        const header = document.querySelector('.top-header');
-        if (header) header.style.display = 'none';
-        document.body.style.padding = '0';
-        document.body.style.minHeight = '100%';
-        document.documentElement.style.height = '100%';
-        document.body.style.height = '100%';
-        document.querySelectorAll('.section-title, .section-badge').forEach((el) => {
-          el.style.display = 'none';
-        });
-        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.style.display = 'none';
-        });
-      }
-      if (mode && typeof setMode === 'function') {
-        setTimeout(() => setMode(mode), 40);
-      }
-    })();
-
     // Planet Selection
     function selectPlanet(planetKey) {
       if (!PLANETS[planetKey]) return;
@@ -1128,7 +1189,16 @@
 
       const pillSub = document.getElementById('pillSubText');
       if (pillSub) {
-        pillSub.textContent = `${planet.name} (${g.toFixed(1)} m/s²), h = ${h} m • Tap to explore`;
+        pillSub.textContent = `${planet.name} (${g.toFixed(1)} m/s²), h = ${h} m • ${isVacuum ? 'Vacuum' : 'Atmosphere'}`;
+      }
+
+      const takeawayEl = document.getElementById('desktopTakeawayText');
+      if (takeawayEl) {
+        if (isVacuum) {
+          takeawayEl.textContent = `In vacuum, feather and bowling ball accelerate at identical rates (g = ${g.toFixed(1)} m/s²), landing simultaneously!`;
+        } else {
+          takeawayEl.textContent = `In atmosphere, feather is slowed by air drag while bowling ball accelerates freely under gravity (g = ${g.toFixed(1)} m/s²)!`;
+        }
       }
     }
 
@@ -1299,17 +1369,20 @@
       const planet = PLANETS[selectedPlanet];
 
       // Coordinate System
-      const topPadding = isMini ? 12 : 68;
-      const bottomPadding = isMini ? 12 : 36;
+      const topPadding = isMini ? 8 : 68;
+      const bottomPadding = isMini ? 8 : 36;
       const dropTrackHeight = h - topPadding - bottomPadding;
-      const pixelsPerMeter = dropTrackHeight / 30; // fixed 30m vertical scale
-      const groundY = topPadding + dropHeightMeters * pixelsPerMeter;
+      const pixelsPerMeter = isMini ? (dropTrackHeight / Math.max(1, dropHeightMeters)) : (dropTrackHeight / 30);
+      const groundY = isMini ? (h - bottomPadding) : (topPadding + dropHeightMeters * pixelsPerMeter);
 
       const trackX1 = w * 0.32; // Steel sphere lane
       const trackX2 = w * 0.68; // Feather lane
 
-      // Background tint
-      ctx.fillStyle = isVacuum ? '#ffffff' : planet.bgTint;
+      // Background tint with subtle studio illumination
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.45, 10, w * 0.5, h * 0.45, Math.max(w, h) * 0.65);
+      bgGrad.addColorStop(0, '#ffffff');
+      bgGrad.addColorStop(1, isVacuum ? '#f8fafc' : planet.bgTint);
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
       if (!isMini) {
@@ -1397,7 +1470,7 @@
 
       // Object 1: Heavy Steel Sphere (5 kg)
       const spherePixelY = topPadding + sphereY * pixelsPerMeter;
-      const sphereRadius = isMini ? 6 : 14;
+      const sphereRadius = isMini ? 5 : 14;
 
       // Track line
       ctx.strokeStyle = '#f1f5f9';
@@ -1462,7 +1535,7 @@
       ctx.stroke();
 
       // Draw realistic vector feather
-      drawRealisticFeather(ctx, featherX, featherPixelY, featherAngle, isMini ? 0.4 : 1.0);
+      drawRealisticFeather(ctx, featherX, featherPixelY, featherAngle, isMini ? 0.35 : 1.0);
 
       // Labels (Non-mini)
       if (!isMini) {
@@ -1554,6 +1627,44 @@
       updateKaTeX();
       requestAnimationFrame(tick);
     }, 50);
+  
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        document.querySelectorAll('.top-header').forEach((el) => { el.style.display = 'none'; });
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge, .specs-bar, .audience-switcher').forEach((el) => {
+          el.style.display = 'none';
+        });
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      function applyMode(m) {
+        if (!m) return;
+        if (typeof setMode === 'function') { setMode(m); return; }
+        if (typeof switchView === 'function') { switchView(m); return; }
+        document.body.classList.remove('mode-pill', 'mode-mobile', 'mode-desktop');
+        if (m === 'pill') document.body.classList.add('mode-pill');
+        if (m === 'mobile') document.body.classList.add('mode-mobile');
+        if (m === 'desktop') document.body.classList.add('mode-desktop');
+        const overlay = document.getElementById('drawerOverlay');
+        if (overlay) {
+          if (m === 'drawer') { overlay.classList.add('open'); overlay.classList.add('active'); }
+          else { overlay.classList.remove('open'); overlay.classList.remove('active'); }
+        }
+        document.querySelectorAll('.switch-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-view') === m);
+        });
+      }
+      if (mode) setTimeout(() => applyMode(mode), 50);
+    })();
+
   </script>
 </body>
 </html>

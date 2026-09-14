@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Decimals & Place Value: Tenths and Hundredths — InteractEd</title>
+
+  <!-- Google Fonts & KaTeX -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 20px 48px;
+    }
+
+    /* Top Navigation Header */
+    .top-header {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .switch-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .switch-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .switch-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Showcase Layout */
+    .showcase-container {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .showcase-grid-top {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 36px;
+      flex-wrap: wrap;
+    }
+
+    .showcase-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mode-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 1: PILL MODE (In-Chat Capsule)
+       ------------------------------------------------------------- */
+    .chat-pill-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+      width: 350px;
+    }
+
+    .chat-pill-card:hover {
+      border-color: #cbd5e1;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+    }
+
+    .pill-icon-box {
+      width: 44px;
+      height: 38px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .pill-icon-box canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pill-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pill-title {
+      font-size: 16px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-sub {
+      font-size: 11.5px;
+      color: #64748b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-expand-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #475569;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .chat-pill-card:hover .pill-expand-btn {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 3: MOBILE PHONE (375px × 540px)
+       ------------------------------------------------------------- */
+    .mobile-phone-frame {
+      width: 375px;
+      height: 540px;
+      background: #ffffff;
+      border-radius: 24px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .phone-stage {
+      height: 285px;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+
+    .phone-stage canvas {
+      width: 100%;
+      flex: 1;
+      display: block;
+      touch-action: none;
+    }
+
+    .phone-controls {
+      height: 255px;
+      background: #ffffff;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 4: DESKTOP MODE (880px × 490px)
+       ------------------------------------------------------------- */
+    .desktop-card {
+      width: 880px;
+      height: 490px;
+      background: #ffffff;
+      border-radius: 20px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.07), 0 4px 14px rgba(0, 0, 0, 0.02);
+      display: flex;
+      overflow: hidden;
+    }
+
+    .math-panel {
+      width: 370px;
+      height: 100%;
+      background: #ffffff;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid #f1f5f9;
+    }
+
+    .stage-panel {
+      width: 510px;
+      height: 100%;
+      background: #ffffff;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      overflow: hidden;
+    }
+
+    .stage-panel canvas {
+      width: 100%;
+      flex: 1;
+      display: block;
+      touch-action: none;
+    }
+
+    /* Crisp Stage HTML Badges (Zero Blurry Canvas Text) */
+    .stage-top-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #334155;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      z-index: 2;
+      user-select: none;
+    }
+
+    .stage-bottom-pills {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      z-index: 2;
+      user-select: none;
+    }
+
+    .pill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+
+    .pill-tag.blue {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    .pill-tag.green {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+
+    .pill-tag.dark {
+      background: #0f172a;
+      border-color: #0f172a;
+      color: #ffffff;
+    }
+
+    .tag-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .tag-dot.blue { background: #2563eb; }
+    .tag-dot.green { background: #10b981; }
+    .tag-dot.dark { background: #f59e0b; }
+
+    /* -------------------------------------------------------------
+       MINIMAL TYPOGRAPHY & CLEAN SLIDERS
+       ------------------------------------------------------------- */
+    .math-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+
+    .primary-equation {
+      font-size: 28px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+
+    .primary-equation span.tenths {
+      color: #2563eb;
+    }
+
+    .primary-equation span.hundredths {
+      color: #059669;
+    }
+
+    .primary-equation span.dot {
+      color: #ef4444;
+      font-weight: 700;
+    }
+
+    .live-substitution {
+      font-size: 13.5px;
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+    }
+
+    .var-name {
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .var-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 36px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .range-slider::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      cursor: pointer;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      margin-top: -9px;
+      border-radius: 50%;
+      background: #2563eb;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .range-slider::-webkit-slider-thumb:active {
+      transform: scale(1.2);
+      box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.15), 0 3px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    .range-slider.green::-webkit-slider-thumb {
+      background: #059669;
+      box-shadow: 0 2px 6px rgba(5, 150, 105, 0.35);
+    }
+
+    .range-slider.green::-webkit-slider-thumb:active {
+      box-shadow: 0 0 0 8px rgba(5, 150, 105, 0.15), 0 3px 8px rgba(5, 150, 105, 0.4);
+    }
+
+    /* -------------------------------------------------------------
+       MODE 2: MOBILE CARD DRAWER
+       ------------------------------------------------------------- */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mobile-drawer-sheet {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.12);
+      display: flex;
+      flex-direction: column;
+      max-height: 85vh;
+      overflow: hidden;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .drawer-overlay.open .mobile-drawer-sheet {
+      transform: translateY(0);
+    }
+
+    .drawer-handle-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .drawer-pill-notch {
+      width: 36px;
+      height: 4px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      margin: 0 auto;
+    }
+
+    .drawer-close-btn {
+      background: #f1f5f9;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drawer-stage {
+      height: 270px;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+
+    .drawer-stage canvas {
+      width: 100%;
+      flex: 1;
+      display: block;
+      touch-action: none;
+    }
+
+    .drawer-controls {
+      padding: 20px 22px 28px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Mode Switcher -->
+  <div class="top-header">
+    <nav class="view-switcher">
+      <button class="switch-btn active" id="btnShowAll" onclick="switchView('all')">👁️ View All Modes</button>
+      <button class="switch-btn" id="btnPillView" onclick="switchView('pill')">💊 1. Pill Mode</button>
+      <button class="switch-btn" id="btnDrawerView" onclick="switchView('drawer')">📱 2. Mobile Card Drawer</button>
+      <button class="switch-btn" id="btnMobileView" onclick="switchView('mobile')">📲 3. Mobile Screen (375×540)</button>
+      <button class="switch-btn" id="btnDesktopView" onclick="switchView('desktop')">🖥️ 4. Desktop Mode (880×490)</button>
+    </nav>
+  </div>
+
+  <!-- Showcase Container -->
+  <div class="showcase-container">
+
+    <!-- Side-by-Side Top Row (Pill + Mobile Screen) -->
+    <div class="showcase-grid-top" id="gridTop">
+
+      <!-- MODE 1: PILL VIEW -->
+      <div class="showcase-item" id="sectionPill">
+        <div class="mode-label">💊 1. Pill Mode (In-Chat Capsule)</div>
+        <div class="chat-pill-card" onclick="openDrawer()">
+          <div class="pill-icon-box">
+            <canvas id="pillCanvas" width="88" height="76"></canvas>
+          </div>
+          <div class="pill-info">
+            <div class="pill-title" id="pillTitle">0.45</div>
+            <div class="pill-sub" id="pillSub">4 tenths and 5 hundredths • Tap to open</div>
+          </div>
+          <div class="pill-expand-btn">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODE 3: MOBILE SCREEN (375 × 540) -->
+      <div class="showcase-item" id="sectionMobile">
+        <div class="mode-label">📲 2. Mobile Screen Mode (375 × 540 px)</div>
+        <div class="mobile-phone-frame">
+          <div class="phone-stage">
+            <div class="stage-top-pill">100 equal parts (1 whole)</div>
+            <canvas id="phoneCanvas"></canvas>
+            <div class="stage-bottom-pills">
+              <span class="pill-tag blue"><span class="tag-dot blue"></span>Tenths: <strong id="phoneTagTenths">4 (0.40)</strong></span>
+              <span class="pill-tag green"><span class="tag-dot green"></span>Hundredths: <strong id="phoneTagHundredths">5 (0.05)</strong></span>
+              <span class="pill-tag dark">Total: <strong id="phoneTagTotal">0.45</strong></span>
+            </div>
+          </div>
+          <div class="phone-controls">
+            <div>
+              <div class="math-header">Decimals and place value</div>
+              <div class="primary-equation" id="phonePrimaryEq">
+                0<span class="dot">.</span><span class="tenths">4</span><span class="hundredths">5</span>
+              </div>
+              <div class="live-substitution" id="phoneSubEq">
+                4 tenths and 5 hundredths make 0.45 out of 1 whole.
+              </div>
+            </div>
+
+            <div class="sliders-list">
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="var-name">Tenths</span>
+                  <span class="var-val" id="phoneValTenths">4</span>
+                </div>
+                <input type="range" class="range-slider" id="phoneSliderTenths" min="0" max="9" step="1" value="4" oninput="onPlaceChange(this.value, null)">
+              </div>
+
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="var-name">Hundredths</span>
+                  <span class="var-val" id="phoneValHundredths">5</span>
+                </div>
+                <input type="range" class="range-slider green" id="phoneSliderHundredths" min="0" max="9" step="1" value="5" oninput="onPlaceChange(null, this.value)">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /showcase-grid-top -->
+
+    <!-- MODE 4: DESKTOP MODE (880 × 490) -->
+    <div class="showcase-item" id="sectionDesktop">
+      <div class="mode-label">🖥️ 3. Desktop Mode (880 × 490 px)</div>
+      <div class="desktop-card">
+        <!-- Left Math Panel (370px) -->
+        <div class="math-panel">
+          <div>
+            <div class="math-header">Decimals and place value</div>
+            <div class="primary-equation" id="desktopPrimaryEq">
+              0<span class="dot">.</span><span class="tenths">4</span><span class="hundredths">5</span>
+            </div>
+            <div class="live-substitution" id="desktopSubEq">
+              4 tenths and 5 hundredths make 0.45 out of 1 whole.
+            </div>
+          </div>
+
+          <div class="sliders-list">
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="var-name">Tenths (0.1 columns)</span>
+                <span class="var-val" id="desktopValTenths">4 tenths</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderTenths" min="0" max="9" step="1" value="4" oninput="onPlaceChange(this.value, null)">
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="var-name">Hundredths (0.01 tiles)</span>
+                <span class="var-val" id="desktopValHundredths">5 hundredths</span>
+              </div>
+              <input type="range" class="range-slider green" id="desktopSliderHundredths" min="0" max="9" step="1" value="5" oninput="onPlaceChange(null, this.value)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Stage Panel (510px) -->
+        <div class="stage-panel">
+          <div class="stage-top-pill">100 equal parts (1 whole)</div>
+          <canvas id="desktopCanvas"></canvas>
+          <div class="stage-bottom-pills">
+            <span class="pill-tag blue"><span class="tag-dot blue"></span>Tenths: <strong id="desktopTagTenths">4 (0.40)</strong></span>
+            <span class="pill-tag green"><span class="tag-dot green"></span>Hundredths: <strong id="desktopTagHundredths">5 (0.05)</strong></span>
+            <span class="pill-tag dark">Total: <strong id="desktopTagTotal">0.45</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODE 2: MOBILE CARD DRAWER OVERLAY -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="if(event.target === this) closeDrawer()">
+    <div class="mobile-drawer-sheet" onclick="event.stopPropagation()">
+      <div class="drawer-handle-bar">
+        <div style="width: 28px;"></div>
+        <div class="drawer-pill-notch"></div>
+        <button class="drawer-close-btn" onclick="closeDrawer()">✕</button>
+      </div>
+
+      <div class="drawer-stage">
+        <div class="stage-top-pill">100 equal parts (1 whole)</div>
+        <canvas id="drawerCanvas"></canvas>
+        <div class="stage-bottom-pills">
+          <span class="pill-tag blue"><span class="tag-dot blue"></span>Tenths: <strong id="drawerTagTenths">4 (0.40)</strong></span>
+          <span class="pill-tag green"><span class="tag-dot green"></span>Hundredths: <strong id="drawerTagHundredths">5 (0.05)</strong></span>
+          <span class="pill-tag dark">Total: <strong id="drawerTagTotal">0.45</strong></span>
+        </div>
+      </div>
+
+      <div class="drawer-controls">
+        <div>
+          <div class="math-header">Decimals and place value</div>
+          <div class="primary-equation" id="drawerPrimaryEq">
+            0<span class="dot">.</span><span class="tenths">4</span><span class="hundredths">5</span>
+          </div>
+          <div class="live-substitution" id="drawerSubEq">
+            4 tenths and 5 hundredths make 0.45 out of 1 whole.
+          </div>
+        </div>
+
+        <div class="sliders-list">
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="var-name">Tenths</span>
+              <span class="var-val" id="drawerValTenths">4</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderTenths" min="0" max="9" step="1" value="4" oninput="onPlaceChange(this.value, null)">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="var-name">Hundredths</span>
+              <span class="var-val" id="drawerValHundredths">5</span>
+            </div>
+            <input type="range" class="range-slider green" id="drawerSliderHundredths" min="0" max="9" step="1" value="5" oninput="onPlaceChange(null, this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* -------------------------------------------------------------
+       STATE MANAGEMENT
+       ------------------------------------------------------------- */
+    let tenths = 4;
+    let hundredths = 5;
+
+    const canvases = {
+      pill: document.getElementById('pillCanvas'),
+      phone: document.getElementById('phoneCanvas'),
+      desktop: document.getElementById('desktopCanvas'),
+      drawer: document.getElementById('drawerCanvas')
+    };
+
+    /* -------------------------------------------------------------
+       CONTROLS
+       ------------------------------------------------------------- */
+    function onPlaceChange(t, h) {
+      if (t !== null) tenths = parseInt(t, 10);
+      if (h !== null) hundredths = parseInt(h, 10);
+      syncUI();
+    }
+
+    /* -------------------------------------------------------------
+       VIEW SWITCHER
+       ------------------------------------------------------------- */
+    function switchView(mode) {
+      document.querySelectorAll('.switch-btn').forEach(b => b.classList.remove('active'));
+      
+      const pSec = document.getElementById('sectionPill');
+      const mSec = document.getElementById('sectionMobile');
+      const dSec = document.getElementById('sectionDesktop');
+      const gTop = document.getElementById('gridTop');
+
+      if (mode === 'all') {
+        document.getElementById('btnShowAll').classList.add('active');
+        gTop.style.display = 'flex';
+        pSec.style.display = 'flex';
+        mSec.style.display = 'flex';
+        dSec.style.display = 'flex';
+      } else if (mode === 'pill') {
+        document.getElementById('btnPillView').classList.add('active');
+        gTop.style.display = 'flex';
+        pSec.style.display = 'flex';
+        mSec.style.display = 'none';
+        dSec.style.display = 'none';
+      } else if (mode === 'mobile') {
+        document.getElementById('btnMobileView').classList.add('active');
+        gTop.style.display = 'flex';
+        pSec.style.display = 'none';
+        mSec.style.display = 'flex';
+        dSec.style.display = 'none';
+      } else if (mode === 'desktop') {
+        document.getElementById('btnDesktopView').classList.add('active');
+        gTop.style.display = 'none';
+        dSec.style.display = 'flex';
+      } else if (mode === 'drawer') {
+        document.getElementById('btnDrawerView').classList.add('active');
+        openDrawer();
+      }
+    }
+
+    function openDrawer() {
+      document.getElementById('drawerOverlay').classList.add('open');
+      resizeAndRender();
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawerOverlay').classList.remove('open');
+    }
+
+    /* -------------------------------------------------------------
+       SYNC UI
+       ------------------------------------------------------------- */
+    function syncUI() {
+      const decStr = `0.${tenths}${hundredths}`;
+
+      ['phone', 'desktop', 'drawer'].forEach(prefix => {
+        const inpT = document.getElementById(`${prefix}SliderTenths`);
+        const inpH = document.getElementById(`${prefix}SliderHundredths`);
+        const valT = document.getElementById(`${prefix}ValTenths`);
+        const valH = document.getElementById(`${prefix}ValHundredths`);
+
+        if (inpT) inpT.value = tenths;
+        if (inpH) inpH.value = hundredths;
+        if (valT) valT.innerText = prefix === 'desktop' ? `${tenths} tenths` : `${tenths}`;
+        if (valH) valH.innerText = prefix === 'desktop' ? `${hundredths} hundredths` : `${hundredths}`;
+
+        const eq = document.getElementById(`${prefix}PrimaryEq`);
+        const sub = document.getElementById(`${prefix}SubEq`);
+        if (eq) {
+          eq.innerHTML = `0<span class="dot">.</span><span class="tenths">${tenths}</span><span class="hundredths">${hundredths}</span>`;
+        }
+        if (sub) {
+          if (tenths === 0 && hundredths === 0) {
+            sub.innerText = `Zero tenths and zero hundredths equals 0.00.`;
+          } else if (hundredths === 0) {
+            sub.innerText = `${tenths} tenths makes 0.${tenths} (or ${tenths * 10} out of 100 parts).`;
+          } else {
+            sub.innerText = `${tenths} tenths and ${hundredths} hundredths make ${decStr} out of 1 whole.`;
+          }
+        }
+
+        // Sync Crisp Stage HTML Badges (100% Sharp Typography)
+        const tagT = document.getElementById(`${prefix}TagTenths`);
+        const tagH = document.getElementById(`${prefix}TagHundredths`);
+        const tagTot = document.getElementById(`${prefix}TagTotal`);
+        if (tagT) tagT.textContent = `${tenths} (0.${tenths}0)`;
+        if (tagH) tagH.textContent = `${hundredths} (0.0${hundredths})`;
+        if (tagTot) tagTot.textContent = decStr;
+      });
+
+      // Update Pill
+      const pillT = document.getElementById('pillTitle');
+      const pillS = document.getElementById('pillSub');
+      if (pillT) pillT.innerText = decStr;
+      if (pillS) pillS.innerText = `${tenths} tenths, ${hundredths} hundredths • Tap to open`;
+
+      renderAll();
+    }
+
+    /* Helper: Rounded Rect */
+    function drawRoundedRect(ctx, x, y, w, h, r) {
+      if (w < 2 * r) r = w / 2;
+      if (h < 2 * r) r = h / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    /* -------------------------------------------------------------
+       CANVAS RENDERING (CRISP HiDPI TACTILE 100-SQUARE GRID)
+       ------------------------------------------------------------- */
+    function drawDecimalGrid(canvas, isPill = false) {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w <= 0 || h <= 0) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      if (isPill) {
+        // Compact Pill Mode Mini 10x10 Grid
+        const pad = 4;
+        const size = Math.min(w - pad * 2, h - pad * 2);
+        const cell = size / 10;
+        const sx = (w - size) / 2;
+        const sy = (h - size) / 2;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx, sy, size, size);
+
+        for (let col = 0; col < 10; col++) {
+          for (let row = 0; row < 10; row++) {
+            const cx = sx + col * cell;
+            const cy = sy + row * cell;
+            if (col < tenths) {
+              ctx.fillStyle = '#2563eb';
+              ctx.fillRect(cx, cy, cell, cell);
+            } else if (col === tenths && row < hundredths) {
+              ctx.fillStyle = '#10b981';
+              ctx.fillRect(cx, cy, cell, cell);
+            } else {
+              ctx.fillStyle = '#f8fafc';
+              ctx.fillRect(cx, cy, cell, cell);
+            }
+          }
+        }
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx, sy, size, size);
+        return;
+      }
+
+      // ---------------------------------------------------------
+      // Standard Display (Desktop / Phone / Drawer)
+      // ---------------------------------------------------------
+      // Clean transparent stage so the plate floats seamlessly without a dull gray box
+      const isWide = w >= 440;
+      const gridAreaSize = isWide
+        ? Math.min(270, h - 36, w - 80)
+        : Math.min(160, h - 20, w - 36);
+      const cellSize = gridAreaSize / 10;
+      const startX = Math.round((w - gridAreaSize) / 2);
+      const startY = Math.round((h - gridAreaSize) / 2);
+
+      // 1. Elevated Floating White Porcelain Plate with Clean Drop Shadow
+      const cardPad = isWide ? 12 : 8;
+      const cardX = startX - cardPad;
+      const cardY = startY - cardPad;
+      const cardW = gridAreaSize + cardPad * 2;
+      const cardH = gridAreaSize + cardPad * 2;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.09)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = '#ffffff';
+      drawRoundedRect(ctx, cardX, cardY, cardW, cardH, 14);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.2;
+      drawRoundedRect(ctx, cardX, cardY, cardW, cardH, 14);
+      ctx.stroke();
+
+      // 2. Render 100 Cells with Saturated Physical Gradients & Crisp Lines
+      for (let col = 0; col < 10; col++) {
+        for (let row = 0; row < 10; row++) {
+          const cx = startX + col * cellSize;
+          const cy = startY + row * cellSize;
+
+          const isTenth = col < tenths;
+          const isHundredth = col === tenths && row < hundredths;
+
+          if (isTenth) {
+            // Luminous Cobalt Gradient
+            const grad = ctx.createLinearGradient(cx, cy, cx, cy + cellSize);
+            grad.addColorStop(0, '#3b82f6');
+            grad.addColorStop(1, '#1d4ed8');
+            ctx.fillStyle = grad;
+            ctx.fillRect(cx, cy, cellSize, cellSize);
+
+            // Specular sheen top line
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.fillRect(cx, cy, cellSize, 1.2);
+
+            ctx.strokeStyle = '#1e40af';
+            ctx.lineWidth = 0.6;
+            ctx.strokeRect(cx, cy, cellSize, cellSize);
+          } else if (isHundredth) {
+            // Radiant Emerald Jewel Gradient
+            const grad = ctx.createLinearGradient(cx, cy, cx, cy + cellSize);
+            grad.addColorStop(0, '#10b981');
+            grad.addColorStop(1, '#047857');
+            ctx.fillStyle = grad;
+            ctx.fillRect(cx, cy, cellSize, cellSize);
+
+            // Specular sheen top line
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.fillRect(cx, cy, cellSize, 1.2);
+
+            ctx.strokeStyle = '#065f46';
+            ctx.lineWidth = 0.6;
+            ctx.strokeRect(cx, cy, cellSize, cellSize);
+          } else {
+            // Clean porcelain unshaded
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(cx, cy, cellSize, cellSize);
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 0.6;
+            ctx.strokeRect(cx, cy, cellSize, cellSize);
+          }
+        }
+      }
+
+      // Distinct Column Separators every Tenth column
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.2;
+      for (let c = 1; c < 10; c++) {
+        ctx.beginPath();
+        ctx.moveTo(startX + c * cellSize, startY);
+        ctx.lineTo(startX + c * cellSize, startY + gridAreaSize);
+        ctx.stroke();
+      }
+
+      // Outer Grid Boundary
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(startX, startY, gridAreaSize, gridAreaSize);
+    }
+
+    function renderAll() {
+      drawDecimalGrid(canvases.pill, true);
+      drawDecimalGrid(canvases.phone);
+      drawDecimalGrid(canvases.desktop);
+      drawDecimalGrid(canvases.drawer);
+    }
+
+    function resizeAndRender() {
+      renderAll();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeAndRender();
+      syncUI();
+    });
+
+    window.addEventListener('resize', resizeAndRender);
+  
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        document.querySelectorAll('.top-header').forEach((el) => { el.style.display = 'none'; });
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge, .specs-bar, .audience-switcher').forEach((el) => {
+          el.style.display = 'none';
+        });
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      function applyMode(m) {
+        if (!m) return;
+        if (typeof setMode === 'function') { setMode(m); return; }
+        if (typeof switchView === 'function') { switchView(m); return; }
+        document.body.classList.remove('mode-pill', 'mode-mobile', 'mode-desktop');
+        if (m === 'pill') document.body.classList.add('mode-pill');
+        if (m === 'mobile') document.body.classList.add('mode-mobile');
+        if (m === 'desktop') document.body.classList.add('mode-desktop');
+        const overlay = document.getElementById('drawerOverlay');
+        if (overlay) {
+          if (m === 'drawer') { overlay.classList.add('open'); overlay.classList.add('active'); }
+          else { overlay.classList.remove('open'); overlay.classList.remove('active'); }
+        }
+        document.querySelectorAll('.switch-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-view') === m);
+        });
+      }
+      if (mode) setTimeout(() => applyMode(mode), 50);
+    })();
+
+  </script>
+</body>
+</html>

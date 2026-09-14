@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Geoboard: Perimeter and Area — InteractEd</title>
+
+  <!-- Google Fonts & KaTeX -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 20px 48px;
+    }
+
+    /* Top Navigation Header */
+    .top-header {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .switch-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .switch-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .switch-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Showcase Layout */
+    .showcase-container {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .showcase-grid-top {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 36px;
+      flex-wrap: wrap;
+    }
+
+    .showcase-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mode-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 1: PILL MODE (In-Chat Capsule)
+       ------------------------------------------------------------- */
+    .chat-pill-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      user-select: none;
+      width: 350px;
+    }
+
+    .chat-pill-card:hover {
+      border-color: #cbd5e1;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+    }
+
+    .pill-icon-box {
+      width: 44px;
+      height: 38px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .pill-icon-box canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pill-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pill-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-sub {
+      font-size: 11.5px;
+      color: #64748b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-expand-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #475569;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+    }
+
+    .chat-pill-card:hover .pill-expand-btn {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 3: MOBILE PHONE (375px × 540px)
+       ------------------------------------------------------------- */
+    .mobile-phone-frame {
+      width: 375px;
+      height: 540px;
+      background: #ffffff;
+      border-radius: 24px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .phone-stage {
+      height: 285px;
+      background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f8fafc 60%, #edf2f7 100%);
+      border-bottom: 1px solid #e2e8f0;
+      position: relative;
+    }
+
+    .phone-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    .phone-controls {
+      height: 255px;
+      background: #ffffff;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 4: DESKTOP MODE (880px × 490px)
+       ------------------------------------------------------------- */
+    .desktop-card {
+      width: 880px;
+      height: 490px;
+      background: #ffffff;
+      border-radius: 20px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.07), 0 4px 14px rgba(0, 0, 0, 0.02);
+      display: flex;
+      overflow: hidden;
+    }
+
+    .math-panel {
+      width: 370px;
+      height: 100%;
+      background: #ffffff;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid #f1f5f9;
+    }
+
+    .stage-panel {
+      width: 510px;
+      height: 100%;
+      background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f8fafc 55%, #edf2f7 100%);
+      position: relative;
+    }
+
+    .stage-panel canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* -------------------------------------------------------------
+       MINIMAL TYPOGRAPHY & CLEAN SLIDERS (MIRRORING ADDITION-SUBTRACTION)
+       ------------------------------------------------------------- */
+    .math-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+
+    .primary-equation {
+      font-size: 24px;
+      font-weight: 600;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+
+    .primary-equation span.perim {
+      color: #2563eb;
+    }
+
+    .primary-equation span.area {
+      color: #059669;
+    }
+
+    .live-substitution {
+      font-size: 13.5px;
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+    }
+
+    .var-name {
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .var-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .range-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      outline: none;
+      touch-action: none;
+      cursor: pointer;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #2563eb;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    /* -------------------------------------------------------------
+       MODE 2: MOBILE CARD DRAWER
+       ------------------------------------------------------------- */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mobile-drawer-sheet {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.12);
+      display: flex;
+      flex-direction: column;
+      max-height: 85vh;
+      overflow: hidden;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .drawer-overlay.open .mobile-drawer-sheet {
+      transform: translateY(0);
+    }
+
+    .drawer-handle-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .drawer-pill-notch {
+      width: 36px;
+      height: 4px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      margin: 0 auto;
+    }
+
+    .drawer-close-btn {
+      background: #f1f5f9;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drawer-stage {
+      height: 270px;
+      background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f8fafc 55%, #edf2f7 100%);
+      border-bottom: 1px solid #e2e8f0;
+      position: relative;
+    }
+
+    .drawer-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    .drawer-controls {
+      padding: 20px 22px 28px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Mode Switcher -->
+  <div class="top-header">
+    <nav class="view-switcher">
+      <button class="switch-btn active" id="btnShowAll" onclick="switchView('all')">👁️ View All Modes</button>
+      <button class="switch-btn" id="btnPillView" onclick="switchView('pill')">💊 1. Pill Mode</button>
+      <button class="switch-btn" id="btnDrawerView" onclick="switchView('drawer')">📱 2. Mobile Card Drawer</button>
+      <button class="switch-btn" id="btnMobileView" onclick="switchView('mobile')">📲 3. Mobile Screen (375×540)</button>
+      <button class="switch-btn" id="btnDesktopView" onclick="switchView('desktop')">🖥️ 4. Desktop Mode (880×490)</button>
+    </nav>
+  </div>
+
+  <!-- Showcase Container -->
+  <div class="showcase-container">
+
+    <!-- Side-by-Side Top Row (Pill + Mobile Screen) -->
+    <div class="showcase-grid-top" id="gridTop">
+
+      <!-- MODE 1: PILL VIEW -->
+      <div class="showcase-item" id="sectionPill">
+        <div class="mode-label">💊 1. Pill Mode (In-Chat Capsule)</div>
+        <div class="chat-pill-card" onclick="openDrawer()">
+          <div class="pill-icon-box">
+            <canvas id="pillCanvas" width="88" height="76"></canvas>
+          </div>
+          <div class="pill-info">
+            <div class="pill-title" id="pillTitle">Perimeter 14 • Area 12</div>
+            <div class="pill-sub" id="pillSub">4 by 3 rectangle • Tap to open</div>
+          </div>
+          <div class="pill-expand-btn">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODE 3: MOBILE SCREEN (375 × 540) -->
+      <div class="showcase-item" id="sectionMobile">
+        <div class="mode-label">📲 2. Mobile Screen Mode (375 × 540 px)</div>
+        <div class="mobile-phone-frame">
+          <div class="phone-stage">
+            <canvas id="phoneCanvas"></canvas>
+          </div>
+          <div class="phone-controls">
+            <div>
+              <div class="math-header">Geoboard perimeter and area</div>
+              <div class="primary-equation" id="phonePrimaryEq">
+                <span class="perim">Perimeter 14</span> • <span class="area">Area 12</span>
+              </div>
+              <div class="live-substitution" id="phoneSubEq">
+                A 4 by 3 rectangle has an outer border of 14 units and covers 12 square units.
+              </div>
+            </div>
+
+            <div class="sliders-list">
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="var-name">Width</span>
+                  <span class="var-val" id="phoneValW">4 units</span>
+                </div>
+                <input type="range" class="range-slider" id="phoneSliderW" min="1" max="6" step="1" value="4" oninput="onSizeChange(this.value, null)">
+              </div>
+
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="var-name">Height</span>
+                  <span class="var-val" id="phoneValH">3 units</span>
+                </div>
+                <input type="range" class="range-slider" id="phoneSliderH" min="1" max="4" step="1" value="3" oninput="onSizeChange(null, this.value)">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /showcase-grid-top -->
+
+    <!-- MODE 4: DESKTOP MODE (880 × 490) -->
+    <div class="showcase-item" id="sectionDesktop">
+      <div class="mode-label">🖥️ 3. Desktop Mode (880 × 490 px)</div>
+      <div class="desktop-card">
+        <!-- Left Math Panel (370px) -->
+        <div class="math-panel">
+          <div>
+            <div class="math-header">Geoboard perimeter and area</div>
+            <div class="primary-equation" id="desktopPrimaryEq">
+              <span class="perim">Perimeter 14</span> • <span class="area">Area 12</span>
+            </div>
+            <div class="live-substitution" id="desktopSubEq">
+              A 4 by 3 rectangle has an outer border of 14 units and covers 12 square units.
+            </div>
+          </div>
+
+          <div class="sliders-list">
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="var-name">Rectangle width</span>
+                <span class="var-val" id="desktopValW">4 units</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderW" min="1" max="6" step="1" value="4" oninput="onSizeChange(this.value, null)">
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="var-name">Rectangle height</span>
+                <span class="var-val" id="desktopValH">3 units</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderH" min="1" max="4" step="1" value="3" oninput="onSizeChange(null, this.value)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Stage Panel (510px) -->
+        <div class="stage-panel">
+          <canvas id="desktopCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODE 2: MOBILE CARD DRAWER OVERLAY -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="if(event.target === this) closeDrawer()">
+    <div class="mobile-drawer-sheet" onclick="event.stopPropagation()">
+      <div class="drawer-handle-bar">
+        <div style="width: 28px;"></div>
+        <div class="drawer-pill-notch"></div>
+        <button class="drawer-close-btn" onclick="closeDrawer()">✕</button>
+      </div>
+
+      <div class="drawer-stage">
+        <canvas id="drawerCanvas"></canvas>
+      </div>
+
+      <div class="drawer-controls">
+        <div>
+          <div class="math-header">Geoboard perimeter and area</div>
+          <div class="primary-equation" id="drawerPrimaryEq">
+            <span class="perim">Perimeter 14</span> • <span class="area">Area 12</span>
+          </div>
+          <div class="live-substitution" id="drawerSubEq">
+            A 4 by 3 rectangle has an outer border of 14 units and covers 12 square units.
+          </div>
+        </div>
+
+        <div class="sliders-list">
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="var-name">Width</span>
+              <span class="var-val" id="drawerValW">4 units</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderW" min="1" max="6" step="1" value="4" oninput="onSizeChange(this.value, null)">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="var-name">Height</span>
+              <span class="var-val" id="drawerValH">3 units</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderH" min="1" max="4" step="1" value="3" oninput="onSizeChange(null, this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* -------------------------------------------------------------
+       STATE MANAGEMENT
+       ------------------------------------------------------------- */
+    let widthUnits = 4;
+    let heightUnits = 3;
+
+    const canvases = {
+      pill: document.getElementById('pillCanvas'),
+      phone: document.getElementById('phoneCanvas'),
+      desktop: document.getElementById('desktopCanvas'),
+      drawer: document.getElementById('drawerCanvas')
+    };
+
+    /* -------------------------------------------------------------
+       CONTROLS
+       ------------------------------------------------------------- */
+    function onSizeChange(w, h) {
+      if (w !== null) widthUnits = parseInt(w, 10);
+      if (h !== null) heightUnits = parseInt(h, 10);
+      syncUI();
+    }
+
+    /* -------------------------------------------------------------
+       VIEW SWITCHER
+       ------------------------------------------------------------- */
+    function switchView(mode) {
+      document.querySelectorAll('.switch-btn').forEach(b => b.classList.remove('active'));
+      
+      const pSec = document.getElementById('sectionPill');
+      const mSec = document.getElementById('sectionMobile');
+      const dSec = document.getElementById('sectionDesktop');
+      const gTop = document.getElementById('gridTop');
+
+      if (mode === 'all') {
+        document.getElementById('btnShowAll').classList.add('active');
+        gTop.style.display = 'flex';
+        pSec.style.display = 'flex';
+        mSec.style.display = 'flex';
+        dSec.style.display = 'flex';
+      } else if (mode === 'pill') {
+        document.getElementById('btnPillView').classList.add('active');
+        gTop.style.display = 'flex';
+        pSec.style.display = 'flex';
+        mSec.style.display = 'none';
+        dSec.style.display = 'none';
+      } else if (mode === 'mobile') {
+        document.getElementById('btnMobileView').classList.add('active');
+        gTop.style.display = 'flex';
+        pSec.style.display = 'none';
+        mSec.style.display = 'flex';
+        dSec.style.display = 'none';
+      } else if (mode === 'desktop') {
+        document.getElementById('btnDesktopView').classList.add('active');
+        gTop.style.display = 'none';
+        dSec.style.display = 'flex';
+      } else if (mode === 'drawer') {
+        document.getElementById('btnDrawerView').classList.add('active');
+        openDrawer();
+      }
+    }
+
+    function openDrawer() {
+      document.getElementById('drawerOverlay').classList.add('open');
+      resizeAndRender();
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawerOverlay').classList.remove('open');
+    }
+
+    /* -------------------------------------------------------------
+       SYNC UI
+       ------------------------------------------------------------- */
+    function syncUI() {
+      const w = widthUnits;
+      const h = heightUnits;
+      const perim = 2 * (w + h);
+      const area = w * h;
+
+      // Update Sliders
+      ['phone', 'desktop', 'drawer'].forEach(prefix => {
+        const inpW = document.getElementById(`${prefix}SliderW`);
+        const inpH = document.getElementById(`${prefix}SliderH`);
+        const valW = document.getElementById(`${prefix}ValW`);
+        const valH = document.getElementById(`${prefix}ValH`);
+
+        if (inpW) inpW.value = w;
+        if (inpH) inpH.value = h;
+        if (valW) valW.innerText = `${w} unit${w > 1 ? 's' : ''}`;
+        if (valH) valH.innerText = `${h} unit${h > 1 ? 's' : ''}`;
+
+        const eq = document.getElementById(`${prefix}PrimaryEq`);
+        const sub = document.getElementById(`${prefix}SubEq`);
+        if (eq) {
+          eq.innerHTML = `<span class="perim">Perimeter ${perim}</span> • <span class="area">Area ${area}</span>`;
+        }
+        if (sub) {
+          sub.innerText = w === h
+            ? `A ${w} by ${h} square has an outer border of ${perim} units and covers ${area} square units.`
+            : `A ${w} by ${h} rectangle has an outer border of ${perim} units and covers ${area} square units.`;
+        }
+      });
+
+      // Update Pill
+      const pillT = document.getElementById('pillTitle');
+      const pillS = document.getElementById('pillSub');
+      if (pillT) pillT.innerText = `Perimeter ${perim} • Area ${area}`;
+      if (pillS) pillS.innerText = `${w} by ${h} rectangle • Tap to open`;
+
+      renderAll();
+    }
+
+    /* Helper: Rounded Rect */
+    function drawRoundedRect(ctx, x, y, w, h, r) {
+      if (w < 2 * r) r = w / 2;
+      if (h < 2 * r) r = h / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    /* -------------------------------------------------------------
+       CANVAS RENDERING (TACTILE WOODEN GEOBOARD WITH 3D BRASS PINS)
+       ------------------------------------------------------------- */
+    function drawGeoboard(canvas, isPill = false) {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const perim = 2 * (widthUnits + heightUnits);
+      const area = widthUnits * heightUnits;
+
+      if (isPill) {
+        // Mini Pill View
+        const cols = 8;
+        const rows = 6;
+        const pad = 6;
+        const cw = (w - pad * 2) / (cols - 1);
+        const ch = (h - pad * 2) / (rows - 1);
+
+        const sc = Math.floor((cols - 1 - widthUnits) / 2);
+        const sr = Math.floor((rows - 1 - heightUnits) / 2);
+        const rx = pad + sc * cw;
+        const ry = pad + sr * ch;
+        const rw = widthUnits * cw;
+        const rh = heightUnits * ch;
+
+        // Board backing
+        ctx.fillStyle = '#f8f4ec';
+        ctx.fillRect(0, 0, w, h);
+
+        // Area fill
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+        ctx.fillRect(rx, ry, rw, rh);
+
+        // Band
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rx, ry, rw, rh);
+
+        // Pegs
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const px = pad + c * cw;
+            const py = pad + r * ch;
+            const isCorner = (c === sc || c === sc + widthUnits) && (r === sr || r === sr + heightUnits);
+            ctx.fillStyle = isCorner ? '#f59e0b' : '#cbd5e1';
+            ctx.beginPath();
+            ctx.arc(px, py, isCorner ? 2.5 : 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        return;
+      }
+
+      // ---------------------------------------------------------
+      // Standard Display (Desktop / Phone / Drawer)
+      // ---------------------------------------------------------
+      const isWide = w >= 440;
+      const boardMarginX = isWide ? 28 : 14;
+      const boardW = w - boardMarginX * 2;
+      const boardH = h - (isWide ? 88 : 66);
+      const boardX = boardMarginX;
+      const boardY = isWide ? 28 : 18;
+
+      // 1. Tactile Wooden Board Base
+      ctx.save();
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.08)';
+      ctx.shadowBlur = 22;
+      ctx.shadowOffsetY = 6;
+
+      const boardGrad = ctx.createLinearGradient(boardX, boardY, boardX, boardY + boardH);
+      boardGrad.addColorStop(0, '#fefbf6');
+      boardGrad.addColorStop(1, '#f5eee3');
+      ctx.fillStyle = boardGrad;
+      drawRoundedRect(ctx, boardX, boardY, boardW, boardH, 18);
+      ctx.fill();
+      ctx.restore();
+
+      // Board border & subtle inner bevel highlight
+      ctx.strokeStyle = '#e6dcce';
+      ctx.lineWidth = 1.2;
+      drawRoundedRect(ctx, boardX, boardY, boardW, boardH, 18);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 1;
+      drawRoundedRect(ctx, boardX + 2.5, boardY + 2.5, boardW - 5, boardH - 5, 16);
+      ctx.stroke();
+
+      // 2. Geoboard Pin Grid Layout
+      const cols = 8;
+      const rows = 6;
+      const innerPadX = isWide ? 28 : 18;
+      const innerPadY = isWide ? 26 : 18;
+      const padX = boardX + innerPadX;
+      const padY = boardY + innerPadY;
+      const cellW = (boardW - innerPadX * 2) / (cols - 1);
+      const cellH = (boardH - innerPadY * 2) / (rows - 1);
+
+      const startCol = Math.floor((cols - 1 - widthUnits) / 2);
+      const startRow = Math.floor((rows - 1 - heightUnits) / 2);
+      const endCol = startCol + widthUnits;
+      const endRow = startRow + heightUnits;
+
+      const rx = padX + startCol * cellW;
+      const ry = padY + startRow * cellH;
+      const rw = widthUnits * cellW;
+      const rh = heightUnits * cellH;
+
+      // 3. Glowing Emerald Enclosed Area Fill
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.22)';
+      ctx.fillRect(rx, ry, rw, rh);
+
+      // Unit square grid lines inside area
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 1.4;
+      for (let c = 1; c < widthUnits; c++) {
+        ctx.beginPath();
+        ctx.moveTo(rx + c * cellW, ry);
+        ctx.lineTo(rx + c * cellW, ry + rh);
+        ctx.stroke();
+      }
+      for (let r = 1; r < heightUnits; r++) {
+        ctx.beginPath();
+        ctx.moveTo(rx, ry + r * cellH);
+        ctx.lineTo(rx + rw, ry + r * cellH);
+        ctx.stroke();
+      }
+
+      // Unit square center dots
+      for (let c = 0; c < widthUnits; c++) {
+        for (let r = 0; r < heightUnits; r++) {
+          const cx = rx + c * cellW + cellW / 2;
+          const cy = ry + r * cellH + cellH / 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(5, 150, 105, 0.4)';
+          ctx.fill();
+        }
+      }
+
+      // 4. Vibrant Electric Cobalt Elastic Rubber Band
+      // Soft ambient glow
+      ctx.strokeStyle = 'rgba(37, 99, 235, 0.20)';
+      ctx.lineWidth = 7;
+      ctx.lineJoin = 'round';
+      ctx.strokeRect(rx, ry, rw, rh);
+
+      // Main thick band
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 3.8;
+      ctx.lineJoin = 'round';
+      ctx.strokeRect(rx, ry, rw, rh);
+
+      // Center glossy elastic thread
+      ctx.strokeStyle = '#93c5fd';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(rx, ry, rw, rh);
+
+      // 5. 3D Metallic Brass Pegs (Rendered on top)
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const px = padX + c * cellW;
+          const py = padY + r * cellH;
+
+          const isCorner = (c === startCol || c === endCol) && (r === startRow || r === endRow);
+          const isBorder = (c >= startCol && c <= endCol && (r === startRow || r === endRow)) ||
+                           (r >= startRow && r <= endRow && (c === startCol || c === endCol));
+
+          const pinR = isCorner ? 6 : (isBorder ? 5 : 4);
+
+          // Cast shadow under pin
+          ctx.beginPath();
+          ctx.ellipse(px + 1.2, py + 2.2, pinR * 0.9, pinR * 0.6, 0, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+          ctx.fill();
+
+          if (isCorner) {
+            // Radiant Brass Corner Peg
+            const radGrad = ctx.createRadialGradient(px - 1.5, py - 1.5, 0.5, px, py, 6);
+            radGrad.addColorStop(0, '#fffbeb');
+            radGrad.addColorStop(0.35, '#fbbf24');
+            radGrad.addColorStop(0.8, '#d97706');
+            radGrad.addColorStop(1, '#92400e');
+
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, Math.PI * 2);
+            ctx.fillStyle = radGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            // Specular glint dot
+            ctx.beginPath();
+            ctx.arc(px - 1.5, py - 1.5, 1.2, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+          } else if (isBorder) {
+            // Band contact peg with cobalt accent core
+            const radGrad = ctx.createRadialGradient(px - 1.2, py - 1.2, 0.5, px, py, 5);
+            radGrad.addColorStop(0, '#ffffff');
+            radGrad.addColorStop(0.4, '#e2e8f0');
+            radGrad.addColorStop(1, '#94a3b8');
+
+            ctx.beginPath();
+            ctx.arc(px, py, 5, 0, Math.PI * 2);
+            ctx.fillStyle = radGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            // Contact dot
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#2563eb';
+            ctx.fill();
+          } else {
+            // Polished grid peg
+            const radGrad = ctx.createRadialGradient(px - 1, py - 1, 0.5, px, py, 4);
+            radGrad.addColorStop(0, '#ffffff');
+            radGrad.addColorStop(0.5, '#e2e8f0');
+            radGrad.addColorStop(1, '#cbd5e1');
+
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, Math.PI * 2);
+            ctx.fillStyle = radGrad;
+            ctx.fill();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+
+      // 6. High-Contrast Dimension Badges (Floating on Board)
+      ctx.font = '600 11.5px "Inter", sans-serif';
+
+      // Width Pill Badge (Above Top Edge)
+      const wLabel = `Width: ${widthUnits} units`;
+      const wTextW = ctx.measureText(wLabel).width;
+      const wPillW = wTextW + 24;
+      const wPillH = 24;
+      const wPillX = Math.round(rx + rw / 2 - wPillW / 2);
+      const wPillY = Math.max(boardY + 4, ry - wPillH - 8);
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = '#ffffff';
+      drawRoundedRect(ctx, wPillX, wPillY, wPillW, wPillH, 12);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.strokeStyle = '#bfdbfe';
+      ctx.lineWidth = 1;
+      drawRoundedRect(ctx, wPillX, wPillY, wPillW, wPillH, 12);
+      ctx.stroke();
+
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath();
+      ctx.arc(wPillX + 9, wPillY + wPillH / 2, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e40af';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(wLabel, wPillX + 16, wPillY + wPillH / 2);
+
+      // Height Pill Badge (Right of Right Edge)
+      if (rx + rw + 70 <= boardX + boardW) {
+        const hLabel = `Height: ${heightUnits} units`;
+        const hTextW = ctx.measureText(hLabel).width;
+        const hPillW = hTextW + 24;
+        const hPillH = 24;
+        const hPillX = Math.round(rx + rw + 10);
+        const hPillY = Math.round(ry + rh / 2 - hPillH / 2);
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = '#ffffff';
+        drawRoundedRect(ctx, hPillX, hPillY, hPillW, hPillH, 12);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = '#bfdbfe';
+        ctx.lineWidth = 1;
+        drawRoundedRect(ctx, hPillX, hPillY, hPillW, hPillH, 12);
+        ctx.stroke();
+
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.arc(hPillX + 9, hPillY + hPillH / 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#1e40af';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(hLabel, hPillX + 16, hPillY + hPillH / 2);
+      }
+
+      // 7. Vibrant Floating Status Pill Badges at Bottom
+      const botY = boardY + boardH + (isWide ? 14 : 10);
+
+      if (isWide) {
+        // Desktop: 3 Status Pills
+        const pills = [
+          { label: `Perimeter: ${perim} units`, dot: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
+          { label: `Area: ${area} square units`, dot: '#059669', bg: '#ecfdf5', border: '#a7f3d0', text: '#047857' },
+          { label: `${widthUnits} × ${heightUnits} rectangle`, dot: '#d97706', bg: '#fffbeb', border: '#fde68a', text: '#92400e' }
+        ];
+
+        ctx.font = '600 11.5px "Inter", sans-serif';
+        const pillH = 26;
+        let totalW = 0;
+        const pillWidths = pills.map(p => {
+          const tw = ctx.measureText(p.label).width;
+          const pw = tw + 28;
+          totalW += pw;
+          return pw;
+        });
+
+        const gap = 10;
+        totalW += gap * (pills.length - 1);
+        let currX = (w - totalW) / 2;
+
+        pills.forEach((p, idx) => {
+          const pw = pillWidths[idx];
+
+          ctx.save();
+          ctx.fillStyle = p.bg;
+          drawRoundedRect(ctx, currX, botY, pw, pillH, 13);
+          ctx.fill();
+          ctx.strokeStyle = p.border;
+          ctx.lineWidth = 1;
+          drawRoundedRect(ctx, currX, botY, pw, pillH, 13);
+          ctx.stroke();
+
+          ctx.fillStyle = p.dot;
+          ctx.beginPath();
+          ctx.arc(currX + 11, botY + pillH / 2, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = p.text;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(p.label, currX + 20, botY + pillH / 2);
+          ctx.restore();
+
+          currX += pw + gap;
+        });
+      } else {
+        // Mobile: Single High-Contrast Pill
+        const label = `Perimeter: ${perim} units • Area: ${area} sq units`;
+        ctx.font = '600 11.5px "Inter", sans-serif';
+        const pw = ctx.measureText(label).width + 30;
+        const pillH = 26;
+        const px = (w - pw) / 2;
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = '#ffffff';
+        drawRoundedRect(ctx, px, botY, pw, pillH, 13);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        drawRoundedRect(ctx, px, botY, pw, pillH, 13);
+        ctx.stroke();
+
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.arc(px + 12, botY + pillH / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, px + 22, botY + pillH / 2);
+      }
+    }
+
+    function renderAll() {
+      drawGeoboard(canvases.pill, true);
+      drawGeoboard(canvases.phone);
+      drawGeoboard(canvases.desktop);
+      drawGeoboard(canvases.drawer);
+    }
+
+    function resizeAndRender() {
+      Object.entries(canvases).forEach(([key, canvas]) => {
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          canvas.width = rect.width;
+          canvas.height = rect.height;
+        }
+      });
+      renderAll();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeAndRender();
+      syncUI();
+    });
+
+    window.addEventListener('resize', resizeAndRender);
+  
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        document.querySelectorAll('.top-header').forEach((el) => { el.style.display = 'none'; });
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge, .specs-bar, .audience-switcher').forEach((el) => {
+          el.style.display = 'none';
+        });
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      function applyMode(m) {
+        if (!m) return;
+        if (typeof setMode === 'function') { setMode(m); return; }
+        if (typeof switchView === 'function') { switchView(m); return; }
+        document.body.classList.remove('mode-pill', 'mode-mobile', 'mode-desktop');
+        if (m === 'pill') document.body.classList.add('mode-pill');
+        if (m === 'mobile') document.body.classList.add('mode-mobile');
+        if (m === 'desktop') document.body.classList.add('mode-desktop');
+        const overlay = document.getElementById('drawerOverlay');
+        if (overlay) {
+          if (m === 'drawer') { overlay.classList.add('open'); overlay.classList.add('active'); }
+          else { overlay.classList.remove('open'); overlay.classList.remove('active'); }
+        }
+        document.querySelectorAll('.switch-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-view') === m);
+        });
+      }
+      if (mode) setTimeout(() => applyMode(mode), 50);
+    })();
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Light & Prism: Rainbow Dispersion — InteractEd</title>
+  
+  <!-- Inter Font & KaTeX -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 20px 48px;
+    }
+
+    /* Top Navigation & Mode Switcher */
+    .top-header {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .specs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .spec-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .spec-item strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .spec-pill {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .spec-divider {
+      color: #cbd5e1;
+    }
+
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .switch-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .switch-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .switch-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Showcase Layout */
+    .showcase-container {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .showcase-grid-top {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 36px;
+      flex-wrap: wrap;
+    }
+
+    .view-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-badge {
+      background: #e2e8f0;
+      color: #334155;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* ======================================================== */
+    /* 1. STANDARDIZED PILL MODE (Exact match to wave-v2.html)   */
+    /* ======================================================== */
+    .chat-pill-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 8px 14px 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      width: 100%;
+      max-width: 350px;
+    }
+
+    .chat-pill-card:hover {
+      border-color: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+    }
+
+    .pill-icon-box {
+      width: 76px;
+      height: 52px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .pill-icon-box canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pill-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pill-formula {
+      font-size: 17px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .pill-subtitle {
+      font-size: 11px;
+      color: #64748b;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-expand-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #334155;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .chat-pill-card:hover .pill-expand-btn {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    /* ======================================================== */
+    /* 2. STANDARDIZED MOBILE SCREEN (375px × 540px)            */
+    /* ======================================================== */
+    .mobile-phone-frame {
+      width: 100%;
+      max-width: 375px;
+      height: 540px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 26px;
+      box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.09);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .mobile-phone-frame .phone-stage {
+      height: 285px;
+      min-height: 285px;
+      background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f8fafc 60%, #edf2f7 100%);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+
+    .phone-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .mobile-phone-frame .phone-controls {
+      height: 255px;
+      padding: 16px 18px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .stage-toggle-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      padding: 4px 10px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .stage-toggle-btn:hover {
+      background: #ffffff;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+
+    .stage-toggle-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    .spectrum-legend {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      font-size: 10.5px;
+      color: #475569;
+      font-weight: 500;
+      pointer-events: none;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .rainbow-bar {
+      width: 30px;
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #dc2626, #ea580c, #ca8a04, #16a34a, #0891b2, #2563eb, #9333ea);
+    }
+
+    /* Math Formula Box (Standardized) */
+    .math-formula-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+    }
+
+    .math-header-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      letter-spacing: 0.2px;
+      margin-bottom: 2px;
+    }
+
+    .primary-equation {
+      font-size: 22px;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.25;
+    }
+
+    .live-substitution {
+      font-size: 12.5px;
+      color: #475569;
+      min-height: 18px;
+    }
+
+    /* Sliders List */
+    .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .slider-label-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .slider-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #0f172a;
+      background: #f1f5f9;
+      padding: 1px 7px;
+      border-radius: 5px;
+    }
+
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 36px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .range-slider::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      cursor: pointer;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      margin-top: -9px;
+      border-radius: 50%;
+      background: #7c3aed;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+      border: 2.5px solid #ffffff;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .range-slider::-webkit-slider-thumb:active {
+      transform: scale(1.22);
+      box-shadow: 0 0 0 8px rgba(124, 58, 237, 0.15), 0 3px 8px rgba(124, 58, 237, 0.4);
+    }
+
+    .range-slider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #7c3aed;
+      cursor: pointer;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+    }
+
+    /* Dynamic Takeaway Card (One-Glance Understanding) */
+    .takeaway-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 14px;
+      background: #f5f3ff;
+      border: 1px solid #ddd6fe;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .takeaway-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .takeaway-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #7c3aed;
+      color: #ffffff;
+    }
+
+    .takeaway-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    .takeaway-text {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #6d28d9;
+      line-height: 1.35;
+    }
+
+    /* ======================================================== */
+    /* 3. STANDARDIZED DESKTOP SPLIT MODE (880px × 490px)       */
+    /* ======================================================== */
+    .desktop-card {
+      width: 880px;
+      height: 490px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+      display: grid;
+      grid-template-columns: 370px 1fr;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .desktop-card .math-panel {
+      padding: 26px 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid #f1f5f9;
+      background: #ffffff;
+    }
+
+    .desktop-card .stage-panel {
+      position: relative;
+      background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f8fafc 55%, #edf2f7 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .stage-panel canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Quick stats row */
+    .desktop-stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 11.5px;
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .stat-lbl {
+      color: #64748b;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.1px;
+    }
+
+    .stat-num {
+      color: #0f172a;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* ======================================================== */
+    /* 4. STANDARDIZED SLIDE-OVER DRAWER                        */
+    /* ======================================================== */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-content {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 28px 28px 0 0;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      max-height: 92vh;
+    }
+
+    .drawer-overlay.open .drawer-content {
+      transform: translateY(0);
+    }
+
+    .drawer-action-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .drawer-notch {
+      width: 36px;
+      height: 4px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      margin: 0 auto;
+    }
+
+    .drawer-close-btn {
+      background: #f1f5f9;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .drawer-close-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .drawer-stage {
+      height: 270px;
+      background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f8fafc 55%, #edf2f7 100%);
+      position: relative;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .drawer-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .drawer-controls {
+      padding: 16px 18px 24px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 960px) {
+      .desktop-card {
+        grid-template-columns: 1fr;
+        height: auto;
+        max-width: 100%;
+      }
+      .desktop-card .stage-panel {
+        height: 300px;
+        order: 1;
+      }
+      .desktop-card .math-panel {
+        order: 2;
+        border-right: none;
+        border-top: 1px solid #f1f5f9;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Mode Switcher -->
+  <div class="top-header">
+    <div class="specs-bar">
+      <span class="spec-item"><strong>Topic:</strong> Dispersion of light</span>
+      <span class="spec-divider">•</span>
+      <span class="spec-item"><strong>Phenomenon:</strong> White light into rainbow</span>
+      <span class="spec-divider">•</span>
+      <span class="spec-item"><strong>Law:</strong> <span class="spec-pill">Snell's law: n₁ sinθ₁ = n₂ sinθ₂</span></span>
+    </div>
+
+    <div class="view-switcher">
+      <button class="switch-btn active" id="btnShowAll" onclick="setMode('all')">
+        👁️ View All Modes
+      </button>
+      <button class="switch-btn" id="btnPillView" onclick="setMode('pill')">
+        💊 1. Pill Mode
+      </button>
+      <button class="switch-btn" id="btnDrawerView" onclick="setMode('drawer')">
+        📱 2. Mobile Card Drawer
+      </button>
+      <button class="switch-btn" id="btnMobileView" onclick="setMode('mobile')">
+        📲 3. Mobile Screen (375×540)
+      </button>
+      <button class="switch-btn" id="btnDesktopView" onclick="setMode('desktop')">
+        🖥️ 4. Desktop Mode (880×490)
+      </button>
+    </div>
+  </div>
+
+  <!-- Showcase Container -->
+  <div class="showcase-container">
+
+    <!-- Top Row: Pill Mode + Mobile 5"-6" Screen -->
+    <div class="showcase-grid-top" id="gridTop">
+
+      <!-- ======================================================== -->
+      <!-- SECTION 1: PILL MODE (Standardized with wave-v2.html)     -->
+      <!-- ======================================================== -->
+      <div class="view-section" id="sectionPill">
+        <div class="section-title">
+          <span>💊 1. Pill mode</span>
+          <span class="section-badge">Compact capsule (350px)</span>
+        </div>
+
+        <div class="chat-pill-card" id="chatPillTrigger" onclick="openDrawer()">
+          <div class="pill-icon-box">
+            <canvas id="pillCanvas"></canvas>
+          </div>
+          <div class="pill-content">
+            <div class="pill-formula" id="pillFormula">n_1 \sin\theta_1 = n_2 \sin\theta_2</div>
+            <div class="pill-subtitle" id="pillSubText">θ₁ = 45° • Glass n = 1.52</div>
+          </div>
+          <div class="pill-expand-btn" title="Expand to Mobile Card">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <polyline points="15 3 21 3 21 9"/>
+              <polyline points="9 21 3 21 3 15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/>
+              <line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 2: 5" - 6" MOBILE SCREEN (375px × 540px)         -->
+      <!-- ======================================================== -->
+      <div class="view-section" id="sectionMobile">
+        <div class="section-title">
+          <span>📲 2. Mobile Screen Mode (Top Stage, Bottom Controls)</span>
+          <span class="section-badge">375 × 540 px</span>
+        </div>
+
+        <div class="mobile-phone-frame">
+          <!-- Top: Stage Canvas (285px) -->
+          <div class="phone-stage">
+            <canvas id="mobileCanvas"></canvas>
+            <button class="stage-toggle-btn" id="mobileToggleBtn" onclick="toggleNormals()">
+              <span>Normals</span>
+            </button>
+            <div class="spectrum-legend">
+              <span class="rainbow-bar"></span>
+              <span>Spectrum</span>
+            </div>
+          </div>
+
+          <!-- Bottom: Simplified Controls (255px) -->
+          <div class="phone-controls">
+            <div class="math-formula-box">
+              <div class="math-header-label">Dispersion of light</div>
+              <div class="primary-equation" id="mobilePrimaryEq">n_1 \sin\theta_1 = n_2 \sin\theta_2</div>
+              <div class="live-substitution" id="mobileSubEq">Violet bends more than red</div>
+            </div>
+
+            <!-- 2 Simplified Sliders -->
+            <div class="sliders-list">
+              <!-- Slider 1: Beam Angle -->
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <div class="slider-label-left">
+                    <span>Beam angle</span>
+                  </div>
+                  <span class="slider-val" id="mobileValAngle">45°</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSliderAngle" min="25" max="65" step="1" value="45">
+              </div>
+
+              <!-- Slider 2: Glass Index (n) -->
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <div class="slider-label-left">
+                    <span>Glass index (n)</span>
+                  </div>
+                  <span class="slider-val" id="mobileValIndex">1.52 (Crown glass)</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSliderIndex" min="1.33" max="1.80" step="0.01" value="1.52">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /showcase-grid-top -->
+
+    <!-- ======================================================== -->
+    <!-- SECTION 3: DESKTOP SPLIT MODE (880px × 490px)            -->
+    <!-- ======================================================== -->
+    <div class="view-section" id="sectionDesktop">
+      <div class="section-title">
+        <span>🖥️ 3. Desktop Mode (Left Controls, Right Stage)</span>
+        <span class="section-badge">880 × 490 px</span>
+      </div>
+
+      <div class="desktop-card">
+        <!-- Left: Math & Sliders Panel (370px) -->
+        <div class="math-panel">
+          <div>
+            <div class="math-header-label">Dispersion of light</div>
+            <div class="math-formula-box" style="align-items: flex-start; text-align: left; margin-top: 4px;">
+              <div class="primary-equation" id="desktopPrimaryEq">n_1 \sin\theta_1 = n_2 \sin\theta_2</div>
+              <div class="live-substitution" id="desktopSubEq" style="margin-top: 4px;">
+                Violet bends more than red
+              </div>
+            </div>
+          </div>
+
+          <!-- 2 Sliders -->
+          <div class="sliders-list">
+            <!-- Slider 1: Beam Angle -->
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <div class="slider-label-left">
+                  <span>Incident beam angle (θ₁)</span>
+                </div>
+                <span class="slider-val" id="desktopValAngle">45°</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderAngle" min="25" max="65" step="1" value="45">
+            </div>
+
+            <!-- Slider 2: Glass Index (n) -->
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <div class="slider-label-left">
+                  <span>Refractive index (n)</span>
+                </div>
+                <span class="slider-val" id="desktopValIndex">1.52 (Crown glass)</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderIndex" min="1.33" max="1.80" step="0.01" value="1.52">
+            </div>
+          </div>
+
+          <!-- One-Glance Principle Takeaway -->
+          <div class="takeaway-card" id="desktopTakeawayCard">
+            <div class="takeaway-header-row">
+              <span class="takeaway-badge" id="desktopTakeawayBadge">
+                <span class="takeaway-dot"></span>
+                <span id="desktopTakeawayBadgeText">Light dispersion</span>
+              </span>
+              <span style="font-size: 11px; color: #7c3aed; font-weight: 500;">One-glance principle</span>
+            </div>
+            <div class="takeaway-text" id="desktopTakeawayText">
+              Violet refracts most due to higher glass index, spreading white light into a brilliant rainbow!
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Optics Stage (510px) -->
+        <div class="stage-panel">
+          <canvas id="desktopCanvas"></canvas>
+          <button class="stage-toggle-btn" id="desktopToggleBtn" onclick="toggleNormals()">
+            <span>Normals</span>
+          </button>
+          <div class="spectrum-legend">
+            <span class="rainbow-bar"></span>
+            <span>Spectrum (700 nm – 400 nm)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /showcase-container -->
+
+  <!-- ======================================================== -->
+  <!-- 4. SLIDE-OVER DRAWER (MOBILE CARD DRAWER)                -->
+  <!-- ======================================================== -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="if(event.target === this) closeDrawer()">
+    <div class="drawer-content">
+      <div class="drawer-action-bar">
+        <div style="width: 30px;"></div>
+        <div class="drawer-notch"></div>
+        <button class="drawer-close-btn" onclick="closeDrawer()" title="Close drawer">✕</button>
+      </div>
+
+      <!-- Drawer Top Stage -->
+      <div class="drawer-stage">
+        <canvas id="drawerCanvas"></canvas>
+        <button class="stage-toggle-btn" id="drawerToggleBtn" onclick="toggleNormals()">
+          <span>Normals</span>
+        </button>
+      </div>
+
+      <!-- Drawer Bottom Controls -->
+      <div class="drawer-controls">
+        <div class="math-formula-box" style="align-items: flex-start; text-align: left;">
+          <div class="math-header-label">Dispersion of light</div>
+          <div class="primary-equation" id="drawerPrimaryEq">n_1 \sin\theta_1 = n_2 \sin\theta_2</div>
+          <div class="live-substitution" id="drawerSubEq">Violet bends more than red</div>
+        </div>
+
+        <!-- 2 Sliders -->
+        <div class="sliders-list">
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span style="font-size: 12px; font-weight: 600; color: #334155;">Beam angle</span>
+              <span class="slider-val" id="drawerValAngle">45°</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderAngle" min="25" max="65" step="1" value="45">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span style="font-size: 12px; font-weight: 600; color: #334155;">Glass index (n)</span>
+              <span class="slider-val" id="drawerValIndex">1.52 (Crown glass)</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderIndex" min="1.33" max="1.80" step="0.01" value="1.52">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================================
+    // SIMULATION STATE & CONSTANTS
+    // ==========================================================
+    let incidentAngleDeg = 45; // Degrees from face normal (25 to 65)
+    let refractiveIndex = 1.52; // Crown glass default (1.33 to 1.80)
+    let showNormals = false;
+    let animPulse = 0; // Micro-animation pulse along the beam
+
+    // Seven Rainbow Spectral Components (Vibrant, high-contrast on light background)
+    const SPECTRUM = [
+      { name: 'Red',    wl: 700, color: '#dc2626', dN: -0.018 },
+      { name: 'Orange', wl: 620, color: '#ea580c', dN: -0.010 },
+      { name: 'Yellow', wl: 580, color: '#ca8a04', dN: -0.003 },
+      { name: 'Green',  wl: 530, color: '#16a34a', dN: +0.004 },
+      { name: 'Cyan',   wl: 480, color: '#0891b2', dN: +0.012 },
+      { name: 'Blue',   wl: 440, color: '#2563eb', dN: +0.021 },
+      { name: 'Violet', wl: 400, color: '#9333ea', dN: +0.032 }
+    ];
+
+    // ==========================================================
+    // DOM ELEMENTS
+    // ==========================================================
+    const secPill = document.getElementById('sectionPill');
+    const secMobile = document.getElementById('sectionMobile');
+    const secDesktop = document.getElementById('sectionDesktop');
+    const gridTop = document.getElementById('gridTop');
+
+    const btnShowAll = document.getElementById('btnShowAll');
+    const btnPillView = document.getElementById('btnPillView');
+    const btnDrawerView = document.getElementById('btnDrawerView');
+    const btnMobileView = document.getElementById('btnMobileView');
+    const btnDesktopView = document.getElementById('btnDesktopView');
+
+    const drawerOverlay = document.getElementById('drawerOverlay');
+
+    const pillCanvas = document.getElementById('pillCanvas');
+    const mobileCanvas = document.getElementById('mobileCanvas');
+    const desktopCanvas = document.getElementById('desktopCanvas');
+    const drawerCanvas = document.getElementById('drawerCanvas');
+
+    const mobileSliderAngle = document.getElementById('mobileSliderAngle');
+    const mobileSliderIndex = document.getElementById('mobileSliderIndex');
+    const desktopSliderAngle = document.getElementById('desktopSliderAngle');
+    const desktopSliderIndex = document.getElementById('desktopSliderIndex');
+    const drawerSliderAngle = document.getElementById('drawerSliderAngle');
+    const drawerSliderIndex = document.getElementById('drawerSliderIndex');
+
+    const mobileValAngle = document.getElementById('mobileValAngle');
+    const mobileValIndex = document.getElementById('mobileValIndex');
+    const desktopValAngle = document.getElementById('desktopValAngle');
+    const desktopValIndex = document.getElementById('desktopValIndex');
+    const drawerValAngle = document.getElementById('drawerValAngle');
+    const drawerValIndex = document.getElementById('drawerValIndex');
+
+    const mobileToggleBtn = document.getElementById('mobileToggleBtn');
+    const desktopToggleBtn = document.getElementById('desktopToggleBtn');
+    const drawerToggleBtn = document.getElementById('drawerToggleBtn');
+
+    const statRedDev = document.getElementById('statRedDev');
+    const statVioletDev = document.getElementById('statVioletDev');
+    const statSpread = document.getElementById('statSpread');
+    const pillSubText = document.getElementById('pillSubText');
+
+    // ==========================================================
+    // TAB SWITCHER
+    // ==========================================================
+    function setMode(mode) {
+      [btnShowAll, btnPillView, btnDrawerView, btnMobileView, btnDesktopView].forEach(b => b.classList.remove('active'));
+
+      if (mode === 'all') {
+        btnShowAll.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'flex';
+        secDesktop.style.display = 'flex';
+        closeDrawer();
+      } else if (mode === 'pill') {
+        btnPillView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'none';
+        secDesktop.style.display = 'none';
+        closeDrawer();
+      } else if (mode === 'drawer') {
+        btnDrawerView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'none';
+        secDesktop.style.display = 'none';
+        openDrawer();
+      } else if (mode === 'mobile') {
+        btnMobileView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'none';
+        secMobile.style.display = 'flex';
+        secDesktop.style.display = 'none';
+        closeDrawer();
+      } else if (mode === 'desktop') {
+        btnDesktopView.classList.add('active');
+        gridTop.style.display = 'none';
+        secDesktop.style.display = 'flex';
+        closeDrawer();
+      }
+
+      setTimeout(renderAll, 60);
+    }
+
+    function openDrawer() {
+      drawerOverlay.classList.add('open');
+      setTimeout(renderAll, 120);
+    }
+
+    function closeDrawer() {
+      drawerOverlay.classList.remove('open');
+    }
+
+    function toggleNormals() {
+      showNormals = !showNormals;
+      [mobileToggleBtn, desktopToggleBtn, drawerToggleBtn].forEach(btn => {
+        if (btn) btn.classList.toggle('active', showNormals);
+      });
+      renderAll();
+    }
+
+    // Material label in Proper Case (Strictly NO ALL-CAPS)
+    function getMaterialName(n) {
+      if (n <= 1.36) return 'Water';
+      if (n <= 1.44) return 'Fluorite';
+      if (n <= 1.50) return 'Acrylic';
+      if (n <= 1.58) return 'Crown glass';
+      if (n <= 1.68) return 'Flint glass';
+      return 'Dense flint';
+    }
+
+    // ==========================================================
+    // SYNC STATE & UPDATE KATEX
+    // ==========================================================
+    function updateState(angle, n) {
+      incidentAngleDeg = parseFloat(angle);
+      refractiveIndex = parseFloat(n);
+
+      // Sync slider positions
+      [mobileSliderAngle, desktopSliderAngle, drawerSliderAngle].forEach(s => { if (s) s.value = incidentAngleDeg; });
+      [mobileSliderIndex, desktopSliderIndex, drawerSliderIndex].forEach(s => { if (s) s.value = refractiveIndex; });
+
+      // Sync labels
+      const matName = getMaterialName(refractiveIndex);
+      const angleStr = `${incidentAngleDeg}°`;
+      const indexStr = `${refractiveIndex.toFixed(2)} (${matName})`;
+
+      [mobileValAngle, desktopValAngle, drawerValAngle].forEach(v => { if (v) v.textContent = angleStr; });
+      [mobileValIndex, desktopValIndex, drawerValIndex].forEach(v => { if (v) v.textContent = indexStr; });
+
+      if (pillSubText) {
+        pillSubText.textContent = `θ₁ = ${incidentAngleDeg}° • Glass n = ${refractiveIndex.toFixed(2)}`;
+      }
+
+      // Calculate sample deviation for Red & Violet
+      const devRed = computeDeviation(incidentAngleDeg, refractiveIndex + SPECTRUM[0].dN);
+      const devViolet = computeDeviation(incidentAngleDeg, refractiveIndex + SPECTRUM[SPECTRUM.length - 1].dN);
+      const spread = (devViolet - devRed).toFixed(1);
+
+      const takeawayEl = document.getElementById('desktopTakeawayText');
+      if (takeawayEl) {
+        takeawayEl.textContent = `Violet refracts most due to higher glass index (n = ${(refractiveIndex + 0.03).toFixed(2)}), spreading white light into a ${spread}° rainbow!`;
+      }
+
+      if (statRedDev) statRedDev.textContent = `${devRed.toFixed(1)}°`;
+      if (statVioletDev) statVioletDev.textContent = `${devViolet.toFixed(1)}°`;
+      if (statSpread) statSpread.textContent = `+${spread}°`;
+
+      updateKaTeX();
+      renderAll();
+    }
+
+    // Equilateral prism deviation formula (A = 60°)
+    function computeDeviation(theta1Deg, n) {
+      const A = Math.PI / 3;
+      const theta1 = (theta1Deg * Math.PI) / 180;
+      const sinTheta2 = Math.sin(theta1) / n;
+      if (Math.abs(sinTheta2) > 1) return 0;
+      const theta2 = Math.asin(sinTheta2);
+      const theta3 = A - theta2;
+      const sinTheta4 = n * Math.sin(theta3);
+      if (Math.abs(sinTheta4) > 1) return 0;
+      const theta4 = Math.asin(sinTheta4);
+      const deviation = (theta1 + theta4 - A) * (180 / Math.PI);
+      return Math.max(0, deviation);
+    }
+
+    function updateKaTeX() {
+      if (typeof katex === 'undefined') return;
+
+      const primaryTeX = 'n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2';
+      const subTeX = 'n_{\\text{violet}} > n_{\\text{red}} \\implies \\text{Violet bends most}';
+
+      ['pillFormula', 'mobilePrimaryEq', 'desktopPrimaryEq', 'drawerPrimaryEq'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) katex.render(primaryTeX, el, { throwOnError: false });
+      });
+
+      ['mobileSubEq', 'desktopSubEq', 'drawerSubEq'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) katex.render(subTeX, el, { throwOnError: false });
+      });
+    }
+
+    // Slider Event Listeners
+    [
+      [mobileSliderAngle, mobileSliderIndex],
+      [desktopSliderAngle, desktopSliderIndex],
+      [drawerSliderAngle, drawerSliderIndex]
+    ].forEach(([sAngle, sIndex]) => {
+      if (sAngle) sAngle.addEventListener('input', e => updateState(e.target.value, refractiveIndex));
+      if (sIndex) sIndex.addEventListener('input', e => updateState(incidentAngleDeg, e.target.value));
+    });
+
+    // ==========================================================
+    // OPTICAL RAY TRACING & ICE-COLORED PRISM RENDERER
+    // ==========================================================
+    function setupCanvas(canvas) {
+      if (!canvas) return null;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.floor(rect.width);
+      const h = Math.floor(rect.height);
+
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+      return { ctx, w, h };
+    }
+
+    // Mini preview in pill card
+    function renderPillCanvas() {
+      const c = setupCanvas(pillCanvas);
+      if (!c || c.w === 0 || c.h === 0) return;
+      const { ctx, w, h } = c;
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      // Mini ice prism
+      const apex = { x: w * 0.45, y: 8 };
+      const left = { x: w * 0.22, y: h - 9 };
+      const right = { x: w * 0.68, y: h - 9 };
+
+      ctx.fillStyle = 'rgba(186, 230, 253, 0.45)';
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(apex.x, apex.y);
+      ctx.lineTo(left.x, left.y);
+      ctx.lineTo(right.x, right.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Mini incoming ray
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(4, h * 0.58);
+      ctx.lineTo(w * 0.32, h * 0.42);
+      ctx.stroke();
+
+      // Mini rainbow exit
+      const rainbowColors = ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb', '#9333ea'];
+      rainbowColors.forEach((col, idx) => {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.54, h * 0.46 + idx * 1.5);
+        ctx.lineTo(w - 4, h * 0.32 + idx * 3.6);
+        ctx.stroke();
+      });
+    }
+
+    function renderStage(canvas) {
+      const c = setupCanvas(canvas);
+      if (!c || c.w === 0 || c.h === 0) return;
+      const { ctx, w, h } = c;
+
+      // 1. Studio Illuminated Optical Backdrop
+      const grad = ctx.createRadialGradient(w * 0.45, h * 0.5, 10, w * 0.45, h * 0.5, Math.max(w, h) * 0.65);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.5, '#f8fafc');
+      grad.addColorStop(1, '#f1f5f9');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle soft grid
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+      ctx.lineWidth = 1;
+      const gridSize = 24;
+      for (let x = 0; x < w; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // 2. Prism Geometry (Equilateral 60° Triangle)
+      const prismSide = Math.min(w * 0.38, h * 0.58);
+      const prismH = prismSide * (Math.sqrt(3) / 2);
+      const prismCx = w * 0.41;
+      const prismCy = h * 0.52;
+
+      // Vertices
+      const Vtop = { x: prismCx, y: prismCy - (2 / 3) * prismH };
+      const Vleft = { x: prismCx - prismSide / 2, y: prismCy + (1 / 3) * prismH };
+      const Vright = { x: prismCx + prismSide / 2, y: prismCy + (1 / 3) * prismH };
+
+      // Face 1 (Left face: Vleft ➔ Vtop)
+      const f1Dx = Vtop.x - Vleft.x;
+      const f1Dy = Vtop.y - Vleft.y;
+      const f1Len = Math.hypot(f1Dx, f1Dy);
+      const n1 = { x: f1Dy / f1Len, y: -f1Dx / f1Len };
+
+      // Incident ray hitting face 1 at ~42% from the top
+      const hitRatio = 0.42;
+      const P1 = {
+        x: Vtop.x + (Vleft.x - Vtop.x) * hitRatio,
+        y: Vtop.y + (Vleft.y - Vtop.y) * hitRatio
+      };
+
+      const theta1Rad = (incidentAngleDeg * Math.PI) / 180;
+      const normal1Angle = Math.atan2(n1.y, n1.x);
+      
+      const incomingAngle = (normal1Angle + Math.PI) - theta1Rad;
+      const rayInDx = Math.cos(incomingAngle);
+      const rayInDy = Math.sin(incomingAngle);
+
+      const rayInLen = Math.max(w * 0.5, 200);
+      const raySrc = {
+        x: P1.x - rayInDx * rayInLen,
+        y: P1.y - rayInDy * rayInLen
+      };
+
+      // 3. Normal line at Face 1 (if toggled)
+      if (showNormals) {
+        ctx.save();
+        ctx.strokeStyle = '#94a3b8';
+        ctx.setLineDash([3, 4]);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(P1.x - n1.x * 55, P1.y - n1.y * 55);
+        ctx.lineTo(P1.x + n1.x * 55, P1.y + n1.y * 55);
+        ctx.stroke();
+
+        // Label θ₁ in Proper Case
+        ctx.fillStyle = '#475569';
+        ctx.font = '500 11px JetBrains Mono, monospace';
+        ctx.fillText(`θ₁ = ${incidentAngleDeg}°`, P1.x + n1.x * 38 - 18, P1.y + n1.y * 38 - 8);
+        ctx.restore();
+      }
+
+      // 4. Trace each spectral ray through Prism & out into Air
+      const f2Dx = Vright.x - Vtop.x;
+      const f2Dy = Vright.y - Vtop.y;
+      const f2Len = Math.hypot(f2Dx, f2Dy);
+      const n2 = { x: -f2Dy / f2Len, y: f2Dx / f2Len };
+
+      const tracedRays = [];
+
+      for (let i = 0; i < SPECTRUM.length; i++) {
+        const spec = SPECTRUM[i];
+        const nRay = refractiveIndex + spec.dN;
+
+        // Refraction 1 (Air ➔ Glass)
+        const sinTheta2 = Math.sin(theta1Rad) / nRay;
+        const theta2Rad = Math.asin(Math.max(-1, Math.min(1, sinTheta2)));
+
+        const glassRayAngle = (normal1Angle + Math.PI) - theta2Rad;
+        const gDx = Math.cos(glassRayAngle);
+        const gDy = Math.sin(glassRayAngle);
+
+        // Intersect with Face 2 (Vtop ➔ Vright)
+        const denom = gDx * f2Dy - gDy * f2Dx;
+        let P2 = { x: P1.x + gDx * 60, y: P1.y + gDy * 60 };
+
+        if (Math.abs(denom) > 1e-6) {
+          const t = ((Vtop.x - P1.x) * f2Dy - (Vtop.y - P1.y) * f2Dx) / denom;
+          const u = ((Vtop.x - P1.x) * gDy - (Vtop.y - P1.y) * gDx) / denom;
+
+          if (t > 0 && u >= 0 && u <= 1.05) {
+            P2 = { x: P1.x + t * gDx, y: P1.y + t * gDy };
+          }
+        }
+
+        // Refraction 2 (Glass ➔ Air at Face 2)
+        const inwardN2Angle = Math.atan2(-n2.y, -n2.x);
+        const rayAngleInternal = Math.atan2(gDy, gDx);
+        let theta3Rad = rayAngleInternal - inwardN2Angle;
+        while (theta3Rad > Math.PI) theta3Rad -= 2 * Math.PI;
+        while (theta3Rad < -Math.PI) theta3Rad += 2 * Math.PI;
+
+        const sinTheta4 = nRay * Math.sin(theta3Rad);
+        let exitAngle = rayAngleInternal;
+        let isTIR = false;
+
+        if (Math.abs(sinTheta4) <= 1.0) {
+          const theta4Rad = Math.asin(sinTheta4);
+          exitAngle = inwardN2Angle + theta4Rad;
+        } else {
+          isTIR = true;
+          exitAngle = rayAngleInternal - 2 * theta3Rad;
+        }
+
+        const exitLen = Math.max(w, h);
+        const Pexit = {
+          x: P2.x + Math.cos(exitAngle) * exitLen,
+          y: P2.y + Math.sin(exitAngle) * exitLen
+        };
+
+        tracedRays.push({ spec, nRay, P1, P2, Pexit, isTIR });
+      }
+
+      // 5. Draw continuous Rainbow Fan Gradient polygon (from Face 2 outward)
+      if (tracedRays.length >= 2) {
+        const redRay = tracedRays[0];
+        const violetRay = tracedRays[tracedRays.length - 1];
+
+        ctx.save();
+        const fanGrad = ctx.createLinearGradient(
+          (redRay.P2.x + violetRay.P2.x) / 2, (redRay.P2.y + violetRay.P2.y) / 2,
+          (redRay.Pexit.x + violetRay.Pexit.x) / 2, (redRay.Pexit.y + violetRay.Pexit.y) / 2
+        );
+        fanGrad.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+        fanGrad.addColorStop(0.2, 'rgba(220, 38, 38, 0.22)');
+        fanGrad.addColorStop(0.5, 'rgba(22, 163, 74, 0.22)');
+        fanGrad.addColorStop(0.8, 'rgba(37, 99, 235, 0.22)');
+        fanGrad.addColorStop(1, 'rgba(147, 51, 234, 0.25)');
+
+        ctx.fillStyle = fanGrad;
+        ctx.beginPath();
+        ctx.moveTo(redRay.P2.x, redRay.P2.y);
+        ctx.lineTo(redRay.Pexit.x, redRay.Pexit.y);
+        ctx.lineTo(violetRay.Pexit.x, violetRay.Pexit.y);
+        ctx.lineTo(violetRay.P2.x, violetRay.P2.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 6. Draw Spectral Rainbow Rays (Exiting) - High contrast & vibrant
+      tracedRays.forEach(r => {
+        ctx.save();
+        // Subtle soft halo
+        ctx.strokeStyle = r.spec.color;
+        ctx.lineWidth = 4;
+        ctx.globalAlpha = 0.22;
+        ctx.beginPath();
+        ctx.moveTo(r.P2.x, r.P2.y);
+        ctx.lineTo(r.Pexit.x, r.Pexit.y);
+        ctx.stroke();
+
+        // Core sharp laser line
+        ctx.lineWidth = 1.8;
+        ctx.globalAlpha = 0.95;
+        ctx.beginPath();
+        ctx.moveTo(r.P2.x, r.P2.y);
+        ctx.lineTo(r.Pexit.x, r.Pexit.y);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // 7. Draw Ice-Colored Crystalline Glass Prism
+      ctx.save();
+      // Translucent Ice Blue Glass Body
+      const iceGrad = ctx.createLinearGradient(Vtop.x, Vtop.y, Vleft.x, Vleft.y);
+      iceGrad.addColorStop(0, 'rgba(224, 242, 254, 0.75)'); // Soft ice-cyan
+      iceGrad.addColorStop(0.5, 'rgba(186, 230, 253, 0.50)'); // Sky-ice
+      iceGrad.addColorStop(1, 'rgba(224, 242, 254, 0.80)');
+
+      ctx.fillStyle = iceGrad;
+      ctx.beginPath();
+      ctx.moveTo(Vtop.x, Vtop.y);
+      ctx.lineTo(Vleft.x, Vleft.y);
+      ctx.lineTo(Vright.x, Vright.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Crystalline Internal Facet Highlights
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(Vtop.x, Vtop.y);
+      ctx.lineTo((Vleft.x + Vright.x) / 2, (Vleft.y + Vright.y) / 2);
+      ctx.stroke();
+
+      // Frosted Glass Border (Ice Crystal Blue)
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      // Glossy Apex Highlight
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(Vtop.x - 14, Vtop.y + 22);
+      ctx.lineTo(Vtop.x, Vtop.y);
+      ctx.lineTo(Vtop.x + 14, Vtop.y + 22);
+      ctx.stroke();
+
+      // Apex Angle A = 60° (Proper Case)
+      ctx.fillStyle = '#0369a1';
+      ctx.font = '600 11px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('A = 60°', Vtop.x, Vtop.y - 10);
+      ctx.restore();
+
+      // 8. Draw Rays INSIDE the Ice Prism
+      tracedRays.forEach(r => {
+        ctx.save();
+        ctx.strokeStyle = r.spec.color;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.moveTo(r.P1.x, r.P1.y);
+        ctx.lineTo(r.P2.x, r.P2.y);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // 9. Draw Incident Light Beam (Clearly visible on light background)
+      ctx.save();
+      // Outer subtle shadow for high visibility on light bg
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.15)';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(raySrc.x, raySrc.y);
+      ctx.lineTo(P1.x, P1.y);
+      ctx.stroke();
+
+      // Crisp luminous core beam
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(raySrc.x, raySrc.y);
+      ctx.lineTo(P1.x, P1.y);
+      ctx.stroke();
+
+      // Sharp central ray guide
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(raySrc.x, raySrc.y);
+      ctx.lineTo(P1.x, P1.y);
+      ctx.stroke();
+
+      // Incident point pulse
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.arc(P1.x, P1.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // "White light ➔" label in Proper Case (NO ALL-CAPS)
+      ctx.fillStyle = '#334155';
+      ctx.font = '600 11.5px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('White light ➔', Math.max(14, P1.x - 110), Math.max(22, P1.y - 12));
+      ctx.restore();
+
+      // 10. Draw Modern Projection Card on Right Edge
+      const screenX = w - 16;
+      ctx.save();
+      // Screen frame
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.06)';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.roundRect(screenX, 20, 10, h - 40, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      // Rainbow projection band on screen
+      if (tracedRays.length >= 2) {
+        const yTop = Math.max(24, Math.min(h - 40, tracedRays[0].Pexit.y));
+        const yBot = Math.max(24, Math.min(h - 24, tracedRays[tracedRays.length - 1].Pexit.y));
+        const bandH = Math.max(22, yBot - yTop);
+
+        const screenGrad = ctx.createLinearGradient(0, yTop, 0, yTop + bandH);
+        SPECTRUM.forEach((s, idx) => {
+          screenGrad.addColorStop(idx / (SPECTRUM.length - 1), s.color);
+        });
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = screenGrad;
+        ctx.fillRect(screenX + 1, yTop, 8, bandH);
+
+        // Proper Case labels beside screen (NO ALL-CAPS)
+        ctx.fillStyle = '#dc2626';
+        ctx.font = '600 9.5px JetBrains Mono, monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText('Red (700 nm)', screenX - 6, yTop + 4);
+
+        ctx.fillStyle = '#9333ea';
+        ctx.fillText('Violet (400 nm)', screenX - 6, yTop + bandH + 2);
+      }
+      ctx.restore();
+
+      // 11. Micro-animation: photon pulse along incident ray
+      animPulse = (animPulse + 0.008) % 1.0;
+      ctx.save();
+      const dotX = raySrc.x + (P1.x - raySrc.x) * animPulse;
+      const dotY = raySrc.y + (P1.y - raySrc.y) * animPulse;
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function renderAll() {
+      renderPillCanvas();
+      renderStage(desktopCanvas);
+      renderStage(mobileCanvas);
+      renderStage(drawerCanvas);
+    }
+
+    // Animation Loop
+    let animFrameId = null;
+    function loop() {
+      renderAll();
+      animFrameId = requestAnimationFrame(loop);
+    }
+
+    // Window resize
+    window.addEventListener('resize', () => {
+      renderAll();
+    });
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      updateState(incidentAngleDeg, refractiveIndex);
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialMode = urlParams.get('mode');
+      if (initialMode) setMode(initialMode);
+      loop();
+    });
+
+    // Fallback initialize
+    updateState(incidentAngleDeg, refractiveIndex);
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialMode = urlParams.get('mode');
+    if (initialMode) setMode(initialMode);
+    if (!animFrameId) loop();
+  
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        document.querySelectorAll('.top-header').forEach((el) => { el.style.display = 'none'; });
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge, .specs-bar, .audience-switcher').forEach((el) => {
+          el.style.display = 'none';
+        });
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      function applyMode(m) {
+        if (!m) return;
+        if (typeof setMode === 'function') { setMode(m); return; }
+        if (typeof switchView === 'function') { switchView(m); return; }
+        document.body.classList.remove('mode-pill', 'mode-mobile', 'mode-desktop');
+        if (m === 'pill') document.body.classList.add('mode-pill');
+        if (m === 'mobile') document.body.classList.add('mode-mobile');
+        if (m === 'desktop') document.body.classList.add('mode-desktop');
+        const overlay = document.getElementById('drawerOverlay');
+        if (overlay) {
+          if (m === 'drawer') { overlay.classList.add('open'); overlay.classList.add('active'); }
+          else { overlay.classList.remove('open'); overlay.classList.remove('active'); }
+        }
+        document.querySelectorAll('.switch-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-view') === m);
+        });
+      }
+      if (mode) setTimeout(() => applyMode(mode), 50);
+    })();
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Theory of Relativity & Time Dilation — InteractEd</title>
+  
+  <!-- Inter Font & KaTeX -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 20px 48px;
+    }
+
+    /* Top Navigation & Mode Switcher */
+    .top-header {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .specs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .spec-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .spec-item strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .spec-pill {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .spec-divider {
+      color: #cbd5e1;
+    }
+
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .switch-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .switch-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .switch-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Showcase Layout */
+    .showcase-container {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .showcase-grid-top {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 36px;
+      flex-wrap: wrap;
+    }
+
+    .view-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-badge {
+      background: #e2e8f0;
+      color: #334155;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* 1. Pill Mode (In-Chat Capsule) */
+    .chat-pill-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 8px 14px 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      width: 100%;
+      max-width: 350px;
+    }
+
+    .chat-pill-card:hover {
+      border-color: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+    }
+
+    .pill-icon-box {
+      width: 76px;
+      height: 52px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .pill-icon-box canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pill-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pill-formula {
+      font-size: 18px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .pill-subtitle {
+      font-size: 11px;
+      color: #64748b;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-expand-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #334155;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .chat-pill-card:hover .pill-expand-btn {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    /* 2. Mobile Screen (375px × 540px) */
+    .mobile-phone-frame {
+      width: 100%;
+      max-width: 375px;
+      height: 540px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 26px;
+      box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.09);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .mobile-phone-frame .phone-stage {
+      height: 285px;
+      min-height: 285px;
+      background: #ffffff;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+
+    .phone-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating Frame Header Cards */
+    .stage-frame-headers {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .frame-tag-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 5px 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .frame-title {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .tag-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .blue-dot { background: #2563eb; }
+    .red-dot { background: #ef4444; }
+
+    .frame-counter {
+      font-size: 10.5px;
+      color: #64748b;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .counter-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 11.5px;
+      color: #0f172a;
+    }
+
+    .earth-card .counter-num { color: #2563eb; }
+    .rocket-card .counter-num { color: #dc2626; }
+
+    .rate-badge {
+      font-size: 9px;
+      background: #fef2f2;
+      color: #b91c1c;
+      padding: 0 4px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .stage-bottom-pills {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .stage-pill {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(6px);
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 3px 7px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #475569;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+
+    .earth-pill { color: #1d4ed8; }
+    .rocket-pill { color: #b91c1c; }
+
+    .mobile-phone-frame .phone-controls {
+      height: 255px;
+      padding: 16px 18px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .stage-toggle-btn {
+      position: absolute;
+      bottom: 8px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      padding: 4px 10px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      z-index: 11;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .stage-toggle-btn:hover {
+      background: #ffffff;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+
+    .stage-toggle-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    /* Math Formula Box (Standardized) */
+    .math-formula-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+    }
+
+    .math-header-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      letter-spacing: 0.2px;
+      margin-bottom: 2px;
+    }
+
+    .primary-equation {
+      font-size: 22px;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.25;
+    }
+
+    .live-substitution {
+      font-size: 11.5px;
+      color: #475569;
+      min-height: 18px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Sliders List */
+    .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .slider-label-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .slider-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #0f172a;
+      background: #f1f5f9;
+      padding: 1px 7px;
+      border-radius: 5px;
+    }
+
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 36px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .range-slider::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      cursor: pointer;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      margin-top: -9px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+      border: 2.5px solid #ffffff;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .range-slider::-webkit-slider-thumb:active {
+      transform: scale(1.22);
+      box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.15), 0 3px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    .range-slider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    }
+
+    /* Dynamic Takeaway Card (One-Glance Understanding) */
+    .takeaway-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .takeaway-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .takeaway-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .takeaway-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    .takeaway-text {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #1e40af;
+      line-height: 1.35;
+    }
+
+    /* 3. Desktop Mode (880px × 490px) */
+    .desktop-card {
+      width: 880px;
+      height: 490px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+      display: grid;
+      grid-template-columns: 370px 1fr;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .desktop-card .math-panel {
+      padding: 26px 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid #f1f5f9;
+      background: #ffffff;
+    }
+
+    .desktop-card .stage-panel {
+      position: relative;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .stage-panel canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 4. Slide-Over Drawer */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .drawer-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-panel {
+      width: 100%;
+      max-width: 440px;
+      max-height: 85vh;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.15);
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .drawer-overlay.active .drawer-panel {
+      transform: translateY(0);
+    }
+
+    .drawer-handle-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .drawer-notch {
+      width: 38px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 2px;
+      margin: 0 auto;
+    }
+
+    .drawer-close-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      border: none;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s ease;
+    }
+
+    .drawer-close-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .drawer-stage {
+      height: 240px;
+      min-height: 240px;
+      background: #ffffff;
+      position: relative;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .drawer-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .drawer-controls {
+      padding: 16px 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    /* Isolated View Modes */
+    body.mode-pill .mobile-section,
+    body.mode-pill .desktop-section { display: none !important; }
+
+    body.mode-mobile .pill-section,
+    body.mode-mobile .desktop-section { display: none !important; }
+
+    body.mode-desktop .pill-section,
+    body.mode-desktop .mobile-section { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation & Mode Switcher -->
+  <header class="top-header">
+    <div class="specs-bar">
+      <span class="spec-item"><strong>Topic:</strong> Special relativity & time dilation</span>
+      <span class="spec-divider">•</span>
+      <span class="spec-item"><strong>Law:</strong> <span class="spec-pill">t' = γ t, where γ = 1/√(1 - v²/c²)</span></span>
+      <span class="spec-divider">•</span>
+      <span class="spec-item"><strong>Standard:</strong> K-12 physics</span>
+      <span class="spec-divider">•</span>
+      <span class="spec-item"><strong>Rules:</strong> Strict Proper Case / Zero ALL-CAPS</span>
+    </div>
+
+    <nav class="view-switcher">
+      <button class="switch-btn active" data-view="all">👁️ View all modes</button>
+      <button class="switch-btn" data-view="pill">💊 1. Pill mode</button>
+      <button class="switch-btn" data-view="drawer">📱 2. Mobile card drawer</button>
+      <button class="switch-btn" data-view="mobile">📲 3. Mobile screen (375×540)</button>
+      <button class="switch-btn" data-view="desktop">🖥️ 4. Desktop mode (880×490)</button>
+    </nav>
+  </header>
+
+  <!-- Showcase Container -->
+  <main class="showcase-container">
+    
+    <!-- Top Row: Pill Mode & Mobile Screen -->
+    <div class="showcase-grid-top">
+      
+      <!-- 1. Pill Mode -->
+      <div class="view-section pill-section">
+        <div class="section-title">
+          <span>In-chat capsule card</span>
+          <span class="section-badge">350px width</span>
+        </div>
+
+        <div class="chat-pill-card" id="chatPillCard" title="Click to open mobile drawer">
+          <div class="pill-icon-box">
+            <canvas id="pillCanvas" width="152" height="104"></canvas>
+          </div>
+          <div class="pill-content">
+            <div class="pill-formula" id="pillKatex"></div>
+            <div class="pill-subtitle" id="pillSubtitle">v = 0.80 c • γ = 1.67× slower</div>
+          </div>
+          <div class="pill-expand-btn">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Mobile Screen -->
+      <div class="view-section mobile-section">
+        <div class="section-title">
+          <span>Mobile phone screen</span>
+          <span class="section-badge">375 × 540 px</span>
+        </div>
+
+        <div class="mobile-phone-frame">
+          <div class="phone-stage">
+            <canvas id="mobileCanvas" width="375" height="285"></canvas>
+            <div class="stage-frame-headers">
+              <div class="frame-tag-card earth-card">
+                <div class="frame-title"><span class="tag-dot blue-dot"></span> Earth (v = 0)</div>
+                <div class="frame-counter">Ticks: <span class="counter-num mobileEarthTicks">0</span></div>
+              </div>
+              <div class="frame-tag-card rocket-card">
+                <div class="frame-title"><span class="tag-dot red-dot"></span> Rocket (<span class="rocket-speed-badge mobileRocketSpeedVal">0.80 c</span>)</div>
+                <div class="frame-counter">Ticks: <span class="counter-num mobileRocketTicks">0</span> <span class="rate-badge mobileGammaVal">1.67×</span></div>
+              </div>
+            </div>
+            <div class="stage-bottom-pills">
+              <div class="stage-pill earth-pill">Straight 2L path</div>
+              <div class="stage-pill rocket-pill">Diagonal ➔ Slower</div>
+            </div>
+            <button class="stage-toggle-btn active" id="mobileTogglePaths">
+              <span>📐</span> Light path
+            </button>
+          </div>
+
+          <div class="phone-controls">
+            <div class="math-formula-box">
+              <div class="math-header-label">Special relativity time dilation</div>
+              <div class="primary-equation" id="mobileFormula"></div>
+              <div class="live-substitution" id="mobileSubstitution"></div>
+            </div>
+
+            <div class="sliders-list">
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="slider-label-left">
+                    <span>🚀</span> Spaceship speed (v)
+                  </span>
+                  <span class="slider-val" id="mobileSpeedVal">0.80 c</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSpeedSlider" min="0" max="95" step="1" value="80">
+              </div>
+
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <span class="slider-label-left">
+                    <span>📏</span> Clock mirror height (L)
+                  </span>
+                  <span class="slider-val" id="mobileHeightVal">2.5 m</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileHeightSlider" min="15" max="40" step="1" value="25">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Row: Desktop Mode -->
+    <div class="view-section desktop-section">
+      <div class="section-title">
+        <span>Desktop split card</span>
+        <span class="section-badge">880 × 490 px</span>
+      </div>
+
+      <div class="desktop-card">
+        <!-- Left Math & Controls Panel -->
+        <div class="math-panel">
+          <div class="math-formula-box">
+            <div class="math-header-label">Special relativity time dilation</div>
+            <div class="primary-equation" id="desktopFormula"></div>
+            <div class="live-substitution" id="desktopSubstitution"></div>
+          </div>
+
+          <div class="sliders-list">
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="slider-label-left">
+                  <span>🚀</span> Spaceship speed (v)
+                </span>
+                <span class="slider-val" id="desktopSpeedVal">0.80 c</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSpeedSlider" min="0" max="95" step="1" value="80">
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <span class="slider-label-left">
+                  <span>📏</span> Clock mirror height (L)
+                </span>
+                <span class="slider-val" id="desktopHeightVal">2.5 m</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopHeightSlider" min="15" max="40" step="1" value="25">
+            </div>
+          </div>
+
+          <div class="takeaway-card" id="desktopTakeawayCard">
+            <div class="takeaway-header-row">
+              <span class="takeaway-badge" id="desktopTakeawayBadge">
+                <span class="takeaway-dot"></span>
+                <span id="desktopTakeawayBadgeText">Time dilation</span>
+              </span>
+              <span style="font-size: 11px; color: #64748b; font-weight: 500;">One-glance principle</span>
+            </div>
+            <div class="takeaway-text" id="desktopTakeawayText">
+              At 0.80 c, spaceship time ticks 1.67× slower than Earth!
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Stage Panel -->
+        <div class="stage-panel">
+          <canvas id="desktopCanvas" width="510" height="490"></canvas>
+          <div class="stage-frame-headers">
+            <div class="frame-tag-card earth-card">
+              <div class="frame-title"><span class="tag-dot blue-dot"></span> Earth clock (v = 0)</div>
+              <div class="frame-counter">Ticks: <span class="counter-num desktopEarthTicks">0</span></div>
+            </div>
+            <div class="frame-tag-card rocket-card">
+              <div class="frame-title"><span class="tag-dot red-dot"></span> Rocket (<span class="rocket-speed-badge desktopRocketSpeedVal">0.80 c</span>)</div>
+              <div class="frame-counter">Ticks: <span class="counter-num desktopRocketTicks">0</span> <span class="rate-badge desktopGammaVal">1.67× slower</span></div>
+            </div>
+          </div>
+          <div class="stage-bottom-pills">
+            <div class="stage-pill earth-pill">Vertical path (2L) ➔ Normal tick rate</div>
+            <div class="stage-pill rocket-pill">Diagonal zigzag path ➔ Slower tick rate</div>
+          </div>
+          <button class="stage-toggle-btn active" id="desktopTogglePaths">
+            <span>📐</span> Light path
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Mobile Card Drawer -->
+  <div class="drawer-overlay" id="drawerOverlay">
+    <div class="drawer-panel">
+      <div class="drawer-handle-bar">
+        <div style="width: 28px;"></div>
+        <div class="drawer-notch"></div>
+        <button class="drawer-close-btn" id="drawerCloseBtn">✕</button>
+      </div>
+
+      <div class="drawer-stage">
+        <canvas id="drawerCanvas" width="440" height="240"></canvas>
+        <div class="stage-frame-headers">
+          <div class="frame-tag-card earth-card">
+            <div class="frame-title"><span class="tag-dot blue-dot"></span> Earth (v = 0)</div>
+            <div class="frame-counter">Ticks: <span class="counter-num drawerEarthTicks">0</span></div>
+          </div>
+          <div class="frame-tag-card rocket-card">
+            <div class="frame-title"><span class="tag-dot red-dot"></span> Rocket (<span class="rocket-speed-badge drawerRocketSpeedVal">0.80 c</span>)</div>
+            <div class="frame-counter">Ticks: <span class="counter-num drawerRocketTicks">0</span> <span class="rate-badge drawerGammaVal">1.67×</span></div>
+          </div>
+        </div>
+        <div class="stage-bottom-pills">
+          <div class="stage-pill earth-pill">Straight 2L</div>
+          <div class="stage-pill rocket-pill">Diagonal ➔ Slower</div>
+        </div>
+        <button class="stage-toggle-btn active" id="drawerTogglePaths">
+          <span>📐</span> Light path
+        </button>
+      </div>
+
+      <div class="drawer-controls">
+        <div class="math-formula-box">
+          <div class="math-header-label">Special relativity time dilation</div>
+          <div class="primary-equation" id="drawerFormula"></div>
+          <div class="live-substitution" id="drawerSubstitution"></div>
+        </div>
+
+        <div class="sliders-list">
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="slider-label-left">
+                <span>🚀</span> Spaceship speed (v)
+              </span>
+              <span class="slider-val" id="drawerSpeedVal">0.80 c</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSpeedSlider" min="0" max="95" step="1" value="80">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span class="slider-label-left">
+                <span>📏</span> Clock mirror height (L)
+              </span>
+              <span class="slider-val" id="drawerHeightVal">2.5 m</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerHeightSlider" min="15" max="40" step="1" value="25">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    const state = {
+      vRatio: 0.80,     // v/c (0.00 to 0.95)
+      mirrorH: 2.5,     // meters (1.5 to 4.0)
+      showPaths: true,
+      time: 0,
+      earthCycle: 0,
+      rocketCycle: 0,
+      earthTicks: 0,
+      rocketTicks: 0,
+      lastEarthBounce: -1,
+      lastRocketBounce: -1
+    };
+
+    // DOM Elements
+    const mobileCanvas = document.getElementById('mobileCanvas');
+    const desktopCanvas = document.getElementById('desktopCanvas');
+    const drawerCanvas = document.getElementById('drawerCanvas');
+    const pillCanvas = document.getElementById('pillCanvas');
+
+    const mobileSpeedSlider = document.getElementById('mobileSpeedSlider');
+    const mobileSpeedVal = document.getElementById('mobileSpeedVal');
+    const mobileHeightSlider = document.getElementById('mobileHeightSlider');
+    const mobileHeightVal = document.getElementById('mobileHeightVal');
+
+    const desktopSpeedSlider = document.getElementById('desktopSpeedSlider');
+    const desktopSpeedVal = document.getElementById('desktopSpeedVal');
+    const desktopHeightSlider = document.getElementById('desktopHeightSlider');
+    const desktopHeightVal = document.getElementById('desktopHeightVal');
+
+    const drawerSpeedSlider = document.getElementById('drawerSpeedSlider');
+    const drawerSpeedVal = document.getElementById('drawerSpeedVal');
+    const drawerHeightSlider = document.getElementById('drawerHeightSlider');
+    const drawerHeightVal = document.getElementById('drawerHeightVal');
+
+    const mobileTogglePaths = document.getElementById('mobileTogglePaths');
+    const desktopTogglePaths = document.getElementById('desktopTogglePaths');
+    const drawerTogglePaths = document.getElementById('drawerTogglePaths');
+
+    const desktopTakeawayBadge = document.getElementById('desktopTakeawayBadge');
+    const desktopTakeawayBadgeText = document.getElementById('desktopTakeawayBadgeText');
+    const desktopTakeawayText = document.getElementById('desktopTakeawayText');
+
+    const chatPillCard = document.getElementById('chatPillCard');
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    const drawerCloseBtn = document.getElementById('drawerCloseBtn');
+
+    // Calculate Lorentz Factor
+    function getGamma() {
+      const v = state.vRatio;
+      return 1 / Math.sqrt(Math.max(0.01, 1 - v * v));
+    }
+
+    // Tick Counter Sync
+    function updateTickDisplays() {
+      document.querySelectorAll('.desktopEarthTicks, .mobileEarthTicks, .drawerEarthTicks').forEach(el => {
+        el.textContent = state.earthTicks;
+      });
+      document.querySelectorAll('.desktopRocketTicks, .mobileRocketTicks, .drawerRocketTicks').forEach(el => {
+        el.textContent = state.rocketTicks;
+      });
+    }
+
+    function updateFrameBadges() {
+      const gamma = getGamma();
+      const speedText = state.vRatio.toFixed(2) + ' c';
+      const gammaText = gamma.toFixed(2) + '× slower';
+
+      document.querySelectorAll('.desktopRocketSpeedVal, .mobileRocketSpeedVal, .drawerRocketSpeedVal').forEach(el => {
+        el.textContent = speedText;
+      });
+      document.querySelectorAll('.desktopGammaVal, .mobileGammaVal, .drawerGammaVal').forEach(el => {
+        el.textContent = gammaText;
+      });
+    }
+
+    // KaTeX Formulas & One-Glance Takeaway
+    function updateFormulas() {
+      const gamma = getGamma();
+
+      if (window.katex) {
+        try {
+          katex.render('t\' = \\gamma t = \\frac{t}{\\sqrt{1 - v^2/c^2}}', document.getElementById('pillKatex'), { displayMode: false, throwOnError: false });
+          katex.render('t\' = \\gamma t = \\frac{t}{\\sqrt{1 - v^2/c^2}}', document.getElementById('mobileFormula'), { displayMode: false, throwOnError: false });
+          katex.render('t\' = \\gamma t = \\frac{t}{\\sqrt{1 - v^2/c^2}}', document.getElementById('desktopFormula'), { displayMode: false, throwOnError: false });
+          katex.render('t\' = \\gamma t = \\frac{t}{\\sqrt{1 - v^2/c^2}}', document.getElementById('drawerFormula'), { displayMode: false, throwOnError: false });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      const subText = `v = ${state.vRatio.toFixed(2)} c • γ = ${gamma.toFixed(2)} (Moving clock runs ${gamma.toFixed(2)}× slower)`;
+      document.getElementById('mobileSubstitution').textContent = subText;
+      document.getElementById('desktopSubstitution').textContent = subText;
+      document.getElementById('drawerSubstitution').textContent = subText;
+      document.getElementById('pillSubtitle').textContent = `v = ${state.vRatio.toFixed(2)} c • γ = ${gamma.toFixed(2)}× slower`;
+
+      if (desktopTakeawayText) {
+        desktopTakeawayText.textContent = `At ${state.vRatio.toFixed(2)} c, spaceship time ticks ${gamma.toFixed(2)}× slower than Earth!`;
+      }
+
+      updateFrameBadges();
+    }
+
+    // Sync Controls
+    function syncControls() {
+      const vInt = Math.round(state.vRatio * 100);
+      mobileSpeedSlider.value = vInt;
+      desktopSpeedSlider.value = vInt;
+      drawerSpeedSlider.value = vInt;
+
+      mobileSpeedVal.textContent = state.vRatio.toFixed(2) + ' c';
+      desktopSpeedVal.textContent = state.vRatio.toFixed(2) + ' c';
+      drawerSpeedVal.textContent = state.vRatio.toFixed(2) + ' c';
+
+      const hInt = Math.round(state.mirrorH * 10);
+      mobileHeightSlider.value = hInt;
+      desktopHeightSlider.value = hInt;
+      drawerHeightSlider.value = hInt;
+
+      mobileHeightVal.textContent = state.mirrorH.toFixed(1) + ' m';
+      desktopHeightVal.textContent = state.mirrorH.toFixed(1) + ' m';
+      drawerHeightVal.textContent = state.mirrorH.toFixed(1) + ' m';
+
+      [mobileTogglePaths, desktopTogglePaths, drawerTogglePaths].forEach(btn => {
+        if (btn) btn.classList.toggle('active', state.showPaths);
+      });
+
+      updateFormulas();
+      updateTickDisplays();
+    }
+
+    [mobileSpeedSlider, desktopSpeedSlider, drawerSpeedSlider].forEach(slider => {
+      slider.addEventListener('input', e => {
+        state.vRatio = parseInt(e.target.value, 10) / 100;
+        syncControls();
+      });
+    });
+
+    [mobileHeightSlider, desktopHeightSlider, drawerHeightSlider].forEach(slider => {
+      slider.addEventListener('input', e => {
+        state.mirrorH = parseInt(e.target.value, 10) / 10;
+        syncControls();
+      });
+    });
+
+    [mobileTogglePaths, desktopTogglePaths, drawerTogglePaths].forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.showPaths = !state.showPaths;
+        syncControls();
+      });
+    });
+
+    // Drawer Interaction
+    if (chatPillCard) {
+      chatPillCard.addEventListener('click', () => {
+        drawerOverlay.classList.add('active');
+      });
+    }
+
+    if (drawerCloseBtn) {
+      drawerCloseBtn.addEventListener('click', () => {
+        drawerOverlay.classList.remove('active');
+      });
+    }
+
+    if (drawerOverlay) {
+      drawerOverlay.addEventListener('click', e => {
+        if (e.target === drawerOverlay) drawerOverlay.classList.remove('active');
+      });
+    }
+
+    // Top View Switcher
+    const switchBtns = document.querySelectorAll('.switch-btn');
+    switchBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const view = btn.dataset.view;
+
+        document.body.className = '';
+        if (view === 'pill') document.body.classList.add('mode-pill');
+        if (view === 'mobile') document.body.classList.add('mode-mobile');
+        if (view === 'desktop') document.body.classList.add('mode-desktop');
+        if (view === 'drawer') {
+          drawerOverlay.classList.add('active');
+        } else {
+          drawerOverlay.classList.remove('active');
+        }
+      });
+    });
+
+    // Simulation Engine: Crystal-Clear Light Clock Comparison
+    function renderSimulation(canvas, isMini = false) {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width || canvas.width;
+      const h = rect.height || canvas.height;
+      if (w <= 0 || h <= 0) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      // Studio luminous white backdrop
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      const mirrorGap = isMini ? h * 0.46 : h * (0.38 + (state.mirrorH - 1.5) * 0.04);
+      const topY = isMini ? (h - mirrorGap) / 2 : h * 0.28;
+      const botY = topY + mirrorGap;
+
+      // ========================================================
+      // 1. MINI PILL CANVAS (Ultra clean comparison)
+      // ========================================================
+      if (isMini) {
+        const cx1 = w * 0.28;
+        const cx2 = w * 0.72;
+
+        // Divider
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(w / 2, 8); ctx.lineTo(w / 2, h - 8);
+        ctx.stroke();
+
+        // Earth mirrors
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(cx1 - 16, topY - 2, 32, 4);
+        ctx.fillRect(cx1 - 16, botY - 2, 32, 4);
+
+        // Earth photon (vertical tick)
+        const p1 = (Math.sin(state.earthCycle) * 0.5 + 0.5);
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.arc(cx1, topY + p1 * mirrorGap, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ship mirrors
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(cx2 - 16, topY - 2, 32, 4);
+        ctx.fillRect(cx2 - 16, botY - 2, 32, 4);
+
+        // Ship photon (slower tick)
+        const p2 = (Math.sin(state.rocketCycle) * 0.5 + 0.5);
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(cx2, topY + p2 * mirrorGap, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+
+      // ========================================================
+      // 2. MAIN STAGE: TWO REFERENCE FRAMES
+      // ========================================================
+      const colW = w / 2;
+
+      // Vertical dividing line
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(colW, 46);
+      ctx.lineTo(colW, h - 36);
+      ctx.stroke();
+
+      const mW = Math.min(84, colW * 0.52);
+
+      function drawMirror(mx, my, isRocket = false) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 1;
+
+        const mGrad = ctx.createLinearGradient(mx - mW/2, my, mx + mW/2, my);
+        if (isRocket) {
+          mGrad.addColorStop(0, '#f87171');
+          mGrad.addColorStop(0.5, '#ef4444');
+          mGrad.addColorStop(1, '#b91c1c');
+        } else {
+          mGrad.addColorStop(0, '#94a3b8');
+          mGrad.addColorStop(0.5, '#cbd5e1');
+          mGrad.addColorStop(1, '#64748b');
+        }
+
+        ctx.fillStyle = mGrad;
+        ctx.beginPath();
+        ctx.roundRect(mx - mW/2, my - 3.5, mW, 7, 3.5);
+        ctx.fill();
+
+        // Specular highlight line
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mx - mW/2 + 4, my - 1.5);
+        ctx.lineTo(mx + mW/2 - 4, my - 1.5);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ----------------------------------------------------
+      // LEFT FRAME: EARTH LIGHT CLOCK
+      // ----------------------------------------------------
+      const earthX = colW * 0.5;
+
+      // Draw Earth top & bottom mirrors
+      drawMirror(earthX, topY, false);
+      drawMirror(earthX, botY, false);
+
+      // Height dimension bracket L
+      ctx.save();
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 2]);
+      const bx = earthX - mW/2 - 10;
+      ctx.beginPath();
+      ctx.moveTo(bx, topY); ctx.lineTo(bx, botY);
+      ctx.moveTo(bx - 3, topY); ctx.lineTo(bx + 3, topY);
+      ctx.moveTo(bx - 3, botY); ctx.lineTo(bx + 3, botY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = '600 10.5px JetBrains Mono, monospace';
+      ctx.fillStyle = '#64748b';
+      ctx.textAlign = 'right';
+      ctx.fillText(`L = ${state.mirrorH.toFixed(1)} m`, bx - 5, (topY + botY) / 2 + 3);
+      ctx.restore();
+
+      // Vertical light beam line
+      if (state.showPaths) {
+        ctx.strokeStyle = 'rgba(37, 99, 235, 0.25)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(earthX, topY);
+        ctx.lineTo(earthX, botY);
+        ctx.stroke();
+      }
+
+      // Vertical photon position
+      const earthPhase = Math.sin(state.earthCycle) * 0.5 + 0.5;
+      const earthPhotonY = topY + earthPhase * mirrorGap;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(37, 99, 235, 0.6)';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath();
+      ctx.arc(earthX, earthPhotonY, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core highlight
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(earthX, earthPhotonY, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mirror bounce flash
+      if (earthPhotonY <= topY + 4 || earthPhotonY >= botY - 4) {
+        ctx.strokeStyle = 'rgba(96, 165, 250, 0.7)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(earthX, earthPhotonY, 12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // ----------------------------------------------------
+      // RIGHT FRAME: RELATIVISTIC SPACESHIP CLOCK
+      // ----------------------------------------------------
+      const shipAreaW = colW - 36;
+      const shipStartX = colW + 18;
+
+      const p1X = shipStartX + shipAreaW * 0.16;
+      const p2X = shipStartX + shipAreaW * 0.50;
+      const p3X = shipStartX + shipAreaW * 0.84;
+
+      // Diagonal zigzag light paths
+      if (state.showPaths) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(p1X, botY);
+        ctx.lineTo(p2X, topY);
+        ctx.lineTo(p3X, botY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Right-triangle geometric guide
+        ctx.strokeStyle = 'rgba(203, 213, 225, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p1X, botY);
+        ctx.lineTo(p2X, botY);
+        ctx.lineTo(p2X, topY);
+        ctx.stroke();
+
+        ctx.font = '600 9.5px Inter, sans-serif';
+        ctx.fillStyle = '#dc2626';
+        ctx.fillText('Hypotenuse (Longer)', p1X + 8, (topY + botY) / 2 - 4);
+        ctx.restore();
+      }
+
+      // Smooth horizontal position of spaceship
+      const rCycle = (state.rocketCycle) % (Math.PI * 2);
+      let shipX, rocketPhotonY;
+
+      if (rCycle < Math.PI) {
+        const prog = rCycle / Math.PI;
+        shipX = p1X + prog * (p2X - p1X);
+        rocketPhotonY = botY - prog * (botY - topY);
+      } else {
+        const prog = (rCycle - Math.PI) / Math.PI;
+        shipX = p2X + prog * (p3X - p2X);
+        rocketPhotonY = topY + prog * (botY - topY);
+      }
+
+      // Spaceship Hull
+      ctx.save();
+      ctx.translate(shipX, (topY + botY) / 2);
+
+      const hullW = mW + 14;
+      const hullH = mirrorGap + 20;
+      ctx.fillStyle = 'rgba(254, 242, 242, 0.75)';
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(-hullW / 2, -hullH / 2, hullW, hullH, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // Rocket Thruster
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(hullW / 2 + 3, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Moving Rocket Mirrors
+      drawMirror(shipX, topY, true);
+      drawMirror(shipX, botY, true);
+
+      // Relativistic Photon
+      ctx.save();
+      ctx.shadowColor = 'rgba(239, 68, 68, 0.65)';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(shipX, rocketPhotonY, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core highlight
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(shipX, rocketPhotonY, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bounce flash
+      if (rocketPhotonY <= topY + 4 || rocketPhotonY >= botY - 4) {
+        ctx.strokeStyle = 'rgba(252, 165, 165, 0.8)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(shipX, rocketPhotonY, 12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Animation Loop
+    let lastTimestamp = null;
+    function animate(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+      lastTimestamp = timestamp;
+
+      state.time += dt;
+      const gamma = getGamma();
+      const baseFreq = 3.6 / (state.mirrorH / 2.5);
+
+      state.earthCycle += baseFreq * dt;
+      state.rocketCycle += (baseFreq / gamma) * dt;
+
+      // Ticks calculation
+      const currentEarthBounce = Math.floor(state.earthCycle / Math.PI);
+      if (currentEarthBounce !== state.lastEarthBounce) {
+        state.lastEarthBounce = currentEarthBounce;
+        state.earthTicks++;
+        updateTickDisplays();
+      }
+
+      const currentRocketBounce = Math.floor(state.rocketCycle / Math.PI);
+      if (currentRocketBounce !== state.lastRocketBounce) {
+        state.lastRocketBounce = currentRocketBounce;
+        state.rocketTicks++;
+        updateTickDisplays();
+      }
+
+      renderSimulation(mobileCanvas);
+      renderSimulation(desktopCanvas);
+      renderSimulation(drawerCanvas);
+      renderSimulation(pillCanvas, true);
+
+      requestAnimationFrame(animate);
+    }
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      syncControls();
+      requestAnimationFrame(animate);
+    });
+  
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        document.querySelectorAll('.top-header').forEach((el) => { el.style.display = 'none'; });
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge, .specs-bar, .audience-switcher').forEach((el) => {
+          el.style.display = 'none';
+        });
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      function applyMode(m) {
+        if (!m) return;
+        if (typeof setMode === 'function') { setMode(m); return; }
+        if (typeof switchView === 'function') { switchView(m); return; }
+        document.body.classList.remove('mode-pill', 'mode-mobile', 'mode-desktop');
+        if (m === 'pill') document.body.classList.add('mode-pill');
+        if (m === 'mobile') document.body.classList.add('mode-mobile');
+        if (m === 'desktop') document.body.classList.add('mode-desktop');
+        const overlay = document.getElementById('drawerOverlay');
+        if (overlay) {
+          if (m === 'drawer') { overlay.classList.add('open'); overlay.classList.add('active'); }
+          else { overlay.classList.remove('open'); overlay.classList.remove('active'); }
+        }
+        document.querySelectorAll('.switch-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-view') === m);
+        });
+      }
+      if (mode) setTimeout(() => applyMode(mode), 50);
+    })();
+
+  </script>
+</body>
+</html>

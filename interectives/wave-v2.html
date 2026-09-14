@@ -233,12 +233,12 @@
     .mobile-phone-frame .phone-stage {
       height: 285px;
       min-height: 285px;
-      background: #fafafa;
+      background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f8fafc 60%, #edf2f7 100%);
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
       overflow: hidden;
     }
 
@@ -312,29 +312,95 @@
     .range-slider {
       -webkit-appearance: none;
       appearance: none;
-      flex: 1;
+      width: 100%;
+      height: 36px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .range-slider::-webkit-slider-runnable-track {
+      width: 100%;
       height: 6px;
       border-radius: 999px;
       background: #e2e8f0;
-      outline: none;
       cursor: pointer;
     }
 
     .range-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 18px;
-      height: 18px;
+      width: 24px;
+      height: 24px;
+      margin-top: -9px;
       border-radius: 50%;
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
-      cursor: grab;
-      transition: transform 0.1s ease;
+      background: #2563eb;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+      border: 2.5px solid #ffffff;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
     }
 
-    .range-slider::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
+    .range-slider::-webkit-slider-thumb:active {
+      transform: scale(1.22);
+      box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.15), 0 3px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    .range-slider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    }
+
+    /* Dynamic Takeaway Card (One-Glance Understanding) */
+    .takeaway-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .takeaway-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .takeaway-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .takeaway-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    .takeaway-text {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #1e40af;
+      line-height: 1.35;
     }
 
     /* ======================================================== */
@@ -367,7 +433,7 @@
     /* Right: Wave Stage (510px) */
     .desktop-card .stage-panel {
       position: relative;
-      background: #fafafa;
+      background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f8fafc 55%, #edf2f7 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -700,6 +766,20 @@
               <input type="range" class="range-slider" id="desktopSliderL" min="1.0" max="6.0" step="0.5" value="3.0">
             </div>
           </div>
+
+          <!-- One-Glance Principle Takeaway -->
+          <div class="takeaway-card" id="desktopTakeawayCard" style="margin-top: 14px;">
+            <div class="takeaway-header-row">
+              <span class="takeaway-badge" id="desktopTakeawayBadge">
+                <span class="takeaway-dot"></span>
+                <span id="desktopTakeawayBadgeText">Wave principle</span>
+              </span>
+              <span style="font-size: 11px; color: #2563eb; font-weight: 500;">One-glance principle</span>
+            </div>
+            <div class="takeaway-text" id="desktopTakeawayText">
+              Wave propagates at 15.0 m/s (v = fλ). Higher frequency passes more crests per second!
+            </div>
+          </div>
         </div>
 
         <!-- Right: Animated Wave Stage (510px) -->
@@ -727,7 +807,7 @@
       </div>
 
       <!-- Drawer Wave Canvas (Top 270px) -->
-      <div style="height: 270px; background: #fafafa; position: relative;">
+      <div style="height: 270px; background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f8fafc 55%, #edf2f7 100%); border-bottom: 1px solid #e2e8f0; position: relative;">
         <canvas id="drawerCanvas"></canvas>
         <div class="view-mode-pill">
           <button class="view-pill-btn active" id="drBtnWave" onclick="setWaveViewMode('wave')">🌊 Wave</button>
@@ -870,29 +950,6 @@
       drawerOverlay.classList.remove('open');
     }
 
-    (function applyEmbedMode() {
-      const params = new URLSearchParams(location.search);
-      const mode = params.get('mode');
-      if (params.get('embed') === '1') {
-        const header = document.querySelector('.top-header');
-        if (header) header.style.display = 'none';
-        document.body.style.padding = '0';
-        document.body.style.minHeight = '100%';
-        document.documentElement.style.height = '100%';
-        document.body.style.height = '100%';
-        document.querySelectorAll('.section-title, .section-badge').forEach((el) => {
-          el.style.display = 'none';
-        });
-        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.style.display = 'none';
-        });
-      }
-      if (mode && typeof setMode === 'function') {
-        setTimeout(() => setMode(mode), 40);
-      }
-    })();
-
     function setFreq(val) {
       freq = parseFloat(val);
       [mobileSliderF, desktopSliderF, drawerSliderF].forEach(sl => sl.value = freq);
@@ -933,6 +990,11 @@
         });
       }
       document.getElementById('pillSubText').innerText = `f = ${freq.toFixed(1)} Hz, λ = ${wavelength.toFixed(1)} m • Tap to expand`;
+
+      const takeawayEl = document.getElementById('desktopTakeawayText');
+      if (takeawayEl) {
+        takeawayEl.textContent = `Wave propagates at ${v} m/s (v = fλ). Higher frequency passes more crests per second!`;
+      }
     }
 
     // ──── RAYLEIGH SCATTERING RENDERER ────
@@ -1092,24 +1154,14 @@
         }
       });
 
-      // Formula sits in the open sky 1.5in below the sun
+      // Info header and descriptive bottom velocity label
       if (!isMini && w > 200) {
-        const formulaOffset = 206; // 1.5in + 1cm + a little more below the sun
-        const line1 = 'Rayleigh scattering: I ∝ 1/λ⁴';
-        const line2 = 'Short λ blue scatters strongest';
-        ctx.font = '600 11.5px Inter, sans-serif';
-        const textW = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width);
-        const formulaX = Math.min(sunX, w - textW / 2 - 14);
-        const formulaY = Math.min(sunY + formulaOffset, h - 22);
-
-        ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(30, 58, 95, 0.85)';
-        ctx.fillText(line1, formulaX, formulaY);
-        ctx.font = '500 10.5px Inter, sans-serif';
-        ctx.fillStyle = 'rgba(30, 58, 95, 0.7)';
-        ctx.fillText(line2, formulaX, formulaY + 16);
-
+        ctx.font = '600 11.5px Inter, sans-serif';
         ctx.textAlign = 'left';
+        ctx.fillText('Rayleigh scattering: I ∝ 1/λ⁴ (Short λ blue scatters strongest)', 14, 22);
+
+        // Bottom velocity label
         ctx.fillStyle = '#64748b';
         ctx.font = '600 11px JetBrains Mono, monospace';
         ctx.fillText(`v = ${(freq * wavelength).toFixed(1)} m/s`, 14, h - 12);
@@ -1133,6 +1185,14 @@
       const ctx = cv.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
+
+      // Studio illuminated backdrop
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, Math.max(w, h) * 0.65);
+      bgGrad.addColorStop(0, '#ffffff');
+      bgGrad.addColorStop(0.5, '#f8fafc');
+      bgGrad.addColorStop(1, '#f1f5f9');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
 
       const midY = h / 2;
       const amp = isMini ? h * 0.28 : Math.min(48, h * 0.22);
@@ -1295,6 +1355,44 @@
       updateMath();
       requestAnimationFrame(animate);
     }, 50);
+  
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        document.querySelectorAll('.top-header').forEach((el) => { el.style.display = 'none'; });
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge, .specs-bar, .audience-switcher').forEach((el) => {
+          el.style.display = 'none';
+        });
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      function applyMode(m) {
+        if (!m) return;
+        if (typeof setMode === 'function') { setMode(m); return; }
+        if (typeof switchView === 'function') { switchView(m); return; }
+        document.body.classList.remove('mode-pill', 'mode-mobile', 'mode-desktop');
+        if (m === 'pill') document.body.classList.add('mode-pill');
+        if (m === 'mobile') document.body.classList.add('mode-mobile');
+        if (m === 'desktop') document.body.classList.add('mode-desktop');
+        const overlay = document.getElementById('drawerOverlay');
+        if (overlay) {
+          if (m === 'drawer') { overlay.classList.add('open'); overlay.classList.add('active'); }
+          else { overlay.classList.remove('open'); overlay.classList.remove('active'); }
+        }
+        document.querySelectorAll('.switch-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-view') === m);
+        });
+      }
+      if (mode) setTimeout(() => applyMode(mode), 50);
+    })();
+
   </script>
 </body>
 </html>

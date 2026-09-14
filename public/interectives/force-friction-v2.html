@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Force & Friction — InteractEd</title>
+  
+  <!-- Inter Font & KaTeX -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 20px 48px;
+    }
+
+    /* Top Navigation & Mode Switcher */
+    .top-header {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .specs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .spec-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .spec-item strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .spec-pill {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .spec-divider {
+      color: #cbd5e1;
+    }
+
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .switch-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .switch-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .switch-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Audience Switcher (Junior vs STEM) */
+    .audience-switcher {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px 6px 4px 14px;
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    .audience-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .audience-buttons {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      padding: 3px;
+      border-radius: 999px;
+    }
+
+    .audience-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .audience-btn:hover {
+      color: #0f172a;
+    }
+
+    .audience-btn.active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    /* In-Card Mini Graphic Switch */
+    .panel-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 4px;
+    }
+
+    .mini-graphic-switch {
+      display: inline-flex;
+      align-items: center;
+      background: #f1f5f9;
+      padding: 2px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      gap: 2px;
+    }
+
+    .mini-switch-btn {
+      background: none;
+      border: none;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      padding: 3px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .mini-switch-btn:hover {
+      color: #0f172a;
+    }
+
+    .mini-switch-btn.active {
+      background: #ffffff;
+      color: #2563eb;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Simple Visual Box for Kids */
+    .simple-visual-box {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    body.graphic-simple .simple-visual-box {
+      display: flex;
+    }
+
+    body.graphic-simple .primary-equation,
+    body.graphic-simple .live-substitution {
+      display: none !important;
+    }
+
+    .simple-state-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .simple-state-icon {
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .simple-state-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .simple-state-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #1e3a8a;
+    }
+
+    .simple-state-desc {
+      font-size: 11.5px;
+      color: #3b82f6;
+      font-weight: 500;
+    }
+
+    /* Surface Texture Chips */
+    .preset-chips-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .preset-chip {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .preset-chip:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #0f172a;
+    }
+
+    .preset-chip.active {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      color: #1d4ed8;
+      box-shadow: 0 1px 2px rgba(59, 130, 246, 0.12);
+    }
+
+    /* Action Buttons Row */
+    .actions-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .push-btn {
+      flex: 1;
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+      transition: all 0.15s ease;
+    }
+
+    .push-btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25);
+    }
+
+    .push-btn:active {
+      transform: translateY(0);
+    }
+
+    .reset-btn {
+      background: #ffffff;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .reset-btn:hover {
+      background: #f8fafc;
+      color: #0f172a;
+      border-color: #cbd5e1;
+    }
+
+    /* Layout Showcase Container */
+    .showcase-container {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 36px;
+    }
+
+    .mode-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mode-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.05em;
+      text-transform: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 1: PILL MODE (In-Chat Capsule)
+       ------------------------------------------------------------- */
+    .chat-pill-card {
+      width: 100%;
+      max-width: 350px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 10px 12px;
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .chat-pill-card:hover {
+      border-color: #cbd5e1;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
+    }
+
+    .pill-icon-box {
+      width: 76px;
+      height: 52px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      border-radius: 12px;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .pill-icon-box canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pill-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .pill-formula {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+    }
+
+    .pill-subtitle {
+      font-size: 11.5px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-expand-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .chat-pill-card:hover .pill-expand-btn {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #ffffff;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 2: MOBILE CARD DRAWER (Slide-Over Bottom Sheet)
+       ------------------------------------------------------------- */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .drawer-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .drawer-card {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: 92vh;
+    }
+
+    .drawer-overlay.active .drawer-card {
+      transform: translateY(0);
+    }
+
+    .drawer-header {
+      padding: 10px 16px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid #f1f5f9;
+      position: relative;
+    }
+
+    .drawer-top-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 22px;
+      margin-bottom: 2px;
+    }
+
+    .drawer-notch {
+      width: 36px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+
+    .drawer-close-btn {
+      position: absolute;
+      right: 4px;
+      top: -2px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 18px;
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .drawer-close-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .drawer-stage {
+      height: 250px;
+      width: 100%;
+      background: radial-gradient(ellipse at 50% 45%, #ffffff 0%, #f8fafc 75%, #f1f5f9 100%);
+      position: relative;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .drawer-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .drawer-controls {
+      padding: 14px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 3: MOBILE SCREEN (375px × 540px Frame)
+       ------------------------------------------------------------- */
+    .mobile-phone-frame {
+      width: 375px;
+      height: 540px;
+      background: #ffffff;
+      border-radius: 26px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -3px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .phone-stage {
+      height: 285px;
+      width: 100%;
+      background: radial-gradient(ellipse at 50% 45%, #ffffff 0%, #f8fafc 75%, #f1f5f9 100%);
+      position: relative;
+      border-bottom: 1px solid #f1f5f9;
+      overflow: hidden;
+    }
+
+    .phone-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .phone-controls {
+      height: 255px;
+      width: 100%;
+      background: #ffffff;
+      padding: 10px 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+
+    /* -------------------------------------------------------------
+       MODE 4: DESKTOP MODE (880px × 490px Split Card)
+       ------------------------------------------------------------- */
+    .desktop-card {
+      width: 880px;
+      height: 490px;
+      background: #ffffff;
+      border-radius: 24px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 12px 32px -6px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+      display: flex;
+      overflow: hidden;
+    }
+
+    .math-panel {
+      width: 370px;
+      height: 100%;
+      background: #ffffff;
+      border-right: 1px solid #f1f5f9;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .stage-panel {
+      width: 510px;
+      height: 100%;
+      background: radial-gradient(ellipse at 50% 45%, #ffffff 0%, #f8fafc 75%, #f1f5f9 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stage-panel canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Shared UI Components */
+    .primary-equation {
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      border-radius: 14px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .eq-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .eq-math {
+      font-size: 15px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      min-height: 24px;
+    }
+
+    .live-substitution {
+      background: #ffffff;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .substitution-label {
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .substitution-val {
+      font-weight: 600;
+      color: #2563eb;
+    }
+
+    /* Sliders List */
+    .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .slider-card {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #475569;
+    }
+
+    .slider-name {
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .slider-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #0f172a;
+      font-size: 11.5px;
+    }
+
+    /* Touch-Ergonomic Sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 36px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      transition: background 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #2563eb;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      margin-top: -8px;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.15);
+    }
+
+    /* Live Dynamic Takeaway Card */
+    .takeaway-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 9px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .takeaway-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .takeaway-badge {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .takeaway-text {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #334155;
+      font-weight: 500;
+    }
+
+    .takeaway-text strong {
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    /* Interactive Overlay Hint on Stage */
+    .stage-overlay-hint {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(6px);
+      border: 1px solid #e2e8f0;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    .stage-distance-badge {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(6px);
+      border: 1px solid #e2e8f0;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #0f172a;
+      font-family: 'JetBrains Mono', monospace;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+  </style>
+</head>
+<body class="graphic-simple">
+
+  <!-- Top Navigation & Switchers -->
+  <header class="top-header">
+    <div class="specs-bar">
+      <div class="spec-item">
+        <span>Curriculum:</span>
+        <strong>Force & Friction</strong>
+      </div>
+      <span class="spec-divider">•</span>
+      <div class="spec-item">
+        <span>Law:</span>
+        <span class="spec-pill">f = μN</span>
+      </div>
+      <span class="spec-divider">•</span>
+      <div class="spec-item">
+        <span>Concept:</span>
+        <strong>Friction opposes sliding motion</strong>
+      </div>
+    </div>
+
+    <!-- Audience Switcher (Junior vs STEM) -->
+    <div class="audience-switcher">
+      <span class="audience-label">Audience mode:</span>
+      <div class="audience-buttons">
+        <button class="audience-btn active" id="audBtnSimple" onclick="setGraphicMode('simple')">
+          <span>✨ Simple graphic (Grades 1–5)</span>
+        </button>
+        <button class="audience-btn" id="audBtnStem" onclick="setGraphicMode('stem')">
+          <span>🔬 STEM mode (Grades 9–12)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Top View Switcher -->
+    <div class="view-switcher">
+      <button class="switch-btn active" onclick="switchView('all')">👁️ View All Modes</button>
+      <button class="switch-btn" onclick="switchView('pill')">💊 1. Pill Mode</button>
+      <button class="switch-btn" onclick="switchView('drawer')">📱 2. Mobile Card Drawer</button>
+      <button class="switch-btn" onclick="switchView('mobile')">📲 3. Mobile Screen (375×540)</button>
+      <button class="switch-btn" onclick="switchView('desktop')">🖥️ 4. Desktop Mode (880×490)</button>
+    </div>
+  </header>
+
+  <!-- Showcase Container -->
+  <main class="showcase-container">
+
+    <!-- MODE 1: PILL MODE -->
+    <section class="mode-section" id="sectionPill">
+      <span class="mode-label">💊 1. In-Chat Capsule Pill Mode</span>
+      <div class="chat-pill-card" onclick="openDrawer()">
+        <div class="pill-icon-box">
+          <canvas id="pillCanvas"></canvas>
+        </div>
+        <div class="pill-content">
+          <div class="pill-formula" id="pillFormula">Friction & Motion</div>
+          <div class="pill-subtitle">
+            <span id="pillSubText">Wood • Medium friction</span>
+          </div>
+        </div>
+        <div class="pill-expand-btn" title="Expand simulation">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODE 2: MOBILE CARD DRAWER OVERLAY -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawerOnBg(event)">
+      <div class="drawer-card" onclick="event.stopPropagation()">
+        <div class="drawer-header">
+          <div class="drawer-top-bar">
+            <div class="drawer-notch"></div>
+            <button class="drawer-close-btn" onclick="closeDrawer()">✕</button>
+          </div>
+          <div class="panel-header-row" style="margin-top: 4px;">
+            <div style="font-size: 13px; font-weight: 700; color: #0f172a;">Force & Friction</div>
+            <div class="mini-graphic-switch">
+              <button class="mini-switch-btn active" data-mode="simple" onclick="setGraphicMode('simple')">✨ Simple</button>
+              <button class="mini-switch-btn" data-mode="stem" onclick="setGraphicMode('stem')">🔬 STEM</button>
+            </div>
+          </div>
+        </div>
+        <div class="drawer-stage">
+          <canvas id="drawerCanvas"></canvas>
+          <div class="stage-overlay-hint">👆 Tap "Push block" or drag object</div>
+          <div class="stage-distance-badge" id="drawerDistBadge">d: 0.0 m</div>
+        </div>
+        <div class="drawer-controls">
+          <!-- Simple Graphic Box -->
+          <div class="simple-visual-box">
+            <div class="simple-state-card" id="drawerStateCard">
+              <span class="simple-state-icon" id="drawerStateIcon">🪵</span>
+              <div class="simple-state-info">
+                <span class="simple-state-title" id="drawerStateTitle">Polished wood surface</span>
+                <span class="simple-state-desc" id="drawerStateDesc">Moderate friction slows the sliding block smoothly.</span>
+              </div>
+            </div>
+            <div class="preset-chips-row">
+              <button class="preset-chip" onclick="selectSurface('ice')">⛸️ Ice (Slick)</button>
+              <button class="preset-chip active" onclick="selectSurface('wood')">🪵 Wood (Smooth)</button>
+              <button class="preset-chip" onclick="selectSurface('carpet')">🧶 Carpet (Rough)</button>
+              <button class="preset-chip" onclick="selectSurface('sandpaper')">🧱 Sandpaper (Heavy)</button>
+            </div>
+          </div>
+
+          <!-- STEM KaTeX Formula Box -->
+          <div class="primary-equation">
+            <span class="eq-label">Friction Force Equation</span>
+            <div class="eq-math" id="drawerKatexEq"></div>
+          </div>
+
+          <div class="live-substitution">
+            <span class="substitution-label">Friction resistance</span>
+            <span class="substitution-val" id="drawerSubVal">f = 24.5 N</span>
+          </div>
+
+          <!-- Actions Row -->
+          <div class="actions-row">
+            <button class="push-btn" onclick="pushObject()">
+              <span>🚀 Push block</span>
+            </button>
+            <button class="reset-btn" onclick="resetObject()">
+              <span>↺ Reset</span>
+            </button>
+          </div>
+
+          <!-- Sliders -->
+          <div class="sliders-list">
+            <div class="slider-card">
+              <div class="slider-header">
+                <span class="slider-name" id="drawerFricLabel">Surface friction</span>
+                <span class="slider-val" id="drawerFricVal">μ = 0.25 (Wood)</span>
+              </div>
+              <input type="range" id="drawerFricSlider" min="0.05" max="0.85" step="0.05" value="0.25" oninput="onFrictionSlider(this.value)">
+            </div>
+          </div>
+
+          <!-- Dynamic Takeaway Card -->
+          <div class="takeaway-card">
+            <div class="takeaway-badge-row">
+              <span class="takeaway-badge">Takeaway</span>
+              <span style="font-size: 11px; font-weight: 600; color: #64748b;">Stopping distance</span>
+            </div>
+            <p class="takeaway-text" id="drawerTakeawayText">
+              Wood creates moderate friction resistance, stopping the block smoothly within a medium distance.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODE 3: MOBILE SCREEN (375px × 540px) -->
+    <section class="mode-section" id="sectionMobile">
+      <span class="mode-label">📲 3. Mobile Screen View (375px × 540px)</span>
+      <div class="mobile-phone-frame">
+        <div class="phone-stage">
+          <canvas id="mobileCanvas"></canvas>
+          <div class="stage-overlay-hint">👆 Drag or push block</div>
+          <div class="stage-distance-badge" id="mobileDistBadge">d: 0.0 m</div>
+        </div>
+        <div class="phone-controls">
+          <div class="panel-header-row">
+            <div style="font-size: 12px; font-weight: 700; color: #0f172a;">Force & Friction</div>
+            <div class="mini-graphic-switch">
+              <button class="mini-switch-btn active" data-mode="simple" onclick="setGraphicMode('simple')">✨ Simple</button>
+              <button class="mini-switch-btn" data-mode="stem" onclick="setGraphicMode('stem')">🔬 STEM</button>
+            </div>
+          </div>
+
+          <!-- Simple Graphic Box -->
+          <div class="simple-visual-box">
+            <div class="simple-state-card" id="mobileStateCard">
+              <span class="simple-state-icon" id="mobileStateIcon">🪵</span>
+              <div class="simple-state-info">
+                <span class="simple-state-title" id="mobileStateTitle">Polished wood surface</span>
+                <span class="simple-state-desc" id="mobileStateDesc">Moderate friction slows the sliding block.</span>
+              </div>
+            </div>
+            <div class="preset-chips-row">
+              <button class="preset-chip" onclick="selectSurface('ice')">⛸️ Ice</button>
+              <button class="preset-chip active" onclick="selectSurface('wood')">🪵 Wood</button>
+              <button class="preset-chip" onclick="selectSurface('carpet')">🧶 Carpet</button>
+              <button class="preset-chip" onclick="selectSurface('sandpaper')">🧱 Sand</button>
+            </div>
+          </div>
+
+          <!-- STEM KaTeX Formula Box -->
+          <div class="primary-equation">
+            <span class="eq-label">Friction Force</span>
+            <div class="eq-math" id="mobileKatexEq"></div>
+          </div>
+
+          <div class="live-substitution">
+            <span class="substitution-label">Resistance</span>
+            <span class="substitution-val" id="mobileSubVal">f = 24.5 N</span>
+          </div>
+
+          <!-- Actions Row -->
+          <div class="actions-row">
+            <button class="push-btn" onclick="pushObject()">
+              <span>🚀 Push block</span>
+            </button>
+            <button class="reset-btn" onclick="resetObject()">
+              <span>↺ Reset</span>
+            </button>
+          </div>
+
+          <!-- Slider -->
+          <div class="sliders-list">
+            <div class="slider-card">
+              <div class="slider-header">
+                <span class="slider-name" id="mobileFricLabel">Surface friction</span>
+                <span class="slider-val" id="mobileFricVal">μ = 0.25 (Wood)</span>
+              </div>
+              <input type="range" id="mobileFricSlider" min="0.05" max="0.85" step="0.05" value="0.25" oninput="onFrictionSlider(this.value)">
+            </div>
+          </div>
+
+          <!-- Dynamic Takeaway Card -->
+          <div class="takeaway-card">
+            <div class="takeaway-badge-row">
+              <span class="takeaway-badge">Takeaway</span>
+            </div>
+            <p class="takeaway-text" id="mobileTakeawayText">
+              Wood creates moderate friction resistance, stopping the block smoothly.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODE 4: DESKTOP CARD (880px × 490px) -->
+    <section class="mode-section" id="sectionDesktop">
+      <span class="mode-label">🖥️ 4. Desktop Mode View (880px × 490px)</span>
+      <div class="desktop-card">
+        <!-- Left Panel: Math & Controls -->
+        <div class="math-panel">
+          <div class="panel-header-row">
+            <div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">Force & Friction</div>
+            <div class="mini-graphic-switch">
+              <button class="mini-switch-btn active" data-mode="simple" onclick="setGraphicMode('simple')">✨ Simple</button>
+              <button class="mini-switch-btn" data-mode="stem" onclick="setGraphicMode('stem')">🔬 STEM</button>
+            </div>
+          </div>
+
+          <!-- Simple Graphic Box -->
+          <div class="simple-visual-box">
+            <div class="simple-state-card" id="desktopStateCard">
+              <span class="simple-state-icon" id="desktopStateIcon">🪵</span>
+              <div class="simple-state-info">
+                <span class="simple-state-title" id="desktopStateTitle">Polished wood surface</span>
+                <span class="simple-state-desc" id="desktopStateDesc">Moderate friction slows the sliding block smoothly.</span>
+              </div>
+            </div>
+            <div class="preset-chips-row">
+              <button class="preset-chip" onclick="selectSurface('ice')">⛸️ Ice (Slick)</button>
+              <button class="preset-chip active" onclick="selectSurface('wood')">🪵 Wood (Smooth)</button>
+              <button class="preset-chip" onclick="selectSurface('carpet')">🧶 Carpet (Rough)</button>
+              <button class="preset-chip" onclick="selectSurface('sandpaper')">🧱 Sandpaper (Heavy)</button>
+            </div>
+          </div>
+
+          <!-- STEM KaTeX Formula Box -->
+          <div class="primary-equation">
+            <span class="eq-label">Friction Force Equation</span>
+            <div class="eq-math" id="desktopKatexEq"></div>
+          </div>
+
+          <div class="live-substitution">
+            <span class="substitution-label">Friction force</span>
+            <span class="substitution-val" id="desktopSubVal">f = 24.5 N</span>
+          </div>
+
+          <!-- Actions Row -->
+          <div class="actions-row">
+            <button class="push-btn" onclick="pushObject()">
+              <span>🚀 Push block</span>
+            </button>
+            <button class="reset-btn" onclick="resetObject()">
+              <span>↺ Reset</span>
+            </button>
+          </div>
+
+          <!-- Friction Slider -->
+          <div class="sliders-list">
+            <div class="slider-card">
+              <div class="slider-header">
+                <span class="slider-name" id="desktopFricLabel">Surface friction</span>
+                <span class="slider-val" id="desktopFricVal">μ = 0.25 (Wood)</span>
+              </div>
+              <input type="range" id="desktopFricSlider" min="0.05" max="0.85" step="0.05" value="0.25" oninput="onFrictionSlider(this.value)">
+            </div>
+          </div>
+
+          <!-- Dynamic Takeaway Card -->
+          <div class="takeaway-card">
+            <div class="takeaway-badge-row">
+              <span class="takeaway-badge">Takeaway</span>
+              <span style="font-size: 11px; font-weight: 600; color: #64748b;">Stopping distance</span>
+            </div>
+            <p class="takeaway-text" id="desktopTakeawayText">
+              Wood creates moderate friction resistance, stopping the block smoothly within a medium distance.
+            </p>
+          </div>
+        </div>
+
+        <!-- Right Panel: Canvas Stage -->
+        <div class="stage-panel">
+          <canvas id="desktopCanvas"></canvas>
+          <div class="stage-overlay-hint">👆 Drag block or tap "Push block"</div>
+          <div class="stage-distance-badge" id="desktopDistBadge">d: 0.0 m</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    /* ==========================================================================
+       PHYSICS & STATE SIMULATION ENGINE
+       ========================================================================== */
+    const state = {
+      // Physics properties
+      mass: 10,           // kg
+      gravity: 9.8,       // m/s^2
+      mu: 0.25,           // friction coefficient (Wood default)
+      surfaceType: 'wood',// 'ice', 'wood', 'carpet', 'sandpaper'
+      
+      // Motion dynamics
+      posX: 60,           // current pixel X position of block
+      startX: 60,         // starting X
+      velX: 0,            // pixel/sec velocity
+      pushForce: 0,       // active push force (impulse)
+      isPushing: false,
+      pushDuration: 0,
+      hasStopped: false,
+      stoppedDistMeters: 0,
+      
+      // Interaction state
+      isDragging: false,
+      dragStartX: 0,
+      dragOffset: 0,
+      lastDragX: 0,
+      dragVelocity: 0,
+
+      // Visual particles & trails
+      particles: [],
+      skidMarks: [],
+
+      // Audience mode: 'simple' | 'stem'
+      graphicMode: 'simple'
+    };
+
+    // Preset surface definitions
+    const surfaces = {
+      ice: {
+        name: 'Slick ice',
+        mu: 0.05,
+        icon: '⛸️',
+        desc: 'Nearly zero friction! The block glides freely across the track.',
+        takeaway: 'On slick ice, friction is very small, allowing the block to glide for a long distance.',
+        trackColor: '#e0f2fe',
+        trackBorder: '#bae6fd',
+        trackPattern: 'ice',
+        aspertyHeight: 2
+      },
+      wood: {
+        name: 'Polished wood',
+        mu: 0.25,
+        icon: '🪵',
+        desc: 'Moderate friction slows the sliding block smoothly.',
+        takeaway: 'Wood creates moderate friction resistance, stopping the block smoothly within a medium distance.',
+        trackColor: '#fed7aa',
+        trackBorder: '#fdba74',
+        trackPattern: 'wood',
+        aspertyHeight: 6
+      },
+      carpet: {
+        name: 'Rough carpet',
+        mu: 0.55,
+        icon: '🧶',
+        desc: 'High friction grips the block, quickly slowing it down.',
+        takeaway: 'Rough carpet creates strong friction, stopping the block in a very short distance.',
+        trackColor: '#e2e8f0',
+        trackBorder: '#cbd5e1',
+        trackPattern: 'carpet',
+        aspertyHeight: 12
+      },
+      sandpaper: {
+        name: 'Coarse sandpaper',
+        mu: 0.85,
+        icon: '🧱',
+        desc: 'Maximum friction! The rough surface stops the block almost immediately.',
+        takeaway: 'Coarse sandpaper creates maximum friction resistance, bringing the sliding block to an immediate halt.',
+        trackColor: '#fde68a',
+        trackBorder: '#fcd34d',
+        trackPattern: 'sandpaper',
+        aspertyHeight: 18
+      }
+    };
+
+    /* ==========================================================================
+       CANVAS ELEMENTS & SETUP
+       ========================================================================== */
+    const canvases = {
+      pill: document.getElementById('pillCanvas'),
+      drawer: document.getElementById('drawerCanvas'),
+      mobile: document.getElementById('mobileCanvas'),
+      desktop: document.getElementById('desktopCanvas')
+    };
+
+    const ctxs = {
+      pill: canvases.pill ? canvases.pill.getContext('2d') : null,
+      drawer: canvases.drawer ? canvases.drawer.getContext('2d') : null,
+      mobile: canvases.mobile ? canvases.mobile.getContext('2d') : null,
+      desktop: canvases.desktop ? canvases.desktop.getContext('2d') : null
+    };
+
+    function resizeCanvas(canvas, ctx) {
+      if (!canvas || !ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.resetTransform?.();
+      ctx.scale(dpr, dpr);
+    }
+
+    function resizeAll() {
+      Object.keys(canvases).forEach(key => resizeCanvas(canvases[key], ctxs[key]));
+    }
+
+    window.addEventListener('resize', resizeAll);
+
+    /* ==========================================================================
+       USER ACTIONS: PUSH & RESET
+       ========================================================================== */
+    function pushObject() {
+      state.posX = state.startX;
+      state.velX = 420; // initial launch speed (pixels/sec)
+      state.isPushing = true;
+      state.pushDuration = 0.18; // active push pulse
+      state.hasStopped = false;
+      state.skidMarks = [];
+      
+      // Spawn impulse sparks/lines
+      for (let i = 0; i < 14; i++) {
+        state.particles.push({
+          x: state.posX - 10,
+          y: getTrackY(300) - 15 + Math.random() * 20,
+          vx: -(Math.random() * 60 + 20),
+          vy: (Math.random() - 0.5) * 40,
+          alpha: 1,
+          size: Math.random() * 4 + 2,
+          color: '#3b82f6'
+        });
+      }
+    }
+
+    function resetObject() {
+      state.posX = state.startX;
+      state.velX = 0;
+      state.isPushing = false;
+      state.pushDuration = 0;
+      state.hasStopped = false;
+      state.stoppedDistMeters = 0;
+      state.skidMarks = [];
+      state.particles = [];
+      updateDistanceBadges(0);
+    }
+
+    function selectSurface(type) {
+      if (!surfaces[type]) return;
+      state.surfaceType = type;
+      state.mu = surfaces[type].mu;
+      
+      // Update slider values
+      ['drawer', 'mobile', 'desktop'].forEach(view => {
+        const slider = document.getElementById(`${view}FricSlider`);
+        if (slider) slider.value = state.mu;
+      });
+
+      // Update active chip styling
+      document.querySelectorAll('.preset-chip').forEach(chip => {
+        const txt = chip.textContent.toLowerCase();
+        if (txt.includes(type)) {
+          chip.classList.add('active');
+        } else {
+          chip.classList.remove('active');
+        }
+      });
+
+      syncControls();
+      pushObject(); // trigger live demonstration of the new surface!
+    }
+
+    function onFrictionSlider(val) {
+      state.mu = parseFloat(val);
+      
+      // Auto-classify surface based on friction value
+      if (state.mu <= 0.12) state.surfaceType = 'ice';
+      else if (state.mu <= 0.35) state.surfaceType = 'wood';
+      else if (state.mu <= 0.65) state.surfaceType = 'carpet';
+      else state.surfaceType = 'sandpaper';
+
+      // Update other sliders to match
+      ['drawer', 'mobile', 'desktop'].forEach(view => {
+        const slider = document.getElementById(`${view}FricSlider`);
+        if (slider && slider.value !== val) slider.value = val;
+      });
+
+      // Update preset chips
+      document.querySelectorAll('.preset-chip').forEach(chip => {
+        const txt = chip.textContent.toLowerCase();
+        if (txt.includes(state.surfaceType)) {
+          chip.classList.add('active');
+        } else {
+          chip.classList.remove('active');
+        }
+      });
+
+      syncControls();
+    }
+
+    /* ==========================================================================
+       CONTROL SYNC & KATEX RENDERING
+       ========================================================================== */
+    function syncControls() {
+      const surf = surfaces[state.surfaceType] || surfaces.wood;
+      const normalForce = state.mass * state.gravity; // N = mg = 98 N
+      const frictionForce = (state.mu * normalForce).toFixed(1); // f = mu * N
+
+      // 1. In-Chat Pill
+      const pillFormula = document.getElementById('pillFormula');
+      const pillSubText = document.getElementById('pillSubText');
+      if (state.graphicMode === 'simple') {
+        if (pillFormula) pillFormula.textContent = `${surf.icon} ${surf.name}`;
+        if (pillSubText) pillSubText.textContent = `Friction: ${surf.desc.split('.')[0]}`;
+      } else {
+        if (pillFormula && window.katex) {
+          try {
+            katex.render(`f = \\mu N = ${frictionForce}\\text{ N}`, pillFormula, { throwOnError: false });
+          } catch(e) {
+            pillFormula.textContent = `f = ${frictionForce} N`;
+          }
+        }
+        if (pillSubText) pillSubText.textContent = `μ = ${state.mu.toFixed(2)} • m = ${state.mass} kg`;
+      }
+
+      // 2. KaTeX STEM Equations
+      const eqFormula = `f = \\mu N = (${state.mu.toFixed(2)})(${state.mass}\\text{ kg})(9.8\\text{ m/s}^2) = ${frictionForce}\\text{ N}`;
+      ['drawer', 'mobile', 'desktop'].forEach(view => {
+        const eqEl = document.getElementById(`${view}KatexEq`);
+        const subValEl = document.getElementById(`${view}SubVal`);
+        const fricLabel = document.getElementById(`${view}FricLabel`);
+        const fricVal = document.getElementById(`${view}FricVal`);
+        const takeawayEl = document.getElementById(`${view}TakeawayText`);
+
+        // KaTeX Formula
+        if (eqEl && window.katex) {
+          try {
+            katex.render(eqFormula, eqEl, { throwOnError: false });
+          } catch(e) {
+            eqEl.textContent = `f = μN = ${frictionForce} N`;
+          }
+        }
+
+        // Substitution readout
+        if (subValEl) {
+          subValEl.textContent = `f = ${frictionForce} N`;
+        }
+
+        // Sliders readout
+        if (fricLabel) {
+          fricLabel.textContent = state.graphicMode === 'simple' ? 'Surface friction' : 'Surface friction (μ)';
+        }
+        if (fricVal) {
+          fricVal.textContent = state.graphicMode === 'simple' 
+            ? `${surf.icon} ${surf.name}` 
+            : `μ = ${state.mu.toFixed(2)} (${surf.name.split(' ')[1] || surf.name})`;
+        }
+
+        // Simple State Card
+        const stateCard = document.getElementById(`${view}StateCard`);
+        const stateIcon = document.getElementById(`${view}StateIcon`);
+        const stateTitle = document.getElementById(`${view}StateTitle`);
+        const stateDesc = document.getElementById(`${view}StateDesc`);
+
+        if (stateIcon) stateIcon.textContent = surf.icon;
+        if (stateTitle) stateTitle.textContent = surf.name;
+        if (stateDesc) stateDesc.textContent = surf.desc;
+
+        // Dynamic Takeaway
+        if (takeawayEl) {
+          if (state.graphicMode === 'simple') {
+            takeawayEl.innerHTML = surf.takeaway;
+          } else {
+            takeawayEl.innerHTML = `At coefficient <strong>μ = ${state.mu.toFixed(2)}</strong>, the backward friction force is <strong>${frictionForce} N</strong>, decelerating the ${state.mass} kg block at <strong>${(state.mu * state.gravity).toFixed(2)} m/s²</strong>.`;
+          }
+        }
+      });
+    }
+
+    function updateDistanceBadges(distMeters) {
+      ['drawer', 'mobile', 'desktop'].forEach(view => {
+        const el = document.getElementById(`${view}DistBadge`);
+        if (el) {
+          el.textContent = `d: ${distMeters.toFixed(1)} m`;
+        }
+      });
+    }
+
+    /* ==========================================================================
+       AUDIENCE SWITCHER (Junior Simple vs STEM)
+       ========================================================================== */
+    function setGraphicMode(mode) {
+      state.graphicMode = mode;
+      document.body.classList.toggle('graphic-simple', mode === 'simple');
+
+      // Update top audience buttons
+      document.getElementById('audBtnSimple')?.classList.toggle('active', mode === 'simple');
+      document.getElementById('audBtnStem')?.classList.toggle('active', mode === 'stem');
+
+      // Update in-card mini switches
+      document.querySelectorAll('.mini-switch-btn').forEach(btn => {
+        const btnMode = btn.getAttribute('data-mode');
+        btn.classList.toggle('active', btnMode === mode);
+      });
+
+      syncControls();
+    }
+
+    /* ==========================================================================
+       TOP VIEW SWITCHER
+       ========================================================================== */
+    function switchView(mode) {
+      document.querySelectorAll('.view-switcher .switch-btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = Array.from(document.querySelectorAll('.view-switcher .switch-btn')).find(b => 
+        b.getAttribute('onclick')?.includes(mode)
+      );
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const secPill = document.getElementById('sectionPill');
+      const secMobile = document.getElementById('sectionMobile');
+      const secDesktop = document.getElementById('sectionDesktop');
+      const drawerOverlay = document.getElementById('drawerOverlay');
+
+      if (mode === 'all') {
+        if (secPill) secPill.style.display = 'flex';
+        if (secMobile) secMobile.style.display = 'flex';
+        if (secDesktop) secDesktop.style.display = 'flex';
+        if (drawerOverlay) drawerOverlay.classList.remove('active');
+      } else if (mode === 'pill') {
+        if (secPill) secPill.style.display = 'flex';
+        if (secMobile) secMobile.style.display = 'none';
+        if (secDesktop) secDesktop.style.display = 'none';
+        if (drawerOverlay) drawerOverlay.classList.remove('active');
+      } else if (mode === 'drawer') {
+        if (secPill) secPill.style.display = 'flex';
+        if (secMobile) secMobile.style.display = 'none';
+        if (secDesktop) secDesktop.style.display = 'none';
+        openDrawer();
+      } else if (mode === 'mobile') {
+        if (secPill) secPill.style.display = 'none';
+        if (secMobile) secMobile.style.display = 'flex';
+        if (secDesktop) secDesktop.style.display = 'none';
+        if (drawerOverlay) drawerOverlay.classList.remove('active');
+      } else if (mode === 'desktop') {
+        if (secPill) secPill.style.display = 'none';
+        if (secMobile) secMobile.style.display = 'none';
+        if (secDesktop) secDesktop.style.display = 'flex';
+        if (drawerOverlay) drawerOverlay.classList.remove('active');
+      }
+
+      setTimeout(resizeAll, 50);
+    }
+
+    /* ==========================================================================
+       DRAWER CONTROLS
+       ========================================================================== */
+    function openDrawer() {
+      const drawer = document.getElementById('drawerOverlay');
+      if (drawer) {
+        drawer.classList.add('active');
+        setTimeout(() => resizeCanvas(canvases.drawer, ctxs.drawer), 100);
+      }
+    }
+
+    function closeDrawer() {
+      const drawer = document.getElementById('drawerOverlay');
+      if (drawer) drawer.classList.remove('active');
+    }
+
+    function closeDrawerOnBg(e) {
+      if (e.target.id === 'drawerOverlay') closeDrawer();
+    }
+
+    /* ==========================================================================
+       PHYSICS UPDATE LOOP
+       ========================================================================== */
+    let lastTime = performance.now();
+
+    function updatePhysics(dt) {
+      if (dt > 0.1) dt = 0.1; // clamp delta time
+
+      // Handling Push impulse
+      if (state.isPushing) {
+        state.pushDuration -= dt;
+        if (state.pushDuration <= 0) {
+          state.isPushing = false;
+        }
+      }
+
+      // Handling Velocity & Friction Deceleration
+      if (state.velX > 0 && !state.isDragging) {
+        // Friction deceleration: a = mu * g (converted to px/s^2)
+        const decelPixels = state.mu * state.gravity * 70; // scaling factor
+        state.velX -= decelPixels * dt;
+
+        if (state.velX <= 0) {
+          state.velX = 0;
+          state.hasStopped = true;
+          // Calculate stopping distance in virtual meters
+          const distPx = Math.max(0, state.posX - state.startX);
+          state.stoppedDistMeters = distPx / 60; // 60px = 1 meter
+          updateDistanceBadges(state.stoppedDistMeters);
+        } else {
+          state.posX += state.velX * dt;
+          const currentDistMeters = Math.max(0, state.posX - state.startX) / 60;
+          updateDistanceBadges(currentDistMeters);
+
+          // Add skid marks when friction is significant
+          if (state.mu >= 0.2 && Math.random() < 0.4) {
+            state.skidMarks.push({
+              x: state.posX + 10,
+              alpha: Math.min(1, state.mu * 0.8),
+              width: 12
+            });
+            if (state.skidMarks.length > 50) state.skidMarks.shift();
+          }
+
+          // Emit friction dust/particles
+          if (Math.random() < state.mu * 1.2) {
+            state.particles.push({
+              x: state.posX - 5 + Math.random() * 40,
+              y: getTrackY(300) - 4,
+              vx: -(state.velX * 0.15 + Math.random() * 20),
+              vy: -(Math.random() * 25 + 5),
+              alpha: 0.8,
+              size: Math.random() * 4 + 2,
+              color: state.surfaceType === 'sandpaper' ? '#f59e0b' : '#94a3b8'
+            });
+          }
+        }
+      }
+
+      // Update particle decay
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.alpha -= dt * 1.5;
+        if (p.alpha <= 0) {
+          state.particles.splice(i, 1);
+        }
+      }
+    }
+
+    function getTrackY(h) {
+      return h * 0.65;
+    }
+
+    /* ==========================================================================
+       CANVAS RENDERING ENGINE
+       ========================================================================== */
+    function renderStage(ctx, w, h, isMini = false) {
+      if (!ctx || w <= 0 || h <= 0) return;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Studio light radial illumination backdrop
+      const focalX = w * 0.5;
+      const focalY = h * 0.45;
+      const radGrad = ctx.createRadialGradient(focalX, focalY, 10, focalX, focalY, Math.max(w, h) * 0.7);
+      radGrad.addColorStop(0, '#ffffff');
+      radGrad.addColorStop(0.75, '#f8fafc');
+      radGrad.addColorStop(1, '#f1f5f9');
+      ctx.fillStyle = radGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      const trackY = getTrackY(h);
+      const trackH = h - trackY;
+      const surf = surfaces[state.surfaceType] || surfaces.wood;
+
+      // 1. Draw Surface Track (Ground)
+      ctx.save();
+      ctx.fillStyle = surf.trackColor;
+      ctx.fillRect(0, trackY, w, trackH);
+
+      // Surface divider highlight line
+      ctx.strokeStyle = surf.trackBorder;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, trackY);
+      ctx.lineTo(w, trackY);
+      ctx.stroke();
+
+      // Surface Texture Detail
+      if (!isMini) {
+        if (state.surfaceType === 'ice') {
+          // Glassy cyan reflection streaks
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.lineWidth = 2;
+          for (let x = 20; x < w; x += 80) {
+            ctx.beginPath();
+            ctx.moveTo(x, trackY + 8);
+            ctx.lineTo(x + 40, trackY + 8);
+            ctx.stroke();
+          }
+        } else if (state.surfaceType === 'wood') {
+          // Warm wood grain lines
+          ctx.strokeStyle = 'rgba(217, 119, 6, 0.2)';
+          ctx.lineWidth = 1.5;
+          for (let y = trackY + 12; y < h; y += 16) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y);
+            ctx.stroke();
+          }
+        } else if (state.surfaceType === 'carpet') {
+          // Soft carpet tufts
+          ctx.fillStyle = '#94a3b8';
+          for (let x = 10; x < w; x += 18) {
+            ctx.fillRect(x, trackY + 4, 4, 3);
+            ctx.fillRect(x + 8, trackY + 12, 4, 3);
+          }
+        } else if (state.surfaceType === 'sandpaper') {
+          // Coarse abrasive sand grains
+          ctx.fillStyle = '#d97706';
+          for (let x = 6; x < w; x += 12) {
+            ctx.fillRect(x, trackY + 3, 2.5, 2.5);
+            ctx.fillRect(x + 6, trackY + 9, 2.5, 2.5);
+            ctx.fillRect(x + 2, trackY + 16, 2, 2);
+          }
+        }
+      }
+      ctx.restore();
+
+      // 2. Draw Skid Marks
+      if (!isMini && state.skidMarks.length > 0) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(51, 65, 85, 0.25)';
+        state.skidMarks.forEach(sm => {
+          if (sm.x < w) {
+            ctx.fillRect(sm.x, trackY, sm.width, 3);
+          }
+        });
+        ctx.restore();
+      }
+
+      // 3. Draw Distance Measurement Ticks on Track
+      if (!isMini) {
+        ctx.save();
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px JetBrains Mono, monospace';
+        ctx.textAlign = 'center';
+        const startX = state.startX;
+        for (let m = 0; m <= 10; m++) {
+          const tickX = startX + m * 60;
+          if (tickX > w - 20) break;
+          ctx.fillRect(tickX, trackY, 1.5, 8);
+          if (m % 2 === 0) {
+            ctx.fillText(`${m}m`, tickX, trackY + 22);
+          }
+        }
+        ctx.restore();
+      }
+
+      // 4. Draw Sliding Block (The Object)
+      const blockW = isMini ? 26 : 56;
+      const blockH = isMini ? 20 : 44;
+      // Clamp block position within canvas bounds
+      const renderX = Math.min(w - blockW - 10, Math.max(10, (state.posX / 500) * (w - 70)));
+      const renderY = trackY - blockH;
+
+      ctx.save();
+
+      // Drop shadow below block
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.12)';
+      ctx.beginPath();
+      ctx.ellipse(renderX + blockW / 2, trackY + 2, blockW * 0.52, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Block Body (Modern Cobalt / Metallic Crate)
+      const blockGrad = ctx.createLinearGradient(renderX, renderY, renderX, renderY + blockH);
+      blockGrad.addColorStop(0, '#3b82f6');
+      blockGrad.addColorStop(1, '#1d4ed8');
+      ctx.fillStyle = blockGrad;
+
+      // Rounded rectangle
+      const radius = isMini ? 4 : 8;
+      ctx.beginPath();
+      ctx.roundRect(renderX, renderY, blockW, blockH, radius);
+      ctx.fill();
+
+      // Block Bevel & Inner Glow
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Front Face Accent & Grip Handle
+      if (!isMini) {
+        ctx.fillStyle = '#1e40af';
+        ctx.beginPath();
+        ctx.roundRect(renderX + 12, renderY + 14, blockW - 24, 16, 4);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('10 kg', renderX + blockW / 2, renderY + 26);
+      }
+
+      // 5. Draw Push Hand / Rocket Impulse if active
+      if (state.isPushing && !isMini) {
+        ctx.save();
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.moveTo(renderX - 22, renderY + blockH / 2);
+        ctx.lineTo(renderX - 6, renderY + blockH / 2);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#22c55e';
+        ctx.stroke();
+
+        // Arrow head
+        ctx.beginPath();
+        ctx.moveTo(renderX - 6, renderY + blockH / 2);
+        ctx.lineTo(renderX - 12, renderY + blockH / 2 - 6);
+        ctx.lineTo(renderX - 12, renderY + blockH / 2 + 6);
+        ctx.fill();
+
+        ctx.font = '600 10px Inter, sans-serif';
+        ctx.fillStyle = '#15803d';
+        ctx.fillText('Push', renderX - 14, renderY + blockH / 2 - 10);
+        ctx.restore();
+      }
+
+      // 6. Draw Friction Resistance Particles
+      state.particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // 7. STEM Mode Overlays: Free-Body Diagram Vector Arrows
+      if (state.graphicMode === 'stem' && !isMini) {
+        const centerX = renderX + blockW / 2;
+        const centerY = renderY + blockH / 2;
+
+        // Backward Friction Vector: f (Ruby Red)
+        const fLen = state.mu * 80;
+        ctx.strokeStyle = '#ef4444';
+        ctx.fillStyle = '#ef4444';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(centerX, trackY);
+        ctx.lineTo(centerX - fLen, trackY);
+        ctx.stroke();
+        // Arrow head
+        ctx.beginPath();
+        ctx.moveTo(centerX - fLen, trackY);
+        ctx.lineTo(centerX - fLen + 7, trackY - 5);
+        ctx.lineTo(centerX - fLen + 7, trackY + 5);
+        ctx.fill();
+        ctx.font = '600 11px JetBrains Mono, monospace';
+        ctx.fillText('f', centerX - fLen - 8, trackY - 4);
+
+        // Normal Force Vector: N (Blue)
+        ctx.strokeStyle = '#3b82f6';
+        ctx.fillStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX, centerY - 45);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY - 45);
+        ctx.lineTo(centerX - 5, centerY - 38);
+        ctx.lineTo(centerX + 5, centerY - 38);
+        ctx.fill();
+        ctx.fillText('N', centerX + 8, centerY - 35);
+
+        // Gravity Vector: W = mg (Slate)
+        ctx.strokeStyle = '#64748b';
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX, centerY + 45);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY + 45);
+        ctx.lineTo(centerX - 5, centerY + 38);
+        ctx.lineTo(centerX + 5, centerY + 38);
+        ctx.fill();
+        ctx.fillText('W', centerX + 8, centerY + 42);
+      }
+
+      // 8. Visual Micro-Contact Zoom Inset ("The Graphic Does the Talking")
+      if (!isMini && w >= 360) {
+        const zoomR = 40;
+        const zoomX = w - zoomR - 16;
+        const zoomY = h - zoomR - 16;
+
+        ctx.save();
+        // Magnifying glass lens frame
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(zoomX, zoomY, zoomR, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Clip inside zoom circle
+        ctx.beginPath();
+        ctx.arc(zoomX, zoomY, zoomR - 1, 0, Math.PI * 2);
+        ctx.clip();
+
+        // Background of zoom lens
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(zoomX - zoomR, zoomY - zoomR, zoomR * 2, zoomR * 2);
+
+        // Top Microscopic Teeth (Bottom of block)
+        ctx.fillStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.moveTo(zoomX - zoomR, zoomY - 2);
+        for (let x = zoomX - zoomR; x <= zoomX + zoomR; x += 10) {
+          ctx.lineTo(x + 5, zoomY - 8);
+          ctx.lineTo(x + 10, zoomY - 2);
+        }
+        ctx.lineTo(zoomX + zoomR, zoomY - zoomR);
+        ctx.lineTo(zoomX - zoomR, zoomY - zoomR);
+        ctx.closePath();
+        ctx.fill();
+
+        // Bottom Microscopic Teeth (Ground Surface Roughness)
+        const aspHeight = surf.aspertyHeight;
+        ctx.fillStyle = surf.trackBorder;
+        ctx.beginPath();
+        ctx.moveTo(zoomX - zoomR, zoomY + 2);
+        for (let x = zoomX - zoomR; x <= zoomX + zoomR; x += 10) {
+          ctx.lineTo(x + 5, zoomY + 2 + aspHeight);
+          ctx.lineTo(x + 10, zoomY + 2);
+        }
+        ctx.lineTo(zoomX + zoomR, zoomY + zoomR);
+        ctx.lineTo(zoomX - zoomR, zoomY + zoomR);
+        ctx.closePath();
+        ctx.fill();
+
+        // Dividing contact line
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(zoomX - zoomR, zoomY);
+        ctx.lineTo(zoomX + zoomR, zoomY);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Zoom label
+        ctx.save();
+        ctx.font = '600 9.5px Inter, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'center';
+        ctx.fillText('Micro-contact', zoomX, zoomY - zoomR - 5);
+        ctx.restore();
+      }
+
+      // 9. Stopped Checkered Flag Marker
+      if (!isMini && state.hasStopped && state.stoppedDistMeters > 0.2) {
+        ctx.save();
+        const flagX = renderX + blockW + 12;
+        const flagY = trackY - 28;
+
+        ctx.font = '18px sans-serif';
+        ctx.fillText('🚩', flagX, flagY + 16);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '700 11px JetBrains Mono, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${state.stoppedDistMeters.toFixed(1)} m`, flagX + 22, flagY + 12);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    /* ==========================================================================
+       MAIN ANIMATION LOOP
+       ========================================================================== */
+    function animate(time) {
+      const dt = (time - lastTime) / 1000;
+      lastTime = time;
+
+      updatePhysics(dt);
+
+      // Render across all active canvases
+      Object.keys(canvases).forEach(key => {
+        const c = canvases[key];
+        const ctx = ctxs[key];
+        if (c && ctx) {
+          const rect = c.getBoundingClientRect();
+          renderStage(ctx, rect.width, rect.height, key === 'pill');
+        }
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    /* ==========================================================================
+       INTERACTIVE CANVAS DRAGGING & FLICKING
+       ========================================================================== */
+    function setupDrag(canvasKey) {
+      const c = canvases[canvasKey];
+      if (!c) return;
+
+      let isDown = false;
+      let startMouseX = 0;
+      let lastX = 0;
+      let lastTime = 0;
+      let flickSpeed = 0;
+
+      function getCanvasX(e) {
+        const rect = c.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        return clientX - rect.left;
+      }
+
+      function onStart(e) {
+        const x = getCanvasX(e);
+        const rect = c.getBoundingClientRect();
+        const blockW = 56;
+        const currentRenderX = Math.min(rect.width - blockW - 10, Math.max(10, (state.posX / 500) * (rect.width - 70)));
+        
+        // Check if click was near the block
+        if (x >= currentRenderX - 25 && x <= currentRenderX + blockW + 25) {
+          isDown = true;
+          state.isDragging = true;
+          state.velX = 0;
+          startMouseX = x;
+          lastX = x;
+          lastTime = performance.now();
+        }
+      }
+
+      function onMove(e) {
+        if (!isDown) return;
+        const x = getCanvasX(e);
+        const rect = c.getBoundingClientRect();
+        const dx = x - lastX;
+        const now = performance.now();
+        const dt = (now - lastTime) / 1000;
+
+        if (dt > 0.005) {
+          flickSpeed = dx / dt;
+          lastX = x;
+          lastTime = now;
+        }
+
+        // Map mouse position back to physics posX
+        const mappedX = (x / (rect.width - 70)) * 500;
+        state.posX = Math.max(state.startX, Math.min(480, mappedX));
+      }
+
+      function onEnd() {
+        if (!isDown) return;
+        isDown = false;
+        state.isDragging = false;
+
+        // Apply flick velocity if flicked forward
+        if (flickSpeed > 60) {
+          state.velX = Math.min(600, flickSpeed * 0.8);
+          state.hasStopped = false;
+        }
+      }
+
+      c.addEventListener('mousedown', onStart);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+
+      c.addEventListener('touchstart', onStart, { passive: true });
+      window.addEventListener('touchmove', onMove, { passive: true });
+      window.addEventListener('touchend', onEnd);
+    }
+
+    /* ==========================================================================
+       INITIALIZATION
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      // Check URL params
+      const params = new URLSearchParams(window.location.search);
+      const urlGraphic = params.get('graphic');
+      if (urlGraphic === 'stem') {
+        setGraphicMode('stem');
+      } else {
+        setGraphicMode('simple');
+      }
+
+      const urlView = params.get('view');
+      if (urlView) {
+        switchView(urlView);
+      }
+
+      const urlSurface = params.get('surface');
+      if (urlSurface && surfaces[urlSurface]) {
+        selectSurface(urlSurface);
+      }
+
+      const urlPush = params.get('push');
+      if (urlPush === '1' || urlPush === 'true') {
+        setTimeout(pushObject, 250);
+      }
+
+      // Setup dragging on interactive stages
+      setupDrag('desktop');
+      setupDrag('mobile');
+      setupDrag('drawer');
+
+      resizeAll();
+      syncControls();
+      requestAnimationFrame(animate);
+    });
+  
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        document.querySelectorAll('.top-header').forEach((el) => { el.style.display = 'none'; });
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge, .specs-bar, .audience-switcher').forEach((el) => {
+          el.style.display = 'none';
+        });
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      function applyMode(m) {
+        if (!m) return;
+        if (typeof setMode === 'function') { setMode(m); return; }
+        if (typeof switchView === 'function') { switchView(m); return; }
+        document.body.classList.remove('mode-pill', 'mode-mobile', 'mode-desktop');
+        if (m === 'pill') document.body.classList.add('mode-pill');
+        if (m === 'mobile') document.body.classList.add('mode-mobile');
+        if (m === 'desktop') document.body.classList.add('mode-desktop');
+        const overlay = document.getElementById('drawerOverlay');
+        if (overlay) {
+          if (m === 'drawer') { overlay.classList.add('open'); overlay.classList.add('active'); }
+          else { overlay.classList.remove('open'); overlay.classList.remove('active'); }
+        }
+        document.querySelectorAll('.switch-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-view') === m);
+        });
+      }
+      if (mode) setTimeout(() => applyMode(mode), 50);
+    })();
+
+  </script>
+</body>
+</html>

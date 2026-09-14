@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Electromagnetism: Faraday's Law of Induction — InteractEd</title>
+  
+  <!-- Inter Font & KaTeX -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 20px 48px;
+    }
+
+    /* Top Navigation & Mode Switcher */
+    .top-header {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .specs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .spec-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .spec-item strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .spec-pill {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .spec-divider {
+      color: #cbd5e1;
+    }
+
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .switch-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .switch-btn:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .switch-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    /* Showcase Layout */
+    .showcase-container {
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .showcase-grid-top {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 36px;
+      flex-wrap: wrap;
+    }
+
+    .view-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-badge {
+      background: #e2e8f0;
+      color: #334155;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* ======================================================== */
+    /* 1. STANDARDIZED PILL MODE (Exact match to wave-v2.html)   */
+    /* ======================================================== */
+    .chat-pill-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 8px 14px 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      width: 100%;
+      max-width: 350px;
+    }
+
+    .chat-pill-card:hover {
+      border-color: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+    }
+
+    .pill-icon-box {
+      width: 76px;
+      height: 52px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .pill-icon-box canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pill-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .pill-formula {
+      font-size: 17px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .pill-subtitle {
+      font-size: 11px;
+      color: #64748b;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill-expand-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #334155;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .chat-pill-card:hover .pill-expand-btn {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    /* ======================================================== */
+    /* 2. STANDARDIZED MOBILE SCREEN (375px × 540px)            */
+    /* ======================================================== */
+    .mobile-phone-frame {
+      width: 100%;
+      max-width: 375px;
+      height: 540px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 26px;
+      box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.09);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .mobile-phone-frame .phone-stage {
+      height: 285px;
+      min-height: 285px;
+      background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f8fafc 60%, #edf2f7 100%);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+
+    .phone-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .mobile-phone-frame .phone-controls {
+      height: 255px;
+      padding: 16px 18px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .stage-toggle-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      padding: 4px 10px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .stage-toggle-btn:hover {
+      background: #ffffff;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+
+    .stage-toggle-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    .em-legend {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      font-size: 10.5px;
+      color: #475569;
+      font-weight: 500;
+      pointer-events: none;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .em-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+
+    /* Math Formula Box */
+    .math-formula-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+    }
+
+    .math-header-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      letter-spacing: 0.2px;
+      margin-bottom: 2px;
+    }
+
+    .primary-equation {
+      font-size: 22px;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.25;
+    }
+
+    .live-substitution {
+      font-size: 12.5px;
+      color: #475569;
+      min-height: 18px;
+    }
+
+    /* Sliders List */
+    .sliders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .slider-label-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .slider-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #0f172a;
+      background: #f1f5f9;
+      padding: 1px 7px;
+      border-radius: 5px;
+    }
+
+    .range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 36px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      touch-action: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .range-slider::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      cursor: pointer;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      margin-top: -9px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+      border: 2.5px solid #ffffff;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .range-slider::-webkit-slider-thumb:active {
+      transform: scale(1.22);
+      box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.15), 0 3px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    .range-slider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #2563eb;
+      cursor: pointer;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    }
+
+    /* Dynamic Takeaway Card (One-Glance Understanding) */
+    .takeaway-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .takeaway-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .takeaway-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .takeaway-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    .takeaway-text {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #1e40af;
+      line-height: 1.35;
+    }
+
+    /* ======================================================== */
+    /* 3. STANDARDIZED DESKTOP SPLIT MODE (880px × 490px)       */
+    /* ======================================================== */
+    .desktop-card {
+      width: 880px;
+      height: 490px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+      display: grid;
+      grid-template-columns: 370px 1fr;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .desktop-card .math-panel {
+      padding: 26px 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid #f1f5f9;
+      background: #ffffff;
+    }
+
+    .desktop-card .stage-panel {
+      position: relative;
+      background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f8fafc 55%, #edf2f7 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .stage-panel canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Quick stats row */
+    .desktop-stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 11.5px;
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .stat-lbl {
+      color: #64748b;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.1px;
+    }
+
+    .stat-num {
+      color: #0f172a;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* ======================================================== */
+    /* 4. STANDARDIZED SLIDE-OVER DRAWER                        */
+    /* ======================================================== */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-content {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 28px 28px 0 0;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      max-height: 92vh;
+    }
+
+    .drawer-overlay.open .drawer-content {
+      transform: translateY(0);
+    }
+
+    .drawer-action-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .drawer-notch {
+      width: 36px;
+      height: 4px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      margin: 0 auto;
+    }
+
+    .drawer-close-btn {
+      background: #f1f5f9;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .drawer-close-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .drawer-stage {
+      height: 270px;
+      background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f8fafc 55%, #edf2f7 100%);
+      position: relative;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .drawer-stage canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .drawer-controls {
+      padding: 16px 18px 24px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 960px) {
+      .desktop-card {
+        grid-template-columns: 1fr;
+        height: auto;
+        max-width: 100%;
+      }
+      .desktop-card .stage-panel {
+        height: 300px;
+        order: 1;
+      }
+      .desktop-card .math-panel {
+        order: 2;
+        border-right: none;
+        border-top: 1px solid #f1f5f9;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Mode Switcher -->
+  <div class="top-header">
+    <div class="specs-bar">
+      <span class="spec-item"><strong>Topic:</strong> Electromagnetic induction</span>
+      <span class="spec-divider">•</span>
+      <span class="spec-item"><strong>Phenomenon:</strong> Magnet moving through coil</span>
+      <span class="spec-divider">•</span>
+      <span class="spec-item"><strong>Law:</strong> <span class="spec-pill">Faraday's law: ℰ = -N (ΔΦ / Δt)</span></span>
+    </div>
+
+    <div class="view-switcher">
+      <button class="switch-btn active" id="btnShowAll" onclick="setMode('all')">
+        👁️ View All Modes
+      </button>
+      <button class="switch-btn" id="btnPillView" onclick="setMode('pill')">
+        💊 1. Pill Mode
+      </button>
+      <button class="switch-btn" id="btnDrawerView" onclick="setMode('drawer')">
+        📱 2. Mobile Card Drawer
+      </button>
+      <button class="switch-btn" id="btnMobileView" onclick="setMode('mobile')">
+        📲 3. Mobile Screen (375×540)
+      </button>
+      <button class="switch-btn" id="btnDesktopView" onclick="setMode('desktop')">
+        🖥️ 4. Desktop Mode (880×490)
+      </button>
+    </div>
+  </div>
+
+  <!-- Showcase Container -->
+  <div class="showcase-container">
+
+    <!-- Top Row: Pill Mode + Mobile 5"-6" Screen -->
+    <div class="showcase-grid-top" id="gridTop">
+
+      <!-- ======================================================== -->
+      <!-- SECTION 1: PILL MODE (Standardized with wave-v2.html)     -->
+      <!-- ======================================================== -->
+      <div class="view-section" id="sectionPill">
+        <div class="section-title">
+          <span>💊 1. Pill mode</span>
+          <span class="section-badge">Compact capsule (350px)</span>
+        </div>
+
+        <div class="chat-pill-card" id="chatPillTrigger" onclick="openDrawer()">
+          <div class="pill-icon-box">
+            <canvas id="pillCanvas"></canvas>
+          </div>
+          <div class="pill-content">
+            <div class="pill-formula" id="pillFormula">\mathcal{E} = -N \frac{\Delta\Phi}{\Delta t}</div>
+            <div class="pill-subtitle" id="pillSubText">Speed = 1.0 m/s • 5 Turns</div>
+          </div>
+          <div class="pill-expand-btn" title="Expand to Mobile Card">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <polyline points="15 3 21 3 21 9"/>
+              <polyline points="9 21 3 21 3 15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/>
+              <line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 2: 5" - 6" MOBILE SCREEN (375px × 540px)         -->
+      <!-- ======================================================== -->
+      <div class="view-section" id="sectionMobile">
+        <div class="section-title">
+          <span>📲 2. Mobile Screen Mode (Top Stage, Bottom Controls)</span>
+          <span class="section-badge">375 × 540 px</span>
+        </div>
+
+        <div class="mobile-phone-frame">
+          <!-- Top: Stage Canvas (285px) -->
+          <div class="phone-stage">
+            <canvas id="mobileCanvas"></canvas>
+            <button class="stage-toggle-btn active" id="mobileToggleBtn" onclick="toggleFieldLines()">
+              <span>Flux lines</span>
+            </button>
+            <div class="em-legend">
+              <span class="em-dot"></span>
+              <span>Bar magnet & coil</span>
+            </div>
+          </div>
+
+          <!-- Bottom: Simplified Controls (255px) -->
+          <div class="phone-controls">
+            <div class="math-formula-box">
+              <div class="math-header-label">Faraday's law of induction</div>
+              <div class="primary-equation" id="mobilePrimaryEq">\mathcal{E} = -N \frac{\Delta\Phi}{\Delta t}</div>
+              <div class="live-substitution" id="mobileSubEq">Moving magnet induces voltage</div>
+            </div>
+
+            <!-- 2 Simplified Sliders -->
+            <div class="sliders-list">
+              <!-- Slider 1: Magnet Speed -->
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <div class="slider-label-left">
+                    <span>Magnet speed (v)</span>
+                  </div>
+                  <span class="slider-val" id="mobileValSpeed">1.0 m/s</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSliderSpeed" min="0.2" max="3.0" step="0.2" value="1.0">
+              </div>
+
+              <!-- Slider 2: Coil Turns -->
+              <div class="slider-row">
+                <div class="slider-label-row">
+                  <div class="slider-label-left">
+                    <span>Coil loops (N)</span>
+                  </div>
+                  <span class="slider-val" id="mobileValTurns">5 turns</span>
+                </div>
+                <input type="range" class="range-slider" id="mobileSliderTurns" min="2" max="10" step="1" value="5">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- /showcase-grid-top -->
+
+    <!-- ======================================================== -->
+    <!-- SECTION 3: DESKTOP SPLIT MODE (880px × 490px)            -->
+    <!-- ======================================================== -->
+    <div class="view-section" id="sectionDesktop">
+      <div class="section-title">
+        <span>🖥️ 3. Desktop Mode (Left Controls, Right Stage)</span>
+        <span class="section-badge">880 × 490 px</span>
+      </div>
+
+      <div class="desktop-card">
+        <!-- Left: Math & Sliders Panel (370px) -->
+        <div class="math-panel">
+          <div>
+            <div class="math-header-label">Faraday's law of induction</div>
+            <div class="math-formula-box" style="align-items: flex-start; text-align: left; margin-top: 4px;">
+              <div class="primary-equation" id="desktopPrimaryEq">\mathcal{E} = -N \frac{\Delta\Phi}{\Delta t}</div>
+              <div class="live-substitution" id="desktopSubEq" style="margin-top: 4px;">
+                Moving magnet induces voltage
+              </div>
+            </div>
+          </div>
+
+          <!-- 2 Sliders -->
+          <div class="sliders-list">
+            <!-- Slider 1: Speed -->
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <div class="slider-label-left">
+                  <span>Magnet oscillation speed (v)</span>
+                </div>
+                <span class="slider-val" id="desktopValSpeed">1.0 m/s</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderSpeed" min="0.2" max="3.0" step="0.2" value="1.0">
+            </div>
+
+            <!-- Slider 2: Coil Turns -->
+            <div class="slider-row">
+              <div class="slider-label-row">
+                <div class="slider-label-left">
+                  <span>Number of coil loops (N)</span>
+                </div>
+                <span class="slider-val" id="desktopValTurns">5 turns</span>
+              </div>
+              <input type="range" class="range-slider" id="desktopSliderTurns" min="2" max="10" step="1" value="5">
+            </div>
+          </div>
+
+          <!-- One-Glance Principle Takeaway -->
+          <div class="takeaway-card" id="desktopTakeawayCard">
+            <div class="takeaway-header-row">
+              <span class="takeaway-badge" id="desktopTakeawayBadge">
+                <span class="takeaway-dot"></span>
+                <span id="desktopTakeawayBadgeText">Faraday's law</span>
+              </span>
+              <span style="font-size: 11px; color: #2563eb; font-weight: 500;">One-glance principle</span>
+            </div>
+            <div class="takeaway-text" id="desktopTakeawayText">
+              Moving magnet induces ±2.5 V electric current in the 5-turn coil!
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Induction Stage (510px) -->
+        <div class="stage-panel">
+          <canvas id="desktopCanvas"></canvas>
+          <button class="stage-toggle-btn active" id="desktopToggleBtn" onclick="toggleFieldLines()">
+            <span>Flux lines</span>
+          </button>
+          <div class="em-legend">
+            <span class="em-dot"></span>
+            <span>Electromagnetic induction (Bar magnet & coil)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /showcase-container -->
+
+  <!-- ======================================================== -->
+  <!-- 4. STANDARDIZED SLIDE-OVER DRAWER                        -->
+  <!-- ======================================================== -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="if(event.target === this) closeDrawer()">
+    <div class="drawer-content">
+      <div class="drawer-action-bar">
+        <div style="width: 30px;"></div>
+        <div class="drawer-notch"></div>
+        <button class="drawer-close-btn" onclick="closeDrawer()" title="Close drawer">✕</button>
+      </div>
+
+      <!-- Drawer Top Stage -->
+      <div class="drawer-stage">
+        <canvas id="drawerCanvas"></canvas>
+        <button class="stage-toggle-btn active" id="drawerToggleBtn" onclick="toggleFieldLines()">
+          <span>Flux lines</span>
+        </button>
+      </div>
+
+      <!-- Drawer Bottom Controls -->
+      <div class="drawer-controls">
+        <div class="math-formula-box" style="align-items: flex-start; text-align: left;">
+          <div class="math-header-label">Faraday's law of induction</div>
+          <div class="primary-equation" id="drawerPrimaryEq">\mathcal{E} = -N \frac{\Delta\Phi}{\Delta t}</div>
+          <div class="live-substitution" id="drawerSubEq">Moving magnet induces voltage</div>
+        </div>
+
+        <!-- 2 Sliders -->
+        <div class="sliders-list">
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span style="font-size: 12px; font-weight: 600; color: #334155;">Magnet speed</span>
+              <span class="slider-val" id="drawerValSpeed">1.0 m/s</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderSpeed" min="0.2" max="3.0" step="0.2" value="1.0">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label-row">
+              <span style="font-size: 12px; font-weight: 600; color: #334155;">Coil loops (N)</span>
+              <span class="slider-val" id="drawerValTurns">5 turns</span>
+            </div>
+            <input type="range" class="range-slider" id="drawerSliderTurns" min="2" max="10" step="1" value="5">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================================
+    // SIMULATION STATE & FARADAY PHYSICS
+    // ==========================================================
+    let magnetSpeed = 1.0; // Oscillation speed multiplier (0.2 to 3.0)
+    let coilTurns = 5;     // Number of coil loops (2 to 10)
+    let showFieldLines = true;
+    let simTime = 0;
+    let lastTimestamp = null;
+
+    // Instantaneous induced EMF (voltage)
+    let currentEmf = 0;
+
+    // ==========================================================
+    // DOM ELEMENTS
+    // ==========================================================
+    const secPill = document.getElementById('sectionPill');
+    const secMobile = document.getElementById('sectionMobile');
+    const secDesktop = document.getElementById('sectionDesktop');
+    const gridTop = document.getElementById('gridTop');
+
+    const btnShowAll = document.getElementById('btnShowAll');
+    const btnPillView = document.getElementById('btnPillView');
+    const btnDrawerView = document.getElementById('btnDrawerView');
+    const btnMobileView = document.getElementById('btnMobileView');
+    const btnDesktopView = document.getElementById('btnDesktopView');
+
+    const drawerOverlay = document.getElementById('drawerOverlay');
+
+    const pillCanvas = document.getElementById('pillCanvas');
+    const mobileCanvas = document.getElementById('mobileCanvas');
+    const desktopCanvas = document.getElementById('desktopCanvas');
+    const drawerCanvas = document.getElementById('drawerCanvas');
+
+    const mobileSliderSpeed = document.getElementById('mobileSliderSpeed');
+    const mobileSliderTurns = document.getElementById('mobileSliderTurns');
+    const desktopSliderSpeed = document.getElementById('desktopSliderSpeed');
+    const desktopSliderTurns = document.getElementById('desktopSliderTurns');
+    const drawerSliderSpeed = document.getElementById('drawerSliderSpeed');
+    const drawerSliderTurns = document.getElementById('drawerSliderTurns');
+
+    const mobileValSpeed = document.getElementById('mobileValSpeed');
+    const mobileValTurns = document.getElementById('mobileValTurns');
+    const desktopValSpeed = document.getElementById('desktopValSpeed');
+    const desktopValTurns = document.getElementById('desktopValTurns');
+    const drawerValSpeed = document.getElementById('drawerValSpeed');
+    const drawerValTurns = document.getElementById('drawerValTurns');
+
+    const mobileToggleBtn = document.getElementById('mobileToggleBtn');
+    const desktopToggleBtn = document.getElementById('desktopToggleBtn');
+    const drawerToggleBtn = document.getElementById('drawerToggleBtn');
+
+    const statTurns = document.getElementById('statTurns');
+    const statEmf = document.getElementById('statEmf');
+    const statCurrent = document.getElementById('statCurrent');
+    const pillSubText = document.getElementById('pillSubText');
+
+    // ==========================================================
+    // TAB SWITCHER
+    // ==========================================================
+    function setMode(mode) {
+      [btnShowAll, btnPillView, btnDrawerView, btnMobileView, btnDesktopView].forEach(b => b.classList.remove('active'));
+
+      if (mode === 'all') {
+        btnShowAll.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'flex';
+        secDesktop.style.display = 'flex';
+        closeDrawer();
+      } else if (mode === 'pill') {
+        btnPillView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'none';
+        secDesktop.style.display = 'none';
+        closeDrawer();
+      } else if (mode === 'drawer') {
+        btnDrawerView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'flex';
+        secMobile.style.display = 'none';
+        secDesktop.style.display = 'none';
+        openDrawer();
+      } else if (mode === 'mobile') {
+        btnMobileView.classList.add('active');
+        gridTop.style.display = 'flex';
+        secPill.style.display = 'none';
+        secMobile.style.display = 'flex';
+        secDesktop.style.display = 'none';
+        closeDrawer();
+      } else if (mode === 'desktop') {
+        btnDesktopView.classList.add('active');
+        gridTop.style.display = 'none';
+        secDesktop.style.display = 'flex';
+        closeDrawer();
+      }
+
+      setTimeout(renderAll, 60);
+    }
+
+    function openDrawer() {
+      drawerOverlay.classList.add('open');
+      setTimeout(renderAll, 120);
+    }
+
+    function closeDrawer() {
+      drawerOverlay.classList.remove('open');
+    }
+
+    function toggleFieldLines() {
+      showFieldLines = !showFieldLines;
+      [mobileToggleBtn, desktopToggleBtn, drawerToggleBtn].forEach(btn => {
+        if (btn) btn.classList.toggle('active', showFieldLines);
+      });
+      renderAll();
+    }
+
+    // ==========================================================
+    // SYNC STATE & UPDATE KATEX
+    // ==========================================================
+    function updateState(speed, turns) {
+      magnetSpeed = parseFloat(speed);
+      coilTurns = parseInt(turns, 10);
+
+      const peakEmf = (0.5 * coilTurns * magnetSpeed).toFixed(1);
+
+      // Sync slider positions
+      [mobileSliderSpeed, desktopSliderSpeed, drawerSliderSpeed].forEach(s => { if (s) s.value = magnetSpeed; });
+      [mobileSliderTurns, desktopSliderTurns, drawerSliderTurns].forEach(s => { if (s) s.value = coilTurns; });
+
+      // Sync labels
+      const speedStr = `${magnetSpeed.toFixed(1)} m/s`;
+      const turnsStr = `${coilTurns} turns`;
+
+      [mobileValSpeed, desktopValSpeed, drawerValSpeed].forEach(el => { if (el) el.textContent = speedStr; });
+      [mobileValTurns, desktopValTurns, drawerValTurns].forEach(el => { if (el) el.textContent = turnsStr; });
+
+      if (pillSubText) {
+        pillSubText.textContent = `Speed = ${speedStr} • ${turnsStr}`;
+      }
+
+      const takeawayEl = document.getElementById('desktopTakeawayText');
+      if (takeawayEl) {
+        takeawayEl.textContent = `Moving magnet (${magnetSpeed.toFixed(1)} m/s) induces ±${peakEmf} V alternating current across the ${coilTurns}-turn coil!`;
+      }
+
+      if (statTurns) statTurns.textContent = `${coilTurns}`;
+      if (statEmf) statEmf.textContent = `±${peakEmf} V`;
+      if (statCurrent) statCurrent.textContent = 'Alternating';
+
+      updateKaTeX(peakEmf);
+      renderAll();
+    }
+
+    function updateKaTeX(peakEmf) {
+      if (typeof katex === 'undefined') return;
+
+      const pEmf = peakEmf || (0.5 * coilTurns * magnetSpeed).toFixed(1);
+      const primaryTeX = '\\mathcal{E} = -N \\frac{\\Delta\\Phi_B}{\\Delta t}';
+      const subTeX = `N = ${coilTurns}, \\; v = ${magnetSpeed.toFixed(1)}\\text{ m/s} \\implies \\mathcal{E}_{\\text{peak}} = \\pm${pEmf}\\text{ V}`;
+
+      ['pillFormula', 'mobilePrimaryEq', 'desktopPrimaryEq', 'drawerPrimaryEq'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) katex.render(primaryTeX, el, { throwOnError: false });
+      });
+
+      ['mobileSubEq', 'desktopSubEq', 'drawerSubEq'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) katex.render(subTeX, el, { throwOnError: false });
+      });
+    }
+
+    // Slider Event Listeners
+    [
+      [mobileSliderSpeed, mobileSliderTurns],
+      [desktopSliderSpeed, desktopSliderTurns],
+      [drawerSliderSpeed, drawerSliderTurns]
+    ].forEach(([sSpeed, sTurns]) => {
+      if (sSpeed) sSpeed.addEventListener('input', e => updateState(e.target.value, coilTurns));
+      if (sTurns) sTurns.addEventListener('input', e => updateState(magnetSpeed, e.target.value));
+    });
+
+    // ==========================================================
+    // CANVASES & INDUCTION RENDERER
+    // ==========================================================
+    function setupCanvas(canvas) {
+      if (!canvas) return null;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.floor(rect.width);
+      const h = Math.floor(rect.height);
+
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+      return { ctx, w, h };
+    }
+
+    // Mini pill canvas (Magnet + Coil in miniature)
+    function renderPillCanvas() {
+      const c = setupCanvas(pillCanvas);
+      if (!c || c.w === 0 || c.h === 0) return;
+      const { ctx, w, h } = c;
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      const midY = h / 2;
+      const coilX = w * 0.65;
+
+      // Mini Coil loops
+      ctx.strokeStyle = '#b45309';
+      ctx.lineWidth = 1.8;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.ellipse(coilX + i * 4, midY, 3, 14, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Mini Bar Magnet oscillating horizontally
+      const magX = w * 0.28 + Math.sin(simTime * 4 * magnetSpeed) * 12;
+      const magW = 20;
+      const magH = 12;
+
+      // North (red)
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(magX - magW / 2, midY - magH / 2, magW / 2, magH);
+      // South (blue)
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(magX, midY - magH / 2, magW / 2, magH);
+    }
+
+    function renderStage(canvas) {
+      const c = setupCanvas(canvas);
+      if (!c || c.w === 0 || c.h === 0) return;
+      const { ctx, w, h } = c;
+
+      // 1. Studio Illuminated Electromagnetic Backdrop
+      const grad = ctx.createRadialGradient(w * 0.5, h * 0.52, 10, w * 0.5, h * 0.52, Math.max(w, h) * 0.65);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.5, '#f8fafc');
+      grad.addColorStop(1, '#f1f5f9');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 24) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 24) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      const midY = h * 0.52;
+      const coilX = w * 0.62;
+      const coilR = Math.min(h * 0.22, 54);
+
+      // Magnet oscillation kinematics
+      const oscFreq = 2.4 * magnetSpeed;
+      const oscAmp = Math.min(w * 0.18, 80);
+      const magnetCenterX = (w * 0.30) + Math.sin(simTime * oscFreq) * oscAmp;
+      const magnetVelocity = Math.cos(simTime * oscFreq) * oscFreq;
+
+      // Distance from coil center
+      const distToCoil = coilX - magnetCenterX;
+      // Flux change dPhi/dt is highest when magnet enters/leaves coil
+      currentEmf = -1 * (coilTurns / 5) * (magnetVelocity * 0.8) * Math.exp(-Math.pow(distToCoil / 45, 2));
+
+      // 2. Magnetic Field Lines (Looping from North to South)
+      if (showFieldLines) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(14, 165, 233, 0.28)';
+        ctx.lineWidth = 1.2;
+
+        const loopRadii = [28, 48, 70];
+        loopRadii.forEach(r => {
+          // Top loop
+          ctx.beginPath();
+          ctx.ellipse(magnetCenterX, midY - r * 0.5, r, r * 0.6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Bottom loop
+          ctx.beginPath();
+          ctx.ellipse(magnetCenterX, midY + r * 0.5, r, r * 0.6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
+
+      // 3. Bar Magnet (North = Red, South = Blue)
+      const magW = Math.min(w * 0.22, 100);
+      const magH = 34;
+      const magLeft = magnetCenterX - magW / 2;
+      const magTop = midY - magH / 2;
+
+      ctx.save();
+      // North Pole (Red, right side pointing towards coil)
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.roundRect(magnetCenterX, magTop, magW / 2, magH, [0, 6, 6, 0]);
+      ctx.fill();
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 13px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('N', magnetCenterX + magW / 4, midY + 4.5);
+
+      // South Pole (Blue, left side)
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.roundRect(magLeft, magTop, magW / 2, magH, [6, 0, 0, 6]);
+      ctx.fill();
+      ctx.strokeStyle = '#0369a1';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('S', magLeft + magW / 4, midY + 4.5);
+      ctx.restore();
+
+      // 4. Wire Coil (Copper Loops)
+      ctx.save();
+      const coilW = Math.min(w * 0.24, 110);
+      const loopSpacing = coilW / (coilTurns + 1);
+
+      for (let i = 1; i <= coilTurns; i++) {
+        const loopX = coilX - coilW / 2 + i * loopSpacing;
+
+        // Copper loop front & back for 3D depth
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.ellipse(loopX, midY, 6, coilR, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(loopX, midY, 6, coilR, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#78350f';
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Coil (${coilTurns} loops)`, coilX, midY + coilR + 18);
+      ctx.restore();
+
+      // 5. Analog Galvanometer / Center-Zero Voltmeter (Top-Right)
+      const meterX = coilX;
+      const meterY = Math.max(34, midY - coilR - 44);
+      const meterR = 26;
+
+      ctx.save();
+      // Voltmeter dial face
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(meterX, meterY, meterR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Dial scale marks (- 0 +)
+      ctx.fillStyle = '#64748b';
+      ctx.font = '600 8.5px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('0', meterX, meterY - 14);
+      ctx.fillText('-', meterX - 16, meterY - 6);
+      ctx.fillText('+', meterX + 16, meterY - 6);
+
+      // Needle deflecting proportional to induced EMF
+      const maxDeflectAngle = 0.85; // radians
+      const needleAngle = Math.max(-maxDeflectAngle, Math.min(maxDeflectAngle, currentEmf * 0.7));
+
+      ctx.strokeStyle = Math.abs(currentEmf) > 0.15 ? '#ef4444' : '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(meterX, meterY + 6);
+      ctx.lineTo(meterX + Math.sin(needleAngle) * 20, (meterY + 6) - Math.cos(needleAngle) * 20);
+      ctx.stroke();
+
+      // Needle pivot dot
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(meterX, meterY + 6, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Circuit wire connections connecting coil to galvanometer
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(coilX - coilW / 2 + loopSpacing, midY - coilR);
+      ctx.lineTo(coilX - coilW / 2 + loopSpacing, meterY + 12);
+      ctx.lineTo(meterX - meterR, meterY + 12);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(coilX + coilW / 2 - loopSpacing, midY - coilR);
+      ctx.lineTo(coilX + coilW / 2 - loopSpacing, meterY + 12);
+      ctx.lineTo(meterX + meterR, meterY + 12);
+      ctx.stroke();
+
+      // Voltmeter reading label
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '600 10.5px JetBrains Mono, monospace';
+      ctx.fillText(`ℰ = ${(currentEmf * 1.5).toFixed(2)} V`, meterX, meterY + meterR + 14);
+      ctx.restore();
+    }
+
+    function renderAll() {
+      renderPillCanvas();
+      renderStage(desktopCanvas);
+      renderStage(mobileCanvas);
+      renderStage(drawerCanvas);
+    }
+
+    // Animation Loop
+    let animFrameId = null;
+    function loop(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.1);
+      lastTimestamp = timestamp;
+
+      simTime += dt;
+
+      renderAll();
+      animFrameId = requestAnimationFrame(loop);
+    }
+
+    // Window resize
+    window.addEventListener('resize', () => {
+      renderAll();
+    });
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      updateState(magnetSpeed, coilTurns);
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialMode = urlParams.get('mode');
+      if (initialMode) setMode(initialMode);
+      animFrameId = requestAnimationFrame(loop);
+    });
+
+    // Fallback initialize
+    updateState(magnetSpeed, coilTurns);
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialMode = urlParams.get('mode');
+    if (initialMode) setMode(initialMode);
+    if (!animFrameId) animFrameId = requestAnimationFrame(loop);
+  
+    (function applyEmbedMode() {
+      const params = new URLSearchParams(location.search);
+      const mode = params.get('mode');
+      if (params.get('embed') === '1') {
+        document.querySelectorAll('.top-header').forEach((el) => { el.style.display = 'none'; });
+        document.body.style.padding = '0';
+        document.body.style.minHeight = '100%';
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.querySelectorAll('.section-title, .section-badge, .specs-bar, .audience-switcher').forEach((el) => {
+          el.style.display = 'none';
+        });
+        ['btnDesktopView', 'btnShowAll'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      function applyMode(m) {
+        if (!m) return;
+        if (typeof setMode === 'function') { setMode(m); return; }
+        if (typeof switchView === 'function') { switchView(m); return; }
+        document.body.classList.remove('mode-pill', 'mode-mobile', 'mode-desktop');
+        if (m === 'pill') document.body.classList.add('mode-pill');
+        if (m === 'mobile') document.body.classList.add('mode-mobile');
+        if (m === 'desktop') document.body.classList.add('mode-desktop');
+        const overlay = document.getElementById('drawerOverlay');
+        if (overlay) {
+          if (m === 'drawer') { overlay.classList.add('open'); overlay.classList.add('active'); }
+          else { overlay.classList.remove('open'); overlay.classList.remove('active'); }
+        }
+        document.querySelectorAll('.switch-btn[data-view]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-view') === m);
+        });
+      }
+      if (mode) setTimeout(() => applyMode(mode), 50);
+    })();
+
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 /**
- * Interactive Mode hub — four simulations as pills; expand opens a sheet, Play opens full page.
+ * Interactive Mode hub — stacked pills; expand opens a sheet, Play opens full screen.
  */
 
 import React, { useState } from 'react';
@@ -37,37 +37,25 @@ export default function InteractiveHubScreen() {
         </View>
 
         {INTERACTIVES.map((item) => (
-          <View
+          <TouchableOpacity
             key={item.id}
-            style={[styles.pillCard, { borderColor: colors.glassBorder, backgroundColor: colors.surface }]}
+            style={[styles.pill, { borderColor: colors.glassBorder, backgroundColor: colors.surface }]}
+            onPress={() => setOpenItem(item)}
+            activeOpacity={0.85}
           >
-            <TouchableOpacity style={styles.pillRow} onPress={() => setOpenItem(item)} activeOpacity={0.85}>
-              <View style={[styles.emojiBox, { backgroundColor: item.accent + '18' }]}>
-                <Text style={styles.emoji}>{item.emoji}</Text>
-              </View>
-              <View style={styles.pillText}>
-                <Text style={[styles.pillTitle, { color: colors.textPrimary }]}>{item.title}</Text>
-                <Text style={[styles.pillSub, { color: colors.textMuted }]} numberOfLines={2}>
-                  {item.subtitle}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setOpenItem(item)}
-                style={[styles.expandBtn, { backgroundColor: item.accent }]}
-                accessibilityLabel={`Open ${item.title}`}
-              >
-                <Ionicons name="expand-outline" size={16} color="#FFF" />
-              </TouchableOpacity>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.playBtn, { backgroundColor: item.accent }]}
-              onPress={() => router.push(`/interactive/${item.id}` as never)}
-            >
-              <Text style={styles.playBtnText}>Play full screen</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFF" />
-            </TouchableOpacity>
-          </View>
+            <View style={[styles.emojiBox, { backgroundColor: item.accent + '18' }]}>
+              <Text style={styles.emoji}>{item.emoji}</Text>
+            </View>
+            <View style={styles.pillText}>
+              <Text style={[styles.pillTitle, { color: colors.textPrimary }]}>{item.title}</Text>
+              <Text style={[styles.pillSub, { color: colors.textMuted }]} numberOfLines={1}>
+                {item.subtitle}
+              </Text>
+            </View>
+            <View style={[styles.expandBtn, { backgroundColor: item.accent }]}>
+              <Ionicons name="expand-outline" size={16} color="#FFF" />
+            </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
 
@@ -111,13 +99,14 @@ export default function InteractiveHubScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { padding: Spacing.md, paddingBottom: Spacing['5xl'], gap: Spacing.md },
+  content: { padding: Spacing.md, paddingBottom: Spacing['5xl'], gap: Spacing.sm },
   hero: {
     borderRadius: Radius.xl,
     borderWidth: 1,
     padding: Spacing.lg,
     alignItems: 'center',
     gap: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   heroEmoji: { fontSize: 36 },
   heroTag: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold },
@@ -128,23 +117,30 @@ const styles = StyleSheet.create({
     lineHeight: Typography.fontSize.xl * 1.25,
   },
   heroSub: { fontSize: Typography.fontSize.sm, lineHeight: 20, textAlign: 'center' },
-  pillCard: { borderRadius: Radius.xl, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
-  pillRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
   emojiBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: { fontSize: 24 },
+  emoji: { fontSize: 20 },
   pillText: { flex: 1, gap: 2 },
   pillTitle: { fontSize: Typography.fontSize.base, fontWeight: Typography.fontWeight.bold },
   pillSub: { fontSize: Typography.fontSize.xs, lineHeight: 16 },
   expandBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },

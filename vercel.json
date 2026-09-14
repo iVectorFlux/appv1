@@ -1,5 +1,5 @@
 {
-  "buildCommand": "mkdir -p public/interectives && cp interectives/gravity-v2.html interectives/pythagoras-v2.html interectives/wave-v2.html interectives/addition-subtraction.html public/interectives/ && npx expo export --platform web",
+  "buildCommand": "mkdir -p public/interectives && cp interectives/electromagnetism-v2.html interectives/force-friction-v2.html interectives/fractions-v2.html interectives/geoboard-shapes.html interectives/gravity-v2.html interectives/heat-transfer-v2.html interectives/living-systems-v2.html interectives/place-value-decimals.html interectives/prism-v2.html interectives/pythagoras-v2.html interectives/relativity-v2.html interectives/solar-system-v2.html interectives/states-of-matter-v2.html interectives/water-cycle-v2.html interectives/wave-v2.html interectives/addition-subtraction.html public/interectives/ && npx expo export --platform web",
   "outputDirectory": "dist",
   "framework": null,
   "functions": {
