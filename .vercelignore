@@ -1,2 +1,3 @@
-# Source InteractEd console (app.js/index.html). Live sims are in public/interectives.
-interectives
+# Only the InteractEd source tree at the repo root.
+# Do not ignore public/interectives — those HTML files are what the app serves.
+/interectives
