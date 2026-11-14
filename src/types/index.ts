@@ -12,12 +12,20 @@ export * from './eq-assessment';
 // AUTHENTICATION TYPES
 // ============================================================================
 
+export type UserRole = 'user' | 'admin';
+
 export interface User {
   id: string;
   email?: string;
   username: string;
   /** Display name from profiles (onboarding); prefer this for greeting. */
   displayName?: string;
+  /** Enterprise workspace role ('user' or 'admin'). */
+  role?: UserRole;
+  /** Company / organization ID for multi-admin enterprise workspaces. */
+  companyId?: string | null;
+  /** Cached company name if linked. */
+  companyName?: string | null;
   createdAt: number;
 }
 

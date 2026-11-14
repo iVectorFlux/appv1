@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { DIMENSION_INFO } from '@/data/learning-content';
 import { useAuthStore } from '@/stores/auth-store';
@@ -435,6 +436,7 @@ function useProgressData() {
 export default function ProgressScreen() {
   const router = useRouter();
   const colors = useColors();
+  const isDesktop = useWebLaptopLayout();
   const [refreshing, setRefreshing] = useState(false);
   const d = useProgressData();
   const isDark = colors.glassTint === 'dark';
@@ -476,7 +478,7 @@ export default function ProgressScreen() {
     <GlassBackground>
       <ScrollView
         style={st.container}
-        contentContainerStyle={st.content}
+        contentContainerStyle={[st.content, isDesktop && st.contentDesktop]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
@@ -700,6 +702,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1 },
     content: { paddingBottom: 120, paddingHorizontal: Spacing.md, paddingTop: 4 },
+    contentDesktop: { maxWidth: 1120, width: '100%', alignSelf: 'center', paddingHorizontal: Spacing['2xl'], paddingTop: Spacing.lg },
     subtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: Spacing.lg, paddingHorizontal: 2 },
 
     snapshotSectionTitle: {

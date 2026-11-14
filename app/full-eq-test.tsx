@@ -1358,6 +1358,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     flexGrow: 1,
     padding: Spacing.xl,
     paddingBottom: Spacing['2xl'],
+    width: '100%',
+    maxWidth: 820,
+    alignSelf: 'center',
   },
   introContainer: {
     alignItems: 'center',
@@ -1514,6 +1517,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     flexGrow: 1,
     padding: Spacing.lg,
     justifyContent: 'center',
+    width: '100%',
+    maxWidth: 820,
+    alignSelf: 'center',
   },
   questionWrapper: {
     flex: 1,
@@ -1769,6 +1775,9 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     padding: Spacing.xl,
     paddingTop: Platform.OS === 'ios' ? Spacing['3xl'] : Spacing.xl,
     paddingBottom: Spacing['5xl'],
+    width: '100%',
+    maxWidth: 880,
+    alignSelf: 'center',
   },
   resultsHeader: {
     marginBottom: Spacing['2xl'],

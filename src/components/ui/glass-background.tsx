@@ -8,63 +8,39 @@ interface GlassBackgroundProps {
   style?: StyleProp<ViewStyle>;
 }
 
+/**
+ * Crisp enterprise Slate/Zinc canvas with subtle top atmospheric gradient.
+ */
 export function GlassBackground({ children, style }: GlassBackgroundProps) {
   const colors = useColors();
   const isDark = colors.glassTint === 'dark';
-  const { width: SW, height: SH } = useWindowDimensions();
+  const { width: SW } = useWindowDimensions();
 
   return (
-    <View style={[styles.container, style]}>
-      {/* Smooth mesh-style gradient - three stops for depth */}
+    <View style={[styles.container, { backgroundColor: colors.background }, style]}>
       <LinearGradient
         colors={[
-          colors.backgroundGradientStart,
-          colors.backgroundGradientEnd,
-          colors.background,
-        ]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-
-      {/* Warm editorial wash - sage / terracotta / sand at very low opacity */}
-      <LinearGradient
-        colors={[
-          isDark ? 'rgba(61,139,110,0.07)' : 'rgba(196,164,132,0.08)',
+          isDark ? 'rgba(59, 130, 246, 0.08)' : 'rgba(37, 99, 235, 0.04)',
           'transparent',
-          isDark ? 'rgba(224,122,95,0.05)' : 'rgba(61,139,110,0.06)',
+          isDark ? 'rgba(99, 102, 241, 0.04)' : 'rgba(79, 70, 229, 0.02)',
         ]}
         style={StyleSheet.absoluteFill}
-        start={{ x: 0.85, y: 0 }}
-        end={{ x: 0.15, y: 1 }}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
       />
-
-      {/* Soft ambient glow - warm sand + forest (light), muted sage (dark) */}
       <View
+        pointerEvents="none"
         style={[
           styles.glow,
           {
-            width: SW * 0.7,
-            height: SW * 0.7,
-            top: -SW * 0.15,
-            right: -SW * 0.2,
-            backgroundColor: isDark ? 'rgba(77,166,122,0.06)' : 'rgba(224,122,95,0.07)',
+            width: SW * 0.55,
+            height: SW * 0.55,
+            top: -SW * 0.25,
+            right: -SW * 0.12,
+            backgroundColor: isDark ? 'rgba(59, 130, 246, 0.07)' : 'rgba(37, 99, 235, 0.05)',
           },
         ]}
       />
-      <View
-        style={[
-          styles.glow,
-          {
-            width: SW * 0.6,
-            height: SW * 0.6,
-            bottom: SH * 0.15,
-            left: -SW * 0.15,
-            backgroundColor: isDark ? 'rgba(124,141,224,0.05)' : 'rgba(45,71,57,0.05)',
-          },
-        ]}
-      />
-
       {children}
     </View>
   );

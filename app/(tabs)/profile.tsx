@@ -3,25 +3,34 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/shadcn-primitives';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { ScreenHeader } from '@/components/ui/screen-header';
+import { createCompanyWorkspace, joinCompanyByInviteCode } from '@/services/enterprise-admin';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const isDesktop = useWebLaptopLayout();
+  const { user, logout, refreshDisplayName } = useAuthStore();
   const { colorMode, toggleColorMode } = useThemeStore();
   const colors = useColors();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [companyNameInput, setCompanyNameInput] = useState('');
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [workspaceBusy, setWorkspaceBusy] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [workspaceSuccess, setWorkspaceSuccess] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
@@ -36,6 +45,46 @@ export default function ProfileScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleCreateCompany = async () => {
+    if (!companyNameInput.trim()) {
+      setWorkspaceError('Enter a company name to create your workspace.');
+      return;
+    }
+    setWorkspaceBusy(true);
+    setWorkspaceError(null);
+    setWorkspaceSuccess(null);
+    try {
+      const res = await createCompanyWorkspace(companyNameInput.trim());
+      await refreshDisplayName();
+      setCompanyNameInput('');
+      setWorkspaceSuccess(`Created "${res.name}" (Invite code: ${res.inviteCode}). You are an Admin.`);
+    } catch (e) {
+      setWorkspaceError(e instanceof Error ? e.message : 'Failed to create workspace.');
+    } finally {
+      setWorkspaceBusy(false);
+    }
+  };
+
+  const handleJoinCompany = async () => {
+    if (!inviteCodeInput.trim()) {
+      setWorkspaceError('Enter a valid company invite code.');
+      return;
+    }
+    setWorkspaceBusy(true);
+    setWorkspaceError(null);
+    setWorkspaceSuccess(null);
+    try {
+      const res = await joinCompanyByInviteCode(inviteCodeInput.trim());
+      await refreshDisplayName();
+      setInviteCodeInput('');
+      setWorkspaceSuccess(`Joined "${res.name}" as a team member.`);
+    } catch (e) {
+      setWorkspaceError(e instanceof Error ? e.message : 'Could not join company.');
+    } finally {
+      setWorkspaceBusy(false);
+    }
+  };
 
   const handleLogout = async () => {
     if (signingOut) return;
@@ -55,7 +104,10 @@ export default function ProfileScreen() {
 
   return (
     <GlassBackground>
-      <ScrollView style={st.container} contentContainerStyle={st.content}>
+      <ScrollView
+        style={st.container}
+        contentContainerStyle={[st.content, isDesktop && st.contentDesktop]}
+      >
         <ScreenHeader title="Profile" backFallbackHref="/(tabs)/home" showHomeButton />
         <View style={st.avatarBlock}>
           <View style={[st.avatar, { borderColor: colors.primary }]}>
@@ -63,6 +115,16 @@ export default function ProfileScreen() {
           </View>
           <Text style={st.username}>{nameToShow}</Text>
           {user?.email ? <Text style={st.email}>{user.email}</Text> : null}
+          <View style={st.roleBadges}>
+            <Badge
+              label={user?.role === 'admin' ? 'Company Admin' : 'User'}
+              variant={user?.role === 'admin' ? 'default' : 'secondary'}
+              icon={user?.role === 'admin' ? 'shield-checkmark-outline' : 'person-outline'}
+            />
+            {user?.companyName ? (
+              <Badge label={user.companyName} variant="outline" icon="business-outline" />
+            ) : null}
+          </View>
         </View>
 
         <View style={st.section}>
@@ -116,6 +178,96 @@ export default function ProfileScreen() {
         </View>
 
         <View style={st.section}>
+          <Text style={st.sectionTitle}>Enterprise Workspace & Role</Text>
+          <GlassCard>
+            <View style={st.workspaceHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={st.assessTitle}>
+                  {user?.companyName ? user.companyName : 'No company linked yet'}
+                </Text>
+                <Text style={st.assessSubtitle}>
+                  Role: {user?.role === 'admin' ? 'Admin (Multi-admin analytics access)' : 'User (Learner)'}
+                </Text>
+              </View>
+              <Badge
+                label={user?.role === 'admin' ? 'Admin' : 'User'}
+                variant={user?.role === 'admin' ? 'default' : 'secondary'}
+              />
+            </View>
+
+            {workspaceError ? (
+              <Text style={[st.feedbackText, { color: colors.destructive }]}>{workspaceError}</Text>
+            ) : null}
+            {workspaceSuccess ? (
+              <Text style={[st.feedbackText, { color: colors.success }]}>{workspaceSuccess}</Text>
+            ) : null}
+
+            {user?.role === 'admin' && user?.companyId ? (
+              <View style={{ marginTop: Spacing.md }}>
+                <Button
+                  title="Open Admin Analytics"
+                  icon="analytics-outline"
+                  onPress={() => router.push('/admin')}
+                  fullWidth
+                />
+              </View>
+            ) : user?.companyId ? (
+              <Text style={[st.workspaceNote, { color: colors.textSecondary }]}>
+                You belong to {user.companyName || 'this workspace'}. Any Company Admin in your organization can promote your account to Admin.
+              </Text>
+            ) : (
+              <View style={st.workspaceForms}>
+                <View style={st.workspaceFormBlock}>
+                  <Text style={[st.formLabel, { color: colors.textPrimary }]}>Join via Invite Code</Text>
+                  <View style={st.inlineInputRow}>
+                    <TextInput
+                      style={[
+                        st.input,
+                        { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface },
+                      ]}
+                      placeholder="Invite code (e.g., A1B2C3D4)"
+                      placeholderTextColor={colors.textMuted}
+                      autoCapitalize="characters"
+                      value={inviteCodeInput}
+                      onChangeText={setInviteCodeInput}
+                    />
+                    <Button
+                      title="Join"
+                      size="sm"
+                      variant="outline"
+                      loading={workspaceBusy}
+                      onPress={handleJoinCompany}
+                    />
+                  </View>
+                </View>
+
+                <View style={st.workspaceFormBlock}>
+                  <Text style={[st.formLabel, { color: colors.textPrimary }]}>Create Company Workspace (Become Admin)</Text>
+                  <View style={st.inlineInputRow}>
+                    <TextInput
+                      style={[
+                        st.input,
+                        { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface },
+                      ]}
+                      placeholder="Company name"
+                      placeholderTextColor={colors.textMuted}
+                      value={companyNameInput}
+                      onChangeText={setCompanyNameInput}
+                    />
+                    <Button
+                      title="Create"
+                      size="sm"
+                      loading={workspaceBusy}
+                      onPress={handleCreateCompany}
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
+          </GlassCard>
+        </View>
+
+        <View style={st.section}>
           <Text style={st.sectionTitle}>Settings</Text>
           <View style={st.settingsList}>
             {[
@@ -155,7 +307,17 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1 },
     content: { paddingHorizontal: Spacing.md, paddingTop: 4, paddingBottom: 120 },
+    contentDesktop: { maxWidth: 960, width: '100%', alignSelf: 'center', paddingHorizontal: Spacing['2xl'], paddingTop: Spacing.lg },
     avatarBlock: { alignItems: 'center', marginBottom: Spacing.xl },
+    roleBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginTop: Spacing.sm, justifyContent: 'center' },
+    workspaceHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.md },
+    workspaceNote: { fontSize: Typography.fontSize.xs, marginTop: Spacing.md, lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.xs },
+    workspaceForms: { marginTop: Spacing.md, gap: Spacing.md },
+    workspaceFormBlock: { gap: 6 },
+    formLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold },
+    inlineInputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    input: { flex: 1, height: 38, borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.md, fontSize: Typography.fontSize.sm },
+    feedbackText: { fontSize: Typography.fontSize.xs, marginTop: Spacing.sm, fontWeight: Typography.fontWeight.medium },
     avatar: {
       width: 80,
       height: 80,

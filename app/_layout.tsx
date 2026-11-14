@@ -55,6 +55,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="admin" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="full-eq-test" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="big5-test" options={{ presentation: 'card', animation: 'slide_from_right' }} />
         <Stack.Screen name="learning-detail" options={{ presentation: 'card', animation: 'slide_from_right' }} />

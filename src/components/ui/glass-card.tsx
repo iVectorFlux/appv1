@@ -1,14 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
   Platform,
-  TouchableOpacity,
+  Pressable,
   type ViewStyle,
   type StyleProp,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { useColors, Radius, Glass, Shadows } from '@/constants/design-tokens';
+import { useColors, Radius, Shadows } from '@/constants/design-tokens';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -20,20 +19,25 @@ interface GlassCardProps {
   tint?: 'light' | 'dark';
   backgroundColor?: string;
   borderColor?: string;
+  disabled?: boolean;
 }
 
+/**
+ * Shadcn-inspired Enterprise Card with crisp 1px borders, neutral elevation,
+ * and subtle web hover states when interactive.
+ */
 export function GlassCard({
   children,
   style,
   onPress,
-  intensity = Glass.intensity,
   borderRadius = Radius.lg,
   noPadding,
-  tint,
   backgroundColor,
   borderColor,
+  disabled,
 }: GlassCardProps) {
   const colors = useColors();
+  const [hovered, setHovered] = useState(false);
 
   const flatStyle = StyleSheet.flatten(style) || {};
   const {
@@ -44,30 +48,20 @@ export function GlassCard({
     ...wrapperStyle
   } = flatStyle;
 
-  const finalTint = tint ?? (colors.glassTint as 'light' | 'dark');
   const finalBgColor = backgroundColor ?? colors.glass;
-  const finalBorderColor = borderColor ?? colors.glassBorder;
-
-  const shadow: ViewStyle =
-    Platform.OS === 'web'
-      ? ({ ...(Shadows.glass as object) } as ViewStyle)
-      : (Shadows.glass as ViewStyle);
+  const finalBorderColor =
+    borderColor ?? (hovered && onPress && !disabled ? colors.primary + '66' : colors.border);
 
   const cardBase: ViewStyle = {
     borderRadius,
-    overflow: 'hidden' as const,
-    ...shadow,
+    backgroundColor: finalBgColor,
+    borderWidth: 1,
+    borderColor: finalBorderColor,
+    overflow: 'hidden',
+    ...(Shadows.card as ViewStyle),
+    ...(Platform.OS === 'web' && onPress && !disabled ? ({ cursor: 'pointer', transition: 'border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease' } as ViewStyle) : {}),
+    ...(Platform.OS === 'web' && hovered && onPress && !disabled ? (Shadows.md as ViewStyle) : {}),
   };
-
-  const webGlass: ViewStyle = Platform.OS === 'web'
-    ? ({
-        backgroundColor: finalBgColor,
-        backdropFilter: `blur(${Glass.blur}px) saturate(160%)`,
-        WebkitBackdropFilter: `blur(${Glass.blur}px) saturate(160%)`,
-        borderWidth: 1,
-        borderColor: finalBorderColor,
-      } as any)
-    : {};
 
   const inner = (
     <View
@@ -77,39 +71,30 @@ export function GlassCard({
         { alignItems, justifyContent, flexDirection, alignContent },
       ]}
     >
-      {/* Top highlight line for depth */}
-      <View style={[styles.highlight, { backgroundColor: colors.glassHighlight }]} />
       {children}
     </View>
   );
 
-  if (Platform.OS === 'web') {
-    const Wrapper = onPress ? TouchableOpacity : View;
+  if (onPress) {
     return (
-      <Wrapper
-        style={[cardBase, webGlass, wrapperStyle]}
-        {...(onPress ? { onPress, activeOpacity: 0.82 } : {})}
+      <Pressable
+        onPress={disabled ? undefined : onPress}
+        disabled={disabled}
+        onHoverIn={Platform.OS === 'web' ? () => setHovered(true) : undefined}
+        onHoverOut={Platform.OS === 'web' ? () => setHovered(false) : undefined}
+        style={({ pressed }) => [
+          cardBase,
+          pressed && !disabled && { opacity: 0.92 },
+          disabled && { opacity: 0.6 },
+          wrapperStyle,
+        ]}
       >
         {inner}
-      </Wrapper>
+      </Pressable>
     );
   }
 
-  const Wrapper = onPress ? TouchableOpacity : View;
-  return (
-    <Wrapper
-      style={[cardBase, { borderWidth: 1, borderColor: finalBorderColor }, wrapperStyle]}
-      {...(onPress ? { onPress, activeOpacity: 0.85 } : {})}
-    >
-      <BlurView
-        intensity={intensity}
-        tint={finalTint}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: finalBgColor }]} />
-      {inner}
-    </Wrapper>
-  );
+  return <View style={[cardBase, wrapperStyle]}>{inner}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -120,14 +105,5 @@ const styles = StyleSheet.create({
   },
   noPadding: {
     padding: 0,
-  },
-  highlight: {
-    position: 'absolute',
-    top: 0,
-    left: 12,
-    right: 12,
-    height: 1,
-    borderRadius: 1,
-    opacity: 0.7,
   },
 });

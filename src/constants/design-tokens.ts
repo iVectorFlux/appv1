@@ -30,13 +30,13 @@ export const Spacing = {
   '5xl': 64,
 } as const;
 
-/** sm=10, md=12, lg=20, xl=24, full=50% */
+/** sm=8, md=10, lg=12, xl=16, full=50% */
 export const Radius = {
-  sm: 10,
-  md: 12,
-  lg: 20,
-  xl: 24,
-  '2xl': 28,
+  sm: 8,
+  md: 10,
+  lg: 12,
+  xl: 16,
+  '2xl': 20,
   full: 9999,
 } as const;
 
@@ -92,24 +92,24 @@ export const Typography = {
   },
 } as const;
 
-const FOREST_SHADOW = '#2D4739';
+const SLATE_SHADOW = '#0F172A';
 
 const shadowsNative = {
-  sm: { shadowColor: FOREST_SHADOW, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 },
-  md: { shadowColor: FOREST_SHADOW, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
-  lg: { shadowColor: FOREST_SHADOW, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
-  card: { shadowColor: FOREST_SHADOW, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  hero: { shadowColor: FOREST_SHADOW, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 4 },
-  glass: { shadowColor: FOREST_SHADOW, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  sm: { shadowColor: SLATE_SHADOW, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 },
+  md: { shadowColor: SLATE_SHADOW, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
+  lg: { shadowColor: SLATE_SHADOW, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4 },
+  card: { shadowColor: SLATE_SHADOW, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
+  hero: { shadowColor: SLATE_SHADOW, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3 },
+  glass: { shadowColor: SLATE_SHADOW, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
 };
 
 const shadowsWeb = {
-  sm: { boxShadow: '0 1px 2px rgba(45, 71, 57, 0.06)', elevation: 1 },
-  md: { boxShadow: '0 2px 6px rgba(45, 71, 57, 0.08)', elevation: 2 },
-  lg: { boxShadow: '0 4px 12px rgba(45, 71, 57, 0.1)', elevation: 4 },
-  card: { boxShadow: '0 2px 8px rgba(45, 71, 57, 0.06)', elevation: 2 },
-  hero: { boxShadow: '0 4px 16px rgba(45, 71, 57, 0.12)', elevation: 4 },
-  glass: { boxShadow: '0 2px 12px rgba(45, 71, 57, 0.06), 0 0 1px rgba(45, 71, 57, 0.08)', elevation: 2 },
+  sm: { boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)', elevation: 1 },
+  md: { boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)', elevation: 2 },
+  lg: { boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)', elevation: 4 },
+  card: { boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03)', elevation: 1 },
+  hero: { boxShadow: '0 4px 16px rgba(15, 23, 42, 0.07)', elevation: 3 },
+  glass: { boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)', elevation: 1 },
 };
 
 export const Shadows = Platform.OS === 'web' ? shadowsWeb : shadowsNative;

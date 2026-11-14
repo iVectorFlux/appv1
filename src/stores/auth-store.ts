@@ -85,13 +85,21 @@ interface AuthStore extends AuthState {
 
 function mapSupabaseUserToAppUser(
   supabaseUser: { id: string; email?: string; created_at: string },
-  displayName?: string | null
+  profile?: {
+    displayName?: string | null;
+    role?: 'user' | 'admin';
+    companyId?: string | null;
+    companyName?: string | null;
+  }
 ): User {
   return {
     id: supabaseUser.id,
     email: supabaseUser.email ?? undefined,
     username: supabaseUser.email?.split('@')[0] ?? supabaseUser.id.slice(0, 8),
-    displayName: displayName?.trim() || undefined,
+    displayName: profile?.displayName?.trim() || undefined,
+    role: profile?.role ?? 'user',
+    companyId: profile?.companyId ?? null,
+    companyName: profile?.companyName ?? null,
     createdAt: new Date(supabaseUser.created_at).getTime(),
   };
 }
@@ -107,13 +115,44 @@ async function recordSessionStart(userId: string): Promise<void> {
   }
 }
 
-/** Fetch display_name from profiles and return full User. */
+/** Fetch display_name, role, and company_id from profiles (falling back cleanly if role migration isn't applied yet). */
 async function getUserWithProfile(supabaseUser: { id: string; email?: string; created_at: string }): Promise<User> {
   try {
-    const { data } = await supabase.from('profiles').select('display_name').eq('id', supabaseUser.id).maybeSingle();
-    return mapSupabaseUserToAppUser(supabaseUser, data?.display_name);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('display_name, role, company_id')
+      .eq('id', supabaseUser.id)
+      .maybeSingle();
+
+    if (!error && data) {
+      let companyName: string | null = null;
+      if (data.company_id) {
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', data.company_id)
+          .maybeSingle();
+        companyName = (comp?.name as string | undefined) ?? null;
+      }
+      return mapSupabaseUserToAppUser(supabaseUser, {
+        displayName: (data.display_name as string | null) ?? null,
+        role: data.role === 'admin' ? 'admin' : 'user',
+        companyId: (data.company_id as string | null) ?? null,
+        companyName,
+      });
+    }
+
+    // Fallback when migration 00028 (role/company_id columns) hasn't been applied yet
+    const { data: basic } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', supabaseUser.id)
+      .maybeSingle();
+    return mapSupabaseUserToAppUser(supabaseUser, {
+      displayName: (basic?.display_name as string | null) ?? null,
+    });
   } catch {
-    return mapSupabaseUserToAppUser(supabaseUser, null);
+    return mapSupabaseUserToAppUser(supabaseUser);
   }
 }
 
@@ -361,12 +400,41 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
+  /** Re-fetch display name, role, and company from profiles and update user. */
   refreshDisplayName: async () => {
     const { user } = get();
     if (!user?.id) return;
     try {
-      const { data } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
-      const displayName = data?.display_name?.trim() || undefined;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name, role, company_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (!error && data) {
+        let companyName: string | null = null;
+        if (data.company_id) {
+          const { data: comp } = await supabase
+            .from('companies')
+            .select('name')
+            .eq('id', data.company_id)
+            .maybeSingle();
+          companyName = (comp?.name as string | undefined) ?? null;
+        }
+        set((state) => ({
+          user: state.user
+            ? {
+                ...state.user,
+                displayName: (data.display_name as string | null)?.trim() || undefined,
+                role: data.role === 'admin' ? 'admin' : 'user',
+                companyId: (data.company_id as string | null) ?? null,
+                companyName,
+              }
+            : null,
+        }));
+        return;
+      }
+      const { data: basic } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
+      const displayName = (basic?.display_name as string | null)?.trim() || undefined;
       set((state) => ({
         user: state.user ? { ...state.user, displayName } : null,
       }));

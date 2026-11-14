@@ -22,6 +22,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
+import { EnterpriseShell } from '@/components/layout/desktop-sidebar';
 import { useAuthStore } from '@/stores/auth-store';
 import { saveRecoverySession } from '@/services/recovery-storage';
 import { GROUNDING_MODES } from '@/data/grounding-content';
@@ -85,6 +87,7 @@ export default function GroundingScreen() {
     tone?: string | string[];
   }>();
   const colors = useColors();
+  const isDesktop = useWebLaptopLayout();
   const { user } = useAuthStore();
 
   const returnTarget = parseReturnTo(params.returnTo);
@@ -331,11 +334,15 @@ export default function GroundingScreen() {
     };
 
     return (
-      <GlassBackground>
-        <ScreenHeader title="Grounding" onBackPress={exitGrounding} showHomeButton />
+      <EnterpriseShell>
+        <GlassBackground>
+          <ScreenHeader title="Grounding" onBackPress={exitGrounding} showHomeButton />
 
-        <Animated.View style={[st.flexOne, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-          <ScrollView contentContainerStyle={st.selectScroll} showsVerticalScrollIndicator={false}>
+          <Animated.View style={[st.flexOne, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+            <ScrollView
+              contentContainerStyle={[st.selectScroll, isDesktop && st.desktopContent]}
+              showsVerticalScrollIndicator={false}
+            >
             <Text style={st.heading}>What do you want to shift?</Text>
 
             <View style={st.tagRow}>
@@ -372,7 +379,8 @@ export default function GroundingScreen() {
             </View>
           </ScrollView>
         </Animated.View>
-      </GlassBackground>
+        </GlassBackground>
+      </EnterpriseShell>
     );
   }
 
@@ -386,12 +394,14 @@ export default function GroundingScreen() {
   const canComplete = true;
 
   return (
-    <GlassBackground>
-      <ScrollView
-        contentContainerStyle={[
-          st.completeScrollContent,
-          { paddingBottom: Spacing['3xl'] + insets.bottom },
-        ]}
+    <EnterpriseShell>
+      <GlassBackground>
+        <ScrollView
+          contentContainerStyle={[
+            st.completeScrollContent,
+            isDesktop && st.desktopContent,
+            { paddingBottom: Spacing['3xl'] + insets.bottom },
+          ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -440,7 +450,8 @@ export default function GroundingScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
-    </GlassBackground>
+      </GlassBackground>
+    </EnterpriseShell>
   );
 }
 
@@ -450,6 +461,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     flexOne: { flex: 1 },
 
     selectScroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing['2xl'] },
+    desktopContent: { maxWidth: 960, width: '100%', alignSelf: 'center', paddingHorizontal: Spacing['2xl'], paddingTop: Spacing.lg },
     heading: { fontSize: 26, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.lg, letterSpacing: Typography.letterSpacing.snug, lineHeight: 34 },
     sectionLabel: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, color: colors.textMuted, fontFamily: Typography.fontFamily.primary, marginTop: Spacing.xl, marginBottom: Spacing.md, letterSpacing: 0.35 },
 

@@ -1,8 +1,7 @@
 /**
- * Theme - Warm editorial wellness (2026)
+ * Theme - Lumi6 Enterprise (Shadcn Slate & Cobalt System)
  *
- * Primary: Forest Green. Accents: Terracotta, Sage, Warm Tan, Soft Indigo.
- * Cream background, white cards, calm and focused.
+ * Crisp light/dark enterprise surfaces: Zinc/Slate neutrals paired with Cobalt Blue & Indigo.
  */
 
 import type { ColorMode } from '@/stores/theme-store';
@@ -10,22 +9,19 @@ import type { ColorMode } from '@/stores/theme-store';
 export interface ThemeColors {
   // Backgrounds
   background: string;
-  /** Subtle mesh gradient (top-left) */
   backgroundGradientStart: string;
-  /** Subtle mesh gradient (bottom-right) */
   backgroundGradientEnd: string;
   surface: string;
   floating: string;
-  /** Subtle tinted card / section bg */
   surfaceAccent: string;
 
-  /** Card / chrome fill (may sit over blur on native) */
+  // Cards / Chrome
   glass: string;
   glassBorder: string;
   glassHighlight: string;
   glassTint: string;
 
-  // Primary (Forest Green)
+  // Brand / Actions
   primary: string;
   primaryForeground: string;
   secondary: string;
@@ -37,7 +33,7 @@ export interface ThemeColors {
   textMuted: string;
   textLight: string;
 
-  // Border
+  // Borders
   border: string;
   borderLight: string;
 
@@ -50,7 +46,7 @@ export interface ThemeColors {
   warningForeground: string;
   inputBackground: string;
 
-  // Accent (editorial)
+  // Enterprise Accents
   accentTerracotta: string;
   accentSage: string;
   accentWarmTan: string;
@@ -61,105 +57,92 @@ export interface ThemeColors {
   accentWarm: string;
 }
 
-const FOREST = '#2D4739';
-const CREAM = '#FAF9F7';
-const WHITE = '#FFFFFF';
-const TERRACOTTA = '#E07A5F';
-const SAGE = '#3D8B6E';
-const WARM_TAN = '#C4A484';
-const SOFT_INDIGO = '#5C6BC0';
-const BODY_TEXT = '#666666';
-const MUTED = '#888888';
-const LIGHT_GRAY = '#AAAAAA';
-const BORDER = '#EDEAE6';
-const BG_ACCENT = '#F5EDE3';
-
 const lightTheme: ThemeColors = {
-  background: CREAM,
-  backgroundGradientStart: '#FCFAF8',
-  backgroundGradientEnd: '#F3EEE8',
-  surface: BG_ACCENT,
-  floating: WHITE,
-  surfaceAccent: BG_ACCENT,
+  background: '#F8FAFC',
+  backgroundGradientStart: '#FFFFFF',
+  backgroundGradientEnd: '#F1F5F9',
+  surface: '#F1F5F9',
+  floating: '#FFFFFF',
+  surfaceAccent: '#EFF6FF',
 
-  glass: 'rgba(255,255,255,0.94)',
-  glassBorder: BORDER,
-  glassHighlight: 'rgba(45, 71, 57, 0.07)',
+  glass: '#FFFFFF',
+  glassBorder: '#E2E8F0',
+  glassHighlight: 'rgba(15, 23, 42, 0.03)',
   glassTint: 'light',
 
-  primary: FOREST,
-  primaryForeground: WHITE,
-  secondary: BODY_TEXT,
-  secondaryForeground: WHITE,
+  primary: '#2563EB',
+  primaryForeground: '#FFFFFF',
+  secondary: '#0F172A',
+  secondaryForeground: '#FFFFFF',
 
-  textPrimary: FOREST,
-  textSecondary: BODY_TEXT,
-  textMuted: MUTED,
-  textLight: LIGHT_GRAY,
+  textPrimary: '#0F172A',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
+  textLight: '#94A3B8',
 
-  border: BORDER,
-  borderLight: 'rgba(237, 234, 230, 0.8)',
+  border: '#E2E8F0',
+  borderLight: '#F1F5F9',
 
-  destructive: TERRACOTTA,
-  destructiveForeground: WHITE,
-  success: SAGE,
-  successForeground: WHITE,
-  warning: TERRACOTTA,
-  warningForeground: WHITE,
-  inputBackground: WHITE,
+  destructive: '#DC2626',
+  destructiveForeground: '#FFFFFF',
+  success: '#16A34A',
+  successForeground: '#FFFFFF',
+  warning: '#D97706',
+  warningForeground: '#FFFFFF',
+  inputBackground: '#FFFFFF',
 
-  accentTerracotta: TERRACOTTA,
-  accentSage: SAGE,
-  accentWarmTan: WARM_TAN,
-  accentIndigo: SOFT_INDIGO,
-  accentCalm: SAGE,
-  accentEnergy: WARM_TAN,
-  accentSoft: SOFT_INDIGO,
-  accentWarm: TERRACOTTA,
+  accentTerracotta: '#E11D48',
+  accentSage: '#0EA5E9',
+  accentWarmTan: '#F59E0B',
+  accentIndigo: '#4F46E5',
+  accentCalm: '#0284C7',
+  accentEnergy: '#D97706',
+  accentSoft: '#6366F1',
+  accentWarm: '#E11D48',
 };
 
 const darkTheme: ThemeColors = {
-  background: '#1A211E',
-  backgroundGradientStart: '#1E2622',
-  backgroundGradientEnd: '#171C1A',
-  surface: '#242D29',
-  floating: '#2D3732',
-  surfaceAccent: '#2D3732',
+  background: '#09090B',
+  backgroundGradientStart: '#0F172A',
+  backgroundGradientEnd: '#09090B',
+  surface: '#18181B',
+  floating: '#18181B',
+  surfaceAccent: '#1E293B',
 
-  glass: 'rgba(45, 55, 50, 0.88)',
-  glassBorder: 'rgba(255,255,255,0.12)',
-  glassHighlight: 'rgba(255,255,255,0.10)',
+  glass: '#18181B',
+  glassBorder: '#27272A',
+  glassHighlight: 'rgba(255, 255, 255, 0.04)',
   glassTint: 'dark',
 
-  primary: '#3D8B6E',
-  primaryForeground: WHITE,
-  secondary: '#94A39B',
-  secondaryForeground: '#1A211E',
+  primary: '#3B82F6',
+  primaryForeground: '#FFFFFF',
+  secondary: '#E4E4E7',
+  secondaryForeground: '#09090B',
 
-  textPrimary: '#F5F7F6',
-  textSecondary: '#B8C4BE',
-  textMuted: '#8A9A92',
-  textLight: '#6B7A72',
+  textPrimary: '#FAFAFA',
+  textSecondary: '#A1A1AA',
+  textMuted: '#71717A',
+  textLight: '#52525B',
 
-  border: 'rgba(255,255,255,0.1)',
-  borderLight: 'rgba(255,255,255,0.06)',
+  border: '#27272A',
+  borderLight: 'rgba(255, 255, 255, 0.06)',
 
-  destructive: '#E07A5F',
-  destructiveForeground: WHITE,
-  success: '#4DA67A',
-  successForeground: WHITE,
-  warning: '#E07A5F',
-  warningForeground: WHITE,
-  inputBackground: '#242D29',
+  destructive: '#EF4444',
+  destructiveForeground: '#FFFFFF',
+  success: '#22C55E',
+  successForeground: '#FFFFFF',
+  warning: '#F59E0B',
+  warningForeground: '#09090B',
+  inputBackground: '#18181B',
 
-  accentTerracotta: '#E07A5F',
-  accentSage: '#4DA67A',
-  accentWarmTan: '#D4B896',
-  accentIndigo: '#7C8DE0',
-  accentCalm: '#4DA67A',
-  accentEnergy: '#D4B896',
-  accentSoft: '#7C8DE0',
-  accentWarm: '#E07A5F',
+  accentTerracotta: '#FB7185',
+  accentSage: '#38BDF8',
+  accentWarmTan: '#FBBF24',
+  accentIndigo: '#818CF8',
+  accentCalm: '#38BDF8',
+  accentEnergy: '#FBBF24',
+  accentSoft: '#818CF8',
+  accentWarm: '#FB7185',
 };
 
 export const emotionColors: Record<string, keyof ThemeColors> = {

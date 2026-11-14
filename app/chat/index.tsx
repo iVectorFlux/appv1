@@ -106,7 +106,7 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
   coach: {
     label: 'Coach',
     icon: 'briefcase-outline',
-    color: '#3D8B6E',
+    color: '#2563EB',
     intro: (name) => name
       ? `Hey ${name}, ready when you are. Ask about leadership, work skills, or growth, and learn something new step by step right here.`
       : "Ready when you are. Ask about leadership, work skills, or growth, and learn something new step by step right here.",
@@ -230,9 +230,9 @@ function EmotionTags({ emotions, colors }: { emotions: string[]; colors: ReturnT
           style={[
             sgStyles.emotionTag,
             {
-              backgroundColor: isDark ? 'rgba(74,222,128,0.15)' : 'rgba(45,71,57,0.10)',
+              backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.08)',
               borderWidth: 1,
-              borderColor: isDark ? 'rgba(74,222,128,0.25)' : 'rgba(45,71,57,0.15)',
+              borderColor: isDark ? 'rgba(59,130,246,0.28)' : 'rgba(37,99,235,0.18)',
             },
           ]}
         >

@@ -20,7 +20,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { getSupabaseConnectionInfo } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
+import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -197,11 +197,17 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   content: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 440,
     alignSelf: 'center',
+    backgroundColor: colors.floating,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: Spacing['2xl'],
+    ...Shadows.md,
   },
   header: {
-    marginBottom: Spacing['4xl'],
+    marginBottom: Spacing['2xl'],
     alignItems: 'center',
   },
   logo: {

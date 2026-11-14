@@ -25,6 +25,11 @@ export interface LearningModule {
   keyTakeaways: string[];
   /** Set when this row is built from `learning_content` (see episodeToDetailModule). */
   catalogEqType?: 'B2C' | 'B2B';
+  domainKey?: string;
+  competencyKey?: string;
+  shortContent?: string;
+  longContent?: string;
+  estimatedReadMinutes?: number;
 }
 
 // S3 bucket (us-west-1) - same host as DB-seeded assets

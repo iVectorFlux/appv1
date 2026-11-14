@@ -507,7 +507,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { fontSize: Typography.fontSize.base, color: colors.textSecondary },
   // Intro
-  introScrollContent: { flexGrow: 1, padding: Spacing.xl, paddingBottom: Spacing['2xl'] },
+  introScrollContent: { flexGrow: 1, padding: Spacing.xl, paddingBottom: Spacing['2xl'], width: '100%', maxWidth: 820, alignSelf: 'center' },
   introContainer: { alignItems: 'center', justifyContent: 'center', paddingBottom: Spacing.xl },
   introIconCircle: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
   introTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.md },
@@ -533,7 +533,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   testHeaderText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontWeight: Typography.fontWeight.semibold },
   progressBar: { height: 4, backgroundColor: colors.surface },
   progressFill: { height: '100%', backgroundColor: colors.primary },
-  scrollContent: { flexGrow: 1, padding: Spacing.lg, justifyContent: 'center' },
+  scrollContent: { flexGrow: 1, padding: Spacing.lg, justifyContent: 'center', width: '100%', maxWidth: 820, alignSelf: 'center' },
   questionWrapper: { flex: 1, justifyContent: 'center' },
   questionContent: { gap: Spacing.xl },
   questionPrompt: { fontSize: Typography.fontSize.xl, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, textAlign: 'center', fontFamily: Typography.fontFamily.heading, lineHeight: Typography.lineHeight.tight * Typography.fontSize.xl },
@@ -546,7 +546,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   actionContainer: { padding: Spacing.lg, paddingTop: Spacing.sm, gap: Spacing.md },
   skipText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, textAlign: 'center' },
   // Results
-  resultsContainer: { padding: Spacing.xl, paddingTop: Platform.OS === 'ios' ? Spacing['3xl'] : Spacing.xl, paddingBottom: Spacing['5xl'] },
+  resultsContainer: { padding: Spacing.xl, paddingTop: Platform.OS === 'ios' ? Spacing['3xl'] : Spacing.xl, paddingBottom: Spacing['5xl'], width: '100%', maxWidth: 880, alignSelf: 'center' },
   resultsHeader: { marginBottom: Spacing['2xl'] },
   resultsTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.xs },
   resultsSubtitle: { fontSize: Typography.fontSize.sm, color: colors.textSecondary },

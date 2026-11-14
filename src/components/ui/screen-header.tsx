@@ -84,7 +84,17 @@ export function ScreenHeader({
   );
 
   return (
-    <View style={[styles.row, { paddingTop, paddingBottom: Spacing.sm }]}>
+    <View
+      style={[
+        styles.row,
+        {
+          paddingTop,
+          paddingBottom: Spacing.sm,
+          borderBottomColor: colors.border,
+          backgroundColor: colors.floating,
+        },
+      ]}
+    >
       <View style={styles.sideCol}>
         <TouchableOpacity
           onPress={handleBack}

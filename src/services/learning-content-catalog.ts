@@ -6,6 +6,8 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { EQDimension } from '@/types/eq-assessment';
 import { DIMENSION_INFO, LEARNING_MODULES, type LearningModule } from '@/data/learning-content';
 import { b2bEpisodeSubtitle } from '@/data/learning-b2b-taxonomy';
+import bundledRows from '@/data/learning-content-rows.json';
+import { fetchCompetencyGuides } from '@/services/eq-curriculum-service';
 
 export type LearningAudience = 'B2C' | 'B2B';
 
@@ -26,6 +28,12 @@ export type LearningContentRow = {
   language: string;
   /** Curriculum order (lower = earlier). Same value for audio+video of one episode. */
   sort_order?: number;
+  /** Database-driven short reading summary for this episode. */
+  short_content?: string | null;
+  /** Database-driven long first-principles reading material for this episode. */
+  long_content?: string | null;
+  /** Estimated reading time in minutes. */
+  estimated_read_minutes?: number | null;
 };
 
 export type LearningEpisode = {
@@ -43,6 +51,9 @@ export type LearningEpisode = {
   icon: string;
   color: string;
   sortOrder: number;
+  shortContent?: string;
+  longContent?: string;
+  estimatedReadMinutes?: number;
 };
 
 function groupKey(row: Pick<LearningContentRow, 'eq_type' | 'domain' | 'competency' | 'episode_title'>): string {
@@ -136,7 +147,7 @@ export function mapLearningRowToDimension(domain: string, competency: string): E
   return 'self_awareness';
 }
 
-function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
+export function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
   const map = new Map<string, LearningContentRow[]>();
   for (const r of rows) {
     const k = groupKey(r);
@@ -157,6 +168,22 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
     const sortOrder = Math.min(...group.map((r) => r.sort_order ?? 100));
     const videoUrl = normalizeS3MediaUrl(video?.s3_link);
     const audioUrl = normalizeS3MediaUrl(audio?.s3_link);
+    const shortContent =
+      video?.short_content?.trim() ||
+      audio?.short_content?.trim() ||
+      anchor.short_content?.trim() ||
+      undefined;
+    const longContent =
+      video?.long_content?.trim() ||
+      audio?.long_content?.trim() ||
+      anchor.long_content?.trim() ||
+      undefined;
+    const rawReadMins =
+      video?.estimated_read_minutes ??
+      audio?.estimated_read_minutes ??
+      anchor.estimated_read_minutes;
+    const estimatedReadMinutes =
+      typeof rawReadMins === 'number' && rawReadMins > 0 ? rawReadMins : undefined;
     out.push({
       episodeKey: groupKey(anchor),
       eqType,
@@ -171,6 +198,9 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
       icon: info.icon,
       color: info.color,
       sortOrder,
+      shortContent,
+      longContent,
+      estimatedReadMinutes,
     });
   }
 
@@ -179,19 +209,28 @@ function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
 }
 
 export async function fetchLearningContentRows(language = 'en'): Promise<LearningContentRow[]> {
-  if (!isSupabaseConfigured()) return [];
-  const { data, error } = await supabase
-    .from('learning_content')
-    .select('*')
-    .eq('language', language)
-    .eq('content_for', 'EQ')
-    .order('sort_order', { ascending: true })
-    .order('episode_title', { ascending: true });
-  if (error) {
-    console.warn('[learning_content] fetch failed:', error.message);
-    return [];
+  if (!isSupabaseConfigured()) {
+    return (bundledRows as LearningContentRow[]).filter(
+      (r) => r.language === language && r.content_for === 'EQ'
+    );
   }
-  return (data ?? []) as LearningContentRow[];
+  const [{ data, error }] = await Promise.all([
+    supabase
+      .from('learning_content')
+      .select('*')
+      .eq('language', language)
+      .eq('content_for', 'EQ')
+      .order('sort_order', { ascending: true })
+      .order('episode_title', { ascending: true }),
+    fetchCompetencyGuides(),
+  ]);
+  if (error || !data?.length) {
+    if (error) console.warn('[learning_content] fetch failed, using bundled catalog:', error.message);
+    return (bundledRows as LearningContentRow[]).filter(
+      (r) => r.language === language && r.content_for === 'EQ'
+    );
+  }
+  return data as LearningContentRow[];
 }
 
 export async function fetchLearningEpisodes(language = 'en'): Promise<LearningEpisode[]> {
@@ -200,7 +239,16 @@ export async function fetchLearningEpisodes(language = 'en'): Promise<LearningEp
 }
 
 export async function fetchLearningEpisodeSiblings(row: LearningContentRow): Promise<LearningContentRow[]> {
-  if (!isSupabaseConfigured()) return [row];
+  const localSiblings = (bundledRows as LearningContentRow[]).filter(
+    (x) =>
+      x.content_for === row.content_for &&
+      x.eq_type === row.eq_type &&
+      x.domain === row.domain &&
+      x.competency === row.competency &&
+      x.episode_title === row.episode_title &&
+      x.language === row.language
+  );
+  if (!isSupabaseConfigured()) return localSiblings.length ? localSiblings : [row];
   const { data, error } = await supabase
     .from('learning_content')
     .select('*')
@@ -210,14 +258,18 @@ export async function fetchLearningEpisodeSiblings(row: LearningContentRow): Pro
     .eq('competency', row.competency)
     .eq('episode_title', row.episode_title)
     .eq('language', row.language);
-  if (error || !data?.length) return [row];
+  if (error || !data?.length) return localSiblings.length ? localSiblings : [row];
   return data as LearningContentRow[];
 }
 
 export async function fetchLearningContentRowById(id: string): Promise<LearningContentRow | null> {
-  if (!isSupabaseConfigured()) return null;
-  const { data, error } = await supabase.from('learning_content').select('*').eq('id', id).maybeSingle();
-  if (error || !data) return null;
+  const local = (bundledRows as LearningContentRow[]).find((x) => x.id === id) ?? null;
+  if (!isSupabaseConfigured()) return local;
+  const [{ data, error }] = await Promise.all([
+    supabase.from('learning_content').select('*').eq('id', id).maybeSingle(),
+    fetchCompetencyGuides(),
+  ]);
+  if (error || !data) return local;
   return data as LearningContentRow;
 }
 
@@ -245,6 +297,11 @@ export function episodeToDetailModule(ep: LearningEpisode): LearningModule {
       ? ep.description.split(/(?<=[.!?])\s+/).slice(0, 4).filter(Boolean)
       : [],
     catalogEqType: ep.eqType,
+    domainKey: ep.domain,
+    competencyKey: ep.competency,
+    shortContent: ep.shortContent,
+    longContent: ep.longContent,
+    estimatedReadMinutes: ep.estimatedReadMinutes,
   };
 }
 
@@ -287,5 +344,8 @@ export function staticModulesAsEpisodes(): LearningEpisode[] {
     icon: m.icon,
     color: m.color,
     sortOrder: 100 + i * 10,
+    shortContent: m.shortContent,
+    longContent: m.longContent,
+    estimatedReadMinutes: m.estimatedReadMinutes,
   }));
 }
