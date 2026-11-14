@@ -11,7 +11,9 @@ import { applyCors, handleCorsPreflight } from './_lib/cors';
 const AGENT_TIMEOUT_MS = 55_000;
 
 function getAgentBaseUrl(): string | null {
-  const url = process.env.LUMI6_AGENT_SERVICE_URL?.trim();
+  const url =
+    process.env.LUMIXEQ_AGENT_SERVICE_URL?.trim() ||
+    process.env.LUMI6_AGENT_SERVICE_URL?.trim();
   if (!url || !url.startsWith('http')) return null;
   return url.replace(/\/$/, '');
 }

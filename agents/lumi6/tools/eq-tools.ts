@@ -1,5 +1,5 @@
 /**
- * Lumi6 EQ agent tools — ADK FunctionTool (not prompt wrappers).
+ * LumixEQ agent tools — ADK FunctionTool (not prompt wrappers).
  * Google ADK runs the tool loop; Gemini decides when to invoke each tool.
  */
 
@@ -86,7 +86,7 @@ export const recommendGrounding = new FunctionTool({
 export const recommendLearningPath = new FunctionTool({
   name: 'recommend_learning_path',
   description:
-    'Suggest a Skill Lab skill when the conversation clearly maps to professional growth in the Lumi6 catalog.',
+    'Suggest a Skill Lab skill when the conversation clearly maps to professional growth in the LumixEQ catalog.',
   parameters: z.object({
     skillId: z.enum(SKILL_IDS),
     label: z.string().describe('Human-readable skill name for the UI.'),

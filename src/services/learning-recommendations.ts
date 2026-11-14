@@ -13,7 +13,7 @@ import { formatCatalogLabel } from '@/data/eq-curriculum';
 import { normalizeB2bCatalogKey } from '@/data/learning-b2b-taxonomy';
 import type { SequencedCatalogState, SequencedEpisode } from '@/services/learning-sequence';
 
-const GOALS_KEY_PREFIX = 'lumi6_onboarding_goals:';
+const GOALS_KEY_PREFIX = 'lumixeq_onboarding_goals:';
 const goalListeners = new Set<() => void>();
 
 export function subscribeOnboardingGoals(listener: () => void): () => void {

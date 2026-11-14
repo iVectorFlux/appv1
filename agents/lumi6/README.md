@@ -1,6 +1,6 @@
-# Lumi6 EQ Agent (Google ADK)
+# LumixEQ Agent (Google ADK)
 
-Native [Agent Development Kit](https://adk.dev) agent for the Lumi6 **Companion** (Inner Ally + Coach) — **not** a Gemini API wrapper.
+Native [Agent Development Kit](https://adk.dev) agent for the LumixEQ **Companion** (Inner Ally + Coach) — **not** a Gemini API wrapper.
 
 ## Quick start
 

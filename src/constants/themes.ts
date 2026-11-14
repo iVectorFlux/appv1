@@ -1,5 +1,5 @@
 /**
- * Theme - Lumi6 Enterprise (Shadcn Slate & Cobalt System)
+ * Theme - LumixEQ (Shadcn Slate & Cobalt System)
  *
  * Crisp light/dark enterprise surfaces: Zinc/Slate neutrals paired with Cobalt Blue & Indigo.
  */

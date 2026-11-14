@@ -185,7 +185,7 @@ export function DesktopSidebar() {
           <Ionicons name="sparkles" size={16} color="#FFFFFF" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.brandName, { color: colors.textPrimary }]}>Lumi6</Text>
+          <Text style={[styles.brandName, { color: colors.textPrimary }]}>LumixEQ</Text>
           <Text style={[styles.brandSub, { color: colors.textMuted }]} numberOfLines={1}>
             {user?.companyName || 'Emotional Intelligence'}
           </Text>

@@ -1,4 +1,4 @@
-# Google ADK integration — Lumi6 EQ platform
+# Google ADK integration — LumixEQ platform
 
 ## What Google is asking for (vs what you have today)
 
@@ -9,13 +9,13 @@
 | Groq/Gemini called directly from Vercel handlers | Agent runtime on **Cloud Run** (`adk deploy cloud_run`) |
 | One-shot completion | Multi-step: reason → tool → observe → reply |
 
-Your `api/_lib/llm-service.ts` and `api/chat.ts` are **wrappers**. Google’s task is to expose a **first-class ADK agent** that Lumi6 calls as a service.
+Your `api/_lib/llm-service.ts` and `api/chat.ts` are **wrappers**. Google’s task is to expose a **first-class ADK agent** that LumixEQ calls as a service.
 
 ## Target architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Lumi6 app (Expo)                                           │
+│  LumixEQ app (Expo)                                         │
 │  Companion · Skill Lab · Learn                              │
 └───────────────────────────┬─────────────────────────────────┘
                             │ POST /api/agent (session + message)

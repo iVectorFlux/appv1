@@ -174,7 +174,7 @@ export default function OnboardingScreen() {
               </View>
 
               <Text style={[styles.title, { color: colors.textPrimary }]}>
-                Welcome to Lumi6 EQ
+                Welcome to LumixEQ
               </Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 Tell us what you want to prioritize so we can tailor your dashboard recommendations across all 12 workplace EQ competencies.
