@@ -22,6 +22,7 @@ import {
   Animated,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,10 @@ import {
   startEQAssessmentSession,
   saveResponseToSession,
   completeEQAssessmentSession,
+  saveEQAssessmentResult,
 } from '@/services/eq-storage';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { removeCacheSegment, cacheSegments } from '@/lib/async-data-cache';
 import {
   AnimationDuration,
   AnimationConfigs,
@@ -85,6 +89,11 @@ export default function FullEQTestScreen() {
   const [responses, setResponses] = useState<EQResponse[]>([]);
   const [result, setResult] = useState<EQAssessmentResult | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedToCloud, setSavedToCloud] = useState<boolean | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const sessionPromiseRef = useRef<Promise<string | null> | null>(null);
 
   // Per-question state
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
@@ -254,14 +263,54 @@ export default function FullEQTestScreen() {
     restoreStateFromResponse(prevQuestion, prevResponse);
   };
 
+  const persistAssessmentResult = useCallback(
+    async (assessmentResult: EQAssessmentResult, startTimeMs: number) => {
+      const uid = user?.id;
+      if (!uid || !isSupabaseConfigured()) {
+        setSavedToCloud(false);
+        return;
+      }
+      setSaving(true);
+      setSaveError(null);
+      setSavedToCloud(null);
+      try {
+        let sid = sessionIdRef.current;
+        if (!sid && sessionPromiseRef.current) {
+          sid = await sessionPromiseRef.current.catch(() => null);
+        }
+        if (sid) {
+          try {
+            await completeEQAssessmentSession(sid, assessmentResult, startTimeMs);
+          } catch (completeErr) {
+            console.warn('[Full EQ Test] completeEQAssessmentSession failed, falling back to full save:', completeErr);
+            await saveEQAssessmentResult(assessmentResult, questions, startTimeMs);
+          }
+        } else {
+          await saveEQAssessmentResult(assessmentResult, questions, startTimeMs);
+        }
+        await removeCacheSegment(cacheSegments.eqScores(uid));
+        setSavedToCloud(true);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Could not save results to your account.';
+        console.error('[Full EQ Test] Failed to save assessment:', err);
+        setSaveError(msg);
+        setSavedToCloud(false);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.id, questions]
+  );
+
   const recordResponse = (response: EQResponse) => {
     const newResponses = [...responses, response];
     const orderIndex = newResponses.length - 1;
     setResponses(newResponses);
 
-    if (user?.id && sessionId && currentQuestion) {
+    const activeSid = sessionIdRef.current ?? sessionId;
+    if (user?.id && activeSid && currentQuestion) {
       saveResponseToSession(
-        sessionId,
+        activeSid,
         user.id,
         currentQuestion.id,
         currentQuestion.type,
@@ -285,11 +334,7 @@ export default function FullEQTestScreen() {
       );
       setResult(assessmentResult);
       setScreenState('results');
-      if (user?.id && sessionId) {
-        completeEQAssessmentSession(sessionId, assessmentResult, sessionStartTime).catch((err) => {
-          console.error('[Full EQ Test] Failed to complete session:', err);
-        });
-      }
+      void persistAssessmentResult(assessmentResult, sessionStartTime);
     }
   };
 
@@ -308,11 +353,7 @@ export default function FullEQTestScreen() {
       );
       setResult(assessmentResult);
       setScreenState('results');
-      if (user?.id && sessionId) {
-        completeEQAssessmentSession(sessionId, assessmentResult, sessionStartTime).catch((err) => {
-          console.error('[Full EQ Test] Failed to complete session:', err);
-        });
-      }
+      void persistAssessmentResult(assessmentResult, sessionStartTime);
     }
   };
 
@@ -413,14 +454,23 @@ export default function FullEQTestScreen() {
               // Transition immediately - don't let a slow DB call block the UI
               setScreenState('test');
               // Fire session creation in the background with a timeout
-              const SESSION_TIMEOUT_MS = 4000;
+              sessionIdRef.current = null;
+              setSessionId(null);
+              const SESSION_TIMEOUT_MS = 6000;
               const sessionPromise = startEQAssessmentSession(user.id, 'full_test', questions.length);
               const timeoutPromise = new Promise<string>((_, reject) =>
                 setTimeout(() => reject(new Error('Session start timed out')), SESSION_TIMEOUT_MS)
               );
-              Promise.race([sessionPromise, timeoutPromise])
-                .then((sid) => setSessionId(sid))
-                .catch((e) => console.error('[Full EQ Test] Failed to start session:', e));
+              sessionPromiseRef.current = Promise.race([sessionPromise, timeoutPromise])
+                .then((sid) => {
+                  sessionIdRef.current = sid;
+                  setSessionId(sid);
+                  return sid;
+                })
+                .catch((e) => {
+                  console.error('[Full EQ Test] Failed to start session:', e);
+                  return null;
+                });
             }}
             size="lg"
             fullWidth
@@ -459,6 +509,34 @@ export default function FullEQTestScreen() {
             {getScoreLevel(result.overallScore).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
           </Text>
         </View>
+
+        {saving ? (
+          <View style={styles.saveStatusRow}>
+            <ActivityIndicator color={colors.primary} size="small" />
+            <Text style={[styles.saveNote, { color: colors.textSecondary }]}>Saving results to your account…</Text>
+          </View>
+        ) : saveError ? (
+          <View style={styles.saveStatusRow}>
+            <Text style={[styles.saveNote, { color: colors.destructive }]}>{saveError}</Text>
+            <TouchableOpacity
+              onPress={() => void persistAssessmentResult(result, sessionStartTime)}
+              style={styles.retrySaveBtn}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.retrySaveText, { color: colors.primary }]}>Retry save</Text>
+            </TouchableOpacity>
+          </View>
+        ) : savedToCloud ? (
+          <Text style={[styles.saveNote, { color: colors.primary, marginBottom: Spacing.lg }]}>
+            Results saved to your account and Progress.
+          </Text>
+        ) : savedToCloud === false ? (
+          <Text style={[styles.saveNote, { color: colors.textSecondary, marginBottom: Spacing.lg }]}>
+            {isSupabaseConfigured()
+              ? 'Results could not be synced. Your report is still shown below.'
+              : 'Report is shown on this device only (cloud sync not configured).'}
+          </Text>
+        ) : null}
         
         {/* Dimension Breakdown */}
         <View style={styles.dimensionsCard}>
@@ -586,12 +664,21 @@ export default function FullEQTestScreen() {
           </View>
         </View>
         
-        <Button
-          title="Done"
-          onPress={() => router.replace('/(tabs)/profile')}
-          size="lg"
-          fullWidth
-        />
+        <View style={{ gap: Spacing.md }}>
+          <Button
+            title="View Progress"
+            onPress={() => router.replace('/(tabs)/progress')}
+            variant="secondary"
+            size="lg"
+            fullWidth
+          />
+          <Button
+            title="Done"
+            onPress={() => router.replace('/(tabs)/profile')}
+            size="lg"
+            fullWidth
+          />
+        </View>
         
         <Text style={styles.disclaimerText}>
           This assessment is for self-reflection purposes and is not a clinical diagnosis.
@@ -1901,5 +1988,23 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: Spacing.xl,
+  },
+  saveStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  saveNote: {
+    fontSize: Typography.fontSize.sm,
+  },
+  retrySaveBtn: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+  },
+  retrySaveText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
   },
 });

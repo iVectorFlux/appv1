@@ -1,8 +1,8 @@
 /**
- * Progress & Report - Last EQ & Big Five scores, learning / Skill Lab activity.
+ * Progress & Report - Last EQ & Big Five scores and learning activity.
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   RefreshControl,
   Animated,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { DIMENSION_INFO } from '@/data/learning-content';
@@ -24,7 +24,6 @@ import { getLatestBig5Assessment, type Big5AssessmentRow } from '@/services/big5
 import {
   EMPTY_INSIGHTS_LEARNING_BUNDLE,
   loadInsightsLearningBundle,
-  skillDisplayName,
   type InsightsLearningBundle,
 } from '@/services/insights-learning-bundle';
 import { readCacheJson, writeCacheJson, cacheSegments } from '@/lib/async-data-cache';
@@ -32,7 +31,6 @@ import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { AssessmentSnapshotCard } from '@/components/assessment-snapshot-card';
-import { readTraitTestLatest, type TraitTestLatestCache } from '@/lib/trait-test-cache';
 import { ShimmerCardBlock, ShimmerBox } from '@/components/ui/shimmer';
 import type { EQDimension } from '@/types/eq-assessment';
 
@@ -46,7 +44,7 @@ type EqScoreRow = Awaited<ReturnType<typeof getEQScores>>[number];
 function isValidInsightsBundle(b: unknown): b is InsightsLearningBundle {
   if (!b || typeof b !== 'object') return false;
   const o = b as Record<string, unknown>;
-  return typeof o.assistInnerAllyMessages === 'number' && Array.isArray(o.catalogDetails) && o.skillProgress !== undefined;
+  return typeof o.assistInnerAllyMessages === 'number' && Array.isArray(o.catalogDetails);
 }
 
 const SCORE_RING_SIZE = 140;
@@ -134,8 +132,8 @@ const ringStyles = StyleSheet.create({
 
 // ── Dimension bar ─────────────────────────────────────────────────────
 
-function DimensionBar({ label, score, maxScore = 100, color, icon, colors }: {
-  label: string; score: number; maxScore?: number; color: string;
+function DimensionBar({ label, score, displayValue, maxScore = 100, color, icon, colors }: {
+  label: string; score: number; displayValue?: string; maxScore?: number; color: string;
   icon: keyof typeof Ionicons.glyphMap; colors: ReturnType<typeof useColors>;
 }) {
   const pct = Math.min(score / maxScore, 1);
@@ -156,7 +154,7 @@ function DimensionBar({ label, score, maxScore = 100, color, icon, colors }: {
       <View style={dimStyles.body}>
         <View style={dimStyles.labelRow}>
           <Text style={[dimStyles.label, { color: colors.textPrimary }]} numberOfLines={1}>{label}</Text>
-          <Text style={[dimStyles.value, { color: colors.textSecondary }]}>{score}</Text>
+          <Text style={[dimStyles.value, { color: colors.textSecondary }]}>{displayValue ?? score}</Text>
         </View>
         <View style={[dimStyles.track, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
           <Animated.View style={[dimStyles.fill, { width: barWidth, backgroundColor: color }]} />
@@ -228,37 +226,13 @@ const epStyles = StyleSheet.create({
   fill: { height: 4, borderRadius: 2 },
 });
 
-// ── Stat pill (small stat with icon) ──────────────────────────────────
-
-function StatPill({ icon, value, label, color, colors }: {
-  icon: keyof typeof Ionicons.glyphMap; value: string | number; label: string; color: string; colors: ReturnType<typeof useColors>;
-}) {
-  return (
-    <View style={spStyles.pill}>
-      <View style={[spStyles.iconWrap, { backgroundColor: color + '18' }]}>
-        <Ionicons name={icon} size={18} color={color} />
-      </View>
-      <Text style={[spStyles.value, { color: colors.textPrimary }]}>{value}</Text>
-      <Text style={[spStyles.label, { color: colors.textMuted }]}>{label}</Text>
-    </View>
-  );
-}
-
-const spStyles = StyleSheet.create({
-  pill: { alignItems: 'center', flex: 1, paddingVertical: 12 },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  value: { fontSize: 20, fontWeight: '700', letterSpacing: -0.5 },
-  label: { fontSize: 11, fontWeight: '500', marginTop: 2, textAlign: 'center' },
-});
-
-// ── Data hook (unchanged logic) ───────────────────────────────────────
+// ── Data hook ─────────────────────────────────────────────────────────
 
 function useProgressData() {
   const { user, isLoading: authLoading } = useAuthStore();
 
   const [eqScores, setEqScores] = useState<Awaited<ReturnType<typeof getEQScores>>>([]);
   const [big5Latest, setBig5Latest] = useState<Big5AssessmentRow | null>(null);
-  const [traitTestLatest, setTraitTestLatest] = useState<TraitTestLatestCache | null>(null);
   const [learningBundle, setLearningBundle] = useState<InsightsLearningBundle>(EMPTY_INSIGHTS_LEARNING_BUNDLE);
   const [learningHydrated, setLearningHydrated] = useState(false);
 
@@ -271,11 +245,22 @@ function useProgressData() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const cancelledRef = useRef(false);
 
+  const retry = useCallback(() => {
+    setRefreshTrigger((t) => t + 1);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!authLoading && user?.id) {
+        setRefreshTrigger((t) => t + 1);
+      }
+    }, [authLoading, user?.id])
+  );
+
   useEffect(() => {
     if (authLoading || !user?.id) {
       setEqScores([]);
       setBig5Latest(null);
-      setTraitTestLatest(null);
       setLearningBundle(EMPTY_INSIGHTS_LEARNING_BUNDLE);
       setLearningHydrated(false);
       return;
@@ -289,6 +274,7 @@ function useProgressData() {
     setLearningHydrated(false);
 
     let hadEqCache = false;
+    let hadBig5Cache = false;
     let hadBundleCache = false;
 
     const safetyTimer = setTimeout(() => {
@@ -328,6 +314,7 @@ function useProgressData() {
             setBig5Latest(null);
           } else {
             setBig5Latest(cachedBig5 as Big5AssessmentRow);
+            hadBig5Cache = true;
           }
         }
         if (isValidInsightsBundle(cachedBundle)) {
@@ -374,7 +361,9 @@ function useProgressData() {
             void writeCacheJson(cacheSegments.big5Latest(user.id), { __noRow: true } as { __noRow: true });
           }
         })
-        .catch(() => { if (!cancelledRef.current) setBig5Latest(null); });
+        .catch(() => {
+          if (!cancelledRef.current && !hadBig5Cache) setBig5Latest(null);
+        });
 
       withTimeout(loadInsightsLearningBundle(user.id), LEARNING_BUNDLE_TIMEOUT_MS)
         .then((b) => {
@@ -397,20 +386,6 @@ function useProgressData() {
     return () => { cancelledRef.current = true; clearTimeout(safetyTimer); };
   }, [user?.id, refreshTrigger, authLoading]);
 
-  useEffect(() => {
-    if (authLoading || !user?.id) {
-      setTraitTestLatest(null);
-      return;
-    }
-    let cancelled = false;
-    void readTraitTestLatest(user.id).then((row) => {
-      if (!cancelled) setTraitTestLatest(row);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, refreshTrigger, authLoading]);
-
   const eqSummary = useMemo(() => {
     if (eqScores.length === 0) return null;
     const n = eqScores.length;
@@ -429,22 +404,12 @@ function useProgressData() {
 
   const learningSummary = useMemo(() => {
     const b = learningBundle;
-    const skillList = Object.values(b.skillProgress);
-    const totalSkillSessions = skillList.reduce((s, p) => s + p.sessionsCompleted, 0);
-    const totalScenarios = skillList.reduce((s, p) => s + p.scenariosAttempted, 0);
-    const topSkills = [...skillList]
-      .sort((a, bx) => bx.sessionsCompleted - a.sessionsCompleted)
-      .slice(0, 6)
-      .map((p) => ({ id: p.skillId, name: skillDisplayName(p.skillId), completed: p.sessionsCompleted, attempted: p.scenariosAttempted, lastAt: p.lastPracticedAt }));
-    const hasRealActivity = b.catalogEpisodesEngaged > 0 || totalSkillSessions > 0;
+    const hasRealActivity = b.catalogEpisodesEngaged > 0;
     return {
       emptyLearning: !hasRealActivity,
       catalogEpisodesEngaged: b.catalogEpisodesEngaged,
       catalogEpisodesCompleteBoth: b.catalogEpisodesCompleteBoth,
       catalogDetails: b.catalogDetails,
-      totalSkillSessions,
-      totalScenarios,
-      topSkills,
     };
   }, [learningBundle]);
 
@@ -456,13 +421,12 @@ function useProgressData() {
     learningHydrated,
     learningSummary,
     big5Latest,
-    traitTestLatest,
     loadingEq,
     loadingLearning,
     errorEq,
     errorLearning,
     supabaseOn: isSupabaseConfigured(),
-    retry: () => setRefreshTrigger((t) => t + 1),
+    retry,
   };
 }
 
@@ -494,15 +458,17 @@ export default function ProgressScreen() {
     return { scores: row.scores, completedAt: row.completed_at };
   }, [d.big5Latest]);
 
-  const lastTraitTest = useMemo(() => {
-    const t = d.traitTestLatest;
-    if (!t?.completedAt) return null;
-    return {
-      overall0to100: t.overall0to100,
-      summaryLine: t.summaryLine,
-      completedAt: t.completedAt,
-    };
-  }, [d.traitTestLatest]);
+  const big5Traits = useMemo(() => {
+    if (!lastBig5) return [];
+    const s = lastBig5.scores;
+    return [
+      { key: 'openness', label: 'Openness', score: s.openness, color: colors.accentIndigo, icon: 'sparkles-outline' as const },
+      { key: 'conscientiousness', label: 'Conscientiousness', score: s.conscientiousness, color: colors.primary, icon: 'checkmark-done-outline' as const },
+      { key: 'extraversion', label: 'Extraversion', score: s.extraversion, color: colors.accentEnergy, icon: 'people-outline' as const },
+      { key: 'agreeableness', label: 'Agreeableness', score: s.agreeableness, color: colors.accentSage, icon: 'heart-outline' as const },
+      { key: 'neuroticism', label: 'Neuroticism', score: s.neuroticism, color: colors.accentTerracotta, icon: 'pulse-outline' as const },
+    ];
+  }, [lastBig5, colors]);
 
   const loadingAssessments = d.loadingEq;
 
@@ -523,10 +489,8 @@ export default function ProgressScreen() {
             loading={loadingAssessments}
             lastEq={lastEq}
             lastBig5={lastBig5}
-            lastTraitTest={lastTraitTest}
             onPressEq={() => router.push('/full-eq-test')}
             onPressBig5={() => router.push('/big5-test')}
-            onPressTraitTest={() => router.push('/trait-test')}
           />
         </View>
 
@@ -630,7 +594,31 @@ export default function ProgressScreen() {
           {d.errorEq ? <Text style={st.errorText}>{d.errorEq}</Text> : null}
         </View>
 
-        {/* ── Learning & Skill Lab ───────────────────── */}
+        {/* ── Big Five Personality breakdown ── */}
+        {big5Traits.length > 0 && (
+          <View style={st.section}>
+            <SectionHeading icon="color-wand-outline" iconColor={colors.accentIndigo} title="Big Five Personality" colors={colors} />
+            <GlassCard>
+              <Text style={st.cardTitle}>Trait Profile (1–5 scale)</Text>
+              <View style={{ marginTop: 8 }}>
+                {big5Traits.map((t) => (
+                  <DimensionBar
+                    key={t.key}
+                    label={t.label}
+                    score={t.score}
+                    maxScore={5}
+                    displayValue={t.score.toFixed(1)}
+                    color={t.color}
+                    icon={t.icon}
+                    colors={colors}
+                  />
+                ))}
+              </View>
+            </GlassCard>
+          </View>
+        )}
+
+        {/* ── Learning ───────────────────── */}
         <View style={st.section}>
           <SectionHeading icon="school-outline" iconColor={colors.accentIndigo} title="Learning" colors={colors} />
           {d.loadingLearning ? (
@@ -645,7 +633,7 @@ export default function ProgressScreen() {
                 </View>
                 <Text style={[st.emptyTitle, { color: colors.textPrimary }]}>Start learning</Text>
                 <Text style={[st.emptyBody, { color: colors.textSecondary }]}>
-                  Explore lessons and practice in Skill Lab to track your growth here.
+                  Explore EQ video and podcast lessons to track your learning progress here.
                 </Text>
                 <TouchableOpacity style={[st.ctaBtn, { backgroundColor: colors.accentIndigo, alignSelf: 'stretch' }]} onPress={() => router.push('/(tabs)/learn')} activeOpacity={0.85}>
                   <Ionicons name="book-outline" size={18} color="#fff" />
@@ -674,28 +662,6 @@ export default function ProgressScreen() {
                       colors={colors}
                     />
                   ))}
-                </GlassCard>
-              )}
-
-              {d.learningSummary.totalSkillSessions > 0 && (
-                <GlassCard style={{ marginTop: Spacing.sm }}>
-                  <Text style={st.cardTitle}>Skill Lab</Text>
-                  <View style={st.statsRow}>
-                    <StatPill icon="fitness-outline" value={d.learningSummary.totalSkillSessions} label="Sessions" color={colors.accentSage} colors={colors} />
-                    <View style={[st.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]} />
-                    <StatPill icon="layers-outline" value={d.learningSummary.totalScenarios} label="Scenarios" color={colors.accentIndigo} colors={colors} />
-                  </View>
-                  {d.learningSummary.topSkills.filter((s) => s.completed > 0).length > 0 && (
-                    <View style={{ marginTop: 8 }}>
-                      {d.learningSummary.topSkills.filter((s) => s.completed > 0).map((s) => (
-                        <View key={s.id} style={st.skillRow}>
-                          <View style={[st.skillDot, { backgroundColor: colors.primary }]} />
-                          <Text style={[st.skillName, { color: colors.textPrimary }]} numberOfLines={1}>{s.name}</Text>
-                          <Text style={[st.skillCount, { color: colors.textSecondary }]}>{s.completed}×</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
                 </GlassCard>
               )}
             </>

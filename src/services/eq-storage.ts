@@ -16,6 +16,9 @@ export async function startEQAssessmentSession(
   assessmentType: 'check_in' | 'full_test',
   totalQuestions: number
 ): Promise<string> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
   const { data, error } = await supabase
     .from('eq_assessment_sessions')
     .insert({
@@ -93,8 +96,11 @@ export async function completeEQAssessmentSession(
   result: EQAssessmentResult,
   sessionStartTime: number
 ): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
   const completedAt = new Date(result.completedAt);
-  const durationMs = completedAt.getTime() - sessionStartTime;
+  const durationMs = Math.max(0, Math.round(completedAt.getTime() - sessionStartTime));
 
   const { error: sessionError } = await supabase
     .from('eq_assessment_sessions')
@@ -114,18 +120,21 @@ export async function completeEQAssessmentSession(
     throw sessionError;
   }
 
-  const { error: scoreError } = await supabase.from('eq_scores').insert({
-    session_id: sessionId,
-    user_id: result.userId,
-    completed_at: result.completedAt,
-    overall_score: result.overallScore,
-    dimension_scores: result.dimensionScores,
-    quality_indicators: result.qualityIndicators,
-    strengths: result.strengths,
-    growth_areas: result.growthAreas,
-    insights: result.insights,
-    response_ids: result.questionIds,
-  });
+  const { error: scoreError } = await supabase.from('eq_scores').upsert(
+    {
+      session_id: sessionId,
+      user_id: result.userId,
+      completed_at: result.completedAt,
+      overall_score: result.overallScore,
+      dimension_scores: result.dimensionScores,
+      quality_indicators: result.qualityIndicators,
+      strengths: result.strengths,
+      growth_areas: result.growthAreas,
+      insights: result.insights,
+      response_ids: result.questionIds,
+    },
+    { onConflict: 'session_id' }
+  );
 
   if (scoreError) {
     console.error('[EQ Storage] Failed to save score:', scoreError);
@@ -142,9 +151,12 @@ export async function saveEQAssessmentResult(
   questions: EQQuestion[],
   sessionStartTime: number
 ): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
   const userId = result.userId;
   const completedAt = new Date(result.completedAt);
-  const durationMs = completedAt.getTime() - sessionStartTime;
+  const durationMs = Math.max(0, Math.round(completedAt.getTime() - sessionStartTime));
 
   try {
     const { data: sessionData, error: sessionError } = await supabase

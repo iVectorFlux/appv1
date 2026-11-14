@@ -27,6 +27,7 @@ import { requestBig5LeadershipInsights } from '@/utils/vercel-api';
 import { generateBig5Report } from '@/services/big5-report';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { saveBig5Assessment } from '@/services/big5-storage';
+import { removeCacheSegment, cacheSegments } from '@/lib/async-data-cache';
 import {
   AnimationConfigs,
   createQuestionTransition,
@@ -106,28 +107,19 @@ export default function Big5TestScreen() {
     questionTransition(callback, () => { isTransitioning.current = false; });
   }, [questionTransition]);
 
-  const finish = useCallback(
-    async (finalResponses: Record<string, number>) => {
-      const durationSeconds =
-        sessionStartRef.current != null ? (Date.now() - sessionStartRef.current) / 1000 : undefined;
-      let engine;
-      try {
-        engine = scoreBig5Assessment(finalResponses, { durationSeconds });
-      } catch (e) {
-        setSaveError(e instanceof Error ? e.message : 'Could not score responses.');
-        return;
-      }
-      setScores(engine.raw);
-      setEngineResult(engine);
-      setAiReport(null);
-      setAiError(null);
-      setPhase('results');
+  const lastSubmissionRef = useRef<{ responses: Record<string, number>; engine: Big5EngineResult } | null>(null);
+
+  const persistBig5 = useCallback(
+    async (finalResponses: Record<string, number>, engine: Big5EngineResult) => {
       setSaving(true);
       setSaveError(null);
       setSavedToCloud(null);
       if (user?.id) {
         try {
           const id = await saveBig5Assessment(user.id, finalResponses, engine, BIG5_INSTRUMENT_VERSION);
+          if (id != null) {
+            await removeCacheSegment(cacheSegments.big5Latest(user.id)).catch(() => {});
+          }
           setSavedToCloud(id != null);
         } catch (e) {
           setSaveError(e instanceof Error ? e.message : 'Could not save results.');
@@ -139,6 +131,28 @@ export default function Big5TestScreen() {
       setSaving(false);
     },
     [user?.id]
+  );
+
+  const finish = useCallback(
+    async (finalResponses: Record<string, number>) => {
+      const durationSeconds =
+        sessionStartRef.current != null ? (Date.now() - sessionStartRef.current) / 1000 : undefined;
+      let engine;
+      try {
+        engine = scoreBig5Assessment(finalResponses, { durationSeconds });
+      } catch (e) {
+        setSaveError(e instanceof Error ? e.message : 'Could not score responses.');
+        return;
+      }
+      lastSubmissionRef.current = { responses: finalResponses, engine };
+      setScores(engine.raw);
+      setEngineResult(engine);
+      setAiReport(null);
+      setAiError(null);
+      setPhase('results');
+      await persistBig5(finalResponses, engine);
+    },
+    [persistBig5]
   );
 
   const fetchLeadershipInsights = useCallback(async () => {
@@ -285,17 +299,30 @@ export default function Big5TestScreen() {
           <Text style={st.overallHeadline}>{report.headline}</Text>
         </View>
 
-        {saveError ? (
-          <Text style={[st.saveNote, { color: colors.destructive }]}>{saveError}</Text>
-        ) : saving ? (
+        {saving ? (
           <ActivityIndicator color={colors.primary} style={{ marginVertical: Spacing.sm }} />
+        ) : saveError || (savedToCloud === false && user?.id && isSupabaseConfigured()) ? (
+          <View style={{ alignItems: 'center', marginVertical: Spacing.xs }}>
+            <Text style={[st.saveNote, { color: colors.destructive }]}>
+              {saveError ?? 'Results could not be synced. Your report is still shown below.'}
+            </Text>
+            {lastSubmissionRef.current ? (
+              <Button
+                title="Retry Save"
+                onPress={() => {
+                  const sub = lastSubmissionRef.current;
+                  if (sub) void persistBig5(sub.responses, sub.engine);
+                }}
+                variant="secondary"
+                size="sm"
+              />
+            ) : null}
+          </View>
         ) : savedToCloud ? (
           <Text style={[st.saveNote, { color: colors.primary }]}>Results saved to your account.</Text>
-        ) : savedToCloud === false && !saveError ? (
+        ) : savedToCloud === false ? (
           <Text style={[st.saveNote, { color: colors.textSecondary }]}>
-            {isSupabaseConfigured()
-              ? 'Results could not be synced. Your report is still shown below.'
-              : 'Report is shown on this device only (cloud sync not configured).'}
+            Report is shown on this device only (cloud sync not configured).
           </Text>
         ) : null}
 
@@ -376,8 +403,9 @@ export default function Big5TestScreen() {
           ) : null}
         </View>
 
+        <Button title="View Progress" onPress={() => router.replace('/(tabs)/progress')} size="lg" fullWidth />
         <Button title="Retake Assessment" onPress={resetTest} variant="secondary" size="lg" fullWidth />
-        <Button title="Done" onPress={() => router.replace('/(tabs)/profile')} size="lg" fullWidth />
+        <Button title="Done" onPress={() => router.replace('/(tabs)/profile')} variant="secondary" size="lg" fullWidth />
         <Text style={st.disclaimerText}>
           This assessment is for self-reflection purposes and is not a clinical diagnosis.
         </Text>

@@ -74,7 +74,7 @@ export async function getLatestBig5Assessment(userId: string): Promise<Big5Asses
 
   if (error) {
     console.error('[Big5 Storage] load failed:', error.message);
-    return null;
+    throw new Error(error.message || 'Could not load Big Five assessment');
   }
 
   if (!data) return null;

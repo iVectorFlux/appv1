@@ -181,43 +181,6 @@ export async function updateUserProfileContext(
   return { ok: true };
 }
 
-/**
- * Wire shape expected by /api/skills-coach (PracticeContextWire).
- */
-export function buildPracticeContextWire(
-  ctx: UserProfileContext | null
-):
-  | {
-      background?: string;
-      roleTitle?: string;
-      industry?: string;
-      seniority?: string;
-    }
-  | undefined {
-  if (!ctx) return undefined;
-  const bits: string[] = [];
-  if (ctx.profileInterests?.trim()) bits.push(`Interests: ${ctx.profileInterests.trim()}`);
-  if (ctx.lifeSituation) {
-    const label = LIFE_SITUATION_OPTIONS.find((o) => o.id === ctx.lifeSituation)?.label ?? ctx.lifeSituation;
-    bits.push(`Situation: ${label}`);
-  }
-  const workLbl = workSettingLabel(ctx.orgContext);
-  if (workLbl) bits.push(`Work setting: ${workLbl}`);
-
-  const hasAny =
-    bits.length > 0 || industryLabel(ctx.industry) || ctx.professionalRole?.trim() || ctx.lifeSituation;
-  if (!hasAny) return undefined;
-
-  return {
-    background: bits.length ? bits.join(' | ') : undefined,
-    roleTitle: ctx.professionalRole?.trim() || undefined,
-    industry: industryLabel(ctx.industry) || undefined,
-    seniority: ctx.lifeSituation
-      ? LIFE_SITUATION_OPTIONS.find((o) => o.id === ctx.lifeSituation)?.label
-      : undefined,
-  };
-}
-
 export function formatBig5ScoresLine(scores: Big5Scores | null | undefined): string {
   if (!scores) return '';
   return [

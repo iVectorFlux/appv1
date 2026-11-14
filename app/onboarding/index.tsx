@@ -31,14 +31,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useColors, Spacing, Typography, Radius, Shadows } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
-import { FUTURE_SKILLS } from '@/data/future-skills';
 
 const TOTAL_STEPS = 4;
 
 const WELCOME_EXPERIENCE_PILLS: { label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { label: 'Learn EQ', icon: 'book-outline' },
   { label: 'AI Companion', icon: 'chatbubbles-outline' },
-  { label: 'Skill Lab', icon: 'school-outline' },
+  { label: 'Recover', icon: 'leaf-outline' },
 ];
 
 const DEFAULT_CHECK_IN_FREQUENCY = 'few_times_week' as const;
@@ -243,36 +242,7 @@ export default function OnboardingScreen() {
               ))}
             </View>
 
-            <Text style={[styles.welcomeKicker, { marginTop: Spacing['2xl'] }]}>Core skills you can build</Text>
-            <Text style={styles.coreSkillsIntro}>
-              Real scenarios in Skill Lab, from emotional intelligence and communication to critical thinking, problem solving, and using AI well.
-            </Text>
-            <View style={styles.coreGrid}>
-              {FUTURE_SKILLS.map((s) => (
-                <View
-                  key={s.id}
-                  style={[
-                    styles.coreCard,
-                    {
-                      backgroundColor: colors.glass,
-                      borderColor: colors.glassBorder,
-                    },
-                  ]}
-                >
-                  <View style={[styles.coreIconWrap, { backgroundColor: s.color + '18' }]}>
-                    <Ionicons name={s.icon as keyof typeof Ionicons.glyphMap} size={20} color={s.color} />
-                  </View>
-                  <Text style={[styles.coreName, { color: colors.textPrimary }]} numberOfLines={2}>
-                    {s.name}
-                  </Text>
-                  <Text style={[styles.coreTag, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {s.tagline}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.privacyCard}>
+            <View style={[styles.privacyCard, { marginTop: Spacing['2xl'] }]}>
               <Ionicons name="shield-checkmark" size={20} color={colors.primary} style={styles.privacyCardIcon} />
               <Text style={styles.privacyCardText}>Your data is private and encrypted.</Text>
             </View>
@@ -296,7 +266,7 @@ export default function OnboardingScreen() {
           <View style={styles.screen}>
             <Text style={styles.screenTitle}>A bit of context (optional)</Text>
             <Text style={styles.screenSubtitle}>
-              Helps Skill Lab and coaching feel more relevant. Skip anything you prefer not to share.
+              Helps coaching feel more relevant. Skip anything you prefer not to share.
             </Text>
             <Text style={styles.subLabel}>Life situation</Text>
             <View style={styles.chipRowWrap}>

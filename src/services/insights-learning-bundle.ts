@@ -1,11 +1,9 @@
 /**
- * Aggregates Learn tab, Skill Lab, and cloud Assist chat stats for Insights.
+ * Aggregates Learn tab and cloud Assist chat stats for Progress.
  */
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { FUTURE_SKILLS } from '@/data/future-skills';
 import { getModuleById } from '@/data/learning-content';
-import { getSkillsProgress, type SkillProgress } from '@/services/skills-storage';
 
 export type CatalogEpisodeProgress = {
   episodeKey: string;
@@ -27,7 +25,6 @@ export type ModuleProgressRow = {
 };
 
 export type InsightsLearningBundle = {
-  skillProgress: Record<string, SkillProgress>;
   /** Saved chat turns in Supabase (Assist tab / chat when synced). */
   assistInnerAllyMessages: number;
   assistCoachMessages: number;
@@ -42,7 +39,6 @@ export type InsightsLearningBundle = {
 };
 
 export const EMPTY_INSIGHTS_LEARNING_BUNDLE: InsightsLearningBundle = {
-  skillProgress: {},
   assistInnerAllyMessages: 0,
   assistCoachMessages: 0,
   lastAssistMessageAt: null,
@@ -72,7 +68,6 @@ export async function loadInsightsLearningBundle(userId: string): Promise<Insigh
     lastMsgRes,
     cpRes,
     lpRes,
-    skillProgress,
   ] = await Promise.all([
     supabase
       .from('ai_chat_messages')
@@ -103,7 +98,6 @@ export async function loadInsightsLearningBundle(userId: string): Promise<Insigh
         'module_id, video_completed, audio_completed, last_accessed_at, video_progress_pct, audio_progress_pct'
       )
       .eq('user_id', userId),
-    getSkillsProgress(userId),
   ]);
 
   if (cpRes.error) {
@@ -185,7 +179,6 @@ export async function loadInsightsLearningBundle(userId: string): Promise<Insigh
   moduleDetails.sort((x, y) => parseTs(y.lastAccessedAt) - parseTs(x.lastAccessedAt));
 
   return {
-    skillProgress,
     assistInnerAllyMessages,
     assistCoachMessages,
     lastAssistMessageAt,
@@ -197,10 +190,6 @@ export async function loadInsightsLearningBundle(userId: string): Promise<Insigh
     legacyModulesWithCompletion,
     moduleDetails: moduleDetails.slice(0, 12),
   };
-}
-
-export function skillDisplayName(skillId: string): string {
-  return FUTURE_SKILLS.find((s) => s.id === skillId)?.name ?? skillId.replace(/_/g, ' ');
 }
 
 /** Short label for catalog episode_key in UI */

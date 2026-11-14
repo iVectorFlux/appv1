@@ -38,7 +38,6 @@ import {
   clearLocalChatHistory,
 } from '@/services/chat-storage';
 import type { ChatMode } from '@/services/chat-storage';
-import { isSkillLabSkillId } from '@/data/future-skills';
 import { refreshInnerAllyMemory, requestChatCompletion } from '@/utils/vercel-api';
 import { breathToneParamFromEmotions } from '@/data/breathing-techniques';
 import { ChatHistoryPanel } from '@/components/chat/chat-history-panel';
@@ -109,8 +108,8 @@ const MODE_CONFIG: Record<ChatMode, ModeConfig> = {
     icon: 'briefcase-outline',
     color: '#3D8B6E',
     intro: (name) => name
-      ? `Hey ${name}, ready when you are. Ask about leadership, work skills, or growth, or learn something new step by step right here (even when it is not in Skill Lab).`
-      : "Ready when you are. Ask about leadership, work skills, or growth, or learn something new step by step here (even when it is not in Skill Lab).",
+      ? `Hey ${name}, ready when you are. Ask about leadership, work skills, or growth, and learn something new step by step right here.`
+      : "Ready when you are. Ask about leadership, work skills, or growth, and learn something new step by step right here.",
     placeholder: 'Ask me anything...',
     suggestions: [
       'How to regulate emotion at workplace',
@@ -684,11 +683,7 @@ export default function ChatScreen({
     router.push(`/grounding?mode=${encodeURIComponent(technique)}&returnTo=chat${toneQs}`);
   };
 
-  const handleLearnPress = (skillId?: string | null) => {
-    if (skillId && isSkillLabSkillId(skillId)) {
-      router.push(`/skill-lab/${skillId}?returnTo=chat`);
-      return;
-    }
+  const handleLearnPress = () => {
     router.push('/(tabs)/learn');
   };
 

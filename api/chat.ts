@@ -7,44 +7,9 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { FUTURE_SKILLS } from '../src/data/future-skills';
 import { applyCors, handleCorsPreflight } from './_lib/cors';
 import { GROQ_CHAT_COMPLETIONS_URL, getGroqEnv } from './_lib/groq-config';
 import { buildInnerAllyMemoryBlock } from './_lib/inner-ally-memory';
-
-const COACH_SKILL_LAB_IDS = new Set(FUTURE_SKILLS.map((s) => s.id));
-
-/** Map legacy / model ids to real Skill Lab top-level ids (see future-skills.ts). */
-const COACH_SKILL_ID_ALIASES: Record<string, string> = {
-  digital_collaboration: 'communication_influence',
-  digitalcollaboration: 'communication_influence',
-  remote_collaboration: 'communication_influence',
-  async_collaboration: 'communication_influence',
-  data_literacy: 'critical_thinking',
-  dataliteracy: 'critical_thinking',
-  leadership: 'communication_influence',
-  influencing: 'communication_influence',
-  influence: 'communication_influence',
-  eq: 'emotional_intelligence',
-};
-
-function normalizeCoachSkillIdKey(raw: string): string {
-  return raw
-    .trim()
-    .toLowerCase()
-    .replace(/-/g, '_')
-    .replace(/\s+/g, '_')
-    .replace(/_+/g, '_');
-}
-
-function resolveCoachSkillId(raw: unknown): string | null {
-  if (typeof raw !== 'string' || !raw.trim()) return null;
-  const key = normalizeCoachSkillIdKey(raw);
-  if (COACH_SKILL_LAB_IDS.has(key)) return key;
-  const mapped = COACH_SKILL_ID_ALIASES[key];
-  if (mapped && COACH_SKILL_LAB_IDS.has(mapped)) return mapped;
-  return null;
-}
 
 const INNER_ALLY_SYSTEM_PROMPT = `You are Inner Ally - a warm companion inside a wellbeing app.
 
@@ -118,24 +83,16 @@ JSON rules:
 - "suggestSaveAsReflection": true for meaningful personal sharing worth capturing.
 - "reframe": string (one concrete sentence) or null - see COGNITIVE REFRAME above; null beats generic repetition.`;
 
-export const COACH_SYSTEM_PROMPT = `You are a high-performance AI Coach inside a professional growth app. You combine sharp reasoning with practical teaching.
+export const COACH_SYSTEM_PROMPT = `You are a high-performance AI Coach inside a personal & professional growth app. You combine sharp reasoning with practical teaching.
 
-TWO KINDS OF TOPICS (read carefully - this avoids confusing users):
-
-A) SKILL LAB–ALIGNED (workplace / professional skills - the only topics that map to in-app practice):
-These eight areas: Emotional Intelligence, AI Literacy, Critical Thinking, Problem Solving, Adaptability, Creative Thinking, Systems Thinking, Communication & Influence.
-- When the user's goal clearly fits one of these (e.g. difficult feedback, prioritisation, stakeholder communication), you may use a tight framework and **may** set skillId / learningPathway to that one skill.
-- **Never** invent fake module names (e.g. "language foundation", "literacy track") that are not in the list below. Those labels do not exist in the app.
-
-B) NOT COVERED BY SKILL LAB (languages, school subjects, hobbies, general life skills with no workplace angle, etc. - e.g. learning Japanese, calculus, guitar):
-- **Be explicit in plain language** that this topic is not something they practise in Skill Lab, but **they can still learn it right here in this chat** with you.
-- **Do not** pretend there is a "skill gap" that maps to a Skill Lab skill. **Do not** frame the topic as if it were one of the eight skills unless they are clearly asking about work communication, EQ, thinking habits, etc.
-- Teach well anyway: infer what they need (goal, level, time), reason step-by-step, then deliver **structured in-chat learning**:
+HOW TO COACH:
+- Infer what they need (goal, level, context), reason step-by-step, and deliver structured, practical guidance right here in this chat:
   • One clear objective for this reply
-  • One concrete micro-lesson (short, accurate - if you teach a fact or script, get it right)
-  • One small practice (say it / try it / self-check)
-  • One follow-up prompt for the next message (what to send you next)
-- Stay practical and honest. If you are unsure of a fact (e.g. exact characters), say so and offer a verifiable next step instead of inventing placeholders.
+  • One concrete framework, perspective, or micro-lesson
+  • One small practice or next step they can apply today
+  • One follow-up prompt for the next message
+- Stay practical and honest. If you are unsure of a fact, say so and offer a verifiable next step instead of inventing placeholders.
+- Never invent fake in-app module names.
 
 REASONING:
 - Briefly notice what they actually asked and why it matters to them before you teach.
@@ -152,18 +109,6 @@ FORMATTING:
 
 LENGTH:
 - Default ~120–220 words in the main body **before** the follow-up bullets; go longer only if they asked for depth or the topic needs careful accuracy (e.g. teaching content).
-
-Skill Lab - **only** these skillId values (snake_case). If the conversation is type B above, or nothing fits, you **must** use null:
-- emotional_intelligence - Emotional Intelligence
-- ai_literacy - AI Literacy
-- critical_thinking - Critical Thinking
-- problem_solving - Problem Solving
-- adaptability - Adaptability
-- creative_thinking - Creative Thinking
-- systems_thinking - Systems Thinking
-- communication_influence - Communication & Influence
-
-When skillId is set, learningPathway must be exactly one short line naming that same skill. Otherwise both null.
 
 APP WIRE FORMAT (critical):
 After your reply text, output exactly one more line with no code fence:
@@ -307,7 +252,7 @@ function normalizeInnerAllyPayload(
 function normalizeCoachPayload(suggestion: Record<string, unknown> | null): Record<string, unknown> {
   if (!suggestion || typeof suggestion !== 'object') return {};
   const out: Record<string, unknown> = { ...suggestion };
-  out.skillId = resolveCoachSkillId(out.skillId);
+  out.skillId = null;
   const lp = out.learningPathway;
   if (typeof lp === 'string') {
     const t = lp.trim();
@@ -349,65 +294,6 @@ function readJsonBody(req: VercelRequest): {
   return null;
 }
 
-/** Last coach skill card shown per user - avoids repeating the same Skill Lab nudge every turn (warm instance only). */
-const lastCoachSuggestedSkillByUser = new Map<string, string | null>();
-
-/**
- * Topics we can teach in Coach chat but must NOT label as Skill Lab skills
- * (avoids invented "skill gaps" and wrong skill cards).
- */
-function isLikelyNonSkillLabCoachTopic(text: string): boolean {
-  const t = text.toLowerCase();
-  if (t.length < 3) return false;
-
-  if (
-    /\b(japanese|nihongo|hiragana|katakana|kanji|romaji|learn japanese|teach me japanese|spanish|español|espanol|french|français|francais|german|deutsch|mandarin|cantonese|korean|hangul|italian|portuguese|arabic|hebrew|hindi|russian|polish|dutch|swedish|norwegian|turkish|vietnamese|thai|greek|ukrainian)\b/.test(
-      t
-    )
-  ) {
-    return true;
-  }
-  if (/\b(learn (a |the )?language|language learning|language lesson|duolingo|babbel|rosetta)\b/.test(t)) {
-    return true;
-  }
-  if (
-    /\bteach me (some )?(spanish|french|german|japanese|korean|mandarin|italian|portuguese|arabic|hindi)\b/.test(t)
-  ) {
-    return true;
-  }
-  if (
-    /\b(teach me (calculus|algebra|geometry|physics|chemistry|biology|statistics)|homework help (for|with) math)\b/.test(t)
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function detectSkillFromText(text: string): { skillId: string | null; confidence: number } {
-  const t = text.toLowerCase();
-
-  // Do not attach Skill Lab heuristics to language/academic tutoring threads.
-  if (isLikelyNonSkillLabCoachTopic(text)) {
-    return { skillId: null, confidence: 0 };
-  }
-
-  if (t.includes('meeting') || t.includes('speak') || t.includes('communicate')) {
-    return { skillId: 'communication_influence', confidence: 0.8 };
-  }
-  if (t.includes('decision') || t.includes('choose') || t.includes('confused')) {
-    return { skillId: 'problem_solving', confidence: 0.75 };
-  }
-  if (t.includes('overthink') || t.includes('analyze') || t.includes('logic')) {
-    return { skillId: 'critical_thinking', confidence: 0.7 };
-  }
-  if (t.includes('change') || t.includes('uncertain')) {
-    return { skillId: 'adaptability', confidence: 0.7 };
-  }
-
-  return { skillId: null, confidence: 0 };
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   applyCors(res);
   if (handleCorsPreflight(req, res)) return;
@@ -436,24 +322,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (userMessages.length === 0) {
     res.status(400).json({ error: 'No messages provided.' });
     return;
-  }
-
-  const lastUserMessage =
-    typeof userMessages[userMessages.length - 1]?.content === 'string'
-      ? userMessages[userMessages.length - 1].content
-      : '';
-
-  const recentUserText = userMessages
-    .filter((m) => m.role === 'user')
-    .slice(-8)
-    .map((m) => (typeof m.content === 'string' ? m.content : ''))
-    .join('\n');
-
-  const coachOffSkillLab = mode === 'coach' && isLikelyNonSkillLabCoachTopic(recentUserText);
-
-  let detected = detectSkillFromText(lastUserMessage);
-  if (coachOffSkillLab) {
-    detected = { skillId: null, confidence: 0 };
   }
 
   let systemPrompt = mode === 'inner_ally' ? INNER_ALLY_SYSTEM_PROMPT : COACH_SYSTEM_PROMPT;
@@ -517,41 +385,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     const payload =
       mode === 'inner_ally' ? normalizeInnerAllyPayload(suggestion) : normalizeCoachPayload(suggestion);
-
-    const SKILL_LABELS: Record<string, string> = {
-      emotional_intelligence: 'Emotional Intelligence',
-      ai_literacy: 'AI Literacy',
-      critical_thinking: 'Critical Thinking',
-      problem_solving: 'Problem Solving',
-      adaptability: 'Adaptability',
-      creative_thinking: 'Creative Thinking',
-      systems_thinking: 'Systems Thinking',
-      communication_influence: 'Communication & Influence',
-    };
-
-    if (mode === 'coach' && !coachOffSkillLab && detected.skillId && detected.confidence > 0.7) {
-      payload.skillId = detected.skillId;
-      payload.learningPathway = SKILL_LABELS[detected.skillId] ?? detected.skillId.replace(/_/g, ' ');
-    }
-
-    if (mode === 'coach' && coachOffSkillLab) {
-      payload.skillId = null;
-      payload.learningPathway = null;
-    }
-
-    if (mode === 'coach') {
-      const uid =
-        typeof body.userId === 'string' && body.userId.length > 0 ? body.userId : '__anon__';
-      let lastSuggestedSkill: string | null = lastCoachSuggestedSkillByUser.get(uid) ?? null;
-
-      if (payload.skillId === lastSuggestedSkill) {
-        payload.skillId = null;
-        payload.learningPathway = null;
-      } else {
-        lastSuggestedSkill = typeof payload.skillId === 'string' ? payload.skillId : null;
-        lastCoachSuggestedSkillByUser.set(uid, lastSuggestedSkill);
-      }
-    }
 
     res.status(200).json({
       reply: cleanContent,

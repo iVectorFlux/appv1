@@ -25,28 +25,18 @@ export type LastBig5Snapshot = {
   completedAt: string;
 } | null;
 
-export type LastTraitTestSnapshot = {
-  overall0to100: number;
-  summaryLine: string;
-  completedAt: string;
-} | null;
-
 export function AssessmentSnapshotCard({
   loading,
   lastEq,
   lastBig5,
-  lastTraitTest,
   onPressEq,
   onPressBig5,
-  onPressTraitTest,
 }: {
   loading: boolean;
   lastEq: LastEqSnapshot;
   lastBig5: LastBig5Snapshot;
-  lastTraitTest: LastTraitTestSnapshot;
   onPressEq: () => void;
   onPressBig5: () => void;
-  onPressTraitTest: () => void;
 }) {
   const colors = useColors();
   const st = createStyles(colors);
@@ -96,34 +86,10 @@ export function AssessmentSnapshotCard({
               ) : null}
             </>
           ) : (
-            <Text style={st.body}>Not taken yet. Allow about 5 to 10 minutes for a trait snapshot.</Text>
+            <Text style={st.body}>Not taken yet. Allow about 12 minutes for a personality snapshot.</Text>
           )}
           <TouchableOpacity onPress={onPressBig5} style={st.linkRow} activeOpacity={0.7} accessibilityRole="button">
             <Text style={st.link}>{lastBig5 ? 'Retake test' : 'Start Big Five'}</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={[st.row, { marginTop: Spacing.lg, paddingTop: Spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderLight }]}>
-        <Ionicons name="git-branch-outline" size={20} color={colors.accentSage} />
-        <View style={{ flex: 1 }}>
-          <Text style={st.kicker}>Trait test</Text>
-          {lastTraitTest ? (
-            <>
-              <Text style={st.body}>
-                <Text style={st.em}>Overall {lastTraitTest.overall0to100}/100</Text>
-                {formatShortDate(lastTraitTest.completedAt) ? ` · ${formatShortDate(lastTraitTest.completedAt)}` : ''}
-              </Text>
-              <Text style={[st.traits, { marginTop: 4 }]} numberOfLines={2} selectable={Platform.OS === 'web'}>
-                {lastTraitTest.summaryLine}
-              </Text>
-            </>
-          ) : (
-            <Text style={st.body}>Not taken yet. Eighteen named patterns, twenty-five adaptive items (~10 min).</Text>
-          )}
-          <TouchableOpacity onPress={onPressTraitTest} style={st.linkRow} activeOpacity={0.7} accessibilityRole="button">
-            <Text style={st.link}>{lastTraitTest ? 'Retake trait test' : 'Start trait test'}</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.primary} />
           </TouchableOpacity>
         </View>

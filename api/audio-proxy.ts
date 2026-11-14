@@ -8,11 +8,16 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
 import { applyCors, handleCorsPreflight } from './_lib/cors';
 
 const ALLOWED_HOSTS = new Set([
   'lumi6eq.s3.us-west-1.amazonaws.com',
 ]);
+
+const ALLOWED_PATH_PREFIXES = ['/applearningfiles/', '/audios/', '/videos/'];
 
 function getSingleQueryValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
@@ -23,7 +28,7 @@ function parseAllowedMediaUrl(raw: string): URL | null {
     const url = new URL(raw);
     if (url.protocol !== 'https:') return null;
     if (!ALLOWED_HOSTS.has(url.hostname)) return null;
-    if (!url.pathname.startsWith('/applearningfiles/')) return null;
+    if (!ALLOWED_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) return null;
     return url;
   } catch {
     return null;
@@ -45,13 +50,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const range = req.headers.range;
-  const upstream = await fetch(targetUrl.toString(), {
-    method: req.method === 'HEAD' ? 'HEAD' : 'GET',
-    headers: typeof range === 'string' ? { Range: range } : undefined,
-  });
+  const controller = new AbortController();
+  const abortUpstream = () => {
+    if (!res.writableEnded) controller.abort();
+  };
+  req.on('close', abortUpstream);
+
+  let upstream: Response;
+  try {
+    const range = req.headers.range;
+    upstream = await fetch(targetUrl.toString(), {
+      method: req.method === 'HEAD' ? 'HEAD' : 'GET',
+      headers: typeof range === 'string' ? { Range: range } : undefined,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    req.off('close', abortUpstream);
+    if (controller.signal.aborted || res.writableEnded) return;
+    res.status(502).json({ error: err instanceof Error ? err.message : 'Upstream media fetch failed.' });
+    return;
+  }
 
   if (!upstream.ok && upstream.status !== 206) {
+    req.off('close', abortUpstream);
     res.status(upstream.status).json({ error: `Media fetch failed (${upstream.status}).` });
     return;
   }
@@ -72,11 +93,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800');
 
   res.status(upstream.status);
-  if (req.method === 'HEAD') {
+  if (req.method === 'HEAD' || !upstream.body) {
+    req.off('close', abortUpstream);
     res.end();
     return;
   }
 
-  const body = Buffer.from(await upstream.arrayBuffer());
-  res.send(body);
+  try {
+    const nodeStream = Readable.fromWeb(upstream.body as unknown as NodeWebReadableStream<Uint8Array>);
+    await pipeline(nodeStream, res);
+  } catch {
+    if (!res.writableEnded) res.end();
+  } finally {
+    req.off('close', abortUpstream);
+  }
 }

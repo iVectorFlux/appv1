@@ -103,6 +103,7 @@ export default function LearningDetailScreen() {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [videoUseProxyFallback, setVideoUseProxyFallback] = useState(false);
   /** Bumps when screen refocuses or app returns foreground - remounts native <Video> to recover stuck decoders. */
   const [videoMountNonce, setVideoMountNonce] = useState(0);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
@@ -147,7 +148,9 @@ export default function LearningDetailScreen() {
       // Video starts loading immediately via the player element.
       // Audio on web is eagerly pre-created so it's ready for the first play tap.
       // Audio on native is initialized below via a dedicated effect.
-      setIsLoading(startMode === 'video');
+      // On web, native <video controls> handles its own initial UI/loading state so clicks are never blocked.
+      setIsLoading(startMode === 'video' && Platform.OS !== 'web');
+      setVideoUseProxyFallback(false);
       setError(null);
       setProgress(0);
       setDuration(0);
@@ -191,7 +194,10 @@ export default function LearningDetailScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setVideoMountNonce((n) => n + 1);
+      // Only remount native <Video> to recover stuck hardware decoders; web <video> must stay mounted.
+      if (Platform.OS !== 'web') {
+        setVideoMountNonce((n) => n + 1);
+      }
       return () => {
         if (Platform.OS === 'web') {
           webVideoRef.current?.pause();
@@ -205,7 +211,12 @@ export default function LearningDetailScreen() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
       const prev = appStateRef.current;
-      if ((prev === 'background' || prev === 'inactive') && next === 'active' && mediaMode === 'video') {
+      if (
+        Platform.OS !== 'web' &&
+        (prev === 'background' || prev === 'inactive') &&
+        next === 'active' &&
+        mediaMode === 'video'
+      ) {
         setVideoMountNonce((n) => n + 1);
       }
       appStateRef.current = next;
@@ -329,21 +340,38 @@ export default function LearningDetailScreen() {
       webAudioRef.current = null;
     }
     const audio = document.createElement('audio');
+    audio.dataset.sourceUrl = audioUrl;
     audio.src = buildAudioProxyUrl(audioUrl);
-    audio.preload = 'auto';
+    audio.preload = 'metadata';
     // The proxy adds CORS + Range headers; keep anonymous so browsers expose metadata consistently.
     audio.crossOrigin = 'anonymous';
     audio.style.position = 'fixed';
     audio.style.left = '-9999px';
     audio.style.opacity = '0';
     audio.style.pointerEvents = 'none';
-    audio.onloadedmetadata = () => {
-      setDuration(audio.duration * 1000);
+    const clearLoadingAndHonorPlay = () => {
+      if (!Number.isNaN(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration * 1000);
+      }
+      setIsLoading(false);
+      if (pendingPlayRef.current) {
+        pendingPlayRef.current = false;
+        audio.play().catch((err) => {
+          setError('Audio didn\u2019t start. Tap Play again or try the Video tab.');
+          console.error('Audio deferred-play error:', err);
+        });
+      }
+    };
+    audio.onloadedmetadata = clearLoadingAndHonorPlay;
+    audio.onloadeddata = clearLoadingAndHonorPlay;
+    audio.ontimeupdate = () => setProgress(audio.currentTime * 1000);
+    audio.onplay = () => {
+      setIsPlaying(true);
       setIsLoading(false);
     };
-    audio.ontimeupdate = () => setProgress(audio.currentTime * 1000);
-    audio.onplay = () => setIsPlaying(true);
     audio.onpause = () => setIsPlaying(false);
+    audio.onwaiting = () => setIsLoading(true);
+    audio.onplaying = () => setIsLoading(false);
     audio.onended = () => {
       setIsPlaying(false);
       setProgress(0);
@@ -358,16 +386,7 @@ export default function LearningDetailScreen() {
       setIsLoading(false);
     };
     // When the element becomes playable, honor any queued play intent
-    audio.oncanplay = () => {
-      setIsLoading(false);
-      if (pendingPlayRef.current) {
-        pendingPlayRef.current = false;
-        audio.play().catch((err) => {
-          setError('Audio didn\u2019t start. Tap Play again or try the Video tab.');
-          console.error('Audio deferred-play error:', err);
-        });
-      }
-    };
+    audio.oncanplay = clearLoadingAndHonorPlay;
     document.body.appendChild(audio);
     audio.load();
     webAudioRef.current = audio;
@@ -381,7 +400,6 @@ export default function LearningDetailScreen() {
     if (!webAudioRef.current) {
       setupWebAudio(module.audioUrl.trim());
     }
-    // Cleanup handled by the params.id effect above
     return () => {
       if (webAudioRef.current) {
         webAudioRef.current.pause();
@@ -389,10 +407,6 @@ export default function LearningDetailScreen() {
           webAudioRef.current.parentNode.removeChild(webAudioRef.current);
         }
         webAudioRef.current = null;
-      }
-      if (webVideoRef.current) {
-        webVideoRef.current.pause();
-        webVideoRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -498,15 +512,25 @@ export default function LearningDetailScreen() {
     }
 
     setMediaMode('audio');
-    setIsLoading(true);
     setIsPlaying(false);
     setProgress(0);
     setError(null);
-    
+
     try {
       if (Platform.OS === 'web') {
-        setupWebAudio(module.audioUrl.trim());
+        const targetAudioUrl = module.audioUrl.trim();
+        const existing = webAudioRef.current;
+        if (existing && existing.dataset.sourceUrl === targetAudioUrl) {
+          if (!Number.isNaN(existing.duration) && existing.duration > 0) {
+            setDuration(existing.duration * 1000);
+          }
+          setIsLoading(false);
+        } else {
+          setIsLoading(true);
+          setupWebAudio(targetAudioUrl);
+        }
       } else {
+        setIsLoading(true);
         // Use expo-av Audio for native platforms
         // Unload previous audio if exists
         if (audioRef.current) {
@@ -534,13 +558,16 @@ export default function LearningDetailScreen() {
       return;
     }
     setMediaMode('video');
-    setIsLoading(true);
+    setIsLoading(Platform.OS !== 'web');
     setIsPlaying(false);
     setProgress(0);
     setError(null);
-    setVideoMountNonce((n) => n + 1);
+    if (Platform.OS !== 'web') {
+      setVideoMountNonce((n) => n + 1);
+    }
 
     if (Platform.OS === 'web') {
+      pendingPlayRef.current = false;
       webAudioRef.current?.pause();
     } else {
       await audioRef.current?.pauseAsync().catch(() => {});
@@ -589,9 +616,13 @@ export default function LearningDetailScreen() {
     );
   }
 
-  const videoSrc = module.videoUrl?.trim() ?? '';
+  const rawVideoSrc = module.videoUrl?.trim() ?? '';
+  const videoSrc =
+    Platform.OS === 'web' && rawVideoSrc && videoUseProxyFallback
+      ? buildAudioProxyUrl(rawVideoSrc)
+      : rawVideoSrc;
   const audioSrc = module.audioUrl?.trim() ?? '';
-  const hasVideo = Boolean(videoSrc);
+  const hasVideo = Boolean(rawVideoSrc);
   const hasAudio = Boolean(audioSrc);
   const showVideoPlayer = hasVideo && mediaMode === 'video';
   const showAudioPlayer = hasAudio && !showVideoPlayer;
@@ -662,7 +693,7 @@ export default function LearningDetailScreen() {
                     controls: true,
                     playsInline: true,
                     controlsList: 'nodownload',
-                    preload: 'auto',
+                    preload: 'metadata',
                     style: {
                       width: '100%',
                       height: '100%',
@@ -670,13 +701,25 @@ export default function LearningDetailScreen() {
                       display: 'block',
                       backgroundColor: '#000',
                     } as React.CSSProperties,
-                    onLoadStart: () => { setIsLoading(true); setError(null); },
-                    onCanPlay: () => setIsLoading(false),
+                    onLoadStart: () => { setError(null); },
                     onLoadedMetadata: () => setIsLoading(false),
-                    onPlay: () => setIsPlaying(true),
+                    onLoadedData: () => setIsLoading(false),
+                    onCanPlay: () => setIsLoading(false),
+                    onWaiting: () => setIsLoading(true),
+                    onPlaying: () => { setIsPlaying(true); setIsLoading(false); },
+                    onPlay: () => { setIsPlaying(true); setIsLoading(false); },
                     onPause: () => setIsPlaying(false),
                     onEnded: handleVideoEnded,
-                    onError: () => { setError('Unable to load video. Check the URL in the database.'); setIsLoading(false); },
+                    onError: () => {
+                      if (!videoUseProxyFallback && rawVideoSrc) {
+                        setVideoUseProxyFallback(true);
+                        setError(null);
+                        setIsLoading(true);
+                        return;
+                      }
+                      setError('Unable to load video. Please try again.');
+                      setIsLoading(false);
+                    },
                     onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement>) => {
                       const el = e.currentTarget;
                       if (!isNaN(el.duration)) setDuration(el.duration * 1000);
@@ -699,7 +742,7 @@ export default function LearningDetailScreen() {
                 )
               }
               {isLoading ? (
-                <View style={styles.mediaOverlay}>
+                <View style={styles.mediaOverlay} pointerEvents="none">
                   <ActivityIndicator size="large" color="#fff" />
                 </View>
               ) : null}
@@ -738,7 +781,7 @@ export default function LearningDetailScreen() {
                 <TouchableOpacity 
                   style={[styles.playButton, { backgroundColor: module.color }]}
                   onPress={togglePlayPause}
-                  disabled={isLoading}
+                  disabled={Platform.OS !== 'web' && isLoading}
                 >
                   {isLoading ? (
                     <ActivityIndicator color="#fff" />
@@ -766,12 +809,18 @@ export default function LearningDetailScreen() {
                 style={styles.retryButton}
                 onPress={() => {
                   setError(null);
-                  setIsLoading(true);
                   if (mediaMode === 'video') {
-                    setVideoMountNonce((n) => n + 1);
-                    if (Platform.OS === 'web' && webVideoRef.current) {
+                    setVideoUseProxyFallback(false);
+                    if (Platform.OS !== 'web') {
+                      setIsLoading(true);
+                      setVideoMountNonce((n) => n + 1);
+                    } else if (webVideoRef.current) {
+                      setIsLoading(false);
                       webVideoRef.current.load();
                     }
+                  } else if (Platform.OS === 'web' && module?.audioUrl?.trim()) {
+                    setIsLoading(true);
+                    setupWebAudio(module.audioUrl.trim());
                   } else {
                     switchToAudio();
                   }

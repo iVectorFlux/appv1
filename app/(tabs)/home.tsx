@@ -1,7 +1,7 @@
 /**
  * Home - Glassmorphic dashboard
  *
- * Explore grid first (Learn EQ, Companion, Skill Lab, Recover), then Assessments & progress.
+ * Explore grid first (Learn EQ, AI Companion, Recover), then Assessments & progress.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -50,10 +50,6 @@ export default function HomeScreen() {
   const exploreFeatures: ExploreFeature[] = [
     { key: 'learn', title: 'Learn EQ', icon: 'book-outline', accent: colors.accentIndigo, route: '/(tabs)/learn' },
     { key: 'companion', title: 'AI Companion', icon: 'chatbubble-ellipses-outline', accent: colors.accentTerracotta, route: '/(tabs)/companion' },
-    { key: 'skill-lab', title: 'Skill Lab', icon: 'rocket-outline', accent: colors.accentSage, route: '/skill-lab' },
-    { key: 'game-theory', title: 'Game Theory', icon: 'git-network-outline', accent: '#7C3AED', route: '/game-theory' },
-    { key: 'thinking-mode', title: 'Thinking Mode', icon: 'bulb-outline', accent: '#6366F1', route: '/thinking-mode' },
-    { key: 'interactive', title: 'Interactive', icon: 'game-controller-outline', accent: '#EC4899', route: '/interactive' },
     { key: 'recover', title: 'Recover', icon: 'leaf-outline', accent: colors.accentCalm, route: '/grounding' },
   ];
 
@@ -77,17 +73,9 @@ export default function HomeScreen() {
           route: '/big5-test',
         },
         {
-          key: 'trait-test',
-          title: 'Trait test',
-          subtitle: '18 habits · 36 + 7 adaptive questions',
-          icon: 'git-branch-outline' as const,
-          accent: colors.accentSage,
-          route: '/trait-test',
-        },
-        {
           key: 'progress',
           title: 'Progress',
-          subtitle: 'EQ, learning & Skill Lab',
+          subtitle: 'EQ, Big Five & learning',
           icon: 'stats-chart-outline' as const,
           accent: colors.accentTerracotta,
           route: '/(tabs)/progress',

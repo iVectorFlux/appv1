@@ -3,16 +3,15 @@
   "outputDirectory": "dist",
   "framework": null,
   "functions": {
+    "api/audio-proxy.ts": { "maxDuration": 60 },
     "api/chat.ts": { "maxDuration": 60 },
     "api/inner-ally-memory.ts": { "maxDuration": 30 },
     "api/agent.ts": { "maxDuration": 60 },
-    "api/skills-coach.ts": { "maxDuration": 60 },
-    "api/thinking-mode.ts": { "maxDuration": 60 },
     "api/big5-leadership-insights.ts": { "maxDuration": 60 },
     "api/health.ts": { "maxDuration": 10 }
   },
   "rewrites": [
-    { "source": "/((?!api/|_expo/|static/|interectives/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|_expo/|static/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
