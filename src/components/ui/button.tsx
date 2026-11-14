@@ -16,10 +16,12 @@ import {
   ActivityIndicator,
   Platform,
   View,
+  StyleSheet,
   type ViewStyle,
   type TextStyle,
   type StyleProp,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Radius, Typography, Shadows } from '@/constants/design-tokens';
 
@@ -54,6 +56,7 @@ export function Button({
   const isOutline = variant === 'outline';
   const isGhost = variant === 'ghost';
   const isDestructive = variant === 'destructive';
+  const isDark = colors.glassTint === 'dark';
 
   const bg = isPrimary
     ? colors.primary
@@ -76,18 +79,19 @@ export function Button({
         : colors.primary;
 
   const buttonStyle: ViewStyle = {
-    borderRadius: Radius.sm,
+    borderRadius: Radius.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: bg,
+    gap: 6,
+    overflow: 'hidden',
+    backgroundColor: isPrimary ? 'transparent' : bg,
     ...(isPrimary && { ...(Shadows.sm as ViewStyle) }),
     ...(isOutline && { borderWidth: 1, borderColor: colors.border }),
     ...(isSecondary && { borderWidth: 1, borderColor: colors.borderLight }),
-    ...(size === 'sm' && { paddingVertical: 8, paddingHorizontal: Spacing.md, minHeight: 36 }),
-    ...(size === 'md' && { paddingVertical: 11, paddingHorizontal: Spacing.lg, minHeight: 44 }),
-    ...(size === 'lg' && { paddingVertical: 14, paddingHorizontal: Spacing.xl, minHeight: 48 }),
+    ...(size === 'sm' && { paddingVertical: 8, paddingHorizontal: 14, minHeight: 36 }),
+    ...(size === 'md' && { paddingVertical: 11, paddingHorizontal: Spacing.lg, minHeight: 42 }),
+    ...(size === 'lg' && { paddingVertical: 13, paddingHorizontal: Spacing.xl, minHeight: 48 }),
     ...(fullWidth && { width: '100%' }),
     ...(disabled && { opacity: 0.48 }),
     ...(Platform.OS === 'web'
@@ -102,12 +106,12 @@ export function Button({
     fontFamily: Typography.fontFamily.primary,
     fontWeight: Typography.fontWeight.semibold,
     color: fg,
-    ...(size === 'sm' && { fontSize: Typography.fontSize.sm }),
-    ...(size === 'md' && { fontSize: Typography.fontSize.base }),
+    ...(size === 'sm' && { fontSize: Typography.fontSize.xs }),
+    ...(size === 'md' && { fontSize: Typography.fontSize.sm }),
     ...(size === 'lg' && { fontSize: Typography.fontSize.base }),
   };
 
-  const iconSize = size === 'sm' ? 15 : 18;
+  const iconSize = size === 'sm' ? 14 : 17;
 
   return (
     <Pressable
@@ -122,12 +126,23 @@ export function Button({
         style,
       ]}
     >
+      {isPrimary ? (
+        <LinearGradient
+          colors={isDark ? ['#3B82F6', '#6366F1'] : ['#2563EB', '#4F46E5']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
       {loading ? (
         <ActivityIndicator color={fg} size="small" />
       ) : (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {icon ? <Ionicons name={icon} size={iconSize} color={fg} /> : null}
-          <Text style={textStyle}>{title}</Text>
+          <Text style={textStyle} numberOfLines={1}>
+            {title}
+          </Text>
         </View>
       )}
     </Pressable>

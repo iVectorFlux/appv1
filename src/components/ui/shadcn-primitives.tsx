@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, type ViewStyle, type StyleProp } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Radius, Typography } from '@/constants/design-tokens';
 import { GlassCard } from './glass-card';
@@ -57,14 +58,22 @@ export function ProgressBar({
   height = 8,
   color,
   trackColor,
+  gradientColors,
 }: {
   value: number;
   height?: number;
   color?: string;
   trackColor?: string;
+  gradientColors?: readonly [string, string, ...string[]];
 }) {
   const colors = useColors();
   const pct = Math.max(0, Math.min(100, value));
+  const fillGradient: readonly [string, string, ...string[]] | null = gradientColors
+    ? gradientColors
+    : color
+      ? null
+      : ['#2563EB', '#4F46E5', '#7C3AED'];
+
   return (
     <View
       style={[
@@ -76,14 +85,27 @@ export function ProgressBar({
         },
       ]}
     >
-      <View
-        style={{
-          height: '100%',
-          width: `${pct}%`,
-          borderRadius: height / 2,
-          backgroundColor: color ?? colors.primary,
-        }}
-      />
+      {fillGradient ? (
+        <LinearGradient
+          colors={fillGradient}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={{
+            height: '100%',
+            width: `${pct}%`,
+            borderRadius: height / 2,
+          }}
+        />
+      ) : (
+        <View
+          style={{
+            height: '100%',
+            width: `${pct}%`,
+            borderRadius: height / 2,
+            backgroundColor: color ?? colors.primary,
+          }}
+        />
+      )}
     </View>
   );
 }

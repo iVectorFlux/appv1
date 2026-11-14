@@ -7,6 +7,7 @@ import {
   type ViewStyle,
   type StyleProp,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useColors, Radius, Shadows } from '@/constants/design-tokens';
 
 interface GlassCardProps {
@@ -19,12 +20,15 @@ interface GlassCardProps {
   tint?: 'light' | 'dark';
   backgroundColor?: string;
   borderColor?: string;
+  gradientColors?: readonly [string, string, ...string[]];
+  gradientStart?: { x: number; y: number };
+  gradientEnd?: { x: number; y: number };
   disabled?: boolean;
 }
 
 /**
- * Shadcn-inspired Enterprise Card with crisp 1px borders, neutral elevation,
- * and subtle web hover states when interactive.
+ * Shadcn-inspired Enterprise Card with crisp 1px borders, optional gradient surface,
+ * clean inner spacing pass-through, and subtle web hover states when interactive.
  */
 export function GlassCard({
   children,
@@ -34,6 +38,9 @@ export function GlassCard({
   noPadding,
   backgroundColor,
   borderColor,
+  gradientColors,
+  gradientStart = { x: 0, y: 0 },
+  gradientEnd = { x: 1, y: 1 },
   disabled,
 }: GlassCardProps) {
   const colors = useColors();
@@ -45,8 +52,46 @@ export function GlassCard({
     justifyContent,
     flexDirection,
     alignContent,
+    flexWrap,
+    gap,
+    rowGap,
+    columnGap,
+    padding,
+    paddingHorizontal,
+    paddingVertical,
+    paddingTop,
+    paddingBottom,
+    paddingLeft,
+    paddingRight,
     ...wrapperStyle
   } = flatStyle;
+
+  const hasCustomPadding =
+    padding !== undefined ||
+    paddingHorizontal !== undefined ||
+    paddingVertical !== undefined ||
+    paddingTop !== undefined ||
+    paddingBottom !== undefined ||
+    paddingLeft !== undefined ||
+    paddingRight !== undefined;
+
+  const customInnerLayout: ViewStyle = {
+    ...(alignItems !== undefined ? { alignItems } : {}),
+    ...(justifyContent !== undefined ? { justifyContent } : {}),
+    ...(flexDirection !== undefined ? { flexDirection } : {}),
+    ...(alignContent !== undefined ? { alignContent } : {}),
+    ...(flexWrap !== undefined ? { flexWrap } : {}),
+    ...(gap !== undefined ? { gap } : {}),
+    ...(rowGap !== undefined ? { rowGap } : {}),
+    ...(columnGap !== undefined ? { columnGap } : {}),
+    ...(padding !== undefined ? { padding } : {}),
+    ...(paddingHorizontal !== undefined ? { paddingHorizontal } : {}),
+    ...(paddingVertical !== undefined ? { paddingVertical } : {}),
+    ...(paddingTop !== undefined ? { paddingTop } : {}),
+    ...(paddingBottom !== undefined ? { paddingBottom } : {}),
+    ...(paddingLeft !== undefined ? { paddingLeft } : {}),
+    ...(paddingRight !== undefined ? { paddingRight } : {}),
+  };
 
   const finalBgColor = backgroundColor ?? colors.glass;
   const finalBorderColor =
@@ -59,7 +104,12 @@ export function GlassCard({
     borderColor: finalBorderColor,
     overflow: 'hidden',
     ...(Shadows.card as ViewStyle),
-    ...(Platform.OS === 'web' && onPress && !disabled ? ({ cursor: 'pointer', transition: 'border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease' } as ViewStyle) : {}),
+    ...(Platform.OS === 'web' && onPress && !disabled
+      ? ({
+          cursor: 'pointer',
+          transition: 'border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease',
+        } as ViewStyle)
+      : {}),
     ...(Platform.OS === 'web' && hovered && onPress && !disabled ? (Shadows.md as ViewStyle) : {}),
   };
 
@@ -67,13 +117,23 @@ export function GlassCard({
     <View
       style={[
         styles.inner,
-        noPadding && styles.noPadding,
-        { alignItems, justifyContent, flexDirection, alignContent },
+        (noPadding || hasCustomPadding) && styles.noPadding,
+        customInnerLayout,
       ]}
     >
       {children}
     </View>
   );
+
+  const gradientBg = gradientColors ? (
+    <LinearGradient
+      colors={gradientColors}
+      start={gradientStart}
+      end={gradientEnd}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    />
+  ) : null;
 
   if (onPress) {
     return (
@@ -89,18 +149,24 @@ export function GlassCard({
           wrapperStyle,
         ]}
       >
+        {gradientBg}
         {inner}
       </Pressable>
     );
   }
 
-  return <View style={[cardBase, wrapperStyle]}>{inner}</View>;
+  return (
+    <View style={[cardBase, wrapperStyle]}>
+      {gradientBg}
+      {inner}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   inner: {
     flex: 1,
-    padding: 20,
+    padding: 18,
     position: 'relative',
   },
   noPadding: {

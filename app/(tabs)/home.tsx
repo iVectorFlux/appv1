@@ -1,8 +1,9 @@
 /**
- * Home — Minimal, Focused EQ Workspace
+ * Home — Minimal, High-Clarity EQ Workspace
  *
- * Clean visual hierarchy: open whitespace, concise copy, icon-led navigation,
- * and immediate zero-spinner loading across mobile and desktop.
+ * Designed for crisp mobile & desktop readability:
+ * clear typography contrast, generous vertical breathing room,
+ * zero awkward half-line wrapping, and vibrant multi-tone gradients.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -14,6 +15,7 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
@@ -37,19 +39,53 @@ import {
 import { buildHomeRecommendations } from '@/services/learning-recommendations';
 import { formatCatalogLabel } from '@/data/eq-curriculum';
 
+type GradientPair = readonly [string, string];
+
 interface WorkspaceTile {
   key: string;
   title: string;
   hint: string;
   icon: keyof typeof Ionicons.glyphMap;
-  accent: string;
+  gradient: GradientPair;
+  cardWashLight: GradientPair;
+  cardWashDark: GradientPair;
   route: string;
 }
+
+const RECOMMENDATION_STYLES: Record<
+  'video' | 'reading' | 'audio',
+  {
+    icon: keyof typeof Ionicons.glyphMap;
+    gradient: GradientPair;
+    washLight: GradientPair;
+    washDark: GradientPair;
+  }
+> = {
+  video: {
+    icon: 'play',
+    gradient: ['#2563EB', '#4F46E5'],
+    washLight: ['#FFFFFF', '#F5F7FF'],
+    washDark: ['#18181B', '#172554'],
+  },
+  reading: {
+    icon: 'book',
+    gradient: ['#7C3AED', '#EC4899'],
+    washLight: ['#FFFFFF', '#FAF5FF'],
+    washDark: ['#18181B', '#2E1065'],
+  },
+  audio: {
+    icon: 'headset',
+    gradient: ['#059669', '#0EA5E9'],
+    washLight: ['#FFFFFF', '#F0FDF9'],
+    washDark: ['#18181B', '#064E3B'],
+  },
+};
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const colors = useColors();
+  const isDark = colors.glassTint === 'dark';
   const isDesktop = useWebLaptopLayout();
 
   const { episodes } = useLearningCatalog('B2B');
@@ -115,49 +151,61 @@ export default function HomeScreen() {
       {
         key: 'learn',
         title: 'Curriculum',
-        hint: `${sequenced.completedCount}/${sequenced.totalCount || 24} completed`,
-        icon: 'compass-outline',
-        accent: colors.primary,
+        hint: `${sequenced.completedCount} of ${sequenced.totalCount || 24} modules`,
+        icon: 'compass',
+        gradient: ['#2563EB', '#4F46E5'],
+        cardWashLight: ['#FFFFFF', '#F5F8FF'],
+        cardWashDark: ['#18181B', '#172554'],
         route: '/(tabs)/learn',
       },
       {
         key: 'companion',
         title: 'Inner Ally',
-        hint: 'Reflect & reset',
-        icon: 'sparkles-outline',
-        accent: colors.accentIndigo,
+        hint: 'Reflect & reset with AI',
+        icon: 'sparkles',
+        gradient: ['#6366F1', '#9333EA'],
+        cardWashLight: ['#FFFFFF', '#F8F5FF'],
+        cardWashDark: ['#18181B', '#2E1065'],
         route: '/(tabs)/companion',
       },
       {
         key: 'recover',
         title: 'Breathe',
         hint: '3 min calm reset',
-        icon: 'leaf-outline',
-        accent: colors.success,
+        icon: 'leaf',
+        gradient: ['#10B981', '#0D9488'],
+        cardWashLight: ['#FFFFFF', '#F0FDF9'],
+        cardWashDark: ['#18181B', '#064E3B'],
         route: '/grounding',
       },
       {
         key: 'full-eq',
         title: latestEqScore !== null ? 'EQ Assessment' : 'Baseline EQ Test',
-        hint: latestEqScore !== null ? `Score ${latestEqScore}/100` : '25 min check-in',
-        icon: 'analytics-outline',
-        accent: colors.primary,
+        hint: latestEqScore !== null ? `Latest score ${latestEqScore}/100` : '20 min check-in',
+        icon: 'analytics',
+        gradient: ['#0284C7', '#2563EB'],
+        cardWashLight: ['#FFFFFF', '#F0F9FF'],
+        cardWashDark: ['#18181B', '#0C4A6E'],
         route: '/full-eq-test',
       },
       {
         key: 'big5',
         title: 'Personality',
-        hint: 'Big Five traits',
-        icon: 'shapes-outline',
-        accent: colors.accentIndigo,
+        hint: 'Big Five profile',
+        icon: 'shapes',
+        gradient: ['#F59E0B', '#EC4899'],
+        cardWashLight: ['#FFFFFF', '#FFF7ED'],
+        cardWashDark: ['#18181B', '#451A03'],
         route: '/big5-test',
       },
       {
         key: 'progress',
         title: 'Progress',
         hint: 'Insights & reports',
-        icon: 'stats-chart-outline',
-        accent: colors.success,
+        icon: 'stats-chart',
+        gradient: ['#0D9488', '#0284C7'],
+        cardWashLight: ['#FFFFFF', '#F0FDFA'],
+        cardWashDark: ['#18181B', '#134E4A'],
         route: '/(tabs)/progress',
       },
     ];
@@ -165,16 +213,18 @@ export default function HomeScreen() {
       tiles.push({
         key: 'admin',
         title: 'Team Analytics',
-        hint: 'Admin overview',
-        icon: 'shield-checkmark-outline',
-        accent: colors.warning,
+        hint: 'Company overview',
+        icon: 'shield-checkmark',
+        gradient: ['#F59E0B', '#EA580C'],
+        cardWashLight: ['#FFFFFF', '#FFFBEB'],
+        cardWashDark: ['#18181B', '#451A03'],
         route: '/admin',
       });
     }
     return tiles;
-  }, [colors, latestEqScore, sequenced.completedCount, sequenced.totalCount, user?.role]);
+  }, [latestEqScore, sequenced.completedCount, sequenced.totalCount, user?.role]);
 
-  const st = createStyles(colors);
+  const st = createStyles(colors, isDesktop);
 
   const openNextLesson = () => {
     if (!nextLesson) {
@@ -199,9 +249,13 @@ export default function HomeScreen() {
         {/* Minimal Header */}
         <View style={st.headerRow}>
           <View style={st.headerLeft}>
-            <Text style={[st.greeting, isDesktop && st.greetingDesktop]}>{greeting}</Text>
+            <Text style={[st.greeting, isDesktop && st.greetingDesktop]} numberOfLines={1}>
+              {greeting}
+            </Text>
             {user?.companyName ? (
-              <Text style={st.companySubtitle}>{user.companyName}</Text>
+              <Text style={st.companySubtitle} numberOfLines={1}>
+                {user.companyName}
+              </Text>
             ) : null}
           </View>
 
@@ -222,26 +276,41 @@ export default function HomeScreen() {
                 activeOpacity={0.75}
                 accessibilityLabel="Open profile"
               >
-                <Ionicons name="person-outline" size={19} color={colors.textPrimary} />
+                <Ionicons name="person-outline" size={17} color={colors.textPrimary} />
               </TouchableOpacity>
             ) : null}
           </View>
         </View>
 
-        {/* Focused Hero Card */}
-        <GlassCard style={st.heroCard}>
+        {/* Hero Card with Gradient Wash & High Hierarchy Contrast */}
+        <GlassCard
+          style={[st.heroCard, isDesktop && st.heroCardDesktop]}
+          gradientColors={
+            isDark
+              ? ['#172554', '#1E1B4B', '#18181B']
+              : ['#EEF2FF', '#F0F9FF', '#FFFFFF']
+          }
+          borderColor={isDark ? 'rgba(99, 102, 241, 0.35)' : 'rgba(79, 70, 229, 0.22)'}
+        >
           <View style={st.heroTopRow}>
-            <View style={[st.statusChip, { backgroundColor: colors.surface }]}>
-              <View
-                style={[
-                  st.statusDot,
-                  {
-                    backgroundColor:
-                      sequenced.accessMode === 'free_browse'
-                        ? colors.success
-                        : colors.primary,
-                  },
-                ]}
+            <View
+              style={[
+                st.statusChip,
+                {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.85)',
+                  borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(79, 70, 229, 0.14)',
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  sequenced.accessMode === 'free_browse'
+                    ? ['#10B981', '#0D9488']
+                    : ['#2563EB', '#7C3AED']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={st.statusDot}
               />
               <Text style={st.statusChipText}>
                 {latestEqScore === null
@@ -255,34 +324,45 @@ export default function HomeScreen() {
             {latestEqScore !== null ? (
               <TouchableOpacity
                 onPress={() => router.push('/(tabs)/progress')}
-                style={[st.scoreChip, { backgroundColor: colors.primary + '12' }]}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
               >
-                <Text style={[st.scoreChipText, { color: colors.primary }]}>
-                  EQ {latestEqScore}
-                </Text>
+                <LinearGradient
+                  colors={['#2563EB', '#4F46E5']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={st.scoreChip}
+                >
+                  <Text style={st.scoreChipText}>EQ {latestEqScore}</Text>
+                </LinearGradient>
               </TouchableOpacity>
             ) : null}
           </View>
 
-          <Text style={[st.heroTitle, isDesktop && st.heroTitleDesktop]}>
-            {latestEqScore === null
-              ? 'Take Baseline EQ Test'
-              : nextLesson
-                ? formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title
-                : 'Your EQ Path'}
-          </Text>
+          <View style={st.heroTextGroup}>
+            <Text style={[st.heroTitle, isDesktop && st.heroTitleDesktop]}>
+              {latestEqScore === null
+                ? 'Take Baseline EQ Test'
+                : nextLesson
+                  ? formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title
+                  : 'Your EQ Path'}
+            </Text>
 
-          <Text style={st.heroDesc}>
-            {latestEqScore === null
-              ? 'A short baseline assessment to personalize your learning path.'
-              : latestEqScore >= GOOD_EQ_SCORE_THRESHOLD
-                ? 'Explore any competency freely or follow the recommended sequence.'
-                : 'Complete each step in sequence to build lasting mastery.'}
-          </Text>
+            <Text style={[st.heroDesc, isDesktop && st.heroDescDesktop]}>
+              {latestEqScore === null
+                ? 'Measure your baseline to unlock a personalized path.'
+                : latestEqScore >= GOOD_EQ_SCORE_THRESHOLD
+                  ? 'Explore all competencies freely or continue in sequence.'
+                  : 'Complete each competency step by step.'}
+            </Text>
+          </View>
 
           <View style={st.progressBlock}>
-            <ProgressBar value={completionPct} height={6} />
+            <ProgressBar
+              value={completionPct}
+              height={7}
+              gradientColors={['#2563EB', '#6366F1', '#0EA5E9']}
+              trackColor={isDark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.08)'}
+            />
             <Text style={st.progressMeta}>
               {sequenced.completedCount} of {sequenced.totalCount || 24} completed
             </Text>
@@ -293,11 +373,13 @@ export default function HomeScreen() {
               <>
                 <Button
                   title="Start EQ Test"
+                  size={isDesktop ? 'md' : 'sm'}
                   icon="arrow-forward"
                   onPress={() => router.push('/full-eq-test')}
                 />
                 <Button
-                  title="Browse Modules"
+                  title="Explore"
+                  size={isDesktop ? 'md' : 'sm'}
                   variant="ghost"
                   onPress={() => router.push('/(tabs)/learn')}
                 />
@@ -306,11 +388,13 @@ export default function HomeScreen() {
               <>
                 <Button
                   title="Continue"
+                  size={isDesktop ? 'md' : 'sm'}
                   icon="play"
                   onPress={openNextLesson}
                 />
                 <Button
                   title="All Modules"
+                  size={isDesktop ? 'md' : 'sm'}
                   variant="ghost"
                   onPress={() => router.push('/(tabs)/learn')}
                 />
@@ -319,10 +403,12 @@ export default function HomeScreen() {
           </View>
         </GlassCard>
 
-        {/* Resume In-Progress (Only when active) */}
+        {/* Resume In-Progress */}
         {homeFeed.incompleteItems.length > 0 ? (
           <View style={st.sectionBlock}>
-            <Text style={st.sectionTitle}>Pick up where you left off</Text>
+            <Text style={[st.sectionTitle, isDesktop && st.sectionTitleDesktop]}>
+              Continue where you left off
+            </Text>
             <View style={[st.grid, isDesktop && st.gridDesktop]}>
               {homeFeed.incompleteItems.slice(0, 2).map((item) => (
                 <GlassCard
@@ -330,21 +416,29 @@ export default function HomeScreen() {
                   onPress={() =>
                     router.push(`/learning-detail?id=${encodeURIComponent(item.routeId)}&mode=${item.kind}`)
                   }
-                  style={[st.compactCard, isDesktop && st.halfCardDesktop]}
+                  gradientColors={
+                    isDark ? ['#18181B', '#2E1A07'] : ['#FFFFFF', '#FFFBEB']
+                  }
+                  style={[st.rowCard, isDesktop && st.halfCardDesktop]}
                 >
                   <View style={st.tileRow}>
-                    <View style={[st.iconSquircle, { backgroundColor: colors.warning + '16' }]}>
+                    <LinearGradient
+                      colors={['#F59E0B', '#EA580C']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={st.iconSquircle}
+                    >
                       <Ionicons
-                        name={item.kind === 'video' ? 'play-outline' : 'headset-outline'}
-                        size={19}
-                        color={colors.warning}
+                        name={item.kind === 'video' ? 'play' : 'headset'}
+                        size={18}
+                        color="#FFFFFF"
                       />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={st.tileTitle} numberOfLines={1}>
+                    </LinearGradient>
+                    <View style={st.rowTextCol}>
+                      <Text style={[st.tileTitle, isDesktop && st.tileTitleDesktop]} numberOfLines={1}>
                         {item.title}
                       </Text>
-                      <Text style={st.tileSubtitle} numberOfLines={1}>
+                      <Text style={[st.tileSubtitle, isDesktop && st.tileSubtitleDesktop]} numberOfLines={1}>
                         {item.competency} · {item.progressPct}%
                       </Text>
                     </View>
@@ -359,7 +453,7 @@ export default function HomeScreen() {
                       accessibilityLabel="Restart lesson"
                       style={[st.miniIconBtn, { backgroundColor: colors.surface }]}
                     >
-                      <Ionicons name="refresh-outline" size={16} color={colors.textSecondary} />
+                      <Ionicons name="refresh-outline" size={15} color={colors.textSecondary} />
                     </TouchableOpacity>
                   </View>
                 </GlassCard>
@@ -371,21 +465,12 @@ export default function HomeScreen() {
         {/* Minimal Recommendations */}
         {homeFeed.recommendations.length > 0 ? (
           <View style={st.sectionBlock}>
-            <Text style={st.sectionTitle}>Recommended</Text>
+            <Text style={[st.sectionTitle, isDesktop && st.sectionTitleDesktop]}>
+              Recommended
+            </Text>
             <View style={[st.grid, isDesktop && st.gridDesktop]}>
               {homeFeed.recommendations.slice(0, 3).map((rec) => {
-                const iconName: keyof typeof Ionicons.glyphMap =
-                  rec.type === 'video'
-                    ? 'play-outline'
-                    : rec.type === 'reading'
-                      ? 'book-outline'
-                      : 'headset-outline';
-                const accent =
-                  rec.type === 'video'
-                    ? colors.primary
-                    : rec.type === 'reading'
-                      ? colors.accentIndigo
-                      : colors.success;
+                const palette = RECOMMENDATION_STYLES[rec.type];
 
                 return (
                   <GlassCard
@@ -393,20 +478,52 @@ export default function HomeScreen() {
                     onPress={() =>
                       router.push(`/learning-detail?id=${encodeURIComponent(rec.routeId)}&mode=${rec.type}`)
                     }
-                    style={[st.compactCard, isDesktop && st.thirdCardDesktop]}
+                    gradientColors={isDark ? palette.washDark : palette.washLight}
+                    style={[st.rowCard, isDesktop && st.thirdCardDesktop]}
                   >
-                    <View style={st.tileTop}>
-                      <View style={[st.iconSquircle, { backgroundColor: accent + '14' }]}>
-                        <Ionicons name={iconName} size={19} color={accent} />
+                    {isDesktop ? (
+                      <View style={st.desktopTileInner}>
+                        <View style={st.tileTop}>
+                          <LinearGradient
+                            colors={palette.gradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={st.iconSquircleDesktop}
+                          >
+                            <Ionicons name={palette.icon} size={19} color="#FFFFFF" />
+                          </LinearGradient>
+                          <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+                        </View>
+                        <View style={st.desktopTileCopy}>
+                          <Text style={st.tileTitleDesktop} numberOfLines={1}>
+                            {rec.title}
+                          </Text>
+                          <Text style={st.tileSubtitleDesktop} numberOfLines={1}>
+                            {rec.competency}
+                          </Text>
+                        </View>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
-                    </View>
-                    <Text style={st.tileTitle} numberOfLines={1}>
-                      {rec.title}
-                    </Text>
-                    <Text style={st.tileSubtitle} numberOfLines={1}>
-                      {rec.competency}
-                    </Text>
+                    ) : (
+                      <View style={st.tileRow}>
+                        <LinearGradient
+                          colors={palette.gradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={st.iconSquircle}
+                        >
+                          <Ionicons name={palette.icon} size={17} color="#FFFFFF" />
+                        </LinearGradient>
+                        <View style={st.rowTextCol}>
+                          <Text style={st.tileTitle} numberOfLines={1}>
+                            {rec.title}
+                          </Text>
+                          <Text style={st.tileSubtitle} numberOfLines={1}>
+                            {rec.competency}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+                      </View>
+                    )}
                   </GlassCard>
                 );
               })}
@@ -414,24 +531,62 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* Clean Icon-Led Workspace Tiles */}
+        {/* Clean Gradient-Icon Workspace Tiles */}
         <View style={st.sectionBlock}>
-          <Text style={st.sectionTitle}>Workspace</Text>
+          <Text style={[st.sectionTitle, isDesktop && st.sectionTitleDesktop]}>
+            Workspace
+          </Text>
           <View style={[st.grid, isDesktop && st.gridDesktop]}>
             {workspaceTiles.map((tile) => (
               <GlassCard
                 key={tile.key}
                 onPress={() => router.push(tile.route as never)}
-                style={[st.compactCard, isDesktop && st.thirdCardDesktop]}
+                gradientColors={isDark ? tile.cardWashDark : tile.cardWashLight}
+                style={[st.rowCard, isDesktop && st.thirdCardDesktop]}
               >
-                <View style={st.tileTop}>
-                  <View style={[st.iconSquircle, { backgroundColor: tile.accent + '14' }]}>
-                    <Ionicons name={tile.icon} size={20} color={tile.accent} />
+                {isDesktop ? (
+                  <View style={st.desktopTileInner}>
+                    <View style={st.tileTop}>
+                      <LinearGradient
+                        colors={tile.gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={st.iconSquircleDesktop}
+                      >
+                        <Ionicons name={tile.icon} size={19} color="#FFFFFF" />
+                      </LinearGradient>
+                      <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+                    </View>
+                    <View style={st.desktopTileCopy}>
+                      <Text style={st.tileTitleDesktop} numberOfLines={1}>
+                        {tile.title}
+                      </Text>
+                      <Text style={st.tileSubtitleDesktop} numberOfLines={1}>
+                        {tile.hint}
+                      </Text>
+                    </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
-                </View>
-                <Text style={st.tileTitle}>{tile.title}</Text>
-                <Text style={st.tileSubtitle}>{tile.hint}</Text>
+                ) : (
+                  <View style={st.tileRow}>
+                    <LinearGradient
+                      colors={tile.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={st.iconSquircle}
+                    >
+                      <Ionicons name={tile.icon} size={17} color="#FFFFFF" />
+                    </LinearGradient>
+                    <View style={st.rowTextCol}>
+                      <Text style={st.tileTitle} numberOfLines={1}>
+                        {tile.title}
+                      </Text>
+                      <Text style={st.tileSubtitle} numberOfLines={1}>
+                        {tile.hint}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+                  </View>
+                )}
               </GlassCard>
             ))}
           </View>
@@ -441,13 +596,13 @@ export default function HomeScreen() {
   );
 }
 
-const createStyles = (colors: ReturnType<typeof useColors>) =>
+const createStyles = (colors: ReturnType<typeof useColors>, isDesktop: boolean) =>
   StyleSheet.create({
     scroll: { flex: 1 },
     content: {
-      paddingHorizontal: Spacing.lg,
-      paddingTop: Platform.OS === 'ios' ? 60 : Spacing.xl,
-      paddingBottom: 120,
+      paddingHorizontal: Spacing.md,
+      paddingTop: Platform.OS === 'ios' ? 54 : Spacing.lg,
+      paddingBottom: 112,
       gap: 28,
     },
     contentDesktop: {
@@ -463,24 +618,26 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: Spacing.md,
+      gap: 12,
     },
     headerLeft: {
       flex: 1,
       gap: 4,
     },
     greeting: {
-      fontSize: 28,
+      fontSize: 20,
+      lineHeight: 26,
       fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
-      letterSpacing: -0.7,
+      letterSpacing: -0.4,
     },
     greetingDesktop: {
-      fontSize: 34,
-      letterSpacing: -0.9,
+      fontSize: 32,
+      lineHeight: 38,
+      letterSpacing: -0.8,
     },
     companySubtitle: {
-      fontSize: Typography.fontSize.sm,
+      fontSize: isDesktop ? 13 : 12,
       color: colors.textMuted,
       fontWeight: Typography.fontWeight.medium,
     },
@@ -490,16 +647,20 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       gap: Spacing.sm,
     },
     profileBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
     },
     heroCard: {
-      padding: 24,
-      gap: 16,
+      padding: 18,
+      gap: 18,
+    },
+    heroCardDesktop: {
+      padding: 28,
+      gap: 22,
     },
     heroTopRow: {
       flexDirection: 'row',
@@ -510,52 +671,63 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     statusChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      gap: 7,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
       borderRadius: Radius.full,
+      borderWidth: 1,
     },
     statusDot: {
-      width: 7,
-      height: 7,
+      width: 8,
+      height: 8,
       borderRadius: 4,
     },
     statusChipText: {
-      fontSize: Typography.fontSize.xs,
+      fontSize: 11,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textSecondary,
+      letterSpacing: 0.1,
     },
     scoreChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: 11,
+      paddingVertical: 5,
       borderRadius: Radius.full,
     },
     scoreChipText: {
-      fontSize: Typography.fontSize.xs,
+      fontSize: 11,
       fontWeight: Typography.fontWeight.bold,
+      color: '#FFFFFF',
+    },
+    heroTextGroup: {
+      gap: 8,
     },
     heroTitle: {
-      fontSize: 22,
+      fontSize: 21,
+      lineHeight: 27,
       fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
-      letterSpacing: -0.5,
+      letterSpacing: -0.4,
     },
     heroTitleDesktop: {
-      fontSize: 26,
-      letterSpacing: -0.7,
+      fontSize: 30,
+      lineHeight: 36,
+      letterSpacing: -0.8,
     },
     heroDesc: {
-      fontSize: Typography.fontSize.base,
+      fontSize: 13,
+      lineHeight: 19,
       color: colors.textSecondary,
+      maxWidth: 540,
+    },
+    heroDescDesktop: {
+      fontSize: 15,
       lineHeight: 22,
-      maxWidth: 560,
     },
     progressBlock: {
       gap: 8,
-      marginTop: 2,
     },
     progressMeta: {
-      fontSize: Typography.fontSize.xs,
+      fontSize: isDesktop ? 13 : 11.5,
       color: colors.textMuted,
       fontWeight: Typography.fontWeight.medium,
     },
@@ -563,29 +735,31 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
-      gap: Spacing.sm,
-      marginTop: 4,
+      gap: 10,
     },
     sectionBlock: {
-      gap: 14,
+      gap: isDesktop ? 16 : 12,
     },
     sectionTitle: {
-      fontSize: 17,
-      fontWeight: Typography.fontWeight.semibold,
+      fontSize: 15,
+      fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
-      letterSpacing: -0.3,
+      letterSpacing: -0.2,
+    },
+    sectionTitleDesktop: {
+      fontSize: 18,
+      letterSpacing: -0.35,
     },
     grid: {
-      gap: 14,
+      gap: 12,
     },
     gridDesktop: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 18,
     },
-    compactCard: {
-      padding: 20,
-      gap: 10,
+    rowCard: {
+      padding: isDesktop ? 20 : 14,
     },
     halfCardDesktop: {
       width: '48.5%' as any,
@@ -597,39 +771,68 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       minWidth: 240,
       flexGrow: 1,
     },
+    tileRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 13,
+    },
+    rowTextCol: {
+      flex: 1,
+      gap: 4,
+    },
+    desktopTileInner: {
+      gap: 14,
+    },
+    desktopTileCopy: {
+      gap: 5,
+    },
     tileTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 4,
-    },
-    tileRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 14,
     },
     iconSquircle: {
-      width: 40,
-      height: 40,
+      width: 38,
+      height: 38,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconSquircleDesktop: {
+      width: 42,
+      height: 42,
       borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
     },
     tileTitle: {
-      fontSize: 16,
+      fontSize: 14,
+      lineHeight: 19,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
-      letterSpacing: -0.2,
+      letterSpacing: -0.15,
+    },
+    tileTitleDesktop: {
+      fontSize: 16,
+      lineHeight: 22,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      letterSpacing: -0.25,
     },
     tileSubtitle: {
-      fontSize: 13,
+      fontSize: 12,
+      lineHeight: 16,
       color: colors.textMuted,
-      fontWeight: Typography.fontWeight.normal,
+    },
+    tileSubtitleDesktop: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.textMuted,
     },
     miniIconBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
     },
