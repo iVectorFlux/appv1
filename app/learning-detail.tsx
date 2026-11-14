@@ -138,7 +138,8 @@ export default function LearningDetailScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [videoUseProxyFallback, setVideoUseProxyFallback] = useState(false);
   const [lessonCompleted, setLessonCompleted] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
@@ -251,13 +252,7 @@ export default function LearningDetailScreen() {
       setCatalogEpisodeKey(syncHit.episodeKey);
       activeEpisodeKeyRef.current = syncHit.episodeKey;
       setMediaMode(syncMode);
-      setLessonStep(
-        requestedModeRaw === 'audio' && syncHasAudio
-          ? 'audio'
-          : requestedModeRaw === 'video' && syncHasVideo
-            ? 'video'
-            : 'read'
-      );
+      setLessonStep('read');
       setReadStage('overview');
       setShouldAutoPlayVideo(false);
       setStepGateHint(null);
@@ -308,7 +303,8 @@ export default function LearningDetailScreen() {
         }
         setIsLoading(startMode === 'video' && Platform.OS !== 'web');
         setVideoUseProxyFallback(false);
-        setError(null);
+        setVideoError(null);
+        setAudioError(null);
         setProgress(0);
         setDuration(0);
         liveProgressMsRef.current = 0;
@@ -345,16 +341,7 @@ export default function LearningDetailScreen() {
           setVideoWatchPct(initVidPct);
           setVideoCompleted(initVidDone);
           setAudioCompleted(initAudDone);
-
-          const hasVid = Boolean(fromCatalog?.module.videoUrl?.trim());
-          const hasAud = Boolean(fromCatalog?.module.audioUrl?.trim());
-          if (requestedModeRaw === 'audio' && hasAud && (initVidDone || !hasVid)) {
-            setLessonStep('audio');
-          } else if (requestedModeRaw === 'video' && hasVid) {
-            setLessonStep('video');
-          } else {
-            setLessonStep('read');
-          }
+          setLessonStep('read');
 
           if (shouldRestart) {
             const restartKind: MediaMode = startMode === 'audio' ? 'audio' : 'video';
@@ -441,13 +428,8 @@ export default function LearningDetailScreen() {
       flushPlaybackPosition();
       pendingPlayRef.current = false;
       if (Platform.OS === 'web') {
-        if (webAudioRef.current) {
-          webAudioRef.current.pause();
-          if (webAudioRef.current.parentNode) {
-            webAudioRef.current.parentNode.removeChild(webAudioRef.current);
-          }
-          webAudioRef.current = null;
-        }
+        cleanupWebAudioElement(webAudioRef.current);
+        webAudioRef.current = null;
         if (webVideoRef.current) {
           webVideoRef.current.pause();
           webVideoRef.current = null;
@@ -529,7 +511,7 @@ export default function LearningDetailScreen() {
         }
       } catch {
         if (!cancelled) {
-          setError('Unable to load audio. Please try again.');
+          setAudioError('Unable to load audio. Please try again.');
           setIsLoading(false);
         }
       }
@@ -768,33 +750,54 @@ export default function LearningDetailScreen() {
         }
       }
     } else if (status.error) {
-      setError('Unable to load media. Please check your connection.');
+      if (mediaMode === 'audio') {
+        setAudioError('Unable to load audio. Please check your connection.');
+      } else {
+        setVideoError('Unable to load video. Please check your connection.');
+      }
       setIsLoading(false);
     }
   };
 
-  // Web audio: create and append to DOM so play() works (browsers often require media in DOM).
-  // Called eagerly on mount AND on switchToAudio so the element is warm when the user taps play.
-  const setupWebAudio = (audioUrl: string) => {
-    if (Platform.OS !== 'web') return;
-    if (webAudioRef.current) {
-      webAudioRef.current.pause();
-      if (webAudioRef.current.parentNode) {
-        webAudioRef.current.parentNode.removeChild(webAudioRef.current);
-      }
-      webAudioRef.current = null;
+  const cleanupWebAudioElement = (el: HTMLAudioElement | null) => {
+    if (!el) return;
+    el.onerror = null;
+    el.onloadedmetadata = null;
+    el.onloadeddata = null;
+    el.ontimeupdate = null;
+    el.onplay = null;
+    el.onpause = null;
+    el.onwaiting = null;
+    el.onplaying = null;
+    el.onended = null;
+    el.oncanplay = null;
+    el.pause();
+    el.removeAttribute('src');
+    if (el.parentNode) {
+      el.parentNode.removeChild(el);
     }
+  };
+
+  // Web audio: direct media load first (matching <video>, no forced CORS preflight),
+  // with automatic same-origin /api/audio-proxy fallback if direct load fails.
+  const setupWebAudio = (audioUrl: string, useProxyFallback = false) => {
+    if (Platform.OS !== 'web') return;
+    cleanupWebAudioElement(webAudioRef.current);
+    webAudioRef.current = null;
+
     const audio = document.createElement('audio');
     audio.dataset.sourceUrl = audioUrl;
-    audio.src = buildAudioProxyUrl(audioUrl);
+    audio.src = useProxyFallback ? buildAudioProxyUrl(audioUrl) : audioUrl;
     audio.preload = 'metadata';
-    // The proxy adds CORS + Range headers; keep anonymous so browsers expose metadata consistently.
-    audio.crossOrigin = 'anonymous';
+    if (useProxyFallback) {
+      audio.crossOrigin = 'anonymous';
+    }
     audio.style.position = 'fixed';
     audio.style.left = '-9999px';
     audio.style.opacity = '0';
     audio.style.pointerEvents = 'none';
     const clearLoadingAndHonorPlay = () => {
+      setAudioError(null);
       if (!Number.isNaN(audio.duration) && audio.duration > 0) {
         const durMs = audio.duration * 1000;
         setDuration(durMs);
@@ -813,7 +816,7 @@ export default function LearningDetailScreen() {
       if (pendingPlayRef.current) {
         pendingPlayRef.current = false;
         audio.play().catch((err) => {
-          setError('Audio didn\u2019t start. Tap Play again or try the Video tab.');
+          setAudioError('Audio didn\u2019t start. Tap Play again or go back to Video.');
           console.error('Audio deferred-play error:', err);
         });
       }
@@ -828,6 +831,7 @@ export default function LearningDetailScreen() {
       reportMediaProgress('audio', posMs, durMs);
     };
     audio.onplay = () => {
+      setAudioError(null);
       setIsPlaying(true);
       setIsLoading(false);
     };
@@ -843,6 +847,7 @@ export default function LearningDetailScreen() {
       liveProgressMsRef.current = 0;
       pendingAudioSeekSecRef.current = 0;
       setResumedBannerSeconds((prev) => ({ ...prev, audio: 0 }));
+      setAudioCompleted(true);
       setLessonCompleted(true);
       if (module?.id && user?.id) {
         if (catalogEpisodeKey) recordEpisodeAudioCompleted(user.id, catalogEpisodeKey).catch(() => {});
@@ -850,8 +855,12 @@ export default function LearningDetailScreen() {
       }
     };
     audio.onerror = () => {
+      if (!useProxyFallback) {
+        setupWebAudio(audioUrl, true);
+        return;
+      }
       pendingPlayRef.current = false;
-      setError('Unable to load audio. Please try again.');
+      setAudioError('Unable to load audio right now. Please try again.');
       setIsLoading(false);
     };
     // When the element becomes playable, honor any queued play intent
@@ -861,24 +870,13 @@ export default function LearningDetailScreen() {
     webAudioRef.current = audio;
   };
 
-  // Eagerly pre-create the web audio element when the module loads (so it's warm by first tap)
+  // Clean up any active web audio element when module changes or unmounts
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    if (!module?.audioUrl?.trim()) return;
-    // Only pre-create if not already set up (switchToAudio also calls setupWebAudio)
-    if (!webAudioRef.current) {
-      setupWebAudio(module.audioUrl.trim());
-    }
     return () => {
-      if (webAudioRef.current) {
-        webAudioRef.current.pause();
-        if (webAudioRef.current.parentNode) {
-          webAudioRef.current.parentNode.removeChild(webAudioRef.current);
-        }
-        webAudioRef.current = null;
-      }
+      cleanupWebAudioElement(webAudioRef.current);
+      webAudioRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [module?.audioUrl]);
 
   const togglePlayPause = async () => {
@@ -907,7 +905,7 @@ export default function LearningDetailScreen() {
             await webVideoRef.current.play();
           }
         } catch (err) {
-          setError('Unable to play video. Try again.');
+          setVideoError('Unable to play video. Try again.');
           console.error('Video play error:', err);
         }
       } else if (videoRef.current) {
@@ -918,7 +916,7 @@ export default function LearningDetailScreen() {
             await videoRef.current.playAsync();
           }
         } catch (err) {
-          setError('Unable to play video.');
+          setVideoError('Unable to play video.');
           console.error('Video play error:', err);
         }
       }
@@ -937,7 +935,7 @@ export default function LearningDetailScreen() {
             // Otherwise queue play intent - oncanplay will fire it.
             if (webAudioRef.current.readyState >= 2) {
               webAudioRef.current.play().catch((err) => {
-                setError('Audio didn\u2019t start. Tap Play again or try the Video tab.');
+                setAudioError('Audio didn\u2019t start. Tap Play again or try the Video tab.');
                 console.error('Audio play error:', err);
               });
             } else {
@@ -970,7 +968,7 @@ export default function LearningDetailScreen() {
   const switchToAudio = async () => {
     if (!module) return;
     if (!module.audioUrl?.trim()) {
-      setError('No podcast is available for this lesson.');
+      setAudioError('No audio lesson is available for this module.');
       return;
     }
 
@@ -986,7 +984,7 @@ export default function LearningDetailScreen() {
     const savedAudMs = Math.max(pendingAudioSeekSecRef.current, resumedBannerSeconds.audio) * 1000;
     setProgress(savedAudMs);
     liveProgressMsRef.current = savedAudMs;
-    setError(null);
+    setAudioError(null);
 
     try {
       if (Platform.OS === 'web') {
@@ -1018,7 +1016,7 @@ export default function LearningDetailScreen() {
         setIsLoading(false);
       }
     } catch (err) {
-      setError('Unable to load audio. Please try again.');
+      setAudioError('Unable to load audio. Please try again.');
       setIsLoading(false);
       console.error('Audio loading error:', err);
     }
@@ -1026,7 +1024,7 @@ export default function LearningDetailScreen() {
 
   const switchToVideo = async () => {
     if (!module?.videoUrl?.trim()) {
-      setError('No video is available for this lesson.');
+      setVideoError('No video is available for this lesson.');
       return;
     }
     flushPlaybackPosition('audio');
@@ -1036,7 +1034,7 @@ export default function LearningDetailScreen() {
     const savedVidMs = Math.max(pendingVideoSeekSecRef.current, resumedBannerSeconds.video) * 1000;
     setProgress(savedVidMs);
     liveProgressMsRef.current = savedVidMs;
-    setError(null);
+    setVideoError(null);
     if (Platform.OS !== 'web') {
       setVideoMountNonce((n) => n + 1);
     }
@@ -1210,7 +1208,7 @@ export default function LearningDetailScreen() {
               </Text>
               <Text style={[styles.lockedBody, { color: colors.textSecondary }]}>
                 {sequenceGate.lockedReason ??
-                  'Your current EQ pathway follows the structured sequence. Complete the previous competency lesson to unlock this module, or score 65+ on the Full EQ Test for Free Browse.'}
+                  'Your current EQ pathway follows the structured sequence. Complete the previous competency lesson to unlock this module.'}
               </Text>
               <View style={styles.lockedActions}>
                 {sequenceGate.nextUnlockedRouteId ? (
@@ -1259,7 +1257,7 @@ export default function LearningDetailScreen() {
                     display: 'block',
                     backgroundColor: '#000',
                   } as React.CSSProperties,
-                  onLoadStart: () => { setError(null); },
+                  onLoadStart: () => { setVideoError(null); },
                   onLoadedMetadata: (e: React.SyntheticEvent<HTMLVideoElement>) => {
                     setIsLoading(false);
                     const el = e.currentTarget;
@@ -1295,11 +1293,11 @@ export default function LearningDetailScreen() {
                   onError: () => {
                     if (!videoUseProxyFallback && rawVideoSrc) {
                       setVideoUseProxyFallback(true);
-                      setError(null);
+                      setVideoError(null);
                       setIsLoading(true);
                       return;
                     }
-                    setError('Unable to load video. Please try again.');
+                    setVideoError('Unable to load video. Please try again.');
                     setIsLoading(false);
                   },
                   onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement>) => {
@@ -1320,7 +1318,7 @@ export default function LearningDetailScreen() {
                   useNativeControls
                   resizeMode={ResizeMode.CONTAIN}
                   onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-                  onLoadStart={() => { setIsLoading(true); setError(null); }}
+                  onLoadStart={() => { setIsLoading(true); setVideoError(null); }}
                   onReadyForDisplay={() => {
                     setIsLoading(false);
                     if (shouldAutoPlayVideo) {
@@ -1328,7 +1326,7 @@ export default function LearningDetailScreen() {
                       videoRef.current?.playAsync().catch(() => {});
                     }
                   }}
-                  onError={() => { setError('Unable to load video'); setIsLoading(false); }}
+                  onError={() => { setVideoError('Unable to load video'); setIsLoading(false); }}
                 />
               )
             }
@@ -1339,14 +1337,14 @@ export default function LearningDetailScreen() {
             ) : null}
           </View>
 
-          {error ? (
+          {videoError ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle" size={24} color={colors.destructive} />
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>{videoError}</Text>
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={() => {
-                  setError(null);
+                  setVideoError(null);
                   setVideoUseProxyFallback(false);
                   if (Platform.OS !== 'web') {
                     setIsLoading(true);
@@ -1529,14 +1527,14 @@ export default function LearningDetailScreen() {
             </View>
           </View>
 
-          {error ? (
+          {audioError ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle" size={24} color={colors.destructive} />
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>{audioError}</Text>
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={() => {
-                  setError(null);
+                  setAudioError(null);
                   if (Platform.OS === 'web' && module?.audioUrl?.trim()) {
                     setIsLoading(true);
                     setupWebAudio(module.audioUrl.trim());

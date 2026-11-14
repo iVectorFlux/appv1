@@ -32,9 +32,6 @@ function readConfiguredAppUrl(): string {
  * Origin for API calls (no trailing slash). Empty string means "same origin" (relative URLs).
  */
 export function getVercelApiBase(): string {
-  const configured = readConfiguredAppUrl();
-  if (configured) return configured;
-
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const h = window.location.hostname;
     const isLocal = h === 'localhost' || h === '127.0.0.1';
@@ -42,6 +39,9 @@ export function getVercelApiBase(): string {
       return `${window.location.protocol}//${window.location.host}`.replace(/\/$/, '');
     }
   }
+
+  const configured = readConfiguredAppUrl();
+  if (configured) return configured;
 
   if (Platform.OS === 'web') return '';
 
@@ -84,15 +84,17 @@ export function buildAudioProxyUrl(sourceUrl: string): string {
   const trimmed = sourceUrl.trim();
   if (!trimmed || Platform.OS !== 'web') return trimmed;
 
-  let base = readConfiguredAppUrl();
-  if (!base && typeof window !== 'undefined') {
+  let base = '';
+  if (typeof window !== 'undefined') {
     const h = window.location.hostname;
     const isLocal = h === 'localhost' || h === '127.0.0.1';
-    base = isLocal
-      ? DEFAULT_DEPLOYED_APP_URL
-      : `${window.location.protocol}//${window.location.host}`.replace(/\/$/, '');
+    if (!isLocal) {
+      base = `${window.location.protocol}//${window.location.host}`.replace(/\/$/, '');
+    }
   }
-  if (!base) base = DEFAULT_DEPLOYED_APP_URL;
+  if (!base) {
+    base = readConfiguredAppUrl() || DEFAULT_DEPLOYED_APP_URL;
+  }
 
   return `${base}/api/audio-proxy?url=${encodeURIComponent(trimmed)}`;
 }

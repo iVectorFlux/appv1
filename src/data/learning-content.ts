@@ -66,7 +66,7 @@ export const LEARNING_MODULES: LearningModule[] = [
     audioDuration: '10 min',
     videoDuration: '6 min',
     icon: 'pause-circle-outline',
-    color: '#A78BFA', // Purple - calm, control
+    color: '#0EA5E9', // Sky blue - calm, control
     keyTakeaways: [
       'The 6-second rule: emotions peak and decline in 6 seconds',
       'Use physical anchors (breath, body scan) to pause',
@@ -169,7 +169,7 @@ export const DIMENSION_INFO: Record<EQDimension, { name: string; description: st
     name: 'Self-Regulation',
     description: 'Managing your emotional responses effectively',
     icon: 'pause-circle-outline',
-    color: '#A78BFA',
+    color: '#0EA5E9',
   },
   empathy: {
     name: 'Empathy',

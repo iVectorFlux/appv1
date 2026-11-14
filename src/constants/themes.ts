@@ -94,10 +94,10 @@ const lightTheme: ThemeColors = {
   accentTerracotta: '#E11D48',
   accentSage: '#0EA5E9',
   accentWarmTan: '#F59E0B',
-  accentIndigo: '#4F46E5',
+  accentIndigo: '#0284C7',
   accentCalm: '#0284C7',
   accentEnergy: '#D97706',
-  accentSoft: '#6366F1',
+  accentSoft: '#0D9488',
   accentWarm: '#E11D48',
 };
 
@@ -138,10 +138,10 @@ const darkTheme: ThemeColors = {
   accentTerracotta: '#FB7185',
   accentSage: '#38BDF8',
   accentWarmTan: '#FBBF24',
-  accentIndigo: '#818CF8',
+  accentIndigo: '#38BDF8',
   accentCalm: '#38BDF8',
   accentEnergy: '#FBBF24',
-  accentSoft: '#818CF8',
+  accentSoft: '#2DD4BF',
   accentWarm: '#FB7185',
 };
 

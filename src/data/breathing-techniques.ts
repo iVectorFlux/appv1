@@ -56,9 +56,9 @@ const SEGMENT_478: BreathSegment = {
   emotionGuide: 'Overthinking · winding down · sleep prep',
   cycles: 4,
   steps: [
-    { key: 'in', label: 'Inhale', sub: '4 seconds', durationMs: S(4000), color: '#818CF8', orb: 'expand' },
-    { key: 'hold', label: 'Hold', sub: 'Hold full lungs — 7 seconds', durationMs: S(7000), color: '#A78BFA', orb: 'holdHigh' },
-    { key: 'out', label: 'Exhale', sub: '8 seconds, unhurried', durationMs: S(8000), color: '#38BDF8', orb: 'contract' },
+    { key: 'in', label: 'Inhale', sub: '4 seconds', durationMs: S(4000), color: '#38BDF8', orb: 'expand' },
+    { key: 'hold', label: 'Hold', sub: 'Hold full lungs — 7 seconds', durationMs: S(7000), color: '#2DD4BF', orb: 'holdHigh' },
+    { key: 'out', label: 'Exhale', sub: '8 seconds, unhurried', durationMs: S(8000), color: '#0EA5E9', orb: 'contract' },
   ],
 };
 

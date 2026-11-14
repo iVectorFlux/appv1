@@ -39,7 +39,6 @@ import {
 } from '@/services/learning-content-progress';
 import {
   buildSequencedCatalog,
-  GOOD_EQ_SCORE_THRESHOLD,
   type SequencedEpisode,
 } from '@/services/learning-sequence';
 
@@ -50,9 +49,9 @@ const DOMAIN_GRADIENTS: Record<
   { accent: GradientPair; washLight: GradientPair; washDark: GradientPair; borderLight: string; borderDark: string }
 > = {
   SELF_AWARENESS_DOMAIN: {
-    accent: ['#2563EB', '#4F46E5'],
+    accent: ['#2563EB', '#0284C7'],
     washLight: ['#EFF6FF', '#FFFFFF'],
-    washDark: ['#172554', '#18181B'],
+    washDark: ['#0F2942', '#18181B'],
     borderLight: 'rgba(37, 99, 235, 0.16)',
     borderDark: 'rgba(59, 130, 246, 0.28)',
   },
@@ -64,14 +63,14 @@ const DOMAIN_GRADIENTS: Record<
     borderDark: 'rgba(16, 185, 129, 0.28)',
   },
   SOCIAL_AWARENESS_DOMAIN: {
-    accent: ['#7C3AED', '#C026D3'],
-    washLight: ['#F5F3FF', '#FFFFFF'],
-    washDark: ['#2E1065', '#18181B'],
-    borderLight: 'rgba(124, 58, 237, 0.16)',
-    borderDark: 'rgba(167, 139, 250, 0.28)',
+    accent: ['#0284C7', '#0891B2'],
+    washLight: ['#F0F9FF', '#FFFFFF'],
+    washDark: ['#0C4A6E', '#18181B'],
+    borderLight: 'rgba(2, 132, 199, 0.16)',
+    borderDark: 'rgba(56, 189, 248, 0.28)',
   },
   RELATIONSHIP_MANAGEMENT_DOMAIN: {
-    accent: ['#EA580C', '#E11D48'],
+    accent: ['#EA580C', '#D97706'],
     washLight: ['#FFF7ED', '#FFFFFF'],
     washDark: ['#451A03', '#18181B'],
     borderLight: 'rgba(234, 88, 12, 0.18)',
@@ -143,8 +142,7 @@ export default function LearnScreen() {
   const handleOpenEpisode = (item: SequencedEpisode) => {
     if (!item.unlocked) {
       setLockedNotice(
-        item.lockedReason ??
-          `Complete the previous lesson first (or score ${GOOD_EQ_SCORE_THRESHOLD}+ on the EQ Assessment to unlock all).`
+        item.lockedReason ?? 'Complete the previous lesson first.'
       );
       return;
     }
@@ -365,21 +363,21 @@ export default function LearnScreen() {
           <GlassCard
             style={[styles.summaryStrip, isDesktop && styles.summaryStripDesktop]}
             gradientColors={
-              isDark ? ['#172554', '#1E1B4B'] : ['#EFF6FF', '#F5F3FF', '#FFFFFF']
+              isDark ? ['#0F172A', '#0C2340'] : ['#F0F9FF', '#EFF6FF', '#FFFFFF']
             }
-            borderColor={isDark ? 'rgba(99,102,241,0.3)' : 'rgba(79,70,229,0.18)'}
+            borderColor={isDark ? 'rgba(56,189,248,0.28)' : 'rgba(2,132,199,0.18)'}
           >
             <View style={styles.summaryRow}>
               <View style={{ flex: 1, gap: 8 }}>
                 <ProgressBar
                   value={sequenced.completionRatePct}
                   height={6}
-                  gradientColors={['#2563EB', '#6366F1', '#0D9488']}
+                  gradientColors={['#2563EB', '#0284C7', '#0D9488']}
                 />
                 <Text style={[styles.summaryMeta, { color: colors.textSecondary }]}>
                   {latestEqScore !== null
                     ? `EQ Score ${latestEqScore}/100`
-                    : `Score ${GOOD_EQ_SCORE_THRESHOLD}+ on the EQ Test to unlock all`}
+                    : `${sequenced.completedCount} of ${sequenced.totalCount} modules completed`}
                 </Text>
               </View>
               {sequenced.nextUnlockedRouteId ? (
@@ -439,7 +437,7 @@ export default function LearnScreen() {
               >
                 {selectedDomain === 'all' ? (
                   <LinearGradient
-                    colors={['#2563EB', '#4F46E5']}
+                    colors={['#2563EB', '#0284C7']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFill}

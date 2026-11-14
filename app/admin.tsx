@@ -433,7 +433,7 @@ export default function EnterpriseAdminScreen() {
                 <StatCard
                   label="Avg EQ Score"
                   value={data.summary.avgEqScore ?? '—'}
-                  hint={`Free-browse benchmark: ${GOOD_EQ_SCORE_THRESHOLD}+`}
+                  hint="Team assessment average"
                   icon="analytics-outline"
                   accent={colors.warning}
                   style={isDesktop ? styles.kpiDesktopItem : styles.kpiMobileItem}

@@ -133,7 +133,7 @@ export function Button({
     >
       {isPrimary ? (
         <LinearGradient
-          colors={isDarkTheme ? ['#3B82F6', '#6366F1'] : ['#2563EB', '#4F46E5']}
+          colors={isDarkTheme ? ['#3B82F6', '#0EA5E9'] : ['#2563EB', '#0284C7']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}

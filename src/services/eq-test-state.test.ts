@@ -43,7 +43,7 @@ function makeEpisodeItem(
       videoUrl: 'https://example.com/v.mp4',
       audioUrl: null,
       icon: 'book',
-      color: '#4F46E5',
+      color: '#2563EB',
       sortOrder: compIndex,
       estimatedReadMinutes: 2,
     },

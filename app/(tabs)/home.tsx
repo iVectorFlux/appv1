@@ -6,7 +6,7 @@
  * zero awkward half-line wrapping, and vibrant multi-tone gradients.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -28,7 +28,11 @@ import { AddToHomeScreenBanner } from '@/components/web/add-to-home-screen-banne
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 import { useEqTestAvailability } from '@/hooks/useEqTestAvailability';
 import { GOOD_EQ_SCORE_THRESHOLD } from '@/services/learning-sequence';
-import { buildHomeRecommendations } from '@/services/learning-recommendations';
+import {
+  buildHomeRecommendations,
+  loadOnboardingFocusGoals,
+  subscribeOnboardingGoals,
+} from '@/services/learning-recommendations';
 import { formatCatalogLabel } from '@/data/eq-curriculum';
 
 type GradientPair = readonly [string, string];
@@ -59,23 +63,23 @@ const RECOMMENDATION_STYLES: Record<
 > = {
   video: {
     icon: 'play',
-    gradient: ['#2563EB', '#4F46E5'],
+    gradient: ['#2563EB', '#0284C7'],
     washLight: ['#EFF6FF', '#FFFFFF'],
-    washDark: ['#172554', '#18181B'],
+    washDark: ['#0F2942', '#18181B'],
     borderLight: 'rgba(37, 99, 235, 0.16)',
     borderDark: 'rgba(59, 130, 246, 0.28)',
   },
   reading: {
     icon: 'book',
-    gradient: ['#7C3AED', '#EC4899'],
-    washLight: ['#F5F3FF', '#FFFFFF'],
-    washDark: ['#2E1065', '#18181B'],
-    borderLight: 'rgba(124, 58, 237, 0.16)',
-    borderDark: 'rgba(167, 139, 250, 0.28)',
+    gradient: ['#D97706', '#EA580C'],
+    washLight: ['#FFFBEB', '#FFFFFF'],
+    washDark: ['#451A03', '#18181B'],
+    borderLight: 'rgba(217, 119, 6, 0.18)',
+    borderDark: 'rgba(245, 158, 11, 0.28)',
   },
   audio: {
     icon: 'headset',
-    gradient: ['#059669', '#0EA5E9'],
+    gradient: ['#059669', '#0D9488'],
     washLight: ['#ECFDF5', '#FFFFFF'],
     washDark: ['#064E3B', '#18181B'],
     borderLight: 'rgba(5, 150, 105, 0.16)',
@@ -97,9 +101,27 @@ export default function HomeScreen() {
     latestDimensionScores,
   } = useEqTestAvailability();
 
+  const [preferredGoals, setPreferredGoals] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    const syncGoals = () => {
+      void loadOnboardingFocusGoals(user.id).then((goals) => {
+        if (active) setPreferredGoals(goals);
+      });
+    };
+    syncGoals();
+    const unsub = subscribeOnboardingGoals(syncGoals);
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, [user?.id]);
+
   const homeFeed = useMemo(
-    () => buildHomeRecommendations(sequenced, latestDimensionScores),
-    [sequenced, latestDimensionScores]
+    () => buildHomeRecommendations(sequenced, latestDimensionScores, preferredGoals),
+    [sequenced, latestDimensionScores, preferredGoals]
   );
 
   const nextLesson = useMemo(() => {
@@ -130,9 +152,9 @@ export default function HomeScreen() {
         title: 'Curriculum',
         hint: `${sequenced.completedCount} of ${sequenced.totalCount || 24} modules completed`,
         icon: 'compass',
-        gradient: ['#2563EB', '#4F46E5'],
+        gradient: ['#2563EB', '#0284C7'],
         cardWashLight: ['#EFF6FF', '#FFFFFF'],
-        cardWashDark: ['#172554', '#18181B'],
+        cardWashDark: ['#0F2942', '#18181B'],
         borderLight: 'rgba(37, 99, 235, 0.16)',
         borderDark: 'rgba(59, 130, 246, 0.28)',
         route: '/(tabs)/learn',
@@ -142,11 +164,11 @@ export default function HomeScreen() {
         title: 'Inner Ally',
         hint: 'Reflect, reframe & calm reset',
         icon: 'sparkles',
-        gradient: ['#6366F1', '#9333EA'],
-        cardWashLight: ['#F5F3FF', '#FFFFFF'],
-        cardWashDark: ['#2E1065', '#18181B'],
-        borderLight: 'rgba(99, 102, 241, 0.16)',
-        borderDark: 'rgba(139, 92, 246, 0.28)',
+        gradient: ['#0D9488', '#0284C7'],
+        cardWashLight: ['#F0FDFA', '#FFFFFF'],
+        cardWashDark: ['#0F292E', '#18181B'],
+        borderLight: 'rgba(13, 148, 136, 0.16)',
+        borderDark: 'rgba(20, 184, 166, 0.28)',
         route: '/(tabs)/companion',
       },
       {
@@ -187,7 +209,7 @@ export default function HomeScreen() {
         title: 'Personality',
         hint: 'Explore your Big Five profile',
         icon: 'shapes',
-        gradient: ['#F59E0B', '#EC4899'],
+        gradient: ['#D97706', '#EA580C'],
         cardWashLight: ['#FFF7ED', '#FFFFFF'],
         cardWashDark: ['#451A03', '#18181B'],
         borderLight: 'rgba(245, 158, 11, 0.18)',
@@ -287,10 +309,10 @@ export default function HomeScreen() {
           style={[st.heroCard, isDesktop && st.heroCardDesktop]}
           gradientColors={
             isDark
-              ? ['#172554', '#1E1B4B', '#18181B']
-              : ['#EEF2FF', '#F0F9FF', '#FFFFFF']
+              ? ['#0F172A', '#0C2340', '#18181B']
+              : ['#F0F9FF', '#EFF6FF', '#FFFFFF']
           }
-          borderColor={isDark ? 'rgba(99, 102, 241, 0.35)' : 'rgba(79, 70, 229, 0.22)'}
+          borderColor={isDark ? 'rgba(56, 189, 248, 0.28)' : 'rgba(2, 132, 199, 0.18)'}
         >
           <View style={st.heroTopRow}>
             <View
@@ -298,7 +320,7 @@ export default function HomeScreen() {
                 st.statusChip,
                 {
                   backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.85)',
-                  borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(79, 70, 229, 0.14)',
+                  borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(2, 132, 199, 0.16)',
                 },
               ]}
             >
@@ -306,7 +328,7 @@ export default function HomeScreen() {
                 colors={
                   sequenced.accessMode === 'free_browse'
                     ? ['#10B981', '#0D9488']
-                    : ['#2563EB', '#7C3AED']
+                    : ['#2563EB', '#0284C7']
                 }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -331,7 +353,7 @@ export default function HomeScreen() {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#2563EB', '#4F46E5']}
+                  colors={['#2563EB', '#0284C7']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={st.scoreChip}
@@ -372,7 +394,7 @@ export default function HomeScreen() {
             <ProgressBar
               value={completionPct}
               height={7}
-              gradientColors={['#2563EB', '#6366F1', '#0EA5E9']}
+              gradientColors={['#2563EB', '#0284C7', '#0D9488']}
               trackColor={isDark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.08)'}
             />
             <Text style={st.progressMeta}>
@@ -428,7 +450,7 @@ export default function HomeScreen() {
                 <GlassCard
                   key={`${item.episodeKey}-${item.kind}`}
                   onPress={() =>
-                    router.push(`/learning-detail?id=${encodeURIComponent(item.routeId)}&mode=${item.kind}`)
+                    router.push(`/learning-detail?id=${encodeURIComponent(item.routeId)}`)
                   }
                   gradientColors={
                     isDark ? ['#18181B', '#2E1A07'] : ['#FFFFFF', '#FFFBEB']
@@ -460,7 +482,7 @@ export default function HomeScreen() {
                       onPress={(e) => {
                         e.stopPropagation?.();
                         router.push(
-                          `/learning-detail?id=${encodeURIComponent(item.routeId)}&mode=${item.kind}&restart=1`
+                          `/learning-detail?id=${encodeURIComponent(item.routeId)}&restart=1`
                         );
                       }}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -490,7 +512,7 @@ export default function HomeScreen() {
                   <GlassCard
                     key={`${rec.type}-${rec.episodeKey}`}
                     onPress={() =>
-                      router.push(`/learning-detail?id=${encodeURIComponent(rec.routeId)}&mode=${rec.type}`)
+                      router.push(`/learning-detail?id=${encodeURIComponent(rec.routeId)}`)
                     }
                     gradientColors={isDark ? palette.washDark : palette.washLight}
                     borderColor={isDark ? palette.borderDark : palette.borderLight}

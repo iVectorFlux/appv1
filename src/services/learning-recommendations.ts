@@ -6,9 +6,85 @@
  * 2. Tailored Video, Reading (first-principles guide), and Audio recommendations upon login
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { formatPlaybackSeconds } from '@/services/learning-content-progress';
 import { formatCatalogLabel } from '@/data/eq-curriculum';
+import { normalizeB2bCatalogKey } from '@/data/learning-b2b-taxonomy';
 import type { SequencedCatalogState, SequencedEpisode } from '@/services/learning-sequence';
+
+const GOALS_KEY_PREFIX = 'lumi6_onboarding_goals:';
+const goalListeners = new Set<() => void>();
+
+export function subscribeOnboardingGoals(listener: () => void): () => void {
+  goalListeners.add(listener);
+  return () => {
+    goalListeners.delete(listener);
+  };
+}
+
+function readLocalGoalsSync(key: string): string[] | null {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveOnboardingFocusGoals(userId: string, goals: string[]): Promise<void> {
+  if (!userId) return;
+  const clean = goals.filter(Boolean);
+  const key = `${GOALS_KEY_PREFIX}${userId}`;
+  const raw = JSON.stringify(clean);
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    try {
+      window.localStorage.setItem(key, raw);
+    } catch {
+      /* ignore */
+    }
+  }
+  await AsyncStorage.setItem(key, raw).catch(() => {});
+  goalListeners.forEach((cb) => cb());
+}
+
+export async function loadOnboardingFocusGoals(userId: string): Promise<string[]> {
+  if (!userId) return [];
+  const key = `${GOALS_KEY_PREFIX}${userId}`;
+  const syncGoals = readLocalGoalsSync(key);
+  if (syncGoals && syncGoals.length > 0) return syncGoals;
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((x): x is string => typeof x === 'string');
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data } = await supabase
+      .from('user_preferences')
+      .select('goals')
+      .eq('user_id', userId)
+      .maybeSingle();
+    const remote = Array.isArray(data?.goals)
+      ? data.goals.filter((x): x is string => typeof x === 'string')
+      : [];
+    if (remote.length > 0) {
+      await saveOnboardingFocusGoals(userId, remote);
+    }
+    return remote;
+  } catch {
+    return [];
+  }
+}
 
 export type RecommendationMediaType = 'video' | 'reading' | 'audio';
 
@@ -46,15 +122,40 @@ export interface HomeRecommendationsBundle {
   recommendations: MediaRecommendationItem[];
 }
 
+const GOAL_TO_DOMAIN_KEYS: Record<string, string[]> = {
+  self_awareness: ['SELF_AWARENESS_DOMAIN', 'SELF_AWARENESS'],
+  self_management: ['SELF_MANAGEMENT_DOMAIN', 'SELF_MANAGEMENT'],
+  social_awareness: ['SOCIAL_AWARENESS_DOMAIN', 'SOCIAL_AWARENESS'],
+  relationship_management: ['RELATIONSHIP_MANAGEMENT_DOMAIN', 'RELATIONSHIP_MANAGEMENT'],
+};
+
+function matchesPreferredGoal(item: SequencedEpisode, goals: Set<string>): boolean {
+  if (goals.size === 0 || (goals.size === 1 && goals.has('complete_eq'))) return false;
+  const domKey = normalizeB2bCatalogKey(item.episode.domain);
+  for (const goal of goals) {
+    if (goal === 'complete_eq') continue;
+    const mappedDomains = GOAL_TO_DOMAIN_KEYS[goal];
+    if (mappedDomains?.includes(domKey)) return true;
+    if (item.episode.dimension === goal) return true;
+    if (goal === 'social_awareness' && item.episode.dimension === 'empathy') return true;
+  }
+  return false;
+}
+
 function scoreEpisodePriority(
   item: SequencedEpisode,
   weakDimensionOrder: Map<string, number>,
-  isFreeBrowse: boolean
+  isFreeBrowse: boolean,
+  preferredGoals: Set<string>
 ): number {
   let score = 0;
   if (item.videoPositionSeconds >= 3 || item.audioPositionSeconds >= 3) score += 2000;
   if (item.progressPct > 0 && !item.completed) score += 1500;
   if (!item.completed) score += 500;
+
+  if (matchesPreferredGoal(item, preferredGoals) && !item.completed) {
+    score += 1200;
+  }
 
   const dimRank = weakDimensionOrder.get(item.episode.dimension);
   if (dimRank !== undefined) {
@@ -70,7 +171,8 @@ function scoreEpisodePriority(
 
 export function buildHomeRecommendations(
   sequenced: SequencedCatalogState,
-  dimensionScores?: Record<string, number> | null
+  dimensionScores?: Record<string, number> | null,
+  preferredGoals?: string[] | null
 ): HomeRecommendationsBundle {
   const weakDimensionOrder = new Map<string, number>();
   if (dimensionScores) {
@@ -145,10 +247,11 @@ export function buildHomeRecommendations(
   const isFreeBrowse = sequenced.accessMode === 'free_browse';
   const unlockedPool = sequenced.items.filter((i) => i.unlocked);
   const candidatePool = unlockedPool.length > 0 ? unlockedPool : sequenced.items;
+  const preferredGoalSet = new Set((preferredGoals ?? []).filter(Boolean));
   const prioritized = [...candidatePool].sort(
     (a, b) =>
-      scoreEpisodePriority(b, weakDimensionOrder, isFreeBrowse) -
-      scoreEpisodePriority(a, weakDimensionOrder, isFreeBrowse)
+      scoreEpisodePriority(b, weakDimensionOrder, isFreeBrowse, preferredGoalSet) -
+      scoreEpisodePriority(a, weakDimensionOrder, isFreeBrowse, preferredGoalSet)
   );
 
   const recommendations: MediaRecommendationItem[] = [];

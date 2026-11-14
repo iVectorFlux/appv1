@@ -72,7 +72,7 @@ export function ProgressBar({
     ? gradientColors
     : color
       ? null
-      : ['#2563EB', '#4F46E5', '#7C3AED'];
+      : ['#2563EB', '#0284C7', '#0D9488'];
 
   return (
     <View

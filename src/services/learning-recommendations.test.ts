@@ -121,4 +121,11 @@ describe('buildHomeRecommendations', () => {
     const videoRec = feed.recommendations.find((r) => r.type === 'video');
     expect(videoRec?.competency).toBe('Empathy');
   });
+
+  it('prioritizes onboarding preferred EQ goals when building recommendations', () => {
+    const sequenced = buildSequencedCatalog(SAMPLE_CURRICULUM, {}, 80);
+    const feed = buildHomeRecommendations(sequenced, null, ['social_awareness']);
+
+    expect(feed.recommendations[0]?.domain).toBe('Social Awareness');
+  });
 });

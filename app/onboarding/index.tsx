@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Badge } from '@/components/ui/shadcn-primitives';
+import { saveOnboardingFocusGoals } from '@/services/learning-recommendations';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -79,10 +80,25 @@ export default function OnboardingScreen() {
   const colors = useColors();
 
   const [displayName, setDisplayName] = useState('');
-  const [eqFocus, setEqFocus] = useState<EqFocusId>('complete_eq');
+  const [selectedGoals, setSelectedGoals] = useState<EqFocusId[]>(['complete_eq']);
   const [loading, setLoading] = useState(false);
 
-  const completeOnboarding = async (target: '/(tabs)/home' | '/full-eq-test', chosenGoal: EqFocusId) => {
+  const toggleGoal = (goalId: EqFocusId) => {
+    if (goalId === 'complete_eq') {
+      setSelectedGoals(['complete_eq']);
+      return;
+    }
+    setSelectedGoals((prev) => {
+      const withoutComplete = prev.filter((g) => g !== 'complete_eq');
+      if (withoutComplete.includes(goalId)) {
+        const next = withoutComplete.filter((g) => g !== goalId);
+        return next.length > 0 ? next : ['complete_eq'];
+      }
+      return [...withoutComplete, goalId];
+    });
+  };
+
+  const completeOnboarding = async (chosenGoals: EqFocusId[]) => {
     setLoading(true);
     try {
       const {
@@ -91,6 +107,7 @@ export default function OnboardingScreen() {
       const userId = session?.user?.id ?? user?.id;
 
       if (userId) {
+        await saveOnboardingFocusGoals(userId, chosenGoals);
         try {
           const { data: existingPrefs } = await supabase
             .from('user_preferences')
@@ -102,7 +119,7 @@ export default function OnboardingScreen() {
             {
               user_id: userId,
               check_in_frequency: 'few_times_week',
-              goals: [chosenGoal],
+              goals: chosenGoals,
               reminder_enabled: existingPrefs?.reminder_enabled ?? true,
               reminder_times: existingPrefs?.reminder_times ?? [],
               reminder_days: existingPrefs?.reminder_days ?? [0, 1, 2, 3, 4, 5, 6],
@@ -125,8 +142,8 @@ export default function OnboardingScreen() {
         }
       }
 
-      await setOnboardingComplete(['eq_focus']);
-      router.replace(target);
+      await setOnboardingComplete(['eq_focus', 'recommendations']);
+      router.replace('/(tabs)/home');
     } finally {
       setLoading(false);
     }
@@ -148,7 +165,7 @@ export default function OnboardingScreen() {
               <View style={styles.topRow}>
                 <Badge label="Emotional Intelligence" icon="sparkles-outline" variant="default" />
                 <Pressable
-                  onPress={() => void completeOnboarding('/(tabs)/home', 'complete_eq')}
+                  onPress={() => void completeOnboarding(['complete_eq'])}
                   disabled={loading}
                   style={Platform.OS === 'web' ? ({ cursor: 'pointer' } as object) : undefined}
                 >
@@ -160,7 +177,7 @@ export default function OnboardingScreen() {
                 Welcome to Lumi6 EQ
               </Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Measure your Emotional Intelligence and unlock a structured learning path across all 12 workplace EQ competencies.
+                Tell us what you want to prioritize so we can tailor your dashboard recommendations across all 12 workplace EQ competencies.
               </Text>
 
               <View style={styles.section}>
@@ -175,15 +192,15 @@ export default function OnboardingScreen() {
 
               <View style={styles.section}>
                 <Text style={[styles.sectionLabel, { color: colors.textPrimary }]}>
-                  Primary EQ Focus
+                  Recommended Focus (choose one or more)
                 </Text>
                 <View style={styles.focusGrid}>
                   {EQ_FOCUS_OPTIONS.map((opt) => {
-                    const active = eqFocus === opt.id;
+                    const active = selectedGoals.includes(opt.id);
                     return (
                       <Pressable
                         key={opt.id}
-                        onPress={() => setEqFocus(opt.id)}
+                        onPress={() => toggleGoal(opt.id)}
                         style={[
                           styles.focusOption,
                           {
@@ -233,19 +250,11 @@ export default function OnboardingScreen() {
 
               <View style={styles.actions}>
                 <Button
-                  title="Take EQ Test"
-                  icon="analytics-outline"
-                  onPress={() => void completeOnboarding('/full-eq-test', eqFocus)}
+                  title="Continue to Dashboard"
+                  icon="arrow-forward"
+                  onPress={() => void completeOnboarding(selectedGoals)}
                   loading={loading}
                   size="lg"
-                  fullWidth
-                />
-                <Button
-                  title="Go to Dashboard"
-                  variant="outline"
-                  onPress={() => void completeOnboarding('/(tabs)/home', eqFocus)}
-                  disabled={loading}
-                  size="md"
                   fullWidth
                 />
               </View>
