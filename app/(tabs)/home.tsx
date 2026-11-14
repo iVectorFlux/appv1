@@ -49,6 +49,8 @@ interface WorkspaceTile {
   gradient: GradientPair;
   cardWashLight: GradientPair;
   cardWashDark: GradientPair;
+  borderLight: string;
+  borderDark: string;
   route: string;
 }
 
@@ -59,25 +61,33 @@ const RECOMMENDATION_STYLES: Record<
     gradient: GradientPair;
     washLight: GradientPair;
     washDark: GradientPair;
+    borderLight: string;
+    borderDark: string;
   }
 > = {
   video: {
     icon: 'play',
     gradient: ['#2563EB', '#4F46E5'],
-    washLight: ['#FFFFFF', '#F5F7FF'],
-    washDark: ['#18181B', '#172554'],
+    washLight: ['#EFF6FF', '#FFFFFF'],
+    washDark: ['#172554', '#18181B'],
+    borderLight: 'rgba(37, 99, 235, 0.16)',
+    borderDark: 'rgba(59, 130, 246, 0.28)',
   },
   reading: {
     icon: 'book',
     gradient: ['#7C3AED', '#EC4899'],
-    washLight: ['#FFFFFF', '#FAF5FF'],
-    washDark: ['#18181B', '#2E1065'],
+    washLight: ['#F5F3FF', '#FFFFFF'],
+    washDark: ['#2E1065', '#18181B'],
+    borderLight: 'rgba(124, 58, 237, 0.16)',
+    borderDark: 'rgba(167, 139, 250, 0.28)',
   },
   audio: {
     icon: 'headset',
     gradient: ['#059669', '#0EA5E9'],
-    washLight: ['#FFFFFF', '#F0FDF9'],
-    washDark: ['#18181B', '#064E3B'],
+    washLight: ['#ECFDF5', '#FFFFFF'],
+    washDark: ['#064E3B', '#18181B'],
+    borderLight: 'rgba(5, 150, 105, 0.16)',
+    borderDark: 'rgba(16, 185, 129, 0.28)',
   },
 };
 
@@ -151,61 +161,73 @@ export default function HomeScreen() {
       {
         key: 'learn',
         title: 'Curriculum',
-        hint: `${sequenced.completedCount} of ${sequenced.totalCount || 24} modules`,
+        hint: `${sequenced.completedCount} of ${sequenced.totalCount || 24} modules completed`,
         icon: 'compass',
         gradient: ['#2563EB', '#4F46E5'],
-        cardWashLight: ['#FFFFFF', '#F5F8FF'],
-        cardWashDark: ['#18181B', '#172554'],
+        cardWashLight: ['#EFF6FF', '#FFFFFF'],
+        cardWashDark: ['#172554', '#18181B'],
+        borderLight: 'rgba(37, 99, 235, 0.16)',
+        borderDark: 'rgba(59, 130, 246, 0.28)',
         route: '/(tabs)/learn',
       },
       {
         key: 'companion',
         title: 'Inner Ally',
-        hint: 'Reflect & reset with AI',
+        hint: 'Reflect, reframe & calm reset',
         icon: 'sparkles',
         gradient: ['#6366F1', '#9333EA'],
-        cardWashLight: ['#FFFFFF', '#F8F5FF'],
-        cardWashDark: ['#18181B', '#2E1065'],
+        cardWashLight: ['#F5F3FF', '#FFFFFF'],
+        cardWashDark: ['#2E1065', '#18181B'],
+        borderLight: 'rgba(99, 102, 241, 0.16)',
+        borderDark: 'rgba(139, 92, 246, 0.28)',
         route: '/(tabs)/companion',
       },
       {
         key: 'recover',
         title: 'Breathe',
-        hint: '3 min calm reset',
+        hint: '3 min guided nervous-system reset',
         icon: 'leaf',
         gradient: ['#10B981', '#0D9488'],
-        cardWashLight: ['#FFFFFF', '#F0FDF9'],
-        cardWashDark: ['#18181B', '#064E3B'],
+        cardWashLight: ['#ECFDF5', '#FFFFFF'],
+        cardWashDark: ['#064E3B', '#18181B'],
+        borderLight: 'rgba(16, 185, 129, 0.16)',
+        borderDark: 'rgba(16, 185, 129, 0.28)',
         route: '/grounding',
       },
       {
         key: 'full-eq',
         title: latestEqScore !== null ? 'EQ Assessment' : 'Baseline EQ Test',
-        hint: latestEqScore !== null ? `Latest score ${latestEqScore}/100` : '20 min check-in',
+        hint: latestEqScore !== null ? `Latest EQ score ${latestEqScore}/100` : '20 min personalized check-in',
         icon: 'analytics',
         gradient: ['#0284C7', '#2563EB'],
-        cardWashLight: ['#FFFFFF', '#F0F9FF'],
-        cardWashDark: ['#18181B', '#0C4A6E'],
+        cardWashLight: ['#F0F9FF', '#FFFFFF'],
+        cardWashDark: ['#0C4A6E', '#18181B'],
+        borderLight: 'rgba(2, 132, 199, 0.16)',
+        borderDark: 'rgba(14, 165, 233, 0.28)',
         route: '/full-eq-test',
       },
       {
         key: 'big5',
         title: 'Personality',
-        hint: 'Big Five profile',
+        hint: 'Explore your Big Five profile',
         icon: 'shapes',
         gradient: ['#F59E0B', '#EC4899'],
-        cardWashLight: ['#FFFFFF', '#FFF7ED'],
-        cardWashDark: ['#18181B', '#451A03'],
+        cardWashLight: ['#FFF7ED', '#FFFFFF'],
+        cardWashDark: ['#451A03', '#18181B'],
+        borderLight: 'rgba(245, 158, 11, 0.18)',
+        borderDark: 'rgba(245, 158, 11, 0.28)',
         route: '/big5-test',
       },
       {
         key: 'progress',
         title: 'Progress',
-        hint: 'Insights & reports',
+        hint: 'View insights & reports',
         icon: 'stats-chart',
         gradient: ['#0D9488', '#0284C7'],
-        cardWashLight: ['#FFFFFF', '#F0FDFA'],
-        cardWashDark: ['#18181B', '#134E4A'],
+        cardWashLight: ['#F0FDFA', '#FFFFFF'],
+        cardWashDark: ['#134E4A', '#18181B'],
+        borderLight: 'rgba(13, 148, 136, 0.16)',
+        borderDark: 'rgba(20, 184, 166, 0.28)',
         route: '/(tabs)/progress',
       },
     ];
@@ -213,11 +235,13 @@ export default function HomeScreen() {
       tiles.push({
         key: 'admin',
         title: 'Team Analytics',
-        hint: 'Company overview',
+        hint: 'Company completion overview',
         icon: 'shield-checkmark',
         gradient: ['#F59E0B', '#EA580C'],
-        cardWashLight: ['#FFFFFF', '#FFFBEB'],
-        cardWashDark: ['#18181B', '#451A03'],
+        cardWashLight: ['#FFFBEB', '#FFFFFF'],
+        cardWashDark: ['#451A03', '#18181B'],
+        borderLight: 'rgba(234, 88, 12, 0.18)',
+        borderDark: 'rgba(245, 158, 11, 0.28)',
         route: '/admin',
       });
     }
@@ -479,51 +503,47 @@ export default function HomeScreen() {
                       router.push(`/learning-detail?id=${encodeURIComponent(rec.routeId)}&mode=${rec.type}`)
                     }
                     gradientColors={isDark ? palette.washDark : palette.washLight}
+                    borderColor={isDark ? palette.borderDark : palette.borderLight}
                     style={[st.rowCard, isDesktop && st.thirdCardDesktop]}
                   >
-                    {isDesktop ? (
-                      <View style={st.desktopTileInner}>
-                        <View style={st.tileTop}>
-                          <LinearGradient
-                            colors={palette.gradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={st.iconSquircleDesktop}
-                          >
-                            <Ionicons name={palette.icon} size={19} color="#FFFFFF" />
-                          </LinearGradient>
-                          <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
-                        </View>
-                        <View style={st.desktopTileCopy}>
-                          <Text style={st.tileTitleDesktop} numberOfLines={1}>
-                            {rec.title}
-                          </Text>
-                          <Text style={st.tileSubtitleDesktop} numberOfLines={1}>
-                            {rec.competency}
-                          </Text>
-                        </View>
-                      </View>
-                    ) : (
-                      <View style={st.tileRow}>
+                    <View style={st.desktopTileInner}>
+                      <View style={st.tileTop}>
                         <LinearGradient
                           colors={palette.gradient}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
-                          style={st.iconSquircle}
+                          style={isDesktop ? st.iconSquircleDesktop : st.iconSquircle}
                         >
-                          <Ionicons name={palette.icon} size={17} color="#FFFFFF" />
+                          <Ionicons name={palette.icon} size={isDesktop ? 19 : 18} color="#FFFFFF" />
                         </LinearGradient>
-                        <View style={st.rowTextCol}>
-                          <Text style={st.tileTitle} numberOfLines={1}>
-                            {rec.title}
-                          </Text>
-                          <Text style={st.tileSubtitle} numberOfLines={1}>
-                            {rec.competency}
-                          </Text>
+                        <View
+                          style={[
+                            st.chevronPill,
+                            {
+                              backgroundColor: isDark
+                                ? 'rgba(255,255,255,0.08)'
+                                : 'rgba(15,23,42,0.05)',
+                            },
+                          ]}
+                        >
+                          <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
                         </View>
-                        <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
                       </View>
-                    )}
+                      <View style={st.desktopTileCopy}>
+                        <Text
+                          style={isDesktop ? st.tileTitleDesktop : st.tileTitle}
+                          numberOfLines={1}
+                        >
+                          {rec.title}
+                        </Text>
+                        <Text
+                          style={isDesktop ? st.tileSubtitleDesktop : st.tileSubtitle}
+                          numberOfLines={1}
+                        >
+                          {rec.competency}
+                        </Text>
+                      </View>
+                    </View>
                   </GlassCard>
                 );
               })}
@@ -542,51 +562,47 @@ export default function HomeScreen() {
                 key={tile.key}
                 onPress={() => router.push(tile.route as never)}
                 gradientColors={isDark ? tile.cardWashDark : tile.cardWashLight}
+                borderColor={isDark ? tile.borderDark : tile.borderLight}
                 style={[st.rowCard, isDesktop && st.thirdCardDesktop]}
               >
-                {isDesktop ? (
-                  <View style={st.desktopTileInner}>
-                    <View style={st.tileTop}>
-                      <LinearGradient
-                        colors={tile.gradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={st.iconSquircleDesktop}
-                      >
-                        <Ionicons name={tile.icon} size={19} color="#FFFFFF" />
-                      </LinearGradient>
-                      <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
-                    </View>
-                    <View style={st.desktopTileCopy}>
-                      <Text style={st.tileTitleDesktop} numberOfLines={1}>
-                        {tile.title}
-                      </Text>
-                      <Text style={st.tileSubtitleDesktop} numberOfLines={1}>
-                        {tile.hint}
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={st.tileRow}>
+                <View style={st.desktopTileInner}>
+                  <View style={st.tileTop}>
                     <LinearGradient
                       colors={tile.gradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
-                      style={st.iconSquircle}
+                      style={isDesktop ? st.iconSquircleDesktop : st.iconSquircle}
                     >
-                      <Ionicons name={tile.icon} size={17} color="#FFFFFF" />
+                      <Ionicons name={tile.icon} size={isDesktop ? 19 : 18} color="#FFFFFF" />
                     </LinearGradient>
-                    <View style={st.rowTextCol}>
-                      <Text style={st.tileTitle} numberOfLines={1}>
-                        {tile.title}
-                      </Text>
-                      <Text style={st.tileSubtitle} numberOfLines={1}>
-                        {tile.hint}
-                      </Text>
+                    <View
+                      style={[
+                        st.chevronPill,
+                        {
+                          backgroundColor: isDark
+                            ? 'rgba(255,255,255,0.08)'
+                            : 'rgba(15,23,42,0.05)',
+                        },
+                      ]}
+                    >
+                      <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
                   </View>
-                )}
+                  <View style={st.desktopTileCopy}>
+                    <Text
+                      style={isDesktop ? st.tileTitleDesktop : st.tileTitle}
+                      numberOfLines={1}
+                    >
+                      {tile.title}
+                    </Text>
+                    <Text
+                      style={isDesktop ? st.tileSubtitleDesktop : st.tileSubtitle}
+                      numberOfLines={1}
+                    >
+                      {tile.hint}
+                    </Text>
+                  </View>
+                </View>
               </GlassCard>
             ))}
           </View>
@@ -738,7 +754,7 @@ const createStyles = (colors: ReturnType<typeof useColors>, isDesktop: boolean) 
       gap: 10,
     },
     sectionBlock: {
-      gap: isDesktop ? 16 : 12,
+      gap: isDesktop ? 16 : 14,
     },
     sectionTitle: {
       fontSize: 15,
@@ -751,7 +767,7 @@ const createStyles = (colors: ReturnType<typeof useColors>, isDesktop: boolean) 
       letterSpacing: -0.35,
     },
     grid: {
-      gap: 12,
+      gap: 16,
     },
     gridDesktop: {
       flexDirection: 'row',
@@ -759,7 +775,7 @@ const createStyles = (colors: ReturnType<typeof useColors>, isDesktop: boolean) 
       gap: 18,
     },
     rowCard: {
-      padding: isDesktop ? 20 : 14,
+      padding: isDesktop ? 20 : 18,
     },
     halfCardDesktop: {
       width: '48.5%' as any,
@@ -781,7 +797,7 @@ const createStyles = (colors: ReturnType<typeof useColors>, isDesktop: boolean) 
       gap: 4,
     },
     desktopTileInner: {
-      gap: 14,
+      gap: isDesktop ? 14 : 13,
     },
     desktopTileCopy: {
       gap: 5,
@@ -791,10 +807,17 @@ const createStyles = (colors: ReturnType<typeof useColors>, isDesktop: boolean) 
       alignItems: 'center',
       justifyContent: 'space-between',
     },
+    chevronPill: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     iconSquircle: {
-      width: 38,
-      height: 38,
-      borderRadius: 11,
+      width: 40,
+      height: 40,
+      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -806,11 +829,11 @@ const createStyles = (colors: ReturnType<typeof useColors>, isDesktop: boolean) 
       justifyContent: 'center',
     },
     tileTitle: {
-      fontSize: 14,
-      lineHeight: 19,
+      fontSize: 15,
+      lineHeight: 20,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
-      letterSpacing: -0.15,
+      letterSpacing: -0.2,
     },
     tileTitleDesktop: {
       fontSize: 16,
@@ -820,8 +843,8 @@ const createStyles = (colors: ReturnType<typeof useColors>, isDesktop: boolean) 
       letterSpacing: -0.25,
     },
     tileSubtitle: {
-      fontSize: 12,
-      lineHeight: 16,
+      fontSize: 12.5,
+      lineHeight: 17,
       color: colors.textMuted,
     },
     tileSubtitleDesktop: {

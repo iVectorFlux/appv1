@@ -28,7 +28,7 @@ import { useColors, Spacing, Radius, Typography, Shadows } from '@/constants/des
 export interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'default' | 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+  variant?: 'default' | 'primary' | 'dark' | 'secondary' | 'outline' | 'ghost' | 'destructive';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
@@ -52,31 +52,35 @@ export function Button({
   const [hovered, setHovered] = useState(false);
 
   const isPrimary = variant === 'primary' || variant === 'default';
+  const isDarkBtn = variant === 'dark';
   const isSecondary = variant === 'secondary';
   const isOutline = variant === 'outline';
   const isGhost = variant === 'ghost';
   const isDestructive = variant === 'destructive';
-  const isDark = colors.glassTint === 'dark';
+  const isDarkTheme = colors.glassTint === 'dark';
 
   const bg = isPrimary
     ? colors.primary
-    : isDestructive
-      ? colors.destructive
-      : isSecondary
-        ? colors.surface
-        : isOutline
-          ? colors.floating
-          : isGhost && hovered
-            ? colors.surface
-            : 'transparent';
+    : isDarkBtn
+      ? '#09090B'
+      : isDestructive
+        ? colors.destructive
+        : isSecondary
+          ? colors.surface
+          : isOutline
+            ? colors.floating
+            : isGhost && hovered
+              ? colors.surface
+              : 'transparent';
 
-  const fg = isPrimary
-    ? colors.primaryForeground
-    : isDestructive
-      ? colors.destructiveForeground
-      : isSecondary || isOutline
-        ? colors.textPrimary
-        : colors.primary;
+  const fg =
+    isPrimary || isDarkBtn
+      ? '#FFFFFF'
+      : isDestructive
+        ? colors.destructiveForeground
+        : isSecondary || isOutline
+          ? colors.textPrimary
+          : colors.primary;
 
   const buttonStyle: ViewStyle = {
     borderRadius: Radius.md,
@@ -86,7 +90,8 @@ export function Button({
     gap: 6,
     overflow: 'hidden',
     backgroundColor: isPrimary ? 'transparent' : bg,
-    ...(isPrimary && { ...(Shadows.sm as ViewStyle) }),
+    ...((isPrimary || isDarkBtn) && { ...(Shadows.sm as ViewStyle) }),
+    ...(isDarkBtn && { borderWidth: 1, borderColor: isDarkTheme ? '#27272A' : '#09090B' }),
     ...(isOutline && { borderWidth: 1, borderColor: colors.border }),
     ...(isSecondary && { borderWidth: 1, borderColor: colors.borderLight }),
     ...(size === 'sm' && { paddingVertical: 8, paddingHorizontal: 14, minHeight: 36 }),
@@ -128,7 +133,7 @@ export function Button({
     >
       {isPrimary ? (
         <LinearGradient
-          colors={isDark ? ['#3B82F6', '#6366F1'] : ['#2563EB', '#4F46E5']}
+          colors={isDarkTheme ? ['#3B82F6', '#6366F1'] : ['#2563EB', '#4F46E5']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}

@@ -47,27 +47,35 @@ type GradientPair = readonly [string, string];
 
 const DOMAIN_GRADIENTS: Record<
   B2BDomainKey,
-  { accent: GradientPair; washLight: GradientPair; washDark: GradientPair }
+  { accent: GradientPair; washLight: GradientPair; washDark: GradientPair; borderLight: string; borderDark: string }
 > = {
   SELF_AWARENESS_DOMAIN: {
     accent: ['#2563EB', '#4F46E5'],
-    washLight: ['#FFFFFF', '#F5F8FF'],
-    washDark: ['#18181B', '#172554'],
+    washLight: ['#EFF6FF', '#FFFFFF'],
+    washDark: ['#172554', '#18181B'],
+    borderLight: 'rgba(37, 99, 235, 0.16)',
+    borderDark: 'rgba(59, 130, 246, 0.28)',
   },
   SELF_MANAGEMENT_DOMAIN: {
     accent: ['#059669', '#0D9488'],
-    washLight: ['#FFFFFF', '#F0FDF9'],
-    washDark: ['#18181B', '#064E3B'],
+    washLight: ['#ECFDF5', '#FFFFFF'],
+    washDark: ['#064E3B', '#18181B'],
+    borderLight: 'rgba(5, 150, 105, 0.16)',
+    borderDark: 'rgba(16, 185, 129, 0.28)',
   },
   SOCIAL_AWARENESS_DOMAIN: {
     accent: ['#7C3AED', '#C026D3'],
-    washLight: ['#FFFFFF', '#FAF5FF'],
-    washDark: ['#18181B', '#2E1065'],
+    washLight: ['#F5F3FF', '#FFFFFF'],
+    washDark: ['#2E1065', '#18181B'],
+    borderLight: 'rgba(124, 58, 237, 0.16)',
+    borderDark: 'rgba(167, 139, 250, 0.28)',
   },
   RELATIONSHIP_MANAGEMENT_DOMAIN: {
     accent: ['#EA580C', '#E11D48'],
-    washLight: ['#FFFFFF', '#FFF7ED'],
-    washDark: ['#18181B', '#451A03'],
+    washLight: ['#FFF7ED', '#FFFFFF'],
+    washDark: ['#451A03', '#18181B'],
+    borderLight: 'rgba(234, 88, 12, 0.18)',
+    borderDark: 'rgba(245, 158, 11, 0.28)',
   },
 };
 
@@ -172,7 +180,11 @@ export default function LearnScreen() {
           borderColor={
             isCurrentNext && !completed
               ? palette.accent[0]
-              : undefined
+              : isLocked
+                ? undefined
+                : isDark
+                  ? palette.borderDark
+                  : palette.borderLight
           }
           style={[
             styles.lessonCard,
@@ -301,8 +313,8 @@ export default function LearnScreen() {
           ) : null}
 
           {/* Header */}
-          <View style={styles.pageHeaderRow}>
-            <View style={{ flex: 1, gap: 4 }}>
+          <View style={[styles.pageHeaderRow, !isDesktop && styles.pageHeaderColMobile]}>
+            <View style={{ flex: isDesktop ? 1 : undefined, gap: 4 }}>
               <Text style={[styles.pageTitle, isDesktop && styles.pageTitleDesktop, { color: colors.textPrimary }]}>
                 Curriculum
               </Text>
@@ -312,7 +324,7 @@ export default function LearnScreen() {
               </Text>
             </View>
 
-            <View style={[styles.trackSwitch, { backgroundColor: colors.surface }]}>
+            <View style={[styles.trackSwitch, !isDesktop && styles.trackSwitchMobile, { backgroundColor: colors.surface }]}>
               {(['B2B', 'B2C'] as const).map((track) => {
                 const active = audience === track;
                 return (
@@ -325,6 +337,7 @@ export default function LearnScreen() {
                     }}
                     style={[
                       styles.trackBtn,
+                      !isDesktop && styles.trackBtnMobile,
                       active && {
                         backgroundColor: colors.floating,
                         shadowColor: '#000',
@@ -560,6 +573,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.sm,
   },
+  pageHeaderColMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 14,
+  },
   pageTitle: {
     fontSize: 21,
     lineHeight: 27,
@@ -585,11 +603,19 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     gap: 4,
   },
+  trackSwitchMobile: {
+    width: '100%',
+  },
   trackBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: Radius.md,
+    alignItems: 'center',
     ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as object) : undefined),
+  },
+  trackBtnMobile: {
+    flex: 1,
+    paddingVertical: 8,
   },
   trackBtnText: {
     fontSize: 12,
@@ -678,7 +704,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cardsGrid: {
-    gap: 12,
+    gap: 16,
   },
   cardsGridDesktop: {
     flexDirection: 'row',
@@ -693,8 +719,8 @@ const styles = StyleSheet.create({
   },
   lessonCard: {
     height: '100%',
-    padding: 16,
-    gap: 12,
+    padding: 18,
+    gap: 13,
   },
   lessonCardDesktop: {
     padding: 20,

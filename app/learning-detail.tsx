@@ -1572,22 +1572,17 @@ export default function LearningDetailScreen() {
         </View>
       </GlassCard>
 
-      {/* Audio Optional Listen + Always Clickable Mark Complete */}
+      {/* Audio Actions: Back to Video + Mark Complete (or Next Lesson once complete) */}
       <GlassCard style={styles.actionBarCard}>
         <View style={styles.actionBarRow}>
-          <View style={styles.actionStatus}>
-            <Badge
-              label={audioCompleted ? 'Lesson Completed' : 'Optional Audio'}
-              variant={audioCompleted ? 'success' : 'secondary'}
-              icon={audioCompleted ? 'checkmark-circle' : 'headset-outline'}
-            />
-            {sequenceGate.sequenceNumber ? (
-              <Badge label={`Module ${sequenceGate.sequenceNumber}`} variant="outline" />
-            ) : null}
-          </View>
-          <View style={styles.actionBtns}>
+          {audioCompleted ? (
+            <View style={styles.actionStatus}>
+              <Badge label="Lesson Completed" variant="success" icon="checkmark-circle" />
+            </View>
+          ) : null}
+          <View style={[styles.actionBtns, !audioCompleted && { flex: 1, justifyContent: 'space-between' }]}>
             <Button
-              title={hasVideo ? 'Video' : 'Study Guide'}
+              title={hasVideo ? 'Back to Video' : 'Study Guide'}
               icon="arrow-back"
               size="sm"
               variant="ghost"
@@ -1601,14 +1596,12 @@ export default function LearningDetailScreen() {
                 loading={markingComplete}
                 onPress={() => void handleMarkLessonComplete('audio')}
               />
-            ) : null}
-            {sequenceGate.nextEpisode ? (
+            ) : sequenceGate.nextEpisode ? (
               <Button
                 title="Next Lesson"
                 icon="arrow-forward"
                 size="sm"
-                variant={audioCompleted ? 'primary' : 'outline'}
-                disabled={!sequenceGate.nextEpisode.unlocked && !lessonCompleted && !videoCompleted && !audioCompleted}
+                variant="primary"
                 onPress={() =>
                   router.replace(
                     `/learning-detail?id=${encodeURIComponent(sequenceGate.nextEpisode!.episode.routeId)}`
@@ -1648,22 +1641,24 @@ export default function LearningDetailScreen() {
             ) : null}
           </View>
 
-          <View style={styles.stepFooterRow}>
-            <Button
-              title={hasVideo ? 'Skip Reading & Watch Video' : hasAudio ? 'Skip Reading & Open Audio' : 'Skip Reading'}
-              size="sm"
-              variant="outline"
-              icon="play-skip-forward-outline"
-              onPress={() => void startMediaAfterReading()}
-            />
+          <View style={styles.overviewActionsStack}>
             <Button
               title="Next: Study Guide"
-              size="sm"
+              size="md"
+              fullWidth
               icon="arrow-forward"
               onPress={() => {
                 setReadStage('guide');
                 scrollViewRef.current?.scrollTo({ y: 0, animated: true });
               }}
+            />
+            <Button
+              title={hasVideo ? 'Skip Reading & Watch Video' : hasAudio ? 'Skip Reading & Open Audio' : 'Skip Reading'}
+              size="md"
+              fullWidth
+              variant="dark"
+              icon="play-skip-forward-outline"
+              onPress={() => void startMediaAfterReading()}
             />
           </View>
         </GlassCard>
@@ -2440,6 +2435,12 @@ const createStyles = (
     borderRadius: Radius.md,
     borderWidth: 1,
     gap: 6,
+  },
+  overviewActionsStack: {
+    marginTop: Spacing.lg,
+    flexDirection: 'column',
+    gap: Spacing.sm,
+    width: '100%',
   },
   stepFooterRow: {
     marginTop: Spacing.lg,
