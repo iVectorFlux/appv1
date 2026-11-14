@@ -7,7 +7,15 @@
  */
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { readCacheJson, writeCacheJson } from '@/lib/async-data-cache';
+import {
+  cacheSegments,
+  dedupeRequest,
+  isCacheFresh,
+  readCacheEntry,
+  readCacheJson,
+  withTimeout,
+  writeCacheJson,
+} from '@/lib/async-data-cache';
 
 export type LearningContentProgressUpdate = {
   video_completed?: boolean;
@@ -30,7 +38,9 @@ export interface LearningContentProgressRow {
   lastAccessedAt: string | null;
 }
 
-const LOCAL_SEGMENT = (userId: string) => `learning_content_progress:${userId}`;
+const LOCAL_SEGMENT = (userId: string) => cacheSegments.learningProgress(userId);
+const PROGRESS_FRESH_MS = 15_000;
+const PROGRESS_TIMEOUT_MS = 6_000;
 
 function isMissingPositionColumnError(message: string | undefined): boolean {
   if (!message) return false;
@@ -237,54 +247,78 @@ export function formatPlaybackSeconds(seconds: number): string {
 }
 
 export async function fetchUserLearningContentProgress(
-  userId: string
+  userId: string,
+  options?: { forceRefresh?: boolean }
 ): Promise<Record<string, LearningContentProgressRow>> {
-  const localMap = await readLocalProgressMap(userId);
-  if (!isSupabaseConfigured() || !userId) return localMap;
+  if (!userId) return {};
+  const segment = LOCAL_SEGMENT(userId);
+  const entry = await readCacheEntry<Record<string, LearningContentProgressRow>>(segment);
+  const localMap = entry?.data ?? {};
 
-  let rows: Record<string, unknown>[] | null = null;
-  const res = await supabase
-    .from('learning_content_progress')
-    .select(
-      'episode_key, video_completed, audio_completed, video_progress_pct, audio_progress_pct, video_position_seconds, audio_position_seconds, last_accessed_at'
-    )
-    .eq('user_id', userId);
+  if (!isSupabaseConfigured()) return localMap;
+  if (!options?.forceRefresh && entry && isCacheFresh(entry.updatedAt, PROGRESS_FRESH_MS)) {
+    return localMap;
+  }
 
-  if (res.error && isMissingPositionColumnError(res.error.message)) {
-    const fallback = await supabase
-      .from('learning_content_progress')
-      .select('episode_key, video_completed, audio_completed, video_progress_pct, audio_progress_pct, last_accessed_at')
-      .eq('user_id', userId);
-    if (!fallback.error && fallback.data) {
-      rows = fallback.data as Record<string, unknown>[];
+  return dedupeRequest(`learning_progress:${userId}`, async () => {
+    let rows: Record<string, unknown>[] | null = null;
+    try {
+      const res = await withTimeout(
+        (async () =>
+          supabase
+            .from('learning_content_progress')
+            .select(
+              'episode_key, video_completed, audio_completed, video_progress_pct, audio_progress_pct, video_position_seconds, audio_position_seconds, last_accessed_at'
+            )
+            .eq('user_id', userId))(),
+        PROGRESS_TIMEOUT_MS,
+        'Learning progress fetch'
+      );
+
+      if (res.error && isMissingPositionColumnError(res.error.message)) {
+        const fallback = await withTimeout(
+          (async () =>
+            supabase
+              .from('learning_content_progress')
+              .select('episode_key, video_completed, audio_completed, video_progress_pct, audio_progress_pct, last_accessed_at')
+              .eq('user_id', userId))(),
+          PROGRESS_TIMEOUT_MS,
+          'Learning progress fallback fetch'
+        );
+        if (!fallback.error && fallback.data) {
+          rows = fallback.data as Record<string, unknown>[];
+        }
+      } else if (!res.error && res.data) {
+        rows = res.data as Record<string, unknown>[];
+      }
+    } catch {
+      return localMap;
     }
-  } else if (!res.error && res.data) {
-    rows = res.data as Record<string, unknown>[];
-  }
 
-  if (!rows) return localMap;
+    if (!rows) return localMap;
 
-  const merged: Record<string, LearningContentProgressRow> = { ...localMap };
-  for (const r of rows) {
-    const key = String(r.episode_key ?? '');
-    if (!key) continue;
-    const local = localMap[key];
-    const remoteVideoCompleted = Boolean(r.video_completed);
-    const remoteAudioCompleted = Boolean(r.audio_completed);
-    const remoteVideoPos = Number(r.video_position_seconds ?? 0);
-    const remoteAudioPos = Number(r.audio_position_seconds ?? 0);
+    const merged: Record<string, LearningContentProgressRow> = { ...localMap };
+    for (const r of rows) {
+      const key = String(r.episode_key ?? '');
+      if (!key) continue;
+      const local = localMap[key];
+      const remoteVideoCompleted = Boolean(r.video_completed);
+      const remoteAudioCompleted = Boolean(r.audio_completed);
+      const remoteVideoPos = Number(r.video_position_seconds ?? 0);
+      const remoteAudioPos = Number(r.audio_position_seconds ?? 0);
 
-    merged[key] = {
-      episodeKey: key,
-      videoCompleted: remoteVideoCompleted || Boolean(local?.videoCompleted),
-      audioCompleted: remoteAudioCompleted || Boolean(local?.audioCompleted),
-      videoProgressPct: Math.max(Number(r.video_progress_pct ?? 0), local?.videoProgressPct ?? 0),
-      audioProgressPct: Math.max(Number(r.audio_progress_pct ?? 0), local?.audioProgressPct ?? 0),
-      videoPositionSeconds: remoteVideoPos > 0 ? remoteVideoPos : (local?.videoPositionSeconds ?? 0),
-      audioPositionSeconds: remoteAudioPos > 0 ? remoteAudioPos : (local?.audioPositionSeconds ?? 0),
-      lastAccessedAt: (r.last_accessed_at as string | null) ?? local?.lastAccessedAt ?? null,
-    };
-  }
-  await writeCacheJson(LOCAL_SEGMENT(userId), merged);
-  return merged;
+      merged[key] = {
+        episodeKey: key,
+        videoCompleted: remoteVideoCompleted || Boolean(local?.videoCompleted),
+        audioCompleted: remoteAudioCompleted || Boolean(local?.audioCompleted),
+        videoProgressPct: Math.max(Number(r.video_progress_pct ?? 0), local?.videoProgressPct ?? 0),
+        audioProgressPct: Math.max(Number(r.audio_progress_pct ?? 0), local?.audioProgressPct ?? 0),
+        videoPositionSeconds: remoteVideoPos > 0 ? remoteVideoPos : (local?.videoPositionSeconds ?? 0),
+        audioPositionSeconds: remoteAudioPos > 0 ? remoteAudioPos : (local?.audioPositionSeconds ?? 0),
+        lastAccessedAt: (r.last_accessed_at as string | null) ?? local?.lastAccessedAt ?? null,
+      };
+    }
+    await writeCacheJson(segment, merged);
+    return merged;
+  });
 }

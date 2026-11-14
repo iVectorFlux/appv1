@@ -5,7 +5,19 @@
  */
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import {
+  cacheSegments,
+  dedupeRequest,
+  isCacheFresh,
+  readCacheEntry,
+  removeCacheSegment,
+  withTimeout,
+  writeCacheJson,
+} from '@/lib/async-data-cache';
 import type { EQAssessmentResult, EQQuestion, EQResponse } from '@/types/eq-assessment';
+
+const EQ_SCORES_FRESH_MS = 30_000;
+const EQ_SCORES_TIMEOUT_MS = 7_000;
 
 /**
  * Start an EQ assessment session
@@ -140,6 +152,7 @@ export async function completeEQAssessmentSession(
     console.error('[EQ Storage] Failed to save score:', scoreError);
     throw scoreError;
   }
+  await removeCacheSegment(cacheSegments.eqScores(result.userId));
 }
 
 /**
@@ -212,6 +225,7 @@ export async function saveEQAssessmentResult(
     });
 
     if (scoreError) throw scoreError;
+    await removeCacheSegment(cacheSegments.eqScores(userId));
   } catch (error) {
     console.error('[EQ Storage] Error saving assessment:', error);
     throw error;
@@ -219,7 +233,7 @@ export async function saveEQAssessmentResult(
 }
 
 /**
- * Get EQ scores for a user
+ * Get EQ scores for a user (L1/L2 cached with SWR freshness, request deduplication, and timeout fallback).
  */
 export async function getEQScores(
   userId: string,
@@ -234,49 +248,80 @@ export async function getEQScores(
     assessmentType: 'check_in' | 'full_test';
   }[]
 > {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || !userId) {
     return [];
   }
 
-  const { data, error } = await supabase
-    .from('eq_scores')
-    .select(`
-      id,
-      session_id,
-      completed_at,
-      overall_score,
-      dimension_scores,
-      eq_assessment_sessions!inner(assessment_type)
-    `)
-    .eq('user_id', userId)
-    .order('completed_at', { ascending: false })
-    // Fetch extra rows: we only return full_test sessions in the app (check-in data may still exist in DB).
-    .limit(Math.min(500, Math.max(limit * 30, 120)));
+  const cacheKey = cacheSegments.eqScores(userId);
+  const cached = await readCacheEntry<
+    {
+      id: string;
+      sessionId: string;
+      completedAt: string;
+      overallScore: number;
+      dimensionScores: Record<string, number>;
+      assessmentType: 'check_in' | 'full_test';
+    }[]
+  >(cacheKey);
 
-  if (error) {
-    console.error('[EQ Storage] Failed to fetch scores:', error);
-    throw new Error(error.message || 'Could not load EQ assessments');
+  if (cached && cached.data.length >= 0 && isCacheFresh(cached.updatedAt, EQ_SCORES_FRESH_MS) && cached.data.length <= limit) {
+    return cached.data.slice(0, limit);
   }
 
-  const rows = (data || []).map((row: {
-    id: string;
-    session_id: string;
-    completed_at: string;
-    overall_score: number;
-    dimension_scores: Record<string, number>;
-    eq_assessment_sessions: { assessment_type: string } | { assessment_type: string }[] | null;
-  }) => {
-    const rel = row.eq_assessment_sessions;
-    const at = Array.isArray(rel) ? rel[0]?.assessment_type : rel?.assessment_type;
-    return {
-      id: row.id,
-      sessionId: row.session_id,
-      completedAt: row.completed_at,
-      overallScore: row.overall_score,
-      dimensionScores: row.dimension_scores,
-      assessmentType: (at === 'full_test' || at === 'check_in' ? at : 'full_test') as 'check_in' | 'full_test',
-    };
+  return dedupeRequest(`eq_scores:${userId}:${limit}`, async () => {
+    try {
+      const { data, error } = await withTimeout(
+        (async () =>
+          supabase
+            .from('eq_scores')
+            .select(`
+              id,
+              session_id,
+              completed_at,
+              overall_score,
+              dimension_scores,
+              eq_assessment_sessions!inner(assessment_type)
+            `)
+            .eq('user_id', userId)
+            .order('completed_at', { ascending: false })
+            // Fetch extra rows: we only return full_test sessions in the app (check-in data may still exist in DB).
+            .limit(Math.min(500, Math.max(limit * 30, 120))))(),
+        EQ_SCORES_TIMEOUT_MS,
+        'EQ scores fetch'
+      );
+
+      if (error) {
+        console.error('[EQ Storage] Failed to fetch scores:', error);
+        if (cached?.data) return cached.data.slice(0, limit);
+        throw new Error(error.message || 'Could not load EQ assessments');
+      }
+
+      const rows = (data || []).map((row: {
+        id: string;
+        session_id: string;
+        completed_at: string;
+        overall_score: number;
+        dimension_scores: Record<string, number>;
+        eq_assessment_sessions: { assessment_type: string } | { assessment_type: string }[] | null;
+      }) => {
+        const rel = row.eq_assessment_sessions;
+        const at = Array.isArray(rel) ? rel[0]?.assessment_type : rel?.assessment_type;
+        return {
+          id: row.id,
+          sessionId: row.session_id,
+          completedAt: row.completed_at,
+          overallScore: row.overall_score,
+          dimensionScores: row.dimension_scores,
+          assessmentType: (at === 'full_test' || at === 'check_in' ? at : 'full_test') as 'check_in' | 'full_test',
+        };
+      });
+      // App UI only uses full-length EQ test results; check-in rows may still exist in the database.
+      const filtered = rows.filter((r) => r.assessmentType === 'full_test').slice(0, limit);
+      void writeCacheJson(cacheKey, filtered);
+      return filtered;
+    } catch (err) {
+      if (cached?.data) return cached.data.slice(0, limit);
+      throw err;
+    }
   });
-  // App UI only uses full-length EQ test results; check-in rows may still exist in the database.
-  return rows.filter((r) => r.assessmentType === 'full_test').slice(0, limit);
 }

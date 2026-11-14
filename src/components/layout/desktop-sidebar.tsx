@@ -176,14 +176,14 @@ export function DesktopSidebar() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.brandName, { color: colors.textPrimary }]}>Lumi6</Text>
           <Text style={[styles.brandSub, { color: colors.textMuted }]} numberOfLines={1}>
-            {user?.companyName || 'Enterprise EQ'}
+            {user?.companyName || 'Emotional Intelligence'}
           </Text>
         </View>
       </View>
 
       {/* Main Nav */}
       <View style={styles.navSection}>
-        <Text style={[styles.navGroupLabel, { color: colors.textMuted }]}>PLATFORM</Text>
+        <Text style={[styles.navGroupLabel, { color: colors.textMuted }]}>Explore</Text>
         {coreNav.map((item) => (
           <SidebarNavRow
             key={item.key}
@@ -195,7 +195,7 @@ export function DesktopSidebar() {
       </View>
 
       <View style={styles.navSection}>
-        <Text style={[styles.navGroupLabel, { color: colors.textMuted }]}>ASSESSMENTS</Text>
+        <Text style={[styles.navGroupLabel, { color: colors.textMuted }]}>Assessments</Text>
         {assessmentNav.map((item) => (
           <SidebarNavRow
             key={item.key}
@@ -208,7 +208,7 @@ export function DesktopSidebar() {
 
       {isAdmin ? (
         <View style={styles.navSection}>
-          <Text style={[styles.navGroupLabel, { color: colors.textMuted }]}>ENTERPRISE ADMIN</Text>
+          <Text style={[styles.navGroupLabel, { color: colors.textMuted }]}>Admin</Text>
           <SidebarNavRow
             item={adminNav}
             active={adminNav.match(pathname)}

@@ -28,6 +28,7 @@ import { useColors, Spacing, Typography, Radius } from '@/constants/design-token
 import { useAuthStore } from '@/stores/auth-store';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 import { EnterpriseShell } from '@/components/layout/desktop-sidebar';
+import { formatCatalogLabel } from '@/data/eq-curriculum';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -744,7 +745,7 @@ export default function EnterpriseAdminScreen() {
                         <View style={styles.courseRowTop}>
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.courseDomain, { color: colors.primary }]}>
-                              #{idx + 1} • {course.domain} → {course.competency}
+                              #{idx + 1} · {formatCatalogLabel(course.domain)} · {formatCatalogLabel(course.competency)}
                             </Text>
                             <Text style={[styles.courseTitle, { color: colors.textPrimary }]}>
                               {course.title}
@@ -824,7 +825,7 @@ export default function EnterpriseAdminScreen() {
                           >
                             <View style={{ flex: 1 }}>
                               <Text style={[styles.lessonCompetency, { color: colors.primary }]}>
-                                {lesson.competency}
+                                {formatCatalogLabel(lesson.competency)}
                               </Text>
                               <Text style={[styles.lessonTitle, { color: colors.textPrimary }]}>
                                 {lesson.title}
@@ -1077,8 +1078,7 @@ const styles = StyleSheet.create({
   thCell: {
     fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.2,
   },
   tableRow: {
     flexDirection: 'row',

@@ -36,6 +36,7 @@ import {
   GOOD_EQ_SCORE_THRESHOLD,
 } from '@/services/learning-sequence';
 import { buildHomeRecommendations } from '@/services/learning-recommendations';
+import { formatCatalogLabel } from '@/data/eq-curriculum';
 
 interface PlatformAction {
   key: string;
@@ -213,19 +214,19 @@ export default function HomeScreen() {
         {/* Top Header */}
         <View style={st.headerRow}>
           <View style={{ flex: 1 }}>
-            <View style={st.headerBadges}>
-              <Badge
-                label={user?.companyName ? user.companyName : 'Enterprise EQ Platform'}
-                variant="outline"
-                icon="business-outline"
-              />
-              {user?.role === 'admin' ? (
-                <Badge label="Company Admin" variant="default" icon="shield-checkmark-outline" />
-              ) : null}
-            </View>
+            {user?.companyName || user?.role === 'admin' ? (
+              <View style={st.headerBadges}>
+                {user?.companyName ? (
+                  <Badge label={user.companyName} variant="outline" icon="business-outline" />
+                ) : null}
+                {user?.role === 'admin' ? (
+                  <Badge label="Company Admin" variant="default" icon="shield-checkmark-outline" />
+                ) : null}
+              </View>
+            ) : null}
             <Text style={[st.greeting, isDesktop && st.greetingDesktop]}>{greeting}</Text>
             <Text style={st.tagline}>
-              Structured Emotional Intelligence training, baseline assessments, and measurable leadership habits.
+              Structured emotional intelligence training, baseline assessments, and measurable daily habits.
             </Text>
           </View>
 
@@ -252,35 +253,49 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Desktop Bento Row: Pathway Readiness + Curriculum Quick-Start */}
+        {/* Responsive Hero Row: Baseline EQ First (when untested) or Guided / Free Mastery Path */}
         <View style={[st.bentoRow, isDesktop && st.bentoRowDesktop]}>
           <GlassCard style={[st.heroCard, isDesktop && st.heroCardDesktop]}>
             <View style={st.heroTopRow}>
               <Badge
                 label={
                   sequenced.accessMode === 'free_browse'
-                    ? `Free Browse Unlocked (EQ ${latestEqScore}/100)`
+                    ? `Free Browse Unlocked · EQ ${latestEqScore}/100`
                     : latestEqScore !== null
-                    ? `Guided Sequential (EQ ${latestEqScore}/100)`
-                    : 'Guided Sequential Pathway'
+                    ? `Guided Pathway · EQ ${latestEqScore}/100`
+                    : 'Step 1 · Baseline Assessment'
                 }
-                variant={sequenced.accessMode === 'free_browse' ? 'success' : 'warning'}
-                icon={sequenced.accessMode === 'free_browse' ? 'lock-open-outline' : 'git-branch-outline'}
+                variant={
+                  sequenced.accessMode === 'free_browse'
+                    ? 'success'
+                    : latestEqScore === null
+                    ? 'default'
+                    : 'warning'
+                }
+                icon={
+                  sequenced.accessMode === 'free_browse'
+                    ? 'lock-open-outline'
+                    : latestEqScore === null
+                    ? 'analytics-outline'
+                    : 'git-branch-outline'
+                }
               />
               <Text style={st.eqBenchmarkText}>Benchmark: {GOOD_EQ_SCORE_THRESHOLD}+</Text>
             </View>
 
             <Text style={st.heroTitle}>
-              {sequenced.accessMode === 'free_browse'
+              {latestEqScore === null
+                ? 'Take Baseline EQ Test First'
+                : sequenced.accessMode === 'free_browse'
                 ? 'Full Curriculum Access Enabled'
                 : 'Your Guided EQ Mastery Path'}
             </Text>
             <Text style={st.heroDesc}>
-              {sequenced.accessMode === 'free_browse'
-                ? 'Your EQ score meets the leadership benchmark. Explore any domain freely across Self-Awareness, Self-Management, Social Awareness, and Relationship Management.'
-                : latestEqScore !== null
-                ? `Scores under ${GOOD_EQ_SCORE_THRESHOLD} follow structured step-by-step lessons so foundational Emotional Self-Awareness skills lock in before advanced modules.`
-                : `Start lesson by lesson or take the Full EQ Assessment (${GOOD_EQ_SCORE_THRESHOLD}+ unlocks Free Browse across all 12 competencies).`}
+              {latestEqScore === null
+                ? `Complete the Full EQ Assessment first to measure your emotional baseline and personalize your learning path (${GOOD_EQ_SCORE_THRESHOLD}+ unlocks free browsing across all 12 competencies).`
+                : sequenced.accessMode === 'free_browse'
+                ? 'Your EQ score meets the benchmark. Explore any domain freely across Self-Awareness, Self-Management, Social Awareness, and Relationship Management.'
+                : `Scores under ${GOOD_EQ_SCORE_THRESHOLD} follow structured step-by-step lessons so foundational skills lock in before advanced modules.`}
             </Text>
 
             <View style={st.progressBlock}>
@@ -294,24 +309,41 @@ export default function HomeScreen() {
             </View>
 
             <View style={st.heroActions}>
-              <Button
-                title={nextLesson ? `Continue: ${nextLesson.episode.competency}` : 'Open Learn EQ'}
-                icon="play-circle-outline"
-                onPress={openNextLesson}
-              />
               {latestEqScore === null ? (
-                <Button
-                  title="Take Baseline EQ Test"
-                  variant="outline"
-                  icon="analytics-outline"
-                  onPress={() => router.push('/full-eq-test')}
-                />
+                <>
+                  <Button
+                    title="Take Baseline EQ Test"
+                    icon="analytics-outline"
+                    onPress={() => router.push('/full-eq-test')}
+                  />
+                  <Button
+                    title={
+                      nextLesson
+                        ? `Start: ${formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title}`
+                        : 'Browse Modules'
+                    }
+                    variant="outline"
+                    icon="play-circle-outline"
+                    onPress={openNextLesson}
+                  />
+                </>
               ) : (
-                <Button
-                  title="Browse All Modules"
-                  variant="outline"
-                  onPress={() => router.push('/(tabs)/learn')}
-                />
+                <>
+                  <Button
+                    title={
+                      nextLesson
+                        ? `Continue: ${formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title}`
+                        : 'Open Learn EQ'
+                    }
+                    icon="play-circle-outline"
+                    onPress={openNextLesson}
+                  />
+                  <Button
+                    title="Browse All Modules"
+                    variant="outline"
+                    onPress={() => router.push('/(tabs)/learn')}
+                  />
+                </>
               )}
             </View>
           </GlassCard>
@@ -662,8 +694,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.xs,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.2,
     },
     eqIconCircle: {
       width: 34,
@@ -704,10 +735,13 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     featureCard: {
       padding: Spacing.lg,
       gap: Spacing.sm,
+      justifyContent: 'space-between',
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary + '55',
     },
     featureCardDesktop: {
-      width: '32%' as any,
-      minWidth: 260,
+      width: '31.5%' as any,
+      minWidth: 250,
       flexGrow: 1,
     },
     featureTop: {

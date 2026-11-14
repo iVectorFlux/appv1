@@ -409,6 +409,47 @@ export function applyDatabaseCompetencyGuides(guides: CompetencyReadingGuide[]):
   }
 }
 
+const DOMAIN_DISPLAY_NAMES: Record<string, string> = {
+  SELF_AWARENESS: 'Self-Awareness',
+  SELF_MANAGEMENT: 'Self-Management',
+  SOCIAL_AWARENESS: 'Social Awareness',
+  RELATIONSHIP_MANAGEMENT: 'Relationship Management',
+  SELF_REGULATION: 'Self-Regulation',
+  SOCIAL_SKILLS: 'Social Skills',
+  MOTIVATION: 'Motivation',
+  EMPATHY: 'Empathy',
+  RESILIENCE: 'Resilience',
+};
+
+/**
+ * Convert raw DB keys like "EMOTIONAL_BALANCE" or "RELATIONSHIP_MANAGEMENT_DOMAIN"
+ * into clean Proper Case display labels (never ALL_CAPS with underscores).
+ */
+export function formatCatalogLabel(raw?: string | null): string {
+  const trimmed = (raw ?? '').trim();
+  if (!trimmed) return '';
+  const norm = trimmed
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
+    .replace(/_DOMAIN$/i, '')
+    .replace(/_+/g, '_');
+
+  if (EQ_COMPETENCY_CURRICULUM[norm]?.title) {
+    return EQ_COMPETENCY_CURRICULUM[norm]!.title;
+  }
+  if (DOMAIN_DISPLAY_NAMES[norm]) {
+    return DOMAIN_DISPLAY_NAMES[norm]!;
+  }
+
+  return trimmed
+    .replace(/_DOMAIN$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
 export function getCurriculumGuide(competencyKey?: string, domainKey?: string): CompetencyReadingGuide {
   const normComp = (competencyKey ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_');
   if (normComp && EQ_COMPETENCY_CURRICULUM[normComp]) {

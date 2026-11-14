@@ -1,12 +1,23 @@
-import { readCacheJson, writeCacheJson } from '@/lib/async-data-cache';
-import { supabase } from '@/lib/supabase';
+import {
+  cacheSegments,
+  dedupeRequest,
+  isCacheFresh,
+  readCacheEntry,
+  readMemoryCache,
+  withTimeout,
+  writeCacheJson,
+  writeMemoryCache,
+} from '@/lib/async-data-cache';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import {
   applyDatabaseCompetencyGuides,
   EQ_COMPETENCY_CURRICULUM,
   type CompetencyReadingGuide,
 } from '@/data/eq-curriculum';
 
-const CACHE_KEY = 'eq_competency_guides:v1';
+const CACHE_KEY = cacheSegments.competencyGuides();
+const GUIDE_FRESH_MS = 5 * 60 * 1000;
+const GUIDE_FETCH_TIMEOUT_MS = 7_000;
 
 export type DbCompetencyGuideRow = {
   competency_key: string;
@@ -51,52 +62,70 @@ export function mapDbRowToCompetencyGuide(row: DbCompetencyGuideRow): Competency
   };
 }
 
-let inFlightFetch: Promise<Record<string, CompetencyReadingGuide>> | null = null;
-let loadedFromNetwork = false;
+/**
+ * Apply raw DB guide rows received from `/api/catalog` or Supabase directly into L1+L2 caches.
+ */
+export async function hydrateCompetencyGuidesFromRows(
+  rows: DbCompetencyGuideRow[]
+): Promise<void> {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  const mapped = rows.map(mapDbRowToCompetencyGuide);
+  applyDatabaseCompetencyGuides(mapped);
+  writeMemoryCache(CACHE_KEY, mapped);
+  await writeCacheJson(CACHE_KEY, mapped);
+}
 
 /**
- * Loads competency short & long reading content from `public.eq_competency_guides`.
- * Hydrates and updates `EQ_COMPETENCY_CURRICULUM` in memory, with SWR AsyncStorage caching
- * and silent fallback to bundled defaults if offline or before migration 00030 is applied.
+ * Loads competency short & long reading content from L1 memory -> L2 AsyncStorage -> Supabase.
+ * Skips redundant network fetches when cached guides are fresh (< 5 min), deduplicates
+ * concurrent callers, and enforces a 7s timeout so screens never hang.
  */
 export async function fetchCompetencyGuides(
   forceRefresh = false
 ): Promise<Record<string, CompetencyReadingGuide>> {
-  if (!forceRefresh && loadedFromNetwork) {
+  const mem = readMemoryCache<CompetencyReadingGuide[]>(CACHE_KEY);
+  if (!forceRefresh && mem && isCacheFresh(mem.updatedAt, GUIDE_FRESH_MS)) {
+    applyDatabaseCompetencyGuides(mem.data);
     return EQ_COMPETENCY_CURRICULUM;
   }
-  if (inFlightFetch) {
-    return inFlightFetch;
-  }
 
-  inFlightFetch = (async () => {
+  return dedupeRequest(`guides:${forceRefresh ? 'force' : 'swr'}`, async () => {
     try {
-      const cached = await readCacheJson<CompetencyReadingGuide[]>(CACHE_KEY);
-      if (Array.isArray(cached) && cached.length > 0) {
-        applyDatabaseCompetencyGuides(cached);
+      const disk = await readCacheEntry<CompetencyReadingGuide[]>(CACHE_KEY);
+      if (disk?.data?.length) {
+        applyDatabaseCompetencyGuides(disk.data);
+        if (!forceRefresh && isCacheFresh(disk.updatedAt, GUIDE_FRESH_MS)) {
+          return EQ_COMPETENCY_CURRICULUM;
+        }
       }
 
-      const { data, error } = await supabase
-        .from('eq_competency_guides')
-        .select(
-          'competency_key, sequence_order, domain_key, domain_label, title, short_content, what_it_is, why_it_matters, how_to_measure, long_content, practice_prompt, estimated_read_minutes'
-        )
-        .order('sequence_order', { ascending: true });
+      if (!isSupabaseConfigured()) {
+        return EQ_COMPETENCY_CURRICULUM;
+      }
+
+      const queryPromise = (async () => {
+        const { data, error } = await supabase
+          .from('eq_competency_guides')
+          .select(
+            'competency_key, sequence_order, domain_key, domain_label, title, short_content, what_it_is, why_it_matters, how_to_measure, long_content, practice_prompt, estimated_read_minutes'
+          )
+          .order('sequence_order', { ascending: true });
+        return { data, error };
+      })();
+
+      const { data, error } = await withTimeout(
+        queryPromise,
+        GUIDE_FETCH_TIMEOUT_MS,
+        'Competency guides fetch'
+      );
 
       if (!error && Array.isArray(data) && data.length > 0) {
-        const mapped = (data as DbCompetencyGuideRow[]).map(mapDbRowToCompetencyGuide);
-        applyDatabaseCompetencyGuides(mapped);
-        await writeCacheJson(CACHE_KEY, mapped);
-        loadedFromNetwork = true;
+        await hydrateCompetencyGuidesFromRows(data as DbCompetencyGuideRow[]);
       }
     } catch {
-      // Offline or migration 00030 not yet applied; keep bundled fallback intact.
-    } finally {
-      inFlightFetch = null;
+      // Offline, timed out, or migration 00030 not yet applied; keep cached/bundled fallback intact.
     }
 
     return EQ_COMPETENCY_CURRICULUM;
-  })();
-
-  return inFlightFetch;
+  });
 }

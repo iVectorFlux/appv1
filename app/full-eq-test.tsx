@@ -357,14 +357,16 @@ export default function FullEQTestScreen() {
     }
   };
 
+  const safeBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
+
   const handleExit = () => {
-    const doExit = () => {
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/(tabs)/profile');
-      }
-    };
+    const doExit = safeBack;
 
     const hasProgress = responses.length > 0 || currentIndex > 0;
 
@@ -397,50 +399,94 @@ export default function FullEQTestScreen() {
 
   const getResponseTime = () => Date.now() - questionStartTime;
 
+  const formatQuestionTypeLabel = (type?: EQQuestion['type']): string => {
+    switch (type) {
+      case 'forced_choice':
+        return 'Preference Comparison';
+      case 'likert':
+        return 'Self Reflection';
+      case 'emotion_vocabulary':
+        return 'Emotion Nuance';
+      case 'sjt_decision':
+        return 'Workplace Scenario';
+      case 'emotion_perception':
+        return 'Reading Cues';
+      case 'meta_eq':
+        return 'Perspective Check';
+      case 'physiological_proxy':
+        return 'Stress Response';
+      case 'consistency_probe':
+        return 'Consistency Check';
+      case 'ranking_allocation':
+        return 'Priority Balance';
+      default:
+        return 'EQ Question';
+    }
+  };
+
   const styles = createStyles(colors);
 
   // Intro Screen
   if (screenState === 'intro') {
     return (
       <View style={styles.container}>
+        <View style={styles.testHeader}>
+          <View style={styles.headerSideLeft}>
+            <TouchableOpacity
+              onPress={safeBack}
+              style={styles.backButton}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={22} color={colors.primary} />
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.headerProgressOverlay} pointerEvents="none">
+            <Text style={styles.testHeaderText}>EQ Assessment</Text>
+          </View>
+          <View style={styles.headerSideRight} />
+        </View>
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.introScrollContent}
           showsVerticalScrollIndicator={false}
         >
         <View style={styles.introContainer}>
-          <View style={[styles.introIconCircle, { backgroundColor: colors.primary + '20' }]}>
-            <Ionicons name="analytics" size={48} color={colors.primary} />
+          <View style={[styles.introIconCircle, { backgroundColor: colors.primary + '16' }]}>
+            <Ionicons name="analytics" size={44} color={colors.primary} />
           </View>
           
           <Text style={styles.introTitle}>Full EQ Assessment</Text>
           <Text style={styles.introDescription}>
-            This comprehensive assessment measures your emotional intelligence across 5 dimensions using 7 different question types.
+            Measure your emotional intelligence across core competencies to personalize your learning sequence.
           </Text>
           
           <View style={styles.infoCards}>
             <View style={styles.infoCard}>
-              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+              <Ionicons name="time-outline" size={20} color={colors.primary} />
               <Text style={styles.infoText}>~25 minutes</Text>
             </View>
             <View style={styles.infoCard}>
-              <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
+              <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
               <Text style={styles.infoText}>
-                {questionsLoading ? '…' : `${questions.length} questions`}
+                {questionsLoading ? 'Loading…' : `${questions.length} questions`}
               </Text>
             </View>
           </View>
           
           <View style={styles.dimensionsList}>
-            <Text style={styles.dimensionsTitle}>What we measure:</Text>
-            {(['self_awareness', 'self_regulation', 'empathy', 'social_skills', 'motivation', 'resilience'] as EQDimension[]).map((dim) => (
-              <View key={dim} style={styles.dimensionItem}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-                <Text style={styles.dimensionText}>
-                  {dim.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </Text>
-              </View>
-            ))}
+            <Text style={styles.dimensionsTitle}>What this measures</Text>
+            <View style={styles.dimensionGrid}>
+              {(['self_awareness', 'self_regulation', 'empathy', 'social_skills', 'motivation', 'resilience'] as EQDimension[]).map((dim) => (
+                <View key={dim} style={styles.dimensionItem}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                  <Text style={styles.dimensionText}>
+                    {dim.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
           
           <Button
@@ -478,11 +524,11 @@ export default function FullEQTestScreen() {
           
           <TouchableOpacity
             style={styles.backLink}
-            onPress={() => router.back()}
+            onPress={safeBack}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color={colors.primary} />
-            <Text style={styles.backLinkText}>Back to Profile</Text>
+            <Ionicons name="arrow-back" size={18} color={colors.primary} />
+            <Text style={styles.backLinkText}>Go Back</Text>
           </TouchableOpacity>
         </View>
         </ScrollView>
@@ -788,12 +834,12 @@ export default function FullEQTestScreen() {
                 </Text>
                 {isMost && (
                   <View style={styles.choiceBadge}>
-                    <Text style={styles.choiceBadgeText}>MOST</Text>
+                    <Text style={styles.choiceBadgeText}>Most</Text>
                   </View>
                 )}
                 {isLeast && (
                   <View style={[styles.choiceBadge, styles.choiceBadgeLeast]}>
-                    <Text style={styles.choiceBadgeText}>LEAST</Text>
+                    <Text style={[styles.choiceBadgeText, { color: colors.secondary }]}>Least</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -1267,22 +1313,19 @@ export default function FullEQTestScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header: back on the left (when applicable), close on the right; progress centered */}
+      {/* Header: always-visible Back on the left, Exit on the right, progress centered */}
       <View style={styles.testHeader}>
         <View style={styles.headerSideLeft}>
-          {currentIndex > 0 ? (
-            <TouchableOpacity
-              onPress={handleBack}
-              style={styles.backButton}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.headerSpacer} />
-          )}
+          <TouchableOpacity
+            onPress={currentIndex > 0 ? handleBack : handleExit}
+            style={styles.backButton}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            activeOpacity={0.7}
+            accessibilityLabel={currentIndex > 0 ? 'Previous question' : 'Back to previous screen'}
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.primary} />
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.headerProgressOverlay} pointerEvents="none">
           <Text style={styles.testHeaderText}>
@@ -1297,7 +1340,7 @@ export default function FullEQTestScreen() {
             activeOpacity={0.7}
             accessibilityLabel="Exit test"
           >
-            <Ionicons name="close" size={28} color={colors.textPrimary} />
+            <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1312,7 +1355,7 @@ export default function FullEQTestScreen() {
         />
       </View>
 
-      {/* Question */}
+      {/* Framed Question Card */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -1324,14 +1367,35 @@ export default function FullEQTestScreen() {
             getQuestionAnimatedStyle(fadeAnim, slideAnim, scaleAnim),
           ]}
         >
-          {renderQuestion()}
+          <View style={styles.questionCard}>
+            <View style={styles.questionCardHeader}>
+              <View style={styles.questionTypePill}>
+                <Text style={styles.questionTypePillText}>
+                  {formatQuestionTypeLabel(questions[currentIndex]?.type)}
+                </Text>
+              </View>
+              <Text style={styles.questionStepMeta}>
+                Question {currentIndex + 1} of {questions.length}
+              </Text>
+            </View>
+            {renderQuestion()}
+          </View>
         </Animated.View>
       </ScrollView>
 
-      {/* Skip button */}
+      {/* Footer: Back + Skip */}
       <View style={styles.skipContainer}>
-        <TouchableOpacity onPress={handleSkip}>
+        <TouchableOpacity
+          onPress={currentIndex > 0 ? handleBack : handleExit}
+          style={styles.footerActionBtn}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={16} color={colors.textSecondary} />
+          <Text style={styles.skipText}>{currentIndex > 0 ? 'Previous' : 'Back'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleSkip} style={styles.footerActionBtn} activeOpacity={0.7}>
           <Text style={styles.skipText}>Skip this question</Text>
+          <Ionicons name="play-skip-forward-outline" size={15} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -1381,6 +1445,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textPrimary,
     fontFamily: Typography.fontFamily.heading,
     marginBottom: Spacing.md,
+    textAlign: 'center',
   },
   introDescription: {
     fontSize: Typography.fontSize.base,
@@ -1388,18 +1453,22 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     textAlign: 'center',
     lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
     marginBottom: Spacing.xl,
-    maxWidth: 320,
+    maxWidth: 460,
   },
   infoCards: {
     flexDirection: 'row',
-    gap: Spacing.lg,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.md,
     marginBottom: Spacing.xl,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.floating,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderRadius: Radius.lg,
@@ -1411,18 +1480,30 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   dimensionsList: {
     width: '100%',
-    marginBottom: Spacing['2xl'],
+    backgroundColor: colors.floating,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   dimensionsTitle: {
     fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
     color: colors.textSecondary,
     marginBottom: Spacing.md,
+  },
+  dimensionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
   },
   dimensionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+    gap: Spacing.xs,
+    width: '48%',
+    minWidth: 140,
   },
   dimensionText: {
     fontSize: Typography.fontSize.sm,
@@ -1515,92 +1596,137 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   scrollContent: {
     flexGrow: 1,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     justifyContent: 'center',
     width: '100%',
-    maxWidth: 820,
+    maxWidth: 760,
     alignSelf: 'center',
   },
   questionWrapper: {
     flex: 1,
     justifyContent: 'center',
   },
+  questionCard: {
+    backgroundColor: colors.floating,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  questionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  questionTypePill: {
+    backgroundColor: colors.primary + '14',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+  },
+  questionTypePillText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.primary,
+  },
+  questionStepMeta: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.textMuted,
+    fontWeight: Typography.fontWeight.medium,
+  },
   questionContent: {
-    gap: Spacing.xl,
+    gap: Spacing.lg,
   },
   questionPrompt: {
-    fontSize: Typography.fontSize.xl,
+    fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.semibold,
     color: colors.textPrimary,
-    textAlign: 'center',
+    textAlign: 'left',
     fontFamily: Typography.fontFamily.heading,
-    lineHeight: Typography.lineHeight.tight * Typography.fontSize.xl,
+    lineHeight: Typography.lineHeight.tight * Typography.fontSize.lg,
   },
   questionStatement: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: Typography.fontSize.base,
     color: colors.textPrimary,
-    textAlign: 'center',
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.lg,
+    textAlign: 'left',
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
   },
   questionLabel: {
     fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
+    fontWeight: Typography.fontWeight.medium,
   },
   questionHint: {
     fontSize: Typography.fontSize.xs,
     color: colors.textMuted,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   scenarioText: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: Typography.fontSize.base,
     color: colors.textPrimary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    paddingHorizontal: Spacing.md,
+    textAlign: 'left',
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
+    backgroundColor: colors.surface,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   optionsContainer: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   // Forced Choice
   forcedChoiceOption: {
-    backgroundColor: colors.floating,
+    backgroundColor: colors.surface,
     borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 2,
-    borderColor: colors.borderLight,
+    padding: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.sm,
   },
   forcedChoiceOptionMost: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '12',
     borderColor: colors.primary,
   },
   forcedChoiceOptionLeast: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.secondary + '12',
     borderColor: colors.secondary,
   },
   forcedChoiceText: {
     fontSize: Typography.fontSize.sm,
     color: colors.textPrimary,
     flex: 1,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
   },
   forcedChoiceTextSelected: {
-    color: colors.primaryForeground,
+    color: colors.textPrimary,
+    fontWeight: Typography.fontWeight.semibold,
   },
   choiceBadge: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: colors.primary + '22',
     paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
   },
   choiceBadgeLeast: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: colors.secondary + '22',
   },
   choiceBadgeText: {
     fontSize: Typography.fontSize.xs,
-    color: colors.primaryForeground,
+    color: colors.primary,
     fontWeight: Typography.fontWeight.bold,
   },
   // Likert
@@ -1610,21 +1736,20 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   likertScale: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: Spacing.xs,
+    gap: 6,
   },
   likertButton: {
     flex: 1,
-    aspectRatio: 1,
-    maxWidth: 44,
+    height: 46,
     borderRadius: Radius.md,
-    backgroundColor: colors.floating,
-    borderWidth: 2,
-    borderColor: colors.borderLight,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   likertButtonSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '14',
     borderColor: colors.primary,
   },
   likertButtonText: {
@@ -1633,7 +1758,8 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     color: colors.textPrimary,
   },
   likertButtonTextSelected: {
-    color: colors.primaryForeground,
+    color: colors.primary,
+    fontWeight: Typography.fontWeight.bold,
   },
   likertLabels: {
     flexDirection: 'row',
@@ -1642,33 +1768,36 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   likertLabel: {
     fontSize: Typography.fontSize.xs,
     color: colors.textSecondary,
-    maxWidth: '40%',
+    maxWidth: '45%',
   },
   // Emotion Vocabulary
   emotionOptions: {
     gap: Spacing.sm,
   },
   emotionOption: {
-    backgroundColor: colors.floating,
+    backgroundColor: colors.surface,
     borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 2,
-    borderColor: colors.borderLight,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
   emotionOptionSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '12',
     borderColor: colors.primary,
   },
   emotionOptionText: {
     fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.medium,
     color: colors.textPrimary,
+    flex: 1,
   },
   emotionOptionTextSelected: {
-    color: colors.primaryForeground,
+    color: colors.primary,
+    fontWeight: Typography.fontWeight.semibold,
   },
   selectionCheckmark: {
     marginLeft: Spacing.sm,
@@ -1686,36 +1815,43 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   metaEQStatement: {
     fontSize: Typography.fontSize.base,
     color: colors.textPrimary,
-    fontStyle: 'italic',
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base,
+    backgroundColor: colors.surface,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   // Physiological
   physioOptions: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   physioOption: {
-    backgroundColor: colors.floating,
+    backgroundColor: colors.surface,
     borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    borderWidth: 2,
-    borderColor: colors.borderLight,
+    padding: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   physioOptionSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '12',
     borderColor: colors.primary,
   },
   physioOptionContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.sm,
   },
   physioOptionText: {
     fontSize: Typography.fontSize.sm,
     color: colors.textPrimary,
-    lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
+    lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
     flex: 1,
   },
   physioOptionTextSelected: {
-    color: colors.primaryForeground,
+    color: colors.primary,
+    fontWeight: Typography.fontWeight.semibold,
   },
   // Allocation
   allocationRemaining: {
@@ -1760,15 +1896,30 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
     minWidth: 40,
     textAlign: 'center',
   },
-  // Skip
+  // Footer actions (Back + Skip)
   skipContainer: {
-    padding: Spacing.lg,
-    paddingTop: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  footerActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.xs,
   },
   skipText: {
     fontSize: Typography.fontSize.sm,
     color: colors.textSecondary,
-    textAlign: 'center',
+    fontWeight: Typography.fontWeight.medium,
   },
   // Results
   resultsContainer: {

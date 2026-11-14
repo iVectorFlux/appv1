@@ -7,7 +7,21 @@ import type { EQDimension } from '@/types/eq-assessment';
 import { DIMENSION_INFO, LEARNING_MODULES, type LearningModule } from '@/data/learning-content';
 import { b2bEpisodeSubtitle } from '@/data/learning-b2b-taxonomy';
 import bundledRows from '@/data/learning-content-rows.json';
-import { fetchCompetencyGuides } from '@/services/eq-curriculum-service';
+import {
+  fetchCompetencyGuides,
+  hydrateCompetencyGuidesFromRows,
+  type DbCompetencyGuideRow,
+} from '@/services/eq-curriculum-service';
+import {
+  cacheSegments,
+  dedupeRequest,
+  isCacheFresh,
+  readCacheEntry,
+  readMemoryCache,
+  withTimeout,
+  writeCacheJson,
+  writeMemoryCache,
+} from '@/lib/async-data-cache';
 
 export type LearningAudience = 'B2C' | 'B2B';
 
@@ -208,37 +222,175 @@ export function rowsToEpisodes(rows: LearningContentRow[]): LearningEpisode[] {
   return out;
 }
 
-export async function fetchLearningContentRows(language = 'en'): Promise<LearningContentRow[]> {
-  if (!isSupabaseConfigured()) {
-    return (bundledRows as LearningContentRow[]).filter(
-      (r) => r.language === language && r.content_for === 'EQ'
-    );
-  }
-  const [{ data, error }] = await Promise.all([
-    supabase
-      .from('learning_content')
-      .select('*')
-      .eq('language', language)
-      .eq('content_for', 'EQ')
-      .order('sort_order', { ascending: true })
-      .order('episode_title', { ascending: true }),
-    fetchCompetencyGuides(),
-  ]);
-  if (error || !data?.length) {
-    if (error) console.warn('[learning_content] fetch failed, using bundled catalog:', error.message);
-    return (bundledRows as LearningContentRow[]).filter(
-      (r) => r.language === language && r.content_for === 'EQ'
-    );
-  }
-  return data as LearningContentRow[];
+const CATALOG_FRESH_MS = 5 * 60 * 1000;
+const EDGE_CATALOG_TIMEOUT_MS = 4_500;
+const SUPABASE_CATALOG_TIMEOUT_MS = 8_000;
+
+function getBundledRowsForLanguage(language: string): LearningContentRow[] {
+  return (bundledRows as LearningContentRow[]).filter(
+    (r) => r.language === language && r.content_for === 'EQ'
+  );
 }
 
-export async function fetchLearningEpisodes(language = 'en'): Promise<LearningEpisode[]> {
-  const rows = await fetchLearningContentRows(language);
-  return rowsToEpisodes(rows);
+/**
+ * Synchronously return episodes from L1 memory cache (0ms, no spinner on repeat views).
+ */
+export function getSyncCachedEpisodes(language = 'en'): LearningEpisode[] | null {
+  const memEp = readMemoryCache<LearningEpisode[]>(cacheSegments.learningEpisodes(language));
+  if (memEp?.data?.length) return memEp.data;
+  const memRows = readMemoryCache<LearningContentRow[]>(cacheSegments.learningContentRows(language));
+  if (memRows?.data?.length) {
+    const eps = rowsToEpisodes(memRows.data);
+    writeMemoryCache(cacheSegments.learningEpisodes(language), eps, memRows.updatedAt);
+    return eps;
+  }
+  return null;
+}
+
+/**
+ * Resolve edge-cached `/api/catalog` URL on deployed web (never fails or throws on localhost/native).
+ */
+function getEdgeCatalogUrl(language: string): string | null {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || !window.location) {
+    return null;
+  }
+  const host = window.location.hostname;
+  if (!host || host === 'localhost' || host === '127.0.0.1') return null;
+  return `${window.location.protocol}//${window.location.host}/api/catalog?language=${encodeURIComponent(language)}`;
+}
+
+async function tryFetchEdgeCatalog(
+  language: string
+): Promise<{ rows: LearningContentRow[]; guides: DbCompetencyGuideRow[] } | null> {
+  const url = getEdgeCatalogUrl(language);
+  if (!url || typeof fetch === 'undefined') return null;
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), EDGE_CATALOG_TIMEOUT_MS) : undefined;
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      rows?: LearningContentRow[];
+      guides?: DbCompetencyGuideRow[];
+    };
+    if (!Array.isArray(json?.rows) || json.rows.length === 0) return null;
+    return {
+      rows: json.rows,
+      guides: Array.isArray(json.guides) ? json.guides : [],
+    };
+  } catch {
+    return null;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+export async function fetchLearningContentRows(
+  language = 'en',
+  options?: { forceRefresh?: boolean }
+): Promise<LearningContentRow[]> {
+  const forceRefresh = Boolean(options?.forceRefresh);
+  const rowsCacheKey = cacheSegments.learningContentRows(language);
+
+  const mem = readMemoryCache<LearningContentRow[]>(rowsCacheKey);
+  if (!forceRefresh && mem && mem.data.length > 0 && isCacheFresh(mem.updatedAt, CATALOG_FRESH_MS)) {
+    void fetchCompetencyGuides(false);
+    return mem.data;
+  }
+
+  return dedupeRequest(`catalog_rows:${language}:${forceRefresh ? 'force' : 'swr'}`, async () => {
+    const disk = await readCacheEntry<LearningContentRow[]>(rowsCacheKey);
+    const hasDisk = Boolean(disk?.data?.length);
+
+    if (!forceRefresh && hasDisk && isCacheFresh(disk!.updatedAt, CATALOG_FRESH_MS)) {
+      void fetchCompetencyGuides(false);
+      return disk!.data;
+    }
+
+    // 1. Try CDN Edge-cached `/api/catalog` on deployed web (1 round trip for rows + guides)
+    const edge = await tryFetchEdgeCatalog(language);
+    if (edge && edge.rows.length > 0) {
+      if (edge.guides.length > 0) {
+        await hydrateCompetencyGuidesFromRows(edge.guides);
+      } else {
+        void fetchCompetencyGuides(forceRefresh);
+      }
+      await writeCacheJson(rowsCacheKey, edge.rows);
+      return edge.rows;
+    }
+
+    if (!isSupabaseConfigured()) {
+      const local = getBundledRowsForLanguage(language);
+      writeMemoryCache(rowsCacheKey, local);
+      return local;
+    }
+
+    // 2. Fallback to direct Supabase query with strict timeout
+    try {
+      const [{ data, error }] = await withTimeout(
+        Promise.all([
+          supabase
+            .from('learning_content')
+            .select('*')
+            .eq('language', language)
+            .eq('content_for', 'EQ')
+            .order('sort_order', { ascending: true })
+            .order('episode_title', { ascending: true }),
+          fetchCompetencyGuides(forceRefresh),
+        ]),
+        SUPABASE_CATALOG_TIMEOUT_MS,
+        'Learning catalog fetch'
+      );
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const rows = data as LearningContentRow[];
+        await writeCacheJson(rowsCacheKey, rows);
+        return rows;
+      }
+      if (error) {
+        console.warn('[learning_content] fetch failed, using fallback:', error.message);
+      }
+    } catch (err) {
+      console.warn('[learning_content] request timed out/failed, using cached catalog:', err);
+    }
+
+    if (hasDisk) return disk!.data;
+    return getBundledRowsForLanguage(language);
+  });
+}
+
+export async function fetchLearningEpisodes(
+  language = 'en',
+  options?: { forceRefresh?: boolean }
+): Promise<LearningEpisode[]> {
+  const rows = await fetchLearningContentRows(language, options);
+  const episodes = rowsToEpisodes(rows);
+  if (episodes.length > 0) {
+    await writeCacheJson(cacheSegments.learningEpisodes(language), episodes);
+  }
+  return episodes;
 }
 
 export async function fetchLearningEpisodeSiblings(row: LearningContentRow): Promise<LearningContentRow[]> {
+  const memRows = readMemoryCache<LearningContentRow[]>(cacheSegments.learningContentRows(row.language));
+  if (memRows?.data?.length) {
+    const cachedSiblings = memRows.data.filter(
+      (x) =>
+        x.content_for === row.content_for &&
+        x.eq_type === row.eq_type &&
+        x.domain === row.domain &&
+        x.competency === row.competency &&
+        x.episode_title === row.episode_title &&
+        x.language === row.language
+    );
+    if (cachedSiblings.length > 0) return cachedSiblings;
+  }
+
   const localSiblings = (bundledRows as LearningContentRow[]).filter(
     (x) =>
       x.content_for === row.content_for &&
@@ -249,28 +401,55 @@ export async function fetchLearningEpisodeSiblings(row: LearningContentRow): Pro
       x.language === row.language
   );
   if (!isSupabaseConfigured()) return localSiblings.length ? localSiblings : [row];
-  const { data, error } = await supabase
-    .from('learning_content')
-    .select('*')
-    .eq('content_for', row.content_for)
-    .eq('eq_type', row.eq_type)
-    .eq('domain', row.domain)
-    .eq('competency', row.competency)
-    .eq('episode_title', row.episode_title)
-    .eq('language', row.language);
-  if (error || !data?.length) return localSiblings.length ? localSiblings : [row];
-  return data as LearningContentRow[];
+
+  try {
+    const { data, error } = await withTimeout(
+      (async () =>
+        supabase
+          .from('learning_content')
+          .select('*')
+          .eq('content_for', row.content_for)
+          .eq('eq_type', row.eq_type)
+          .eq('domain', row.domain)
+          .eq('competency', row.competency)
+          .eq('episode_title', row.episode_title)
+          .eq('language', row.language))(),
+      6_000,
+      'Episode siblings fetch'
+    );
+    if (!error && data?.length) return data as LearningContentRow[];
+  } catch {
+    // Fallback cleanly to local/cached siblings
+  }
+  return localSiblings.length ? localSiblings : [row];
 }
 
 export async function fetchLearningContentRowById(id: string): Promise<LearningContentRow | null> {
+  // Check L1/L2 cached rows before doing network I/O
+  const cachedRows = await readCacheEntry<LearningContentRow[]>(cacheSegments.learningContentRows('en'));
+  const cachedHit = cachedRows?.data?.find((x) => x.id === id);
+  if (cachedHit) {
+    void fetchCompetencyGuides(false);
+    return cachedHit;
+  }
+
   const local = (bundledRows as LearningContentRow[]).find((x) => x.id === id) ?? null;
   if (!isSupabaseConfigured()) return local;
-  const [{ data, error }] = await Promise.all([
-    supabase.from('learning_content').select('*').eq('id', id).maybeSingle(),
-    fetchCompetencyGuides(),
-  ]);
-  if (error || !data) return local;
-  return data as LearningContentRow;
+
+  try {
+    const [{ data, error }] = await withTimeout(
+      Promise.all([
+        supabase.from('learning_content').select('*').eq('id', id).maybeSingle(),
+        fetchCompetencyGuides(false),
+      ]),
+      6_000,
+      'Lesson detail fetch'
+    );
+    if (!error && data) return data as LearningContentRow;
+  } catch {
+    // Timeout fallback to bundled row
+  }
+  return local;
 }
 
 /** Build LearningModule shape for the detail screen (static + DB). */
@@ -305,10 +484,54 @@ export function episodeToDetailModule(ep: LearningEpisode): LearningModule {
   };
 }
 
+/**
+ * Synchronously resolve a lesson detail module from L1 memory cache or bundled rows (0ms).
+ * Returns null only on cold start with an uncached remote ID.
+ */
+export function resolveDetailModuleSync(id: string): {
+  module: LearningModule;
+  episodeKey: string;
+} | null {
+  const memEps = getSyncCachedEpisodes('en');
+  const cachedEp = memEps?.find((ep) => ep.routeId === id);
+  if (cachedEp) {
+    return { module: episodeToDetailModule(cachedEp), episodeKey: cachedEp.episodeKey };
+  }
+
+  const memRows = readMemoryCache<LearningContentRow[]>(cacheSegments.learningContentRows('en'));
+  const hitRow =
+    memRows?.data?.find((x) => x.id === id) ??
+    (bundledRows as LearningContentRow[]).find((x) => x.id === id);
+  if (!hitRow) return null;
+
+  const pool = memRows?.data?.length ? memRows.data : (bundledRows as LearningContentRow[]);
+  const siblings = pool.filter(
+    (x) =>
+      x.content_for === hitRow.content_for &&
+      x.eq_type === hitRow.eq_type &&
+      x.domain === hitRow.domain &&
+      x.competency === hitRow.competency &&
+      x.episode_title === hitRow.episode_title &&
+      x.language === hitRow.language
+  );
+  const eps = rowsToEpisodes(siblings.length ? siblings : [hitRow]);
+  const ep = eps[0];
+  if (!ep) return null;
+  return { module: episodeToDetailModule(ep), episodeKey: episodeKeyFromRow(hitRow) };
+}
+
 export async function resolveDetailModuleFromCatalogId(id: string): Promise<{
   module: LearningModule;
   episodeKey: string;
 } | null> {
+  const cachedEps = await readCacheEntry<LearningEpisode[]>(cacheSegments.learningEpisodes('en'));
+  const hitEp = cachedEps?.data?.find((ep) => ep.routeId === id);
+  if (hitEp) {
+    void fetchLearningEpisodes('en');
+    void fetchCompetencyGuides(false);
+    return { module: episodeToDetailModule(hitEp), episodeKey: hitEp.episodeKey };
+  }
+
   const row = await fetchLearningContentRowById(id);
   if (!row) return null;
   const siblings = await fetchLearningEpisodeSiblings(row);

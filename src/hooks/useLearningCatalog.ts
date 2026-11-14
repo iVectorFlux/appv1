@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchLearningEpisodes,
+  getSyncCachedEpisodes,
   type LearningEpisode,
   type LearningAudience,
 } from '@/services/learning-content-catalog';
 import { LEARNING_MODULES } from '@/data/learning-content';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { readCacheJson, writeCacheJson, cacheSegments } from '@/lib/async-data-cache';
+import {
+  readCacheJson,
+  writeCacheJson,
+  cacheSegments,
+} from '@/lib/async-data-cache';
 import { sortB2bEpisodesInPillarOrder } from '@/data/learning-b2b-taxonomy';
 
 const CATALOG_LANG = 'en';
@@ -14,8 +19,9 @@ const CATALOG_LANG = 'en';
 export type LearningCatalogAudienceFilter = LearningAudience | 'all';
 
 export function useLearningCatalog(audience: LearningCatalogAudienceFilter = 'B2C') {
-  const [allEpisodes, setAllEpisodes] = useState<LearningEpisode[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialSync = getSyncCachedEpisodes(CATALOG_LANG);
+  const [allEpisodes, setAllEpisodes] = useState<LearningEpisode[]>(() => initialSync ?? []);
+  const [loading, setLoading] = useState(() => !initialSync?.length);
   const [error, setError] = useState<string | null>(null);
   const [emptyRemote, setEmptyRemote] = useState(false);
 
@@ -28,29 +34,36 @@ export function useLearningCatalog(audience: LearningCatalogAudienceFilter = 'B2
     return list;
   }, [allEpisodes, audience]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh = false) => {
     setError(null);
     setEmptyRemote(false);
-    const disk = await readCacheJson<LearningEpisode[]>(cacheSegments.learningEpisodes(CATALOG_LANG));
-    let hadDisk = false;
-    if (disk && disk.length > 0) {
-      setAllEpisodes(disk);
-      setEmptyRemote(isSupabaseConfigured() && disk.length === 0);
+
+    const syncHit = getSyncCachedEpisodes(CATALOG_LANG);
+    let hasCached = Boolean(syncHit?.length);
+    if (syncHit?.length) {
+      setAllEpisodes(syncHit);
       setLoading(false);
-      hadDisk = true;
     } else {
-      setLoading(true);
+      const disk = await readCacheJson<LearningEpisode[]>(cacheSegments.learningEpisodes(CATALOG_LANG));
+      if (disk && disk.length > 0) {
+        setAllEpisodes(disk);
+        setLoading(false);
+        hasCached = true;
+      } else {
+        setLoading(true);
+      }
     }
+
     try {
-      const e = await fetchLearningEpisodes(CATALOG_LANG);
-      setAllEpisodes(e);
-      setEmptyRemote(isSupabaseConfigured() && e.length === 0);
-      void writeCacheJson(cacheSegments.learningEpisodes(CATALOG_LANG), e);
+      const fresh = await fetchLearningEpisodes(CATALOG_LANG, { forceRefresh });
+      setAllEpisodes(fresh);
+      setEmptyRemote(isSupabaseConfigured() && fresh.length === 0);
+      if (fresh.length > 0) {
+        void writeCacheJson(cacheSegments.learningEpisodes(CATALOG_LANG), fresh);
+      }
     } catch (err) {
-      if (!hadDisk) {
+      if (!hasCached) {
         setError(err instanceof Error ? err.message : 'Failed to load catalog');
-        setAllEpisodes([]);
-        setEmptyRemote(false);
       }
     } finally {
       setLoading(false);
@@ -58,8 +71,10 @@ export function useLearningCatalog(audience: LearningCatalogAudienceFilter = 'B2
   }, []);
 
   useEffect(() => {
-    void load();
+    void load(false);
   }, [load]);
+
+  const reload = useCallback(() => load(true), [load]);
 
   const hasRemote = episodes.length > 0;
 
@@ -70,7 +85,7 @@ export function useLearningCatalog(audience: LearningCatalogAudienceFilter = 'B2
     episodes,
     loading,
     error,
-    reload: load,
+    reload,
     hasRemote,
     emptyRemote,
     firstPersonalRouteId,

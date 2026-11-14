@@ -7,6 +7,7 @@
  */
 
 import { formatPlaybackSeconds } from '@/services/learning-content-progress';
+import { formatCatalogLabel } from '@/data/eq-curriculum';
 import type { SequencedCatalogState, SequencedEpisode } from '@/services/learning-sequence';
 
 export type RecommendationMediaType = 'video' | 'reading' | 'audio';
@@ -122,8 +123,8 @@ export function buildHomeRecommendations(
       episodeKey: item.episode.episodeKey,
       routeId: item.episode.routeId,
       title: item.episode.title,
-      competency: item.episode.competency,
-      domain: item.episode.domain,
+      competency: formatCatalogLabel(item.episode.competency) || item.guide.title,
+      domain: formatCatalogLabel(item.episode.domain) || item.guide.domainLabel,
       kind,
       progressPct,
       positionSeconds,
@@ -167,8 +168,8 @@ export function buildHomeRecommendations(
       routeId: videoPick.episode.routeId,
       episodeKey: videoPick.episode.episodeKey,
       title: videoPick.episode.title,
-      competency: videoPick.episode.competency,
-      domain: videoPick.episode.domain,
+      competency: formatCatalogLabel(videoPick.episode.competency) || videoPick.guide.title,
+      domain: formatCatalogLabel(videoPick.episode.domain) || videoPick.guide.domainLabel,
       summary: videoPick.episode.shortContent || videoPick.guide.shortSummary,
       metaLabel:
         resumeSec >= 3
@@ -197,8 +198,8 @@ export function buildHomeRecommendations(
       routeId: readingPick.episode.routeId,
       episodeKey: readingPick.episode.episodeKey,
       title: readingPick.guide.title,
-      competency: readingPick.episode.competency,
-      domain: readingPick.episode.domain,
+      competency: formatCatalogLabel(readingPick.episode.competency) || readingPick.guide.title,
+      domain: formatCatalogLabel(readingPick.episode.domain) || readingPick.guide.domainLabel,
       summary: readingPick.episode.shortContent || readingPick.guide.shortSummary,
       metaLabel: `${readingPick.episode.estimatedReadMinutes ?? readingPick.guide.estimatedReadMinutes} min read • First-Principles`,
       ctaLabel: 'Read Brief & Guide',
@@ -230,8 +231,8 @@ export function buildHomeRecommendations(
       routeId: audioPick.episode.routeId,
       episodeKey: audioPick.episode.episodeKey,
       title: audioPick.episode.title,
-      competency: audioPick.episode.competency,
-      domain: audioPick.episode.domain,
+      competency: formatCatalogLabel(audioPick.episode.competency) || audioPick.guide.title,
+      domain: formatCatalogLabel(audioPick.episode.domain) || audioPick.guide.domainLabel,
       summary: audioPick.episode.shortContent || audioPick.guide.shortSummary,
       metaLabel:
         resumeSec >= 3

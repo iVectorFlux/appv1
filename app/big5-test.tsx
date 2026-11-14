@@ -182,7 +182,11 @@ export default function Big5TestScreen() {
       if (index + 1 >= total) {
         void finish(next);
       } else {
-        animateTransition(() => setIndex((i) => i + 1));
+        const nextQ = BIG5_QUESTIONS[index + 1];
+        animateTransition(() => {
+          setIndex((i) => i + 1);
+          setSelectedAnswer(nextQ ? (next[nextQ.id] ?? null) : null);
+        });
       }
     },
     [q, responses, index, total, finish, animateTransition]
@@ -190,15 +194,23 @@ export default function Big5TestScreen() {
 
   const goBackQuestion = useCallback(() => {
     if (index <= 0 || isTransitioning.current) return;
-    animateTransition(() => setIndex((i) => i - 1));
-  }, [index, animateTransition]);
+    const prevQ = BIG5_QUESTIONS[index - 1];
+    animateTransition(() => {
+      setIndex((i) => i - 1);
+      setSelectedAnswer(prevQ ? (responses[prevQ.id] ?? null) : null);
+    });
+  }, [index, responses, animateTransition]);
 
   const handleSkip = useCallback(() => {
     if (isTransitioning.current) return;
     if (index + 1 >= total) {
       void finish(responses);
     } else {
-      animateTransition(() => setIndex((i) => i + 1));
+      const nextQ = BIG5_QUESTIONS[index + 1];
+      animateTransition(() => {
+        setIndex((i) => i + 1);
+        setSelectedAnswer(nextQ ? (responses[nextQ.id] ?? null) : null);
+      });
     }
   }, [index, total, responses, finish, animateTransition]);
 
@@ -219,11 +231,13 @@ export default function Big5TestScreen() {
     progressAnim.setValue(0);
   }, [fadeAnim, slideAnim, scaleAnim, progressAnim]);
 
+  const safeBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/home');
+  }, [router]);
+
   const handleExit = useCallback(() => {
-    const doExit = () => {
-      if (router.canGoBack()) router.back();
-      else router.replace('/(tabs)/profile');
-    };
+    const doExit = safeBack;
     const hasProgress = Object.keys(responses).length > 0 || index > 0;
     if (Platform.OS === 'web') {
       if (!hasProgress || window.confirm('Exit assessment?\n\nYour answers and progress will be removed.')) doExit();
@@ -234,7 +248,7 @@ export default function Big5TestScreen() {
       { text: 'Stay', style: 'cancel' },
       { text: 'Exit', style: 'destructive', onPress: doExit },
     ]);
-  }, [responses, index, router]);
+  }, [responses, index, safeBack]);
 
   if (!isLoading && !isAuthenticated) {
     return <Redirect href="/(auth)/sign-in" />;
@@ -244,39 +258,53 @@ export default function Big5TestScreen() {
   if (phase === 'intro') {
     return (
       <View style={st.container}>
+        <View style={st.testHeader}>
+          <View style={st.headerSideLeft}>
+            <TouchableOpacity onPress={safeBack} style={st.backButton} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={22} color={colors.primary} />
+              <Text style={st.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={st.headerProgressOverlay} pointerEvents="none">
+            <Text style={st.testHeaderText}>Personality Assessment</Text>
+          </View>
+          <View style={st.headerSideRight} />
+        </View>
         <ScrollView style={st.container} contentContainerStyle={st.introScrollContent} showsVerticalScrollIndicator={false}>
           <View style={st.introContainer}>
-            <View style={[st.introIconCircle, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="hardware-chip-outline" size={48} color={colors.primary} />
+            <View style={[st.introIconCircle, { backgroundColor: colors.primary + '16' }]}>
+              <Ionicons name="hardware-chip-outline" size={44} color={colors.primary} />
             </View>
             <Text style={st.introTitle}>Big Five Personality</Text>
             <Text style={st.introDescription}>
-              Fifty short statements about how you usually think, feel, and act. Say how much each one sounds like you.
-              This is for self-insight, not a clinical diagnosis.
+              Fifty short statements about how you usually think, feel, and act. Choose how closely each reflects you.
+              For self-insight, not a clinical diagnosis.
             </Text>
             <View style={st.infoCards}>
               <View style={st.infoCard}>
-                <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+                <Ionicons name="time-outline" size={20} color={colors.primary} />
                 <Text style={st.infoText}>~12 minutes</Text>
               </View>
               <View style={st.infoCard}>
-                <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
+                <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
                 <Text style={st.infoText}>{total} questions</Text>
               </View>
             </View>
             <View style={st.dimensionsList}>
-              <Text style={st.dimensionsTitle}>What we measure:</Text>
-              {BIG5_TRAITS.map((trait) => (
-                <View key={trait} style={st.dimensionItem}>
-                  <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-                  <Text style={st.dimensionText}>{trait}</Text>
-                </View>
-              ))}
+              <Text style={st.dimensionsTitle}>What this measures</Text>
+              <View style={st.dimensionGrid}>
+                {BIG5_TRAITS.map((trait) => (
+                  <View key={trait} style={st.dimensionItem}>
+                    <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                    <Text style={st.dimensionText}>{trait}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
             <Button title="Begin Assessment" onPress={() => setPhase('test')} size="lg" fullWidth />
-            <TouchableOpacity style={st.backLink} onPress={() => router.back()} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={20} color={colors.primary} />
-              <Text style={st.backLinkText}>Back to Profile</Text>
+            <TouchableOpacity style={st.backLink} onPress={safeBack} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={18} color={colors.primary} />
+              <Text style={st.backLinkText}>Go Back</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -426,24 +454,26 @@ export default function Big5TestScreen() {
 
   return (
     <View style={st.container}>
-      {/* Header: back | counter | close */}
+      {/* Header: always-visible Back | counter | close */}
       <View style={st.testHeader}>
         <View style={st.headerSideLeft}>
-          {index > 0 ? (
-            <TouchableOpacity onPress={goBackQuestion} style={st.backButton} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
-              <Text style={st.backButtonText}>Back</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={st.headerSpacer} />
-          )}
+          <TouchableOpacity
+            onPress={index > 0 ? goBackQuestion : handleExit}
+            style={st.backButton}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            activeOpacity={0.7}
+            accessibilityLabel={index > 0 ? 'Previous question' : 'Go back'}
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.primary} />
+            <Text style={st.backButtonText}>Back</Text>
+          </TouchableOpacity>
         </View>
         <View style={st.headerProgressOverlay} pointerEvents="none">
           <Text style={st.testHeaderText}>{index + 1} / {total}</Text>
         </View>
         <View style={st.headerSideRight}>
           <TouchableOpacity onPress={handleExit} style={st.closeButton} hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }} activeOpacity={0.7} accessibilityLabel="Exit test">
-            <Ionicons name="close" size={28} color={colors.textPrimary} />
+            <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -453,33 +483,41 @@ export default function Big5TestScreen() {
         <Animated.View style={[st.progressFill, { width: getProgressBarWidth(progressAnim) }]} />
       </View>
 
-      {/* Question */}
+      {/* Framed Question Card */}
       <ScrollView contentContainerStyle={st.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Animated.View style={[st.questionWrapper, getQuestionAnimatedStyle(fadeAnim, slideAnim, scaleAnim)]}>
-          <View style={st.questionContent}>
-            <Text style={st.questionPrompt}>{q.text}</Text>
-            <Text style={st.questionHint}>How much is this like you?</Text>
-            <View style={st.optionsContainer}>
-              {([5, 4, 3, 2, 1] as const).map((v) => {
-                const isSelected = selectedAnswer === v;
-                return (
-                  <TouchableOpacity
-                    key={v}
-                    style={[st.optionRow, isSelected && st.optionRowSelected]}
-                    onPress={() => setSelectedAnswer(v)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[st.optionLabel, isSelected && st.optionLabelSelected]}>
-                      {BIG5_LIKERT_LABELS[v]}
-                    </Text>
-                    {isSelected ? (
-                      <Ionicons name="checkmark-circle" size={22} color={colors.primaryForeground} />
-                    ) : (
-                      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+          <View style={st.questionCard}>
+            <View style={st.questionCardHeader}>
+              <View style={st.questionTypePill}>
+                <Text style={st.questionTypePillText}>Self Reflection</Text>
+              </View>
+              <Text style={st.questionStepMeta}>Question {index + 1} of {total}</Text>
+            </View>
+            <View style={st.questionContent}>
+              <Text style={st.questionPrompt}>{q.text}</Text>
+              <Text style={st.questionHint}>How accurately does this describe you?</Text>
+              <View style={st.optionsContainer}>
+                {([5, 4, 3, 2, 1] as const).map((v) => {
+                  const isSelected = selectedAnswer === v;
+                  return (
+                    <TouchableOpacity
+                      key={v}
+                      style={[st.optionRow, isSelected && st.optionRowSelected]}
+                      onPress={() => setSelectedAnswer(v)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[st.optionLabel, isSelected && st.optionLabelSelected]}>
+                        {BIG5_LIKERT_LABELS[v]}
+                      </Text>
+                      <Ionicons
+                        name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={20}
+                        color={isSelected ? colors.primary : colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           </View>
         </Animated.View>
@@ -488,15 +526,22 @@ export default function Big5TestScreen() {
       {/* Actions */}
       <View style={st.actionContainer}>
         <Button
-          title={index + 1 >= total ? 'See Results' : 'Next'}
+          title={index + 1 >= total ? 'See Results' : 'Next Question'}
           onPress={() => selectedAnswer != null && selectLikert(selectedAnswer)}
           fullWidth
           size="lg"
           disabled={selectedAnswer == null || isTransitioning.current}
         />
-        <TouchableOpacity onPress={handleSkip}>
-          <Text style={st.skipText}>Skip this question</Text>
-        </TouchableOpacity>
+        <View style={st.footerLinksRow}>
+          <TouchableOpacity onPress={index > 0 ? goBackQuestion : handleExit} style={st.footerActionBtn} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={15} color={colors.textSecondary} />
+            <Text style={st.skipText}>{index > 0 ? 'Previous' : 'Back'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSkip} style={st.footerActionBtn} activeOpacity={0.7}>
+            <Text style={st.skipText}>Skip this question</Text>
+            <Ionicons name="play-skip-forward-outline" size={15} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -509,15 +554,16 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   // Intro
   introScrollContent: { flexGrow: 1, padding: Spacing.xl, paddingBottom: Spacing['2xl'], width: '100%', maxWidth: 820, alignSelf: 'center' },
   introContainer: { alignItems: 'center', justifyContent: 'center', paddingBottom: Spacing.xl },
-  introIconCircle: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },
-  introTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.md },
-  introDescription: { fontSize: Typography.fontSize.base, color: colors.textSecondary, textAlign: 'center', lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base, marginBottom: Spacing.xl, maxWidth: 320 },
-  infoCards: { flexDirection: 'row', gap: Spacing.lg, marginBottom: Spacing.xl },
-  infoCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.surface, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: Radius.lg },
+  introIconCircle: { width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
+  introTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: Typography.fontWeight.bold, color: colors.textPrimary, fontFamily: Typography.fontFamily.heading, marginBottom: Spacing.md, textAlign: 'center' },
+  introDescription: { fontSize: Typography.fontSize.base, color: colors.textSecondary, textAlign: 'center', lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.base, marginBottom: Spacing.xl, maxWidth: 460 },
+  infoCards: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.md, marginBottom: Spacing.xl },
+  infoCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: colors.floating, borderWidth: 1, borderColor: colors.border, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderRadius: Radius.lg },
   infoText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary, fontWeight: Typography.fontWeight.medium },
-  dimensionsList: { width: '100%', marginBottom: Spacing['2xl'] },
-  dimensionsTitle: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, marginBottom: Spacing.md },
-  dimensionItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+  dimensionsList: { width: '100%', backgroundColor: colors.floating, borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.border, padding: Spacing.lg, marginBottom: Spacing.xl },
+  dimensionsTitle: { fontSize: Typography.fontSize.sm, fontWeight: Typography.fontWeight.semibold, color: colors.textSecondary, marginBottom: Spacing.md },
+  dimensionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  dimensionItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, width: '48%', minWidth: 140 },
   dimensionText: { fontSize: Typography.fontSize.sm, color: colors.textPrimary },
   backLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, marginTop: Spacing.xl, marginBottom: Spacing.xl, paddingVertical: Spacing.lg, paddingHorizontal: Spacing.xl, minHeight: 48, borderRadius: Radius.lg, borderWidth: 1, backgroundColor: colors.surface, borderColor: colors.border },
   backLinkText: { fontSize: Typography.fontSize.base, color: colors.primary, fontWeight: Typography.fontWeight.semibold },
@@ -527,24 +573,31 @@ const createStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   headerSideRight: { flex: 1, zIndex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
   headerSpacer: { width: 44, height: 44 },
   headerProgressOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
-  closeButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  closeButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   backButton: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.xs, minWidth: 44 },
   backButtonText: { fontSize: Typography.fontSize.sm, color: colors.primary, fontWeight: Typography.fontWeight.medium },
   testHeaderText: { fontSize: Typography.fontSize.base, color: colors.textPrimary, fontWeight: Typography.fontWeight.semibold },
   progressBar: { height: 4, backgroundColor: colors.surface },
   progressFill: { height: '100%', backgroundColor: colors.primary },
-  scrollContent: { flexGrow: 1, padding: Spacing.lg, justifyContent: 'center', width: '100%', maxWidth: 820, alignSelf: 'center' },
+  scrollContent: { flexGrow: 1, padding: Spacing.md, justifyContent: 'center', width: '100%', maxWidth: 720, alignSelf: 'center' },
   questionWrapper: { flex: 1, justifyContent: 'center' },
-  questionContent: { gap: Spacing.xl },
-  questionPrompt: { fontSize: Typography.fontSize.xl, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, textAlign: 'center', fontFamily: Typography.fontFamily.heading, lineHeight: Typography.lineHeight.tight * Typography.fontSize.xl },
-  questionHint: { fontSize: Typography.fontSize.xs, color: colors.textMuted, textAlign: 'center' },
-  optionsContainer: { gap: Spacing.md },
-  optionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.floating, borderRadius: Radius.lg, padding: Spacing.lg, borderWidth: 2, borderColor: colors.borderLight },
-  optionRowSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  questionCard: { backgroundColor: colors.floating, borderRadius: Radius.xl, borderWidth: 1, borderColor: colors.border, padding: Spacing.lg, gap: Spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  questionCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm, paddingBottom: Spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  questionTypePill: { backgroundColor: colors.primary + '14', paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.full },
+  questionTypePillText: { fontSize: Typography.fontSize.xs, fontWeight: Typography.fontWeight.semibold, color: colors.primary },
+  questionStepMeta: { fontSize: Typography.fontSize.xs, color: colors.textMuted, fontWeight: Typography.fontWeight.medium },
+  questionContent: { gap: Spacing.md },
+  questionPrompt: { fontSize: Typography.fontSize.lg, fontWeight: Typography.fontWeight.semibold, color: colors.textPrimary, textAlign: 'left', fontFamily: Typography.fontFamily.heading, lineHeight: Typography.lineHeight.tight * Typography.fontSize.lg },
+  questionHint: { fontSize: Typography.fontSize.xs, color: colors.textSecondary, textAlign: 'left' },
+  optionsContainer: { gap: Spacing.sm },
+  optionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: Radius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, borderWidth: 1.5, borderColor: colors.border, gap: Spacing.sm },
+  optionRowSelected: { backgroundColor: colors.primary + '12', borderColor: colors.primary },
   optionLabel: { flex: 1, fontSize: Typography.fontSize.sm, color: colors.textPrimary },
-  optionLabelSelected: { color: colors.primaryForeground, fontWeight: Typography.fontWeight.semibold },
-  actionContainer: { padding: Spacing.lg, paddingTop: Spacing.sm, gap: Spacing.md },
-  skipText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, textAlign: 'center' },
+  optionLabelSelected: { color: colors.primary, fontWeight: Typography.fontWeight.semibold },
+  actionContainer: { padding: Spacing.lg, paddingTop: Spacing.sm, gap: Spacing.sm, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  footerLinksRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Spacing.xs },
+  footerActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.xs },
+  skipText: { fontSize: Typography.fontSize.sm, color: colors.textSecondary, fontWeight: Typography.fontWeight.medium },
   // Results
   resultsContainer: { padding: Spacing.xl, paddingTop: Platform.OS === 'ios' ? Spacing['3xl'] : Spacing.xl, paddingBottom: Spacing['5xl'], width: '100%', maxWidth: 880, alignSelf: 'center' },
   resultsHeader: { marginBottom: Spacing['2xl'] },

@@ -82,6 +82,25 @@ const safeStorage =
         removeItem: async () => {},
       };
 
+const SUPABASE_FETCH_TIMEOUT_MS = 12_000;
+
+/**
+ * Abort stalled Supabase HTTP requests (e.g. waking mobile tab / sleeping TCP socket)
+ * so auth refresh and PostgREST queries fail fast and trigger cached fallbacks.
+ */
+const fetchWithTimeout: typeof fetch = async (input, init) => {
+  if (init?.signal || typeof AbortController === 'undefined') {
+    return fetch(input, init);
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SUPABASE_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 export const supabase: SupabaseClient = createClient(supabaseUrl || 'http://invalid.local', supabaseAnonKey || 'invalid', {
   auth: {
     storage: safeStorage,
@@ -89,5 +108,8 @@ export const supabase: SupabaseClient = createClient(supabaseUrl || 'http://inva
     persistSession: true,
     detectSessionInUrl: true,
     lock: (_name, _acquireTimeout, fn) => fn(),
+  },
+  global: {
+    fetch: fetchWithTimeout,
   },
 });

@@ -37,8 +37,10 @@ import {
 import {
   isIntroEpisodeTitle,
   resolveDetailModuleFromCatalogId,
+  resolveDetailModuleSync,
   fetchLearningEpisodes,
 } from '@/services/learning-content-catalog';
+import { withTimeout } from '@/lib/async-data-cache';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import {
   recordEpisodeLastAccessed,
@@ -53,7 +55,7 @@ import {
 } from '@/services/learning-content-progress';
 import { getEQScores } from '@/services/eq-storage';
 import { buildSequencedCatalog, type SequencedEpisode } from '@/services/learning-sequence';
-import { getCurriculumGuide } from '@/data/eq-curriculum';
+import { getCurriculumGuide, formatCatalogLabel } from '@/data/eq-curriculum';
 import { EnterpriseShell } from '@/components/layout/desktop-sidebar';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -110,7 +112,7 @@ export default function LearningDetailScreen() {
 
   const mediaHorizontalPaddingTotal = Spacing.lg * 2;
   const effectivePlayerAvailW = isDesktop
-    ? Math.max(360, Math.min(680, Math.round((windowWidth - 248 - 64) * 0.54)))
+    ? Math.max(380, Math.min(820, windowWidth - 280))
     : windowWidth;
   const { width: videoWidth, height: videoHeight } = computeVideoPlayerLayout(
     effectivePlayerAvailW,
@@ -124,6 +126,13 @@ export default function LearningDetailScreen() {
   /** When set, progress is stored in learning_content_progress (DB catalog). */
   const [catalogEpisodeKey, setCatalogEpisodeKey] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
+  const [lessonStep, setLessonStep] = useState<'read' | 'video' | 'audio'>('read');
+  const [readStage, setReadStage] = useState<'overview' | 'guide'>('overview');
+  const [shouldAutoPlayVideo, setShouldAutoPlayVideo] = useState(false);
+  const [videoWatchPct, setVideoWatchPct] = useState(0);
+  const [videoCompleted, setVideoCompleted] = useState(false);
+  const [audioCompleted, setAudioCompleted] = useState(false);
+  const [stepGateHint, setStepGateHint] = useState<string | null>(null);
   const [mediaMode, setMediaMode] = useState<MediaMode>('video');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -131,7 +140,6 @@ export default function LearningDetailScreen() {
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [videoUseProxyFallback, setVideoUseProxyFallback] = useState(false);
-  const [readingSkipped, setReadingSkipped] = useState(false);
   const [lessonCompleted, setLessonCompleted] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const [resumedBannerSeconds, setResumedBannerSeconds] = useState<Record<'video' | 'audio', number>>({
@@ -227,112 +235,195 @@ export default function LearningDetailScreen() {
       return;
     }
     let cancelled = false;
-    setDetailLoading(true);
-    setCatalogEpisodeKey(null);
-    (async () => {
-      const fromCatalog = await resolveDetailModuleFromCatalogId(id);
-      if (cancelled) return;
-      let startMode: MediaMode = 'video';
-      if (fromCatalog) {
-        startMode =
-          requestedModeRaw === 'audio' && fromCatalog.module.audioUrl
-            ? 'audio'
-            : requestedModeRaw === 'video' && fromCatalog.module.videoUrl
-              ? 'video'
-              : fromCatalog.module.videoUrl
-                ? 'video'
-                : 'audio';
-        setModule(fromCatalog.module);
-        setCatalogEpisodeKey(fromCatalog.episodeKey);
-        activeEpisodeKeyRef.current = fromCatalog.episodeKey;
-        setMediaMode(startMode);
-      } else {
-        const found = getModuleById(id);
-        startMode =
-          requestedModeRaw === 'audio' && found?.audioUrl
-            ? 'audio'
-            : found?.videoUrl
+    const syncHit = resolveDetailModuleSync(id);
+    if (syncHit) {
+      const syncHasVideo = Boolean(syncHit.module.videoUrl?.trim());
+      const syncHasAudio = Boolean(syncHit.module.audioUrl?.trim());
+      const syncMode: MediaMode =
+        requestedModeRaw === 'audio' && syncHasAudio
+          ? 'audio'
+          : requestedModeRaw === 'video' && syncHasVideo
+            ? 'video'
+            : syncHasVideo
               ? 'video'
               : 'audio';
-        setModule(found ?? null);
-        setCatalogEpisodeKey(null);
-        activeEpisodeKeyRef.current = null;
-        setMediaMode(startMode);
-      }
-      setIsLoading(startMode === 'video' && Platform.OS !== 'web');
-      setVideoUseProxyFallback(false);
-      setError(null);
-      setProgress(0);
-      setDuration(0);
-      liveProgressMsRef.current = 0;
-      liveDurationMsRef.current = 0;
-      setIsPlaying(false);
-      setReadingSkipped(false);
-      lastVideoPctReportedRef.current = 0;
-      lastAudioPctReportedRef.current = 0;
-      lastVideoSavedAtRef.current = 0;
-      lastAudioSavedAtRef.current = 0;
-      pendingVideoSeekSecRef.current = 0;
-      pendingAudioSeekSecRef.current = 0;
-      setResumedBannerSeconds({ video: 0, audio: 0 });
-      pendingPlayRef.current = false;
+      setModule(syncHit.module);
+      setCatalogEpisodeKey(syncHit.episodeKey);
+      activeEpisodeKeyRef.current = syncHit.episodeKey;
+      setMediaMode(syncMode);
+      setLessonStep(
+        requestedModeRaw === 'audio' && syncHasAudio
+          ? 'audio'
+          : requestedModeRaw === 'video' && syncHasVideo
+            ? 'video'
+            : 'read'
+      );
+      setReadStage('overview');
+      setShouldAutoPlayVideo(false);
+      setStepGateHint(null);
+      setDetailLoading(false);
+    } else {
+      setDetailLoading(true);
+      setCatalogEpisodeKey(null);
+      setLessonStep('read');
+      setReadStage('overview');
+      setShouldAutoPlayVideo(false);
+      setStepGateHint(null);
+    }
 
-      const resolvedKey = fromCatalog?.episodeKey ?? null;
-      const uid = useAuthStore.getState().user?.id;
-      const progressMap = uid ? await fetchUserLearningContentProgress(uid) : {};
-      if (cancelled) return;
-
-      if (resolvedKey && uid) {
-        const savedRow = progressMap[resolvedKey];
-        if (shouldRestart) {
-          const restartKind: MediaMode = startMode === 'audio' ? 'audio' : 'video';
-          await resetEpisodePlaybackPosition(uid, resolvedKey, restartKind);
-          pendingVideoSeekSecRef.current = restartKind === 'video' ? 0 : (savedRow?.videoPositionSeconds ?? 0);
-          pendingAudioSeekSecRef.current = restartKind === 'audio' ? 0 : (savedRow?.audioPositionSeconds ?? 0);
-          setResumedBannerSeconds({
-            video: pendingVideoSeekSecRef.current >= 3 ? pendingVideoSeekSecRef.current : 0,
-            audio: pendingAudioSeekSecRef.current >= 3 ? pendingAudioSeekSecRef.current : 0,
-          });
+    (async () => {
+      try {
+        const fromCatalog =
+          syncHit ??
+          (await withTimeout(resolveDetailModuleFromCatalogId(id), 8_000, 'Lesson load').catch(
+            () => null
+          ));
+        if (cancelled) return;
+        let startMode: MediaMode = 'video';
+        if (fromCatalog) {
+          startMode =
+            requestedModeRaw === 'audio' && fromCatalog.module.audioUrl
+              ? 'audio'
+              : requestedModeRaw === 'video' && fromCatalog.module.videoUrl
+                ? 'video'
+                : fromCatalog.module.videoUrl
+                  ? 'video'
+                  : 'audio';
+          setModule(fromCatalog.module);
+          setCatalogEpisodeKey(fromCatalog.episodeKey);
+          activeEpisodeKeyRef.current = fromCatalog.episodeKey;
+          setMediaMode(startMode);
         } else {
-          const savedVidSec = savedRow?.videoPositionSeconds ?? 0;
-          const savedAudSec = savedRow?.audioPositionSeconds ?? 0;
-          pendingVideoSeekSecRef.current = savedVidSec >= 3 ? savedVidSec : 0;
-          pendingAudioSeekSecRef.current = savedAudSec >= 3 ? savedAudSec : 0;
-          setResumedBannerSeconds({
-            video: savedVidSec >= 3 ? savedVidSec : 0,
-            audio: savedAudSec >= 3 ? savedAudSec : 0,
-          });
-          const activeSec = startMode === 'video' ? savedVidSec : savedAudSec;
-          if (activeSec >= 3) {
-            setProgress(activeSec * 1000);
-            liveProgressMsRef.current = activeSec * 1000;
-          }
+          const found = getModuleById(id);
+          startMode =
+            requestedModeRaw === 'audio' && found?.audioUrl
+              ? 'audio'
+              : found?.videoUrl
+                ? 'video'
+                : 'audio';
+          setModule(found ?? null);
+          setCatalogEpisodeKey(null);
+          activeEpisodeKeyRef.current = null;
+          setMediaMode(startMode);
         }
-      }
+        setIsLoading(startMode === 'video' && Platform.OS !== 'web');
+        setVideoUseProxyFallback(false);
+        setError(null);
+        setProgress(0);
+        setDuration(0);
+        liveProgressMsRef.current = 0;
+        liveDurationMsRef.current = 0;
+        setIsPlaying(false);
+        setReadStage('overview');
+        lastVideoPctReportedRef.current = 0;
+        lastAudioPctReportedRef.current = 0;
+        lastVideoSavedAtRef.current = 0;
+        lastAudioSavedAtRef.current = 0;
+        pendingVideoSeekSecRef.current = 0;
+        pendingAudioSeekSecRef.current = 0;
+        setResumedBannerSeconds({ video: 0, audio: 0 });
+        pendingPlayRef.current = false;
 
-      // Evaluate adaptive sequence gate and previous/next lesson links for B2B curriculum
-      if (resolvedKey && fromCatalog?.module.catalogEqType === 'B2B') {
-        try {
-          const [allEps, eqScores] = await Promise.all([
-            fetchLearningEpisodes('en'),
-            uid ? getEQScores(uid) : Promise.resolve([]),
-          ]);
-          if (cancelled) return;
-          const b2bEps = allEps.filter((e) => e.eqType === 'B2B');
-          const latestScore = eqScores.length > 0 ? Math.round(eqScores[0]!.overallScore) : null;
-          const seq = buildSequencedCatalog(b2bEps, progressMap, latestScore);
-          const idx = seq.items.findIndex((item) => item.episode.episodeKey === resolvedKey);
-          const cur = idx >= 0 ? seq.items[idx]! : null;
-          setLessonCompleted(Boolean(cur?.completed));
-          setSequenceGate({
-            locked: cur ? !cur.unlocked : false,
-            lockedReason: cur?.lockedReason ?? null,
-            sequenceNumber: cur?.sequenceNumber ?? null,
-            prevEpisode: idx > 0 ? seq.items[idx - 1]! : null,
-            nextEpisode: idx >= 0 && idx + 1 < seq.items.length ? seq.items[idx + 1]! : null,
-            nextUnlockedRouteId: seq.nextUnlockedRouteId,
-          });
-        } catch {
+        if (!syncHit && !cancelled) {
+          setDetailLoading(false);
+        }
+
+        const resolvedKey = fromCatalog?.episodeKey ?? null;
+        const uid = useAuthStore.getState().user?.id;
+        const progressMap = uid
+          ? await withTimeout(fetchUserLearningContentProgress(uid), 6_000, 'Progress load').catch(
+              () => ({} as Awaited<ReturnType<typeof fetchUserLearningContentProgress>>)
+            )
+          : {};
+        if (cancelled) return;
+
+        if (resolvedKey && uid) {
+          const savedRow = progressMap[resolvedKey];
+          const initVidPct = savedRow?.videoCompleted ? 100 : (savedRow?.videoProgressPct ?? 0);
+          const initVidDone = Boolean(savedRow?.videoCompleted) || initVidPct >= 80;
+          const initAudDone = Boolean(savedRow?.audioCompleted);
+          setVideoWatchPct(initVidPct);
+          setVideoCompleted(initVidDone);
+          setAudioCompleted(initAudDone);
+
+          const hasVid = Boolean(fromCatalog?.module.videoUrl?.trim());
+          const hasAud = Boolean(fromCatalog?.module.audioUrl?.trim());
+          if (requestedModeRaw === 'audio' && hasAud && (initVidDone || !hasVid)) {
+            setLessonStep('audio');
+          } else if (requestedModeRaw === 'video' && hasVid) {
+            setLessonStep('video');
+          } else {
+            setLessonStep('read');
+          }
+
+          if (shouldRestart) {
+            const restartKind: MediaMode = startMode === 'audio' ? 'audio' : 'video';
+            await resetEpisodePlaybackPosition(uid, resolvedKey, restartKind);
+            pendingVideoSeekSecRef.current = restartKind === 'video' ? 0 : (savedRow?.videoPositionSeconds ?? 0);
+            pendingAudioSeekSecRef.current = restartKind === 'audio' ? 0 : (savedRow?.audioPositionSeconds ?? 0);
+            setResumedBannerSeconds({
+              video: pendingVideoSeekSecRef.current >= 3 ? pendingVideoSeekSecRef.current : 0,
+              audio: pendingAudioSeekSecRef.current >= 3 ? pendingAudioSeekSecRef.current : 0,
+            });
+          } else {
+            const savedVidSec = savedRow?.videoPositionSeconds ?? 0;
+            const savedAudSec = savedRow?.audioPositionSeconds ?? 0;
+            pendingVideoSeekSecRef.current = savedVidSec >= 3 ? savedVidSec : 0;
+            pendingAudioSeekSecRef.current = savedAudSec >= 3 ? savedAudSec : 0;
+            setResumedBannerSeconds({
+              video: savedVidSec >= 3 ? savedVidSec : 0,
+              audio: savedAudSec >= 3 ? savedAudSec : 0,
+            });
+            const activeSec = startMode === 'video' ? savedVidSec : savedAudSec;
+            if (activeSec >= 3) {
+              setProgress(activeSec * 1000);
+              liveProgressMsRef.current = activeSec * 1000;
+            }
+          }
+        } else {
+          setVideoWatchPct(0);
+          setVideoCompleted(false);
+          setAudioCompleted(false);
+        }
+
+        // Evaluate adaptive sequence gate and previous/next lesson links for B2B curriculum
+        if (resolvedKey && fromCatalog?.module.catalogEqType === 'B2B') {
+          try {
+            const [allEps, eqScores] = await withTimeout(
+              Promise.all([
+                fetchLearningEpisodes('en'),
+                uid ? getEQScores(uid).catch(() => []) : Promise.resolve([]),
+              ]),
+              7_000,
+              'Sequence check'
+            );
+            if (cancelled) return;
+            const b2bEps = allEps.filter((e) => e.eqType === 'B2B');
+            const latestScore = eqScores.length > 0 ? Math.round(eqScores[0]!.overallScore) : null;
+            const seq = buildSequencedCatalog(b2bEps, progressMap, latestScore);
+            const idx = seq.items.findIndex((item) => item.episode.episodeKey === resolvedKey);
+            const cur = idx >= 0 ? seq.items[idx]! : null;
+            setLessonCompleted(Boolean(cur?.completed));
+            setSequenceGate({
+              locked: cur ? !cur.unlocked : false,
+              lockedReason: cur?.lockedReason ?? null,
+              sequenceNumber: cur?.sequenceNumber ?? null,
+              prevEpisode: idx > 0 ? seq.items[idx - 1]! : null,
+              nextEpisode: idx >= 0 && idx + 1 < seq.items.length ? seq.items[idx + 1]! : null,
+              nextUnlockedRouteId: seq.nextUnlockedRouteId,
+            });
+          } catch {
+            setSequenceGate({
+              locked: false,
+              lockedReason: null,
+              sequenceNumber: null,
+              prevEpisode: null,
+              nextEpisode: null,
+              nextUnlockedRouteId: null,
+            });
+          }
+        } else {
+          setLessonCompleted(false);
           setSequenceGate({
             locked: false,
             lockedReason: null,
@@ -342,18 +433,9 @@ export default function LearningDetailScreen() {
             nextUnlockedRouteId: null,
           });
         }
-      } else {
-        setLessonCompleted(false);
-        setSequenceGate({
-          locked: false,
-          lockedReason: null,
-          sequenceNumber: null,
-          prevEpisode: null,
-          nextEpisode: null,
-          nextUnlockedRouteId: null,
-        });
+      } finally {
+        if (!cancelled) setDetailLoading(false);
       }
-      setDetailLoading(false);
     })();
     return () => {
       flushPlaybackPosition();
@@ -471,8 +553,18 @@ export default function LearningDetailScreen() {
     liveProgressMsRef.current = posMs;
     if (durMs > 0) liveDurationMsRef.current = durMs;
 
-    if (!module?.id || !user?.id || !durMs || durMs <= 0) return;
+    if (!module?.id || !durMs || durMs <= 0) return;
     const pct = Math.min(100, Math.round((posMs / durMs) * 100));
+
+    if (kind === 'video') {
+      setVideoWatchPct((prev) => (pct > prev ? pct : prev));
+      if (pct >= 80) {
+        setVideoCompleted(true);
+        setStepGateHint(null);
+      }
+    }
+
+    if (!user?.id) return;
     const ref = kind === 'video' ? lastVideoPctReportedRef : lastAudioPctReportedRef;
     const savedAtRef = kind === 'video' ? lastVideoSavedAtRef : lastAudioSavedAtRef;
     const now = Date.now();
@@ -484,13 +576,17 @@ export default function LearningDetailScreen() {
       );
     }
 
-    if (pct >= ref.current + 15 || (pct >= 85 && ref.current < 85)) {
+    if (pct >= ref.current + 10 || (pct >= 80 && ref.current < 80)) {
       ref.current = pct;
       if (catalogEpisodeKey) {
         if (kind === 'video') recordEpisodeVideoProgress(user.id, catalogEpisodeKey, pct).catch(() => {});
         else recordEpisodeAudioProgress(user.id, catalogEpisodeKey, pct).catch(() => {});
       }
-      if (pct >= 85) {
+      if (kind === 'video' && pct >= 80 && !module.audioUrl?.trim()) {
+        setLessonCompleted(true);
+      }
+      if (kind === 'audio' && pct >= 85) {
+        setAudioCompleted(true);
         setLessonCompleted(true);
       }
     }
@@ -544,16 +640,20 @@ export default function LearningDetailScreen() {
     }
   };
 
-  const handleMarkLessonComplete = async () => {
+  const handleMarkLessonComplete = async (targetMode: 'video' | 'audio' = mediaMode) => {
     if (!module?.id || !user?.id || markingComplete) return;
     setMarkingComplete(true);
     try {
-      if (mediaMode === 'video') {
+      if (targetMode === 'video') {
         if (catalogEpisodeKey) await recordEpisodeVideoCompleted(user.id, catalogEpisodeKey);
         else await recordVideoCompleted(user.id, module.id);
+        setVideoCompleted(true);
+        setVideoWatchPct((p) => Math.max(p, 100));
+        setStepGateHint(null);
       } else {
         if (catalogEpisodeKey) await recordEpisodeAudioCompleted(user.id, catalogEpisodeKey);
         else await recordAudioCompleted(user.id, module.id);
+        setAudioCompleted(true);
       }
       setLessonCompleted(true);
     } finally {
@@ -567,7 +667,12 @@ export default function LearningDetailScreen() {
     liveProgressMsRef.current = 0;
     pendingVideoSeekSecRef.current = 0;
     setResumedBannerSeconds((prev) => ({ ...prev, video: 0 }));
-    setLessonCompleted(true);
+    setVideoWatchPct(100);
+    setVideoCompleted(true);
+    setStepGateHint(null);
+    if (!module?.audioUrl?.trim()) {
+      setLessonCompleted(true);
+    }
     if (module?.id && user?.id) {
       if (catalogEpisodeKey) recordEpisodeVideoCompleted(user.id, catalogEpisodeKey).catch(() => {});
       else recordVideoCompleted(user.id, module.id).catch(() => {});
@@ -637,7 +742,17 @@ export default function LearningDetailScreen() {
         setIsPlaying(false);
         setProgress(0);
         liveProgressMsRef.current = 0;
-        setLessonCompleted(true);
+        if (mediaMode === 'video') {
+          setVideoWatchPct(100);
+          setVideoCompleted(true);
+          setStepGateHint(null);
+          if (!module?.audioUrl?.trim()) {
+            setLessonCompleted(true);
+          }
+        } else {
+          setAudioCompleted(true);
+          setLessonCompleted(true);
+        }
         if (module?.id && user?.id) {
           if (mediaMode === 'video') {
             pendingVideoSeekSecRef.current = 0;
@@ -986,16 +1101,94 @@ export default function LearningDetailScreen() {
   const audioSrc = module.audioUrl?.trim() ?? '';
   const hasVideo = Boolean(rawVideoSrc);
   const hasAudio = Boolean(audioSrc);
-  const showVideoPlayer = hasVideo && mediaMode === 'video';
-  const showAudioPlayer = hasAudio && !showVideoPlayer;
+  const effectiveStep: 'read' | 'video' | 'audio' =
+    lessonStep === 'video' && hasVideo
+      ? 'video'
+      : lessonStep === 'audio' && hasAudio
+        ? 'audio'
+        : 'read';
+  const canCompleteVideo = videoCompleted || videoWatchPct >= 80 || lessonCompleted;
+  const canAccessAudio = !hasVideo || canCompleteVideo;
+
+  const startMediaAfterReading = async () => {
+    setStepGateHint(null);
+    if (hasVideo) {
+      setLessonStep('video');
+      setShouldAutoPlayVideo(true);
+      await switchToVideo();
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      if (Platform.OS === 'web' && webVideoRef.current) {
+        webVideoRef.current.play().catch(() => {});
+      }
+      return;
+    }
+    if (hasAudio) {
+      setLessonStep('audio');
+      await switchToAudio();
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    await handleMarkLessonComplete('audio');
+  };
+
+  const handleCompleteVideoAndContinue = async () => {
+    if (!canCompleteVideo) {
+      setStepGateHint(
+        `Please watch at least 80% of the video before continuing (${videoWatchPct}% / 80%).`
+      );
+      return;
+    }
+    await handleMarkLessonComplete('video');
+    if (hasAudio) {
+      setLessonStep('audio');
+      await switchToAudio();
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  };
+
+  const handleStepSelect = async (step: 'read' | 'video' | 'audio') => {
+    if (step === 'read') {
+      setStepGateHint(null);
+      if (Platform.OS === 'web') {
+        webVideoRef.current?.pause();
+        webAudioRef.current?.pause();
+      } else {
+        await videoRef.current?.pauseAsync().catch(() => {});
+        await audioRef.current?.pauseAsync().catch(() => {});
+      }
+      setLessonStep('read');
+      return;
+    }
+    if (step === 'video' && hasVideo) {
+      setStepGateHint(null);
+      setShouldAutoPlayVideo(false);
+      setLessonStep('video');
+      await switchToVideo();
+      return;
+    }
+    if (step === 'audio' && hasAudio) {
+      if (!canAccessAudio) {
+        setStepGateHint(
+          `Watch at least 80% of the video to unlock Deep Dive Audio (${videoWatchPct}% / 80%).`
+        );
+        return;
+      }
+      setStepGateHint(null);
+      setLessonStep('audio');
+      await switchToAudio();
+    }
+  };
 
   const readingGuide = getCurriculumGuide(module.competencyKey, module.domainKey);
   const dimensionInfo = DIMENSION_INFO[module.dimension];
-  const headerDimensionLabel = isIntroEpisodeTitle(module.title)
+  const rawHeaderLabel = isIntroEpisodeTitle(module.title)
     ? module.subtitle
     : module.catalogEqType === 'B2B' && module.subtitle.includes(' · ')
       ? module.subtitle.split(' · ')[0]!
       : dimensionInfo.name;
+  const headerDimensionLabel = rawHeaderLabel.includes('_')
+    ? formatCatalogLabel(rawHeaderLabel)
+    : rawHeaderLabel;
 
   if (sequenceGate.locked) {
     return (
@@ -1044,198 +1237,109 @@ export default function LearningDetailScreen() {
     );
   }
 
-  const playerSection = (
-    <View style={isDesktop ? styles.desktopLeftCol : undefined}>
-      {/* Media Tabs - only when both video and podcast exist */}
-      {hasVideo && hasAudio ? (
-        <View style={styles.mediaTabs}>
-          <TouchableOpacity
-            style={[styles.mediaTab, mediaMode === 'video' && styles.mediaTabActive]}
-            onPress={switchToVideo}
-          >
-            <Ionicons
-              name="videocam"
-              size={18}
-              color={mediaMode === 'video' ? colors.primaryForeground : colors.textSecondary}
-            />
-            <Text style={[styles.mediaTabText, mediaMode === 'video' && styles.mediaTabTextActive]}>
-              Video Lesson
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mediaTab, mediaMode === 'audio' && styles.mediaTabActive]}
-            onPress={switchToAudio}
-          >
-            <Ionicons
-              name="headset"
-              size={18}
-              color={mediaMode === 'audio' ? colors.primaryForeground : colors.textSecondary}
-            />
-            <Text style={[styles.mediaTabText, mediaMode === 'audio' && styles.mediaTabTextActive]}>
-              Deep Dive Podcast
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {/* Media Player */}
+  const videoPlayerContent = (
+    <View style={styles.stepSectionWrap}>
       <GlassCard noPadding style={styles.playerCardWrap}>
         <View style={styles.mediaContainer}>
-          {showVideoPlayer ? (
-            <View style={styles.videoContainer}>
-              {Platform.OS === 'web'
-                ? React.createElement('video', {
-                    key: `${videoSrc}-${videoMountNonce}`,
-                    ref: (el: HTMLVideoElement | null): void => { webVideoRef.current = el; },
-                    src: videoSrc,
-                    controls: true,
-                    playsInline: true,
-                    controlsList: 'nodownload',
-                    preload: 'metadata',
-                    style: {
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                      display: 'block',
-                      backgroundColor: '#000',
-                    } as React.CSSProperties,
-                    onLoadStart: () => { setError(null); },
-                    onLoadedMetadata: (e: React.SyntheticEvent<HTMLVideoElement>) => {
-                      setIsLoading(false);
-                      const el = e.currentTarget;
-                      if (!Number.isNaN(el.duration) && el.duration > 0) {
-                        const durMs = el.duration * 1000;
-                        setDuration(durMs);
-                        liveDurationMsRef.current = durMs;
-                        if (pendingVideoSeekSecRef.current >= 3 && el.duration > 3) {
-                          const targetSec = Math.min(pendingVideoSeekSecRef.current, Math.max(0, el.duration - 2));
-                          pendingVideoSeekSecRef.current = 0;
-                          if (targetSec > 1) {
-                            el.currentTime = targetSec;
-                            setProgress(targetSec * 1000);
-                            liveProgressMsRef.current = targetSec * 1000;
-                          }
+          <View style={styles.videoContainer}>
+            {Platform.OS === 'web'
+              ? React.createElement('video', {
+                  key: `${videoSrc}-${videoMountNonce}`,
+                  ref: (el: HTMLVideoElement | null): void => { webVideoRef.current = el; },
+                  src: videoSrc,
+                  autoPlay: shouldAutoPlayVideo,
+                  controls: true,
+                  playsInline: true,
+                  controlsList: 'nodownload',
+                  preload: 'metadata',
+                  style: {
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    display: 'block',
+                    backgroundColor: '#000',
+                  } as React.CSSProperties,
+                  onLoadStart: () => { setError(null); },
+                  onLoadedMetadata: (e: React.SyntheticEvent<HTMLVideoElement>) => {
+                    setIsLoading(false);
+                    const el = e.currentTarget;
+                    if (!Number.isNaN(el.duration) && el.duration > 0) {
+                      const durMs = el.duration * 1000;
+                      setDuration(durMs);
+                      liveDurationMsRef.current = durMs;
+                      if (pendingVideoSeekSecRef.current >= 3 && el.duration > 3) {
+                        const targetSec = Math.min(pendingVideoSeekSecRef.current, Math.max(0, el.duration - 2));
+                        pendingVideoSeekSecRef.current = 0;
+                        if (targetSec > 1) {
+                          el.currentTime = targetSec;
+                          setProgress(targetSec * 1000);
+                          liveProgressMsRef.current = targetSec * 1000;
                         }
                       }
-                    },
-                    onLoadedData: () => setIsLoading(false),
-                    onCanPlay: () => setIsLoading(false),
-                    onWaiting: () => setIsLoading(true),
-                    onPlaying: () => { setIsPlaying(true); setIsLoading(false); },
-                    onPlay: () => { setIsPlaying(true); setIsLoading(false); },
-                    onPause: () => {
-                      setIsPlaying(false);
-                      flushPlaybackPosition('video');
-                    },
-                    onEnded: handleVideoEnded,
-                    onError: () => {
-                      if (!videoUseProxyFallback && rawVideoSrc) {
-                        setVideoUseProxyFallback(true);
-                        setError(null);
-                        setIsLoading(true);
-                        return;
-                      }
-                      setError('Unable to load video. Please try again.');
-                      setIsLoading(false);
-                    },
-                    onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement>) => {
-                      const el = e.currentTarget;
-                      const durMs = !isNaN(el.duration) && el.duration > 0 ? el.duration * 1000 : 0;
-                      const posMs = el.currentTime * 1000;
-                      if (durMs > 0) setDuration(durMs);
-                      setProgress(posMs);
-                      reportMediaProgress('video', posMs, durMs);
-                    },
-                  })
-                : (
-                  <Video
-                    key={`${videoSrc}-${videoMountNonce}`}
-                    ref={videoRef}
-                    source={{ uri: videoSrc }}
-                    style={styles.video}
-                    useNativeControls
-                    resizeMode={ResizeMode.CONTAIN}
-                    onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-                    onLoadStart={() => { setIsLoading(true); setError(null); }}
-                    onReadyForDisplay={() => setIsLoading(false)}
-                    onError={() => { setError('Unable to load video'); setIsLoading(false); }}
-                  />
-                )
-              }
-              {isLoading ? (
-                <View style={styles.mediaOverlay} pointerEvents="none">
-                  <ActivityIndicator size="large" color="#fff" />
-                </View>
-              ) : null}
-            </View>
-          ) : showAudioPlayer ? (
-            <View style={styles.audioContainer}>
-              <View style={[styles.audioArt, { backgroundColor: colors.primary + '14' }]}>
-                <Ionicons name={module.icon as any} size={56} color={colors.primary} />
+                    }
+                    if (shouldAutoPlayVideo) {
+                      setShouldAutoPlayVideo(false);
+                      el.play().catch(() => {});
+                    }
+                  },
+                  onLoadedData: () => setIsLoading(false),
+                  onCanPlay: () => setIsLoading(false),
+                  onWaiting: () => setIsLoading(true),
+                  onPlaying: () => { setIsPlaying(true); setIsLoading(false); },
+                  onPlay: () => { setIsPlaying(true); setIsLoading(false); },
+                  onPause: () => {
+                    setIsPlaying(false);
+                    flushPlaybackPosition('video');
+                  },
+                  onEnded: handleVideoEnded,
+                  onError: () => {
+                    if (!videoUseProxyFallback && rawVideoSrc) {
+                      setVideoUseProxyFallback(true);
+                      setError(null);
+                      setIsLoading(true);
+                      return;
+                    }
+                    setError('Unable to load video. Please try again.');
+                    setIsLoading(false);
+                  },
+                  onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement>) => {
+                    const el = e.currentTarget;
+                    const durMs = !isNaN(el.duration) && el.duration > 0 ? el.duration * 1000 : 0;
+                    const posMs = el.currentTime * 1000;
+                    if (durMs > 0) setDuration(durMs);
+                    setProgress(posMs);
+                    reportMediaProgress('video', posMs, durMs);
+                  },
+                })
+              : (
+                <Video
+                  key={`${videoSrc}-${videoMountNonce}`}
+                  ref={videoRef}
+                  source={{ uri: videoSrc }}
+                  style={styles.video}
+                  useNativeControls
+                  resizeMode={ResizeMode.CONTAIN}
+                  onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+                  onLoadStart={() => { setIsLoading(true); setError(null); }}
+                  onReadyForDisplay={() => {
+                    setIsLoading(false);
+                    if (shouldAutoPlayVideo) {
+                      setShouldAutoPlayVideo(false);
+                      videoRef.current?.playAsync().catch(() => {});
+                    }
+                  }}
+                  onError={() => { setError('Unable to load video'); setIsLoading(false); }}
+                />
+              )
+            }
+            {isLoading ? (
+              <View style={styles.mediaOverlay} pointerEvents="none">
+                <ActivityIndicator size="large" color="#fff" />
               </View>
+            ) : null}
+          </View>
 
-              <View style={styles.audioControls}>
-                <Text style={styles.audioTitle}>{module.title}</Text>
-                <Text style={styles.audioSubtitle}>{module.subtitle}</Text>
-
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: duration > 0 ? `${(progress / duration) * 100}%` : '0%',
-                          backgroundColor: colors.primary,
-                        },
-                      ]}
-                    />
-                  </View>
-                  <View style={styles.timeLabels}>
-                    <Text style={styles.timeText}>{formatTime(progress)}</Text>
-                    <Text style={styles.timeText}>{formatTime(duration)}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.audioTransportRow}>
-                  <TouchableOpacity
-                    style={[styles.seekStepBtn, { borderColor: colors.border, backgroundColor: colors.floating }]}
-                    onPress={() => void seekAudioBySeconds(-15)}
-                    accessibilityLabel="Rewind 15 seconds"
-                  >
-                    <Ionicons name="play-back" size={16} color={colors.textPrimary} />
-                    <Text style={[styles.seekStepText, { color: colors.textSecondary }]}>15s</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.playButton, { backgroundColor: colors.primary }]}
-                    onPress={togglePlayPause}
-                    disabled={Platform.OS !== 'web' && isLoading}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.seekStepBtn, { borderColor: colors.border, backgroundColor: colors.floating }]}
-                    onPress={() => void seekAudioBySeconds(15)}
-                    accessibilityLabel="Forward 15 seconds"
-                  >
-                    <Text style={[styles.seekStepText, { color: colors.textSecondary }]}>15s</Text>
-                    <Ionicons name="play-forward" size={16} color={colors.textPrimary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>No playable media for this lesson.</Text>
-            </View>
-          )}
-
-          {error && (
+          {error ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle" size={24} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
@@ -1243,38 +1347,28 @@ export default function LearningDetailScreen() {
                 style={styles.retryButton}
                 onPress={() => {
                   setError(null);
-                  if (mediaMode === 'video') {
-                    setVideoUseProxyFallback(false);
-                    if (Platform.OS !== 'web') {
-                      setIsLoading(true);
-                      setVideoMountNonce((n) => n + 1);
-                    } else if (webVideoRef.current) {
-                      setIsLoading(false);
-                      webVideoRef.current.load();
-                    }
-                  } else if (Platform.OS === 'web' && module?.audioUrl?.trim()) {
+                  setVideoUseProxyFallback(false);
+                  if (Platform.OS !== 'web') {
                     setIsLoading(true);
-                    setupWebAudio(module.audioUrl.trim());
-                  } else {
-                    switchToAudio();
+                    setVideoMountNonce((n) => n + 1);
+                  } else if (webVideoRef.current) {
+                    setIsLoading(false);
+                    webVideoRef.current.load();
                   }
                 }}
               >
                 <Text style={styles.retryText}>Try Again</Text>
               </TouchableOpacity>
             </View>
-          )}
+          ) : null}
 
-          {/* Watch-time auto-resume indicator + explicit Restart button */}
-          {(showVideoPlayer || showAudioPlayer) &&
-          (progress >= 3000 ||
-            (mediaMode === 'video' ? resumedBannerSeconds.video : resumedBannerSeconds.audio) >= 3) ? (
+          {progress >= 3000 || resumedBannerSeconds.video >= 3 ? (
             <View style={[styles.resumeBar, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <View style={styles.resumeInfo}>
                 <Ionicons name="bookmark-outline" size={15} color={colors.primary} />
                 <Text style={[styles.resumeText, { color: colors.textSecondary }]}>
-                  {(mediaMode === 'video' ? resumedBannerSeconds.video : resumedBannerSeconds.audio) >= 3
-                    ? `Resumed from ${formatPlaybackSeconds(mediaMode === 'video' ? resumedBannerSeconds.video : resumedBannerSeconds.audio)}`
+                  {resumedBannerSeconds.video >= 3
+                    ? `Resumed from ${formatPlaybackSeconds(resumedBannerSeconds.video)}`
                     : `Progress saved at ${formatTime(progress)}`}
                 </Text>
               </View>
@@ -1290,48 +1384,72 @@ export default function LearningDetailScreen() {
         </View>
       </GlassCard>
 
-      {/* Sequence & Completion Action Bar */}
+      {/* Video Watch Gate Progress + Step Actions */}
       <GlassCard style={styles.actionBarCard}>
-        <View style={styles.actionBarRow}>
-          <View style={styles.actionStatus}>
-            <Badge
-              label={lessonCompleted ? 'Completed' : 'In Progress'}
-              variant={lessonCompleted ? 'success' : 'secondary'}
-              icon={lessonCompleted ? 'checkmark-circle' : 'time-outline'}
-            />
-            {sequenceGate.sequenceNumber ? (
-              <Badge label={`Step ${sequenceGate.sequenceNumber}`} variant="outline" />
-            ) : null}
-          </View>
+        <View style={styles.watchGateHeader}>
+          <Text style={[styles.watchGateTitle, { color: colors.textPrimary }]}>
+            {canCompleteVideo
+              ? 'Video threshold reached'
+              : `Watch progress: ${videoWatchPct}% of 80% required`}
+          </Text>
+          <Badge
+            label={canCompleteVideo ? 'Ready' : `${videoWatchPct}%`}
+            variant={canCompleteVideo ? 'success' : 'secondary'}
+            icon={canCompleteVideo ? 'checkmark-circle' : 'time-outline'}
+          />
+        </View>
+        <View style={[styles.watchGateTrack, { backgroundColor: colors.surface }]}>
+          <View
+            style={[
+              styles.watchGateFill,
+              {
+                width: `${Math.min(100, Math.max(0, videoWatchPct))}%`,
+                backgroundColor: canCompleteVideo ? colors.success : colors.primary,
+              },
+            ]}
+          />
+          <View style={[styles.watchGateMarker, { backgroundColor: colors.textMuted }]} />
+        </View>
+        {!canCompleteVideo ? (
+          <Text style={[styles.watchGateHint, { color: colors.textSecondary }]}>
+            Watch at least 80% of this video to unlock {hasAudio ? 'Deep Dive Audio' : 'completion'}.
+          </Text>
+        ) : null}
+
+        <View style={styles.stepFooterRow}>
+          <Button
+            title="Study Guide"
+            icon="arrow-back"
+            size="sm"
+            variant="ghost"
+            onPress={() => {
+              setReadStage('guide');
+              void handleStepSelect('read');
+            }}
+          />
           <View style={styles.actionBtns}>
-            {!lessonCompleted ? (
-              <Button
-                title="Mark Complete"
-                icon="checkmark-circle-outline"
-                size="sm"
-                variant="outline"
-                loading={markingComplete}
-                onPress={() => void handleMarkLessonComplete()}
-              />
-            ) : null}
-            {sequenceGate.prevEpisode ? (
-              <Button
-                title="Previous"
-                size="sm"
-                variant="ghost"
-                onPress={() =>
-                  router.replace(
-                    `/learning-detail?id=${encodeURIComponent(sequenceGate.prevEpisode!.episode.routeId)}`
-                  )
-                }
-              />
-            ) : null}
-            {sequenceGate.nextEpisode ? (
+            <Button
+              title={
+                hasAudio
+                  ? canCompleteVideo
+                    ? 'Complete & Continue to Audio'
+                    : `Watch ${Math.max(0, 80 - videoWatchPct)}% more`
+                  : canCompleteVideo
+                    ? 'Mark Complete'
+                    : `Watch ${Math.max(0, 80 - videoWatchPct)}% more`
+              }
+              icon={hasAudio ? 'arrow-forward' : 'checkmark-circle-outline'}
+              size="sm"
+              disabled={!canCompleteVideo || markingComplete}
+              loading={markingComplete}
+              onPress={() => void handleCompleteVideoAndContinue()}
+            />
+            {!hasAudio && sequenceGate.nextEpisode && canCompleteVideo ? (
               <Button
                 title="Next Lesson"
                 icon="arrow-forward"
                 size="sm"
-                disabled={!sequenceGate.nextEpisode.unlocked && !lessonCompleted}
+                variant="outline"
                 onPress={() =>
                   router.replace(
                     `/learning-detail?id=${encodeURIComponent(sequenceGate.nextEpisode!.episode.routeId)}`
@@ -1345,63 +1463,235 @@ export default function LearningDetailScreen() {
     </View>
   );
 
-  const summaryAndReadingSection = (
-    <View style={isDesktop ? styles.desktopRightCol : styles.mobileContentCol}>
-      {/* Executive Short Summary */}
-      <GlassCard>
-        <View style={styles.summaryTopRow}>
-          <Badge label={readingGuide.domainLabel} variant="default" />
-          <View style={styles.durationBadgesInline}>
-            {hasVideo ? <Badge label={module.videoDuration} icon="videocam-outline" variant="secondary" /> : null}
-            {hasAudio ? <Badge label={module.audioDuration} icon="headset-outline" variant="secondary" /> : null}
+  const audioPlayerContent = (
+    <View style={styles.stepSectionWrap}>
+      <GlassCard noPadding style={styles.playerCardWrap}>
+        <View style={styles.mediaContainer}>
+          <View style={styles.audioContainer}>
+            <View style={[styles.audioArt, { backgroundColor: colors.primary + '14' }]}>
+              <Ionicons name={module.icon as any} size={52} color={colors.primary} />
+            </View>
+
+            <View style={styles.audioControls}>
+              <Badge label="Deep Dive Audio" variant="secondary" icon="headset-outline" />
+              <Text style={styles.audioTitle}>{module.title}</Text>
+              <Text style={styles.audioSubtitle}>{module.subtitle}</Text>
+
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: duration > 0 ? `${(progress / duration) * 100}%` : '0%',
+                        backgroundColor: colors.primary,
+                      },
+                    ]}
+                  />
+                </View>
+                <View style={styles.timeLabels}>
+                  <Text style={styles.timeText}>{formatTime(progress)}</Text>
+                  <Text style={styles.timeText}>{formatTime(duration)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.audioTransportRow}>
+                <TouchableOpacity
+                  style={[styles.seekStepBtn, { borderColor: colors.border, backgroundColor: colors.floating }]}
+                  onPress={() => void seekAudioBySeconds(-15)}
+                  accessibilityLabel="Rewind 15 seconds"
+                >
+                  <Ionicons name="play-back" size={16} color={colors.textPrimary} />
+                  <Text style={[styles.seekStepText, { color: colors.textSecondary }]}>15s</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.playButton, { backgroundColor: colors.primary }]}
+                  onPress={togglePlayPause}
+                  disabled={Platform.OS !== 'web' && isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.seekStepBtn, { borderColor: colors.border, backgroundColor: colors.floating }]}
+                  onPress={() => void seekAudioBySeconds(15)}
+                  accessibilityLabel="Forward 15 seconds"
+                >
+                  <Text style={[styles.seekStepText, { color: colors.textSecondary }]}>15s</Text>
+                  <Ionicons name="play-forward" size={16} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
+
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={24} color={colors.destructive} />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => {
+                  setError(null);
+                  if (Platform.OS === 'web' && module?.audioUrl?.trim()) {
+                    setIsLoading(true);
+                    setupWebAudio(module.audioUrl.trim());
+                  } else {
+                    void switchToAudio();
+                  }
+                }}
+              >
+                <Text style={styles.retryText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {progress >= 3000 || resumedBannerSeconds.audio >= 3 ? (
+            <View style={[styles.resumeBar, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <View style={styles.resumeInfo}>
+                <Ionicons name="bookmark-outline" size={15} color={colors.primary} />
+                <Text style={[styles.resumeText, { color: colors.textSecondary }]}>
+                  {resumedBannerSeconds.audio >= 3
+                    ? `Resumed from ${formatPlaybackSeconds(resumedBannerSeconds.audio)}`
+                    : `Progress saved at ${formatTime(progress)}`}
+                </Text>
+              </View>
+              <Button
+                title="Restart from 0:00"
+                size="sm"
+                variant="outline"
+                icon="refresh"
+                onPress={() => void handleRestartMedia()}
+              />
+            </View>
+          ) : null}
         </View>
-        <Text style={styles.moduleTitle}>{module.title}</Text>
-        <Text style={styles.moduleSubtitle}>{readingGuide.title}</Text>
-        <Text style={[styles.shortSummaryText, { color: colors.textPrimary }]}>
-          {module.shortContent || readingGuide.shortSummary}
-        </Text>
-        {module.description ? (
-          <Text style={styles.description}>{module.description}</Text>
-        ) : null}
       </GlassCard>
 
-      {/* First-Principles Reading Material (Skippable) */}
-      <GlassCard>
-        <View style={styles.readingHeaderRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.readingTitle, { color: colors.textPrimary }]}>
-              First-Principles Study Guide
-            </Text>
-            <Text style={[styles.readingMeta, { color: colors.textMuted }]}>
-              {module.estimatedReadMinutes ?? readingGuide.estimatedReadMinutes} min deep dive · Optional reading
-            </Text>
+      {/* Audio Optional Listen + Always Clickable Mark Complete */}
+      <GlassCard style={styles.actionBarCard}>
+        <View style={styles.actionBarRow}>
+          <View style={styles.actionStatus}>
+            <Badge
+              label={audioCompleted ? 'Lesson Completed' : 'Optional Audio'}
+              variant={audioCompleted ? 'success' : 'secondary'}
+              icon={audioCompleted ? 'checkmark-circle' : 'headset-outline'}
+            />
+            {sequenceGate.sequenceNumber ? (
+              <Badge label={`Module ${sequenceGate.sequenceNumber}`} variant="outline" />
+            ) : null}
           </View>
-          <Button
-            title={readingSkipped ? 'Show Reading' : 'Skip Reading'}
-            size="sm"
-            variant={readingSkipped ? 'outline' : 'secondary'}
-            icon={readingSkipped ? 'book-outline' : 'play-skip-forward-outline'}
-            onPress={() => {
-              const next = !readingSkipped;
-              setReadingSkipped(next);
-              if (next && !isDesktop) {
-                scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-              }
-            }}
-          />
+          <View style={styles.actionBtns}>
+            <Button
+              title={hasVideo ? 'Video' : 'Study Guide'}
+              icon="arrow-back"
+              size="sm"
+              variant="ghost"
+              onPress={() => void handleStepSelect(hasVideo ? 'video' : 'read')}
+            />
+            {!audioCompleted ? (
+              <Button
+                title="Mark Complete"
+                icon="checkmark-circle-outline"
+                size="sm"
+                loading={markingComplete}
+                onPress={() => void handleMarkLessonComplete('audio')}
+              />
+            ) : null}
+            {sequenceGate.nextEpisode ? (
+              <Button
+                title="Next Lesson"
+                icon="arrow-forward"
+                size="sm"
+                variant={audioCompleted ? 'primary' : 'outline'}
+                disabled={!sequenceGate.nextEpisode.unlocked && !lessonCompleted && !videoCompleted && !audioCompleted}
+                onPress={() =>
+                  router.replace(
+                    `/learning-detail?id=${encodeURIComponent(sequenceGate.nextEpisode!.episode.routeId)}`
+                  )
+                }
+              />
+            ) : null}
+          </View>
         </View>
+      </GlassCard>
+    </View>
+  );
 
-        {readingSkipped ? (
-          <Text style={[styles.skippedHint, { color: colors.textSecondary }]}>
-            Reading guide collapsed — jump straight into the video or Deep Dive Podcast.
-          </Text>
-        ) : (
+  const readStepContent = (
+    <View style={styles.stepSectionWrap}>
+      {readStage === 'overview' ? (
+        <GlassCard>
+          <View style={styles.summaryTopRow}>
+            <Badge label={formatCatalogLabel(readingGuide.domainLabel)} variant="default" />
+            <View style={styles.durationBadgesInline}>
+              {hasVideo ? <Badge label={module.videoDuration} icon="videocam-outline" variant="secondary" /> : null}
+              {hasAudio ? <Badge label={module.audioDuration} icon="headset-outline" variant="secondary" /> : null}
+            </View>
+          </View>
+          <Text style={styles.moduleTitle}>{module.title}</Text>
+          <Text style={styles.moduleSubtitle}>{readingGuide.title}</Text>
+
+          <View style={[styles.overviewCallout, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.readingSubhead, { color: colors.primary }]}>
+              What This Is About
+            </Text>
+            <Text style={[styles.shortSummaryText, { color: colors.textPrimary, marginBottom: 0 }]}>
+              {module.shortContent || readingGuide.shortSummary}
+            </Text>
+            {module.description && module.description !== (module.shortContent || readingGuide.shortSummary) ? (
+              <Text style={[styles.description, { marginTop: Spacing.sm }]}>{module.description}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.stepFooterRow}>
+            <Button
+              title={hasVideo ? 'Skip Reading & Watch Video' : hasAudio ? 'Skip Reading & Open Audio' : 'Skip Reading'}
+              size="sm"
+              variant="outline"
+              icon="play-skip-forward-outline"
+              onPress={() => void startMediaAfterReading()}
+            />
+            <Button
+              title="Next: Study Guide"
+              size="sm"
+              icon="arrow-forward"
+              onPress={() => {
+                setReadStage('guide');
+                scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+              }}
+            />
+          </View>
+        </GlassCard>
+      ) : (
+        <GlassCard>
+          <View style={styles.readingHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.readingTitle, { color: colors.textPrimary }]}>
+                First-Principles Study Guide
+              </Text>
+              <Text style={[styles.readingMeta, { color: colors.textMuted }]}>
+                {module.estimatedReadMinutes ?? readingGuide.estimatedReadMinutes} min read · {readingGuide.title}
+              </Text>
+            </View>
+            <Button
+              title="Skip Reading"
+              size="sm"
+              variant="outline"
+              icon="play-skip-forward-outline"
+              onPress={() => void startMediaAfterReading()}
+            />
+          </View>
+
           <View style={styles.readingSections}>
             {module.longContent ? (
               <View style={styles.readingBlock}>
                 <Text style={[styles.readingSubhead, { color: colors.primary }]}>
-                  Episode Deep Dive
+                  Deep Dive
                 </Text>
                 <Text style={[styles.readingBody, { color: colors.textSecondary }]}>
                   {module.longContent}
@@ -1457,8 +1747,27 @@ export default function LearningDetailScreen() {
               </Text>
             </View>
           </View>
-        )}
-      </GlassCard>
+
+          <View style={styles.stepFooterRow}>
+            <Button
+              title="Back to Summary"
+              size="sm"
+              variant="ghost"
+              icon="arrow-back"
+              onPress={() => {
+                setReadStage('overview');
+                scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+              }}
+            />
+            <Button
+              title={hasVideo ? 'Complete Reading & Watch Video' : hasAudio ? 'Complete Reading & Open Audio' : 'Mark Complete'}
+              size="sm"
+              icon="arrow-forward"
+              onPress={() => void startMediaAfterReading()}
+            />
+          </View>
+        </GlassCard>
+      )}
     </View>
   );
 
@@ -1479,9 +1788,119 @@ export default function LearningDetailScreen() {
           showsVerticalScrollIndicator={false}
           removeClippedSubviews={Platform.OS === 'android' ? false : undefined}
         >
-          <View style={[styles.detailGrid, isDesktop && styles.detailGridDesktop]}>
-            {playerSection}
-            {summaryAndReadingSection}
+          <View style={[styles.guidedContainer, isDesktop && styles.guidedContainerDesktop]}>
+            {/* Top 3-Step Sequential Pathway Switcher */}
+            <View style={[styles.stepperCard, { backgroundColor: colors.floating, borderColor: colors.border }]}>
+              <View style={styles.stepperRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.stepperPill,
+                    {
+                      backgroundColor: effectiveStep === 'read' ? colors.primary : colors.surface,
+                      borderColor: effectiveStep === 'read' ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => void handleStepSelect('read')}
+                >
+                  <Ionicons
+                    name="book-outline"
+                    size={15}
+                    color={effectiveStep === 'read' ? colors.primaryForeground : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.stepperPillText,
+                      { color: effectiveStep === 'read' ? colors.primaryForeground : colors.textPrimary },
+                    ]}
+                  >
+                    1. Read
+                  </Text>
+                </TouchableOpacity>
+
+                {hasVideo ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.stepperPill,
+                      {
+                        backgroundColor: effectiveStep === 'video' ? colors.primary : colors.surface,
+                        borderColor: effectiveStep === 'video' ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => void handleStepSelect('video')}
+                  >
+                    <Ionicons
+                      name={canCompleteVideo && effectiveStep !== 'video' ? 'checkmark-circle' : 'videocam-outline'}
+                      size={15}
+                      color={
+                        effectiveStep === 'video'
+                          ? colors.primaryForeground
+                          : canCompleteVideo
+                            ? colors.success
+                            : colors.textSecondary
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.stepperPillText,
+                        { color: effectiveStep === 'video' ? colors.primaryForeground : colors.textPrimary },
+                      ]}
+                    >
+                      2. Video
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                {hasAudio ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.stepperPill,
+                      {
+                        backgroundColor: effectiveStep === 'audio' ? colors.primary : colors.surface,
+                        borderColor: effectiveStep === 'audio' ? colors.primary : colors.border,
+                        opacity: canAccessAudio ? 1 : 0.65,
+                      },
+                    ]}
+                    onPress={() => void handleStepSelect('audio')}
+                  >
+                    <Ionicons
+                      name={
+                        !canAccessAudio
+                          ? 'lock-closed-outline'
+                          : audioCompleted && effectiveStep !== 'audio'
+                            ? 'checkmark-circle'
+                            : 'headset-outline'
+                      }
+                      size={15}
+                      color={
+                        effectiveStep === 'audio'
+                          ? colors.primaryForeground
+                          : audioCompleted
+                            ? colors.success
+                            : colors.textSecondary
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.stepperPillText,
+                        { color: effectiveStep === 'audio' ? colors.primaryForeground : colors.textPrimary },
+                      ]}
+                    >
+                      {hasVideo ? '3. Audio' : '2. Audio'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              {stepGateHint ? (
+                <Text style={[styles.stepperHintText, { color: colors.warning }]}>{stepGateHint}</Text>
+              ) : null}
+            </View>
+
+            {effectiveStep === 'read'
+              ? readStepContent
+              : effectiveStep === 'video'
+                ? videoPlayerContent
+                : audioPlayerContent}
           </View>
         </ScrollView>
       </View>
@@ -1886,8 +2305,7 @@ const createStyles = (
   drillLabel: {
     fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.2,
   },
   drillText: {
     fontSize: Typography.fontSize.sm,
@@ -1969,5 +2387,100 @@ const createStyles = (
   resumeText: {
     fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.medium,
+  },
+  guidedContainer: {
+    width: '100%',
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.md,
+  },
+  guidedContainerDesktop: {
+    maxWidth: 860,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 0,
+  },
+  stepSectionWrap: {
+    gap: Spacing.md,
+  },
+  stepperCard: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  stepperPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+  },
+  stepperPillText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  stepperHintText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.medium,
+    paddingHorizontal: Spacing.xs,
+    paddingTop: 2,
+  },
+  overviewCallout: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    gap: 6,
+  },
+  stepFooterRow: {
+    marginTop: Spacing.lg,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  watchGateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  watchGateTitle: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  watchGateTrack: {
+    position: 'relative',
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  watchGateFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  watchGateMarker: {
+    position: 'absolute',
+    left: '80%',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    opacity: 0.45,
+  },
+  watchGateHint: {
+    fontSize: Typography.fontSize.xs,
+    marginTop: Spacing.xs,
   },
 });

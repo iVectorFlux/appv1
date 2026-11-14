@@ -11,10 +11,24 @@ import { create } from 'zustand';
 import Constants from 'expo-constants';
 import { supabase, getSupabaseConnectionInfo, isSupabaseConfigured } from '@/lib/supabase';
 import {
+  cacheSegments,
+  clearMemoryCache,
+  dedupeRequest,
+  isCacheFresh,
+  readCacheEntry,
+  removeCacheSegment,
+  withTimeout,
+  writeCacheJson,
+} from '@/lib/async-data-cache';
+import {
   isOnboardingCompleteLocal,
   markOnboardingCompleteLocal,
 } from '@/services/onboarding-progress';
 import type { User, AuthState } from '@/types';
+
+const AUTH_SESSION_TIMEOUT_MS = 8_000;
+const AUTH_PROFILE_TIMEOUT_MS = 6_000;
+const PROFILE_FRESH_MS = 5 * 60 * 1000;
 
 function hasSavedOnboardingGoals(goals: unknown): boolean {
   return Array.isArray(goals) && goals.some((g) => typeof g === 'string' && g.trim().length > 0);
@@ -115,45 +129,75 @@ async function recordSessionStart(userId: string): Promise<void> {
   }
 }
 
-/** Fetch display_name, role, and company_id from profiles (falling back cleanly if role migration isn't applied yet). */
-async function getUserWithProfile(supabaseUser: { id: string; email?: string; created_at: string }): Promise<User> {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('display_name, role, company_id')
-      .eq('id', supabaseUser.id)
-      .maybeSingle();
-
-    if (!error && data) {
-      let companyName: string | null = null;
-      if (data.company_id) {
-        const { data: comp } = await supabase
-          .from('companies')
-          .select('name')
-          .eq('id', data.company_id)
-          .maybeSingle();
-        companyName = (comp?.name as string | undefined) ?? null;
-      }
-      return mapSupabaseUserToAppUser(supabaseUser, {
-        displayName: (data.display_name as string | null) ?? null,
-        role: data.role === 'admin' ? 'admin' : 'user',
-        companyId: (data.company_id as string | null) ?? null,
-        companyName,
-      });
-    }
-
-    // Fallback when migration 00028 (role/company_id columns) hasn't been applied yet
-    const { data: basic } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('id', supabaseUser.id)
-      .maybeSingle();
-    return mapSupabaseUserToAppUser(supabaseUser, {
-      displayName: (basic?.display_name as string | null) ?? null,
-    });
-  } catch {
-    return mapSupabaseUserToAppUser(supabaseUser);
+/** Fetch display_name, role, and company_id from profiles (cached + deduplicated + timeout-guarded). */
+async function getUserWithProfile(
+  supabaseUser: { id: string; email?: string; created_at: string },
+  forceRefresh = false
+): Promise<User> {
+  const seg = cacheSegments.authUser(supabaseUser.id);
+  const cached = await readCacheEntry<User>(seg);
+  if (!forceRefresh && cached?.data && isCacheFresh(cached.updatedAt, PROFILE_FRESH_MS)) {
+    return cached.data;
   }
+
+  return dedupeRequest(`auth_profile:${supabaseUser.id}`, async () => {
+    try {
+      const { data, error } = await withTimeout(
+        (async () =>
+          supabase
+            .from('profiles')
+            .select('display_name, role, company_id')
+            .eq('id', supabaseUser.id)
+            .maybeSingle())(),
+        AUTH_PROFILE_TIMEOUT_MS,
+        'Profile lookup'
+      );
+
+      if (!error && data) {
+        let companyName: string | null = null;
+        if (data.company_id) {
+          const { data: comp } = await withTimeout(
+            (async () =>
+              supabase
+                .from('companies')
+                .select('name')
+                .eq('id', data.company_id)
+                .maybeSingle())(),
+            4_000,
+            'Company lookup'
+          );
+          companyName = (comp?.name as string | undefined) ?? null;
+        }
+        const hydrated = mapSupabaseUserToAppUser(supabaseUser, {
+          displayName: (data.display_name as string | null) ?? null,
+          role: data.role === 'admin' ? 'admin' : 'user',
+          companyId: (data.company_id as string | null) ?? null,
+          companyName,
+        });
+        void writeCacheJson(seg, hydrated);
+        return hydrated;
+      }
+
+      // Fallback when migration 00028 (role/company_id columns) hasn't been applied yet
+      const { data: basic } = await withTimeout(
+        (async () =>
+          supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', supabaseUser.id)
+            .maybeSingle())(),
+        4_000,
+        'Basic profile lookup'
+      );
+      const basicUser = mapSupabaseUserToAppUser(supabaseUser, {
+        displayName: (basic?.display_name as string | null) ?? null,
+      });
+      void writeCacheJson(seg, basicUser);
+      return basicUser;
+    } catch {
+      return cached?.data ?? mapSupabaseUserToAppUser(supabaseUser);
+    }
+  });
 }
 
 /** Set ended_at on the current open session(s) for this user (audit). */
@@ -185,41 +229,80 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   initialize: async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await withTimeout(supabase.auth.getSession(), AUTH_SESSION_TIMEOUT_MS, 'Session restore');
 
       if (session?.user) {
-        const user = await getUserWithProfile(session.user);
         const needsEmailConfirmation =
           typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
           !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
-        const hasCompletedOnboarding = await resolveOnboardingComplete(session.user.id);
-        set({
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-          hasCompletedOnboarding,
-          needsEmailConfirmation: !!needsEmailConfirmation,
-        });
+
+        // Hydrate immediately from cached profile & onboarding state so repeat launches never stall on loading
+        const [cachedProfile, localDone] = await Promise.all([
+          readCacheEntry<User>(cacheSegments.authUser(session.user.id)),
+          isOnboardingCompleteLocal(session.user.id),
+        ]);
+
+        if (cachedProfile?.data) {
+          set({
+            user: cachedProfile.data,
+            isAuthenticated: true,
+            isLoading: false,
+            hasCompletedOnboarding: localDone ? true : null,
+            needsEmailConfirmation: !!needsEmailConfirmation,
+          });
+          // Sync latest role/profile & onboarding status quietly in the background
+          void (async () => {
+            const [freshUser, done] = await Promise.all([
+              getUserWithProfile(session.user),
+              localDone ? Promise.resolve(true) : resolveOnboardingComplete(session.user.id),
+            ]);
+            set({
+              user: freshUser,
+              hasCompletedOnboarding: done,
+              needsEmailConfirmation: !!needsEmailConfirmation,
+            });
+          })();
+        } else {
+          const [user, hasCompletedOnboarding] = await Promise.all([
+            getUserWithProfile(session.user),
+            resolveOnboardingComplete(session.user.id),
+          ]);
+          set({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+            hasCompletedOnboarding,
+            needsEmailConfirmation: !!needsEmailConfirmation,
+          });
+        }
         recordSessionStart(session.user.id);
       } else {
-        set({ user: null, isAuthenticated: false, isLoading: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          hasCompletedOnboarding: null,
+          needsEmailConfirmation: false,
+        });
       }
 
       supabase.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
-          const user = await getUserWithProfile(session.user);
           const needsEmailConfirmation =
             typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
             !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
+          if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+            return;
+          }
+          const user = await getUserWithProfile(session.user);
           set({
             user,
             isAuthenticated: true,
             needsEmailConfirmation: !!needsEmailConfirmation,
           });
-          // Token refresh on app resume must not re-run onboarding checks (RLS race → false redirect).
-          if (event !== 'TOKEN_REFRESHED' && event !== 'INITIAL_SESSION') {
-            get().refreshOnboardingStatus();
-          }
+          get().refreshOnboardingStatus();
         } else {
           set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
         }
@@ -343,6 +426,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch (e) {
       console.warn('[Auth] signOut local exception:', e);
     }
+    clearMemoryCache();
+    if (userId) {
+      void removeCacheSegment(cacheSegments.authUser(userId));
+    }
     set({
       user: null,
       isAuthenticated: false,
@@ -444,26 +531,32 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   revalidateSession: async () => {
-    try {
-      const { hasCompletedOnboarding: wasOnboarded } = get();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const user = await getUserWithProfile(session.user);
-        const needsEmailConfirmation =
-          typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
-          !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
-        const resolved = await resolveOnboardingComplete(session.user.id);
-        set({
-          user,
-          isAuthenticated: true,
-          hasCompletedOnboarding: wasOnboarded === true || resolved,
-          needsEmailConfirmation: !!needsEmailConfirmation,
-        });
-      } else {
-        set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
+    return dedupeRequest('auth:revalidate_session', async () => {
+      try {
+        const { hasCompletedOnboarding: wasOnboarded, user: currentUser } = get();
+        const {
+          data: { session },
+        } = await withTimeout(supabase.auth.getSession(), AUTH_SESSION_TIMEOUT_MS, 'Revalidate session');
+        if (session?.user) {
+          const needsEmailConfirmation =
+            typeof (session.user as { email_confirmed_at?: string | null }).email_confirmed_at !== 'undefined' &&
+            !(session.user as { email_confirmed_at?: string | null }).email_confirmed_at;
+          const [user, resolved] = await Promise.all([
+            getUserWithProfile(session.user),
+            wasOnboarded === true ? Promise.resolve(true) : resolveOnboardingComplete(session.user.id),
+          ]);
+          set({
+            user: user ?? currentUser,
+            isAuthenticated: true,
+            hasCompletedOnboarding: wasOnboarded === true || resolved,
+            needsEmailConfirmation: !!needsEmailConfirmation,
+          });
+        } else {
+          set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
+        }
+      } catch {
+        // Non-fatal; keep current state
       }
-    } catch {
-      // Non-fatal; keep current state
-    }
+    });
   },
 }));

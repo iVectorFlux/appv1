@@ -85,9 +85,9 @@ export default function LearnScreen() {
   );
 
   const sequenced = useMemo(() => {
-    const rawList = loading ? [] : episodes;
+    const rawList = episodes;
     return buildSequencedCatalog(rawList, progressByKey, latestEqScore);
-  }, [loading, episodes, progressByKey, latestEqScore]);
+  }, [episodes, progressByKey, latestEqScore]);
 
   const filteredItems = useMemo(() => {
     if (audience !== 'B2B' || selectedDomain === 'all') return sequenced.items;
@@ -774,8 +774,7 @@ const styles = StyleSheet.create({
   competencyLabel: {
     fontSize: 12,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.2,
     flex: 1,
     fontFamily: Typography.fontFamily.primary,
   },

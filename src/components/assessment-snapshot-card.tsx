@@ -107,8 +107,7 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: Typography.fontSize.micro,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.3,
+      letterSpacing: 0.2,
       marginBottom: 2,
     },
     body: {
