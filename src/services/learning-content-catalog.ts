@@ -233,7 +233,8 @@ function getBundledRowsForLanguage(language: string): LearningContentRow[] {
 }
 
 /**
- * Synchronously return episodes from L1 memory cache (0ms, no spinner on repeat views).
+ * Synchronously return episodes on frame 0 (L1 cache, or bundled JSON fallback so UI never stalls
+ * behind a spinner on cold load while IndexedDB / /api/catalog / Supabase refreshes in background).
  */
 export function getSyncCachedEpisodes(language = 'en'): LearningEpisode[] | null {
   const memEp = readMemoryCache<LearningEpisode[]>(cacheSegments.learningEpisodes(language));
@@ -243,6 +244,10 @@ export function getSyncCachedEpisodes(language = 'en'): LearningEpisode[] | null
     const eps = rowsToEpisodes(memRows.data);
     writeMemoryCache(cacheSegments.learningEpisodes(language), eps, memRows.updatedAt);
     return eps;
+  }
+  const bundled = getBundledRowsForLanguage(language);
+  if (bundled.length > 0) {
+    return rowsToEpisodes(bundled);
   }
   return null;
 }

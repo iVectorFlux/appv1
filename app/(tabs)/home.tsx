@@ -1,9 +1,8 @@
 /**
- * Home - Enterprise Emotional Intelligence Dashboard
+ * Home — Minimal, Focused EQ Workspace
  *
- * - Responsive Shadcn-inspired Bento layout for desktop (>= 1024px) and mobile
- * - Adaptive Pathway Readiness Card showing EQ score, Free Browse vs Guided mode, and next lesson CTA
- * - Quick access to Learn EQ, AI Companion, Recover, Assessments, and Enterprise Admin (for admins)
+ * Clean visual hierarchy: open whitespace, concise copy, icon-led navigation,
+ * and immediate zero-spinner loading across mobile and desktop.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -22,7 +21,7 @@ import { useColors, Spacing, Typography, Radius } from '@/constants/design-token
 import { GlassBackground } from '@/components/ui/glass-background';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
-import { Badge, ProgressBar, SectionHeading } from '@/components/ui/shadcn-primitives';
+import { ProgressBar } from '@/components/ui/shadcn-primitives';
 import { AddToHomeScreenBanner } from '@/components/web/add-to-home-screen-banner';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
 import { useLearningCatalog } from '@/hooks/useLearningCatalog';
@@ -38,11 +37,10 @@ import {
 import { buildHomeRecommendations } from '@/services/learning-recommendations';
 import { formatCatalogLabel } from '@/data/eq-curriculum';
 
-interface PlatformAction {
+interface WorkspaceTile {
   key: string;
   title: string;
-  description: string;
-  badge: string;
+  hint: string;
   icon: keyof typeof Ionicons.glyphMap;
   accent: string;
   route: string;
@@ -112,82 +110,69 @@ export default function HomeScreen() {
     return `${base}, ${rawName.charAt(0).toUpperCase()}${rawName.slice(1)}`;
   }, [user?.displayName, user?.username]);
 
-  const exploreActions = useMemo<PlatformAction[]>(() => {
-    const base: PlatformAction[] = [
+  const workspaceTiles = useMemo<WorkspaceTile[]>(() => {
+    const tiles: WorkspaceTile[] = [
       {
         key: 'learn',
-        title: 'Learn EQ Curriculum',
-        description: '4 EI domains, 12 competencies, video lessons, audio briefings & first-principles guides.',
-        badge: `${sequenced.completedCount}/${sequenced.totalCount || 24} done`,
-        icon: 'library-outline',
+        title: 'Curriculum',
+        hint: `${sequenced.completedCount}/${sequenced.totalCount || 24} completed`,
+        icon: 'compass-outline',
         accent: colors.primary,
         route: '/(tabs)/learn',
       },
       {
         key: 'companion',
-        title: 'AI EQ Companion',
-        description: 'Coach through workplace situations, difficult conversations, and leadership decisions.',
-        badge: 'Interactive Coach',
-        icon: 'chatbubble-ellipses-outline',
+        title: 'Inner Ally',
+        hint: 'Reflect & reset',
+        icon: 'sparkles-outline',
         accent: colors.accentIndigo,
         route: '/(tabs)/companion',
       },
       {
         key: 'recover',
-        title: 'Recover & Grounding',
-        description: 'Guided somatic and breathing resets between high-stakes meetings.',
-        badge: '3-5 min reset',
+        title: 'Breathe',
+        hint: '3 min calm reset',
         icon: 'leaf-outline',
         accent: colors.success,
         route: '/grounding',
       },
+      {
+        key: 'full-eq',
+        title: latestEqScore !== null ? 'EQ Assessment' : 'Baseline EQ Test',
+        hint: latestEqScore !== null ? `Score ${latestEqScore}/100` : '25 min check-in',
+        icon: 'analytics-outline',
+        accent: colors.primary,
+        route: '/full-eq-test',
+      },
+      {
+        key: 'big5',
+        title: 'Personality',
+        hint: 'Big Five traits',
+        icon: 'shapes-outline',
+        accent: colors.accentIndigo,
+        route: '/big5-test',
+      },
+      {
+        key: 'progress',
+        title: 'Progress',
+        hint: 'Insights & reports',
+        icon: 'stats-chart-outline',
+        accent: colors.success,
+        route: '/(tabs)/progress',
+      },
     ];
     if (user?.role === 'admin') {
-      base.push({
+      tiles.push({
         key: 'admin',
-        title: 'Enterprise Admin Analytics',
-        description: 'Monitor employee video/audio completion, EQ baselines, and manage company admins.',
-        badge: 'Admin Only',
+        title: 'Team Analytics',
+        hint: 'Admin overview',
         icon: 'shield-checkmark-outline',
         accent: colors.warning,
         route: '/admin',
       });
     }
-    return base;
-  }, [colors, sequenced.completedCount, sequenced.totalCount, user?.role]);
-
-  const assessmentActions = useMemo(
-    () => [
-      {
-        key: 'full-eq',
-        title: 'Full EQ Assessment',
-        subtitle: 'Comprehensive 12-competency baseline · unlocks adaptive pathway',
-        icon: 'analytics-outline' as const,
-        accent: colors.primary,
-        route: '/full-eq-test',
-        cta: latestEqScore !== null ? 'Retake Test' : 'Take Test',
-      },
-      {
-        key: 'big5',
-        title: 'Big Five Personality',
-        subtitle: 'IPIP 50 OCEAN profile · saved directly to your enterprise progress',
-        icon: 'color-wand-outline' as const,
-        accent: colors.accentIndigo,
-        route: '/big5-test',
-        cta: 'Open Test',
-      },
-      {
-        key: 'progress',
-        title: 'My Progress & Reports',
-        subtitle: 'EQ dimension radar, Big Five scores, and completed lessons history',
-        icon: 'stats-chart-outline' as const,
-        accent: colors.success,
-        route: '/(tabs)/progress',
-        cta: 'View Progress',
-      },
-    ],
-    [colors, latestEqScore]
-  );
+    return tiles;
+  }, [colors, latestEqScore, sequenced.completedCount, sequenced.totalCount, user?.role]);
 
   const st = createStyles(colors);
 
@@ -211,32 +196,22 @@ export default function HomeScreen() {
       >
         {Platform.OS === 'web' ? <AddToHomeScreenBanner /> : null}
 
-        {/* Top Header */}
+        {/* Minimal Header */}
         <View style={st.headerRow}>
-          <View style={{ flex: 1 }}>
-            {user?.companyName || user?.role === 'admin' ? (
-              <View style={st.headerBadges}>
-                {user?.companyName ? (
-                  <Badge label={user.companyName} variant="outline" icon="business-outline" />
-                ) : null}
-                {user?.role === 'admin' ? (
-                  <Badge label="Company Admin" variant="default" icon="shield-checkmark-outline" />
-                ) : null}
-              </View>
-            ) : null}
+          <View style={st.headerLeft}>
             <Text style={[st.greeting, isDesktop && st.greetingDesktop]}>{greeting}</Text>
-            <Text style={st.tagline}>
-              Structured emotional intelligence training, baseline assessments, and measurable daily habits.
-            </Text>
+            {user?.companyName ? (
+              <Text style={st.companySubtitle}>{user.companyName}</Text>
+            ) : null}
           </View>
 
           <View style={st.headerActions}>
             {user?.role === 'admin' ? (
               <Button
-                title="Admin Console"
+                title="Admin"
                 size="sm"
                 variant="outline"
-                icon="analytics-outline"
+                icon="shield-checkmark-outline"
                 onPress={() => router.push('/admin')}
               />
             ) : null}
@@ -247,182 +222,145 @@ export default function HomeScreen() {
                 activeOpacity={0.75}
                 accessibilityLabel="Open profile"
               >
-                <Ionicons name="person-outline" size={20} color={colors.textPrimary} />
+                <Ionicons name="person-outline" size={19} color={colors.textPrimary} />
               </TouchableOpacity>
             ) : null}
           </View>
         </View>
 
-        {/* Responsive Hero Row: Baseline EQ First (when untested) or Guided / Free Mastery Path */}
-        <View style={[st.bentoRow, isDesktop && st.bentoRowDesktop]}>
-          <GlassCard style={[st.heroCard, isDesktop && st.heroCardDesktop]}>
-            <View style={st.heroTopRow}>
-              <Badge
-                label={
-                  sequenced.accessMode === 'free_browse'
-                    ? `Free Browse Unlocked · EQ ${latestEqScore}/100`
-                    : latestEqScore !== null
-                    ? `Guided Pathway · EQ ${latestEqScore}/100`
-                    : 'Step 1 · Baseline Assessment'
-                }
-                variant={
-                  sequenced.accessMode === 'free_browse'
-                    ? 'success'
-                    : latestEqScore === null
-                    ? 'default'
-                    : 'warning'
-                }
-                icon={
-                  sequenced.accessMode === 'free_browse'
-                    ? 'lock-open-outline'
-                    : latestEqScore === null
-                    ? 'analytics-outline'
-                    : 'git-branch-outline'
-                }
+        {/* Focused Hero Card */}
+        <GlassCard style={st.heroCard}>
+          <View style={st.heroTopRow}>
+            <View style={[st.statusChip, { backgroundColor: colors.surface }]}>
+              <View
+                style={[
+                  st.statusDot,
+                  {
+                    backgroundColor:
+                      sequenced.accessMode === 'free_browse'
+                        ? colors.success
+                        : colors.primary,
+                  },
+                ]}
               />
-              <Text style={st.eqBenchmarkText}>Benchmark: {GOOD_EQ_SCORE_THRESHOLD}+</Text>
+              <Text style={st.statusChipText}>
+                {latestEqScore === null
+                  ? 'Step 1 · Baseline'
+                  : sequenced.accessMode === 'free_browse'
+                    ? 'Free Browse Unlocked'
+                    : 'Guided Pathway'}
+              </Text>
             </View>
 
-            <Text style={st.heroTitle}>
-              {latestEqScore === null
-                ? 'Take Baseline EQ Test First'
-                : sequenced.accessMode === 'free_browse'
-                ? 'Full Curriculum Access Enabled'
-                : 'Your Guided EQ Mastery Path'}
-            </Text>
-            <Text style={st.heroDesc}>
-              {latestEqScore === null
-                ? `Complete the Full EQ Assessment first to measure your emotional baseline and personalize your learning path (${GOOD_EQ_SCORE_THRESHOLD}+ unlocks free browsing across all 12 competencies).`
-                : sequenced.accessMode === 'free_browse'
-                ? 'Your EQ score meets the benchmark. Explore any domain freely across Self-Awareness, Self-Management, Social Awareness, and Relationship Management.'
-                : `Scores under ${GOOD_EQ_SCORE_THRESHOLD} follow structured step-by-step lessons so foundational skills lock in before advanced modules.`}
-            </Text>
-
-            <View style={st.progressBlock}>
-              <View style={st.progressRow}>
-                <Text style={st.progressLabel}>Curriculum Progress</Text>
-                <Text style={st.progressMetric}>
-                  {sequenced.completedCount} / {sequenced.totalCount || 24} lessons ({completionPct}%)
+            {latestEqScore !== null ? (
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/progress')}
+                style={[st.scoreChip, { backgroundColor: colors.primary + '12' }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[st.scoreChipText, { color: colors.primary }]}>
+                  EQ {latestEqScore}
                 </Text>
-              </View>
-              <ProgressBar value={completionPct} height={8} />
-            </View>
+              </TouchableOpacity>
+            ) : null}
+          </View>
 
-            <View style={st.heroActions}>
-              {latestEqScore === null ? (
-                <>
-                  <Button
-                    title="Take Baseline EQ Test"
-                    icon="analytics-outline"
-                    onPress={() => router.push('/full-eq-test')}
-                  />
-                  <Button
-                    title={
-                      nextLesson
-                        ? `Start: ${formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title}`
-                        : 'Browse Modules'
-                    }
-                    variant="outline"
-                    icon="play-circle-outline"
-                    onPress={openNextLesson}
-                  />
-                </>
-              ) : (
-                <>
-                  <Button
-                    title={
-                      nextLesson
-                        ? `Continue: ${formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title}`
-                        : 'Open Learn EQ'
-                    }
-                    icon="play-circle-outline"
-                    onPress={openNextLesson}
-                  />
-                  <Button
-                    title="Browse All Modules"
-                    variant="outline"
-                    onPress={() => router.push('/(tabs)/learn')}
-                  />
-                </>
-              )}
-            </View>
-          </GlassCard>
+          <Text style={[st.heroTitle, isDesktop && st.heroTitleDesktop]}>
+            {latestEqScore === null
+              ? 'Take Baseline EQ Test'
+              : nextLesson
+                ? formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title
+                : 'Your EQ Path'}
+          </Text>
 
-          <GlassCard style={[st.eqMetricCard, isDesktop && st.eqMetricCardDesktop]}>
-            <View style={st.eqHeader}>
-              <Text style={st.eqLabel}>Latest EQ Score</Text>
-              <View style={[st.eqIconCircle, { backgroundColor: colors.primary + '16' }]}>
-                <Ionicons name="pulse-outline" size={18} color={colors.primary} />
-              </View>
-            </View>
-            <Text style={st.eqBigValue}>
-              {latestEqScore !== null ? latestEqScore : '—'}
-              <Text style={st.eqOutOf}>{latestEqScore !== null ? ' / 100' : ''}</Text>
+          <Text style={st.heroDesc}>
+            {latestEqScore === null
+              ? 'A short baseline assessment to personalize your learning path.'
+              : latestEqScore >= GOOD_EQ_SCORE_THRESHOLD
+                ? 'Explore any competency freely or follow the recommended sequence.'
+                : 'Complete each step in sequence to build lasting mastery.'}
+          </Text>
+
+          <View style={st.progressBlock}>
+            <ProgressBar value={completionPct} height={6} />
+            <Text style={st.progressMeta}>
+              {sequenced.completedCount} of {sequenced.totalCount || 24} completed
             </Text>
-            <Text style={st.eqCaption}>
-              {latestEqScore === null
-                ? 'Complete the Full EQ Assessment to benchmark your 4 domains & 12 competencies.'
-                : latestEqScore >= GOOD_EQ_SCORE_THRESHOLD
-                ? 'Strong EQ baseline — all 12 competencies are unlocked for independent browsing.'
-                : 'Sequential mode active — complete each video or audio lesson to unlock the next.'}
-            </Text>
-            <View style={st.eqFooter}>
-              <Button
-                title={latestEqScore !== null ? 'View EQ Report' : 'Start Assessment'}
-                size="sm"
-                variant="secondary"
-                fullWidth
-                onPress={() => router.push(latestEqScore !== null ? '/(tabs)/progress' : '/full-eq-test')}
-              />
-            </View>
-          </GlassCard>
-        </View>
+          </View>
 
-        {/* Incomplete Lessons ("Complete This") */}
+          <View style={st.heroActions}>
+            {latestEqScore === null ? (
+              <>
+                <Button
+                  title="Start EQ Test"
+                  icon="arrow-forward"
+                  onPress={() => router.push('/full-eq-test')}
+                />
+                <Button
+                  title="Browse Modules"
+                  variant="ghost"
+                  onPress={() => router.push('/(tabs)/learn')}
+                />
+              </>
+            ) : (
+              <>
+                <Button
+                  title="Continue"
+                  icon="play"
+                  onPress={openNextLesson}
+                />
+                <Button
+                  title="All Modules"
+                  variant="ghost"
+                  onPress={() => router.push('/(tabs)/learn')}
+                />
+              </>
+            )}
+          </View>
+        </GlassCard>
+
+        {/* Resume In-Progress (Only when active) */}
         {homeFeed.incompleteItems.length > 0 ? (
           <View style={st.sectionBlock}>
-            <SectionHeading
-              title="Complete This — Pick Up Where You Left Off"
-              description="Your watch and listen timestamps are saved automatically so you can continue anytime or start over."
-            />
-            <View style={[st.cardsGrid, isDesktop && st.cardsGridDesktop]}>
-              {homeFeed.incompleteItems.slice(0, 3).map((item) => (
+            <Text style={st.sectionTitle}>Pick up where you left off</Text>
+            <View style={[st.grid, isDesktop && st.gridDesktop]}>
+              {homeFeed.incompleteItems.slice(0, 2).map((item) => (
                 <GlassCard
                   key={`${item.episodeKey}-${item.kind}`}
-                  style={[st.incompleteCard, isDesktop && st.featureCardDesktop, { borderColor: colors.warning + '55' }]}
+                  onPress={() =>
+                    router.push(`/learning-detail?id=${encodeURIComponent(item.routeId)}&mode=${item.kind}`)
+                  }
+                  style={[st.compactCard, isDesktop && st.halfCardDesktop]}
                 >
-                  <View style={st.featureTop}>
-                    <Badge
-                      label={item.kind === 'video' ? 'Unfinished Video' : 'Unfinished Audio'}
-                      variant="warning"
-                      icon={item.kind === 'video' ? 'videocam-outline' : 'headset-outline'}
-                    />
-                    <Text style={[st.incompletePct, { color: colors.textPrimary }]}>{item.progressPct}%</Text>
-                  </View>
-                  <Text style={st.recCompetency}>{item.competency}</Text>
-                  <Text style={st.cardTitle} numberOfLines={2}>{item.title}</Text>
-                  <Text style={st.cardDesc}>{item.statusLabel}</Text>
-                  <ProgressBar value={item.progressPct} height={6} color={colors.warning} />
-                  <View style={st.incompleteActions}>
-                    <Button
-                      title={item.ctaLabel}
-                      size="sm"
-                      icon="play"
-                      onPress={() =>
-                        router.push(`/learning-detail?id=${encodeURIComponent(item.routeId)}&mode=${item.kind}`)
-                      }
-                    />
-                    <Button
-                      title="Start Over"
-                      size="sm"
-                      variant="outline"
-                      icon="refresh"
-                      onPress={() =>
+                  <View style={st.tileRow}>
+                    <View style={[st.iconSquircle, { backgroundColor: colors.warning + '16' }]}>
+                      <Ionicons
+                        name={item.kind === 'video' ? 'play-outline' : 'headset-outline'}
+                        size={19}
+                        color={colors.warning}
+                      />
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={st.tileTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={st.tileSubtitle} numberOfLines={1}>
+                        {item.competency} · {item.progressPct}%
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation?.();
                         router.push(
                           `/learning-detail?id=${encodeURIComponent(item.routeId)}&mode=${item.kind}&restart=1`
-                        )
-                      }
-                    />
+                        );
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityLabel="Restart lesson"
+                      style={[st.miniIconBtn, { backgroundColor: colors.surface }]}
+                    >
+                      <Ionicons name="refresh-outline" size={16} color={colors.textSecondary} />
+                    </TouchableOpacity>
                   </View>
                 </GlassCard>
               ))}
@@ -430,18 +368,15 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* Recommended Video, Reading & Audio on Login */}
+        {/* Minimal Recommendations */}
         {homeFeed.recommendations.length > 0 ? (
           <View style={st.sectionBlock}>
-            <SectionHeading
-              title="Recommended for You"
-              description="Curated Video, First-Principles Reading, and Audio recommendations tailored to your EQ progress."
-            />
-            <View style={[st.cardsGrid, isDesktop && st.cardsGridDesktop]}>
-              {homeFeed.recommendations.map((rec) => {
-                const iconName =
+            <Text style={st.sectionTitle}>Recommended</Text>
+            <View style={[st.grid, isDesktop && st.gridDesktop]}>
+              {homeFeed.recommendations.slice(0, 3).map((rec) => {
+                const iconName: keyof typeof Ionicons.glyphMap =
                   rec.type === 'video'
-                    ? 'videocam-outline'
+                    ? 'play-outline'
                     : rec.type === 'reading'
                       ? 'book-outline'
                       : 'headset-outline';
@@ -451,12 +386,6 @@ export default function HomeScreen() {
                     : rec.type === 'reading'
                       ? colors.accentIndigo
                       : colors.success;
-                const badgeLabel =
-                  rec.type === 'video'
-                    ? 'Video Recommendation'
-                    : rec.type === 'reading'
-                      ? 'Reading Recommendation'
-                      : 'Audio Recommendation';
 
                 return (
                   <GlassCard
@@ -464,30 +393,20 @@ export default function HomeScreen() {
                     onPress={() =>
                       router.push(`/learning-detail?id=${encodeURIComponent(rec.routeId)}&mode=${rec.type}`)
                     }
-                    style={[st.featureCard, isDesktop && st.featureCardDesktop]}
+                    style={[st.compactCard, isDesktop && st.thirdCardDesktop]}
                   >
-                    <View style={st.featureTop}>
-                      <View style={[st.iconWrap, { backgroundColor: accent + '16' }]}>
-                        <Ionicons name={iconName} size={20} color={accent} />
+                    <View style={st.tileTop}>
+                      <View style={[st.iconSquircle, { backgroundColor: accent + '14' }]}>
+                        <Ionicons name={iconName} size={19} color={accent} />
                       </View>
-                      <Badge
-                        label={badgeLabel}
-                        variant={rec.inProgress ? 'warning' : 'secondary'}
-                      />
+                      <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
                     </View>
-                    <Text style={st.recCompetency}>
-                      {rec.domain} • {rec.competency}
-                    </Text>
-                    <Text style={st.cardTitle} numberOfLines={2}>
+                    <Text style={st.tileTitle} numberOfLines={1}>
                       {rec.title}
                     </Text>
-                    <Text style={st.cardDesc} numberOfLines={3}>
-                      {rec.summary}
+                    <Text style={st.tileSubtitle} numberOfLines={1}>
+                      {rec.competency}
                     </Text>
-                    <View style={st.recFooter}>
-                      <Text style={[st.recMeta, { color: colors.textMuted }]}>{rec.metaLabel}</Text>
-                      <Text style={[st.cardCtaText, { color: accent }]}>{rec.ctaLabel} →</Text>
-                    </View>
                   </GlassCard>
                 );
               })}
@@ -495,64 +414,27 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* Explore Platform */}
+        {/* Clean Icon-Led Workspace Tiles */}
         <View style={st.sectionBlock}>
-          <SectionHeading
-            title="Explore Platform"
-            description="Training modules, coaching companion, and enterprise administration."
-          />
-          <View style={[st.cardsGrid, isDesktop && st.cardsGridDesktop]}>
-            {exploreActions.map((item) => (
+          <Text style={st.sectionTitle}>Workspace</Text>
+          <View style={[st.grid, isDesktop && st.gridDesktop]}>
+            {workspaceTiles.map((tile) => (
               <GlassCard
-                key={item.key}
-                onPress={() => router.push(item.route as never)}
-                style={[st.featureCard, isDesktop && st.featureCardDesktop]}
+                key={tile.key}
+                onPress={() => router.push(tile.route as never)}
+                style={[st.compactCard, isDesktop && st.thirdCardDesktop]}
               >
-                <View style={st.featureTop}>
-                  <View style={[st.iconWrap, { backgroundColor: item.accent + '16' }]}>
-                    <Ionicons name={item.icon} size={20} color={item.accent} />
+                <View style={st.tileTop}>
+                  <View style={[st.iconSquircle, { backgroundColor: tile.accent + '14' }]}>
+                    <Ionicons name={tile.icon} size={20} color={tile.accent} />
                   </View>
-                  <Badge label={item.badge} variant="secondary" />
+                  <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
                 </View>
-                <Text style={st.cardTitle}>{item.title}</Text>
-                <Text style={st.cardDesc}>{item.description}</Text>
+                <Text style={st.tileTitle}>{tile.title}</Text>
+                <Text style={st.tileSubtitle}>{tile.hint}</Text>
               </GlassCard>
             ))}
           </View>
-        </View>
-
-        {/* Assessments & Analytics */}
-        <View style={st.sectionBlock}>
-          <SectionHeading
-            title="Assessments & Progress"
-            description="All assessment submissions save directly to your enterprise profile and analytics."
-          />
-          <View style={[st.cardsGrid, isDesktop && st.cardsGridDesktop]}>
-            {assessmentActions.map((a) => (
-              <GlassCard
-                key={a.key}
-                onPress={() => router.push(a.route as never)}
-                style={[st.featureCard, isDesktop && st.featureCardDesktop]}
-              >
-                <View style={st.featureTop}>
-                  <View style={[st.iconWrap, { backgroundColor: a.accent + '16' }]}>
-                    <Ionicons name={a.icon} size={20} color={a.accent} />
-                  </View>
-                  <Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
-                </View>
-                <Text style={st.cardTitle}>{a.title}</Text>
-                <Text style={st.cardDesc}>{a.subtitle}</Text>
-                <View style={st.cardCtaRow}>
-                  <Text style={[st.cardCtaText, { color: colors.primary }]}>{a.cta}</Text>
-                </View>
-              </GlassCard>
-            ))}
-          </View>
-        </View>
-
-        <View style={st.footer}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={colors.textMuted} />
-          <Text style={st.footerText}>Enterprise security enabled • Private & encrypted team data</Text>
         </View>
       </ScrollView>
     </GlassBackground>
@@ -563,46 +445,44 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     scroll: { flex: 1 },
     content: {
-      paddingHorizontal: Spacing.md,
-      paddingTop: Platform.OS === 'ios' ? 56 : Spacing.lg,
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Platform.OS === 'ios' ? 60 : Spacing.xl,
       paddingBottom: 120,
-      gap: Spacing.xl,
+      gap: 28,
     },
     contentDesktop: {
-      maxWidth: 1220,
+      maxWidth: 1080,
       width: '100%',
       alignSelf: 'center',
       paddingHorizontal: Spacing['2xl'],
-      paddingTop: Spacing.xl,
-      paddingBottom: Spacing['3xl'],
+      paddingTop: Spacing['2xl'],
+      paddingBottom: Spacing['4xl'],
+      gap: 36,
     },
     headerRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
       gap: Spacing.md,
     },
-    headerBadges: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: Spacing.xs,
-      marginBottom: Spacing.xs,
+    headerLeft: {
+      flex: 1,
+      gap: 4,
     },
     greeting: {
-      fontSize: Typography.fontSize['2xl'],
+      fontSize: 28,
       fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
-      letterSpacing: -0.5,
-    },
-    greetingDesktop: {
-      fontSize: 30,
       letterSpacing: -0.7,
     },
-    tagline: {
+    greetingDesktop: {
+      fontSize: 34,
+      letterSpacing: -0.9,
+    },
+    companySubtitle: {
       fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      marginTop: 4,
-      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
+      color: colors.textMuted,
+      fontWeight: Typography.fontWeight.medium,
     },
     headerActions: {
       flexDirection: 'row',
@@ -612,208 +492,145 @@ const createStyles = (colors: ReturnType<typeof useColors>) =>
     profileBtn: {
       width: 40,
       height: 40,
-      borderRadius: Radius.md,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
     },
-    bentoRow: {
-      gap: Spacing.md,
-    },
-    bentoRowDesktop: {
-      flexDirection: 'row',
-      alignItems: 'stretch',
-    },
     heroCard: {
-      padding: Spacing.lg,
-      gap: Spacing.md,
-    },
-    heroCardDesktop: {
-      flex: 2,
+      padding: 24,
+      gap: 16,
     },
     heroTopRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: Spacing.sm,
     },
-    eqBenchmarkText: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
-      fontWeight: Typography.fontWeight.medium,
-    },
-    heroTitle: {
-      fontSize: Typography.fontSize.xl,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-    },
-    heroDesc: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.textSecondary,
-      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.sm,
-    },
-    progressBlock: {
-      gap: 6,
-    },
-    progressRow: {
+    statusChip: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: Radius.full,
     },
-    progressLabel: {
+    statusDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+    },
+    statusChipText: {
       fontSize: Typography.fontSize.xs,
       fontWeight: Typography.fontWeight.semibold,
       color: colors.textSecondary,
     },
-    progressMetric: {
+    scoreChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: Radius.full,
+    },
+    scoreChipText: {
       fontSize: Typography.fontSize.xs,
       fontWeight: Typography.fontWeight.bold,
+    },
+    heroTitle: {
+      fontSize: 22,
+      fontWeight: Typography.fontWeight.bold,
       color: colors.textPrimary,
+      letterSpacing: -0.5,
+    },
+    heroTitleDesktop: {
+      fontSize: 26,
+      letterSpacing: -0.7,
+    },
+    heroDesc: {
+      fontSize: Typography.fontSize.base,
+      color: colors.textSecondary,
+      lineHeight: 22,
+      maxWidth: 560,
+    },
+    progressBlock: {
+      gap: 8,
+      marginTop: 2,
+    },
+    progressMeta: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textMuted,
+      fontWeight: Typography.fontWeight.medium,
     },
     heroActions: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      alignItems: 'center',
       gap: Spacing.sm,
-      marginTop: Spacing.xs,
-    },
-    eqMetricCard: {
-      padding: Spacing.lg,
-      justifyContent: 'space-between',
-      gap: Spacing.md,
-    },
-    eqMetricCardDesktop: {
-      flex: 1,
-    },
-    eqHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    eqLabel: {
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textSecondary,
-      letterSpacing: 0.2,
-    },
-    eqIconCircle: {
-      width: 34,
-      height: 34,
-      borderRadius: Radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    eqBigValue: {
-      fontSize: 36,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textPrimary,
-      letterSpacing: -1,
-    },
-    eqOutOf: {
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.medium,
-      color: colors.textMuted,
-    },
-    eqCaption: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.xs,
-    },
-    eqFooter: {
-      marginTop: Spacing.xs,
+      marginTop: 4,
     },
     sectionBlock: {
-      gap: Spacing.sm,
+      gap: 14,
     },
-    cardsGrid: {
-      gap: Spacing.md,
+    sectionTitle: {
+      fontSize: 17,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textPrimary,
+      letterSpacing: -0.3,
     },
-    cardsGridDesktop: {
+    grid: {
+      gap: 14,
+    },
+    gridDesktop: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      gap: 18,
     },
-    featureCard: {
-      padding: Spacing.lg,
-      gap: Spacing.sm,
-      justifyContent: 'space-between',
-      borderLeftWidth: 3,
-      borderLeftColor: colors.primary + '55',
+    compactCard: {
+      padding: 20,
+      gap: 10,
     },
-    featureCardDesktop: {
-      width: '31.5%' as any,
-      minWidth: 250,
+    halfCardDesktop: {
+      width: '48.5%' as any,
+      minWidth: 280,
       flexGrow: 1,
     },
-    featureTop: {
+    thirdCardDesktop: {
+      width: '31.5%' as any,
+      minWidth: 240,
+      flexGrow: 1,
+    },
+    tileTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       marginBottom: 4,
     },
-    iconWrap: {
+    tileRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+    },
+    iconSquircle: {
       width: 40,
       height: 40,
-      borderRadius: Radius.md,
+      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    cardTitle: {
-      fontSize: Typography.fontSize.base,
-      fontWeight: Typography.fontWeight.bold,
+    tileTitle: {
+      fontSize: 16,
+      fontWeight: Typography.fontWeight.semibold,
       color: colors.textPrimary,
+      letterSpacing: -0.2,
     },
-    cardDesc: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textSecondary,
-      lineHeight: Typography.lineHeight.relaxed * Typography.fontSize.xs,
+    tileSubtitle: {
+      fontSize: 13,
+      color: colors.textMuted,
+      fontWeight: Typography.fontWeight.normal,
     },
-    cardCtaRow: {
-      marginTop: Spacing.xs,
-    },
-    cardCtaText: {
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.semibold,
-    },
-    incompleteCard: {
-      padding: Spacing.lg,
-      gap: Spacing.sm,
-      borderWidth: 1,
-    },
-    incompletePct: {
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.bold,
-    },
-    incompleteActions: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: Spacing.xs,
-      marginTop: 4,
-    },
-    recCompetency: {
-      fontSize: 11,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.primary,
-    },
-    recFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: Spacing.sm,
-      marginTop: Spacing.xs,
-    },
-    recMeta: {
-      fontSize: 11,
-      fontWeight: Typography.fontWeight.medium,
-    },
-    footer: {
-      flexDirection: 'row',
+    miniIconBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: Spacing.xs,
-      marginTop: Spacing.md,
-    },
-    footerText: {
-      fontSize: Typography.fontSize.xs,
-      color: colors.textMuted,
     },
   });

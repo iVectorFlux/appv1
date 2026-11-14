@@ -220,6 +220,45 @@ async function endSession(userId: string): Promise<void> {
   }
 }
 
+/**
+ * Read persisted Supabase session user synchronously on web `localStorage` so repeat launches
+ * render immediately without waiting on remote JWT token refresh.
+ */
+function readStoredSupabaseUserSync(): {
+  id: string;
+  email?: string;
+  created_at: string;
+  email_confirmed_at?: string | null;
+} | null {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const k = window.localStorage.key(i);
+      if (!k || !k.startsWith('sb-') || !k.endsWith('-auth-token')) continue;
+      const raw = window.localStorage.getItem(k);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as {
+        user?: { id?: string; email?: string; created_at?: string; email_confirmed_at?: string | null };
+        currentSession?: {
+          user?: { id?: string; email?: string; created_at?: string; email_confirmed_at?: string | null };
+        };
+      };
+      const u = parsed?.user ?? parsed?.currentSession?.user;
+      if (u?.id) {
+        return {
+          id: u.id,
+          email: u.email,
+          created_at: u.created_at ?? new Date().toISOString(),
+          email_confirmed_at: u.email_confirmed_at,
+        };
+      }
+    }
+  } catch {
+    // ignore storage parse failure
+  }
+  return null;
+}
+
 export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
   isAuthenticated: false,
@@ -229,6 +268,29 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   initialize: async () => {
     try {
+      // Optimistic local boot: hydrate from web localStorage session + cached profile immediately
+      // instead of blocking first render on a slow remote token refresh.
+      const localUser = readStoredSupabaseUserSync();
+      let optimisticHydrated = false;
+      if (localUser) {
+        const needsEmailConfirmation =
+          typeof localUser.email_confirmed_at !== 'undefined' && !localUser.email_confirmed_at;
+        const [cachedProfile, localDone] = await Promise.all([
+          readCacheEntry<User>(cacheSegments.authUser(localUser.id)),
+          isOnboardingCompleteLocal(localUser.id),
+        ]);
+        if (cachedProfile?.data || localDone) {
+          optimisticHydrated = true;
+          set({
+            user: cachedProfile?.data ?? mapSupabaseUserToAppUser(localUser),
+            isAuthenticated: true,
+            isLoading: false,
+            hasCompletedOnboarding: localDone ? true : null,
+            needsEmailConfirmation: !!needsEmailConfirmation,
+          });
+        }
+      }
+
       const {
         data: { session },
       } = await withTimeout(supabase.auth.getSession(), AUTH_SESSION_TIMEOUT_MS, 'Session restore');
@@ -307,6 +369,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           set({ user: null, isAuthenticated: false, hasCompletedOnboarding: null, needsEmailConfirmation: false });
         }
       });
+      if (!optimisticHydrated && get().isLoading) {
+        set({ isLoading: false });
+      }
     } catch (error) {
       console.error('Failed to initialize auth:', error);
       set({ isLoading: false });

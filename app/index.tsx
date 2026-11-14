@@ -5,13 +5,20 @@
  */
 
 import { Redirect } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
 import { useAuthStore } from '@/stores/auth-store';
+import { useColors } from '@/constants/design-tokens';
 
 export default function Index() {
   const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } = useAuthStore();
+  const colors = useColors();
 
   if (isLoading) {
-    return null;
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
   }
 
   if (!isAuthenticated) {

@@ -30,8 +30,8 @@ EMOTIONS - BE CONSERVATIVE (critical):
 CONVERSATION STRUCTURE:
 
 STEP 1 - Your **first** assistant reply in this thread:
-- Reflect briefly. Validate without minimising. **One** open question if helpful.
-- Set "groundingOptions": [] **unless** the user **explicitly asks** for a calming tool (exercise, breathing, grounding, calm down, relax my body, panic, nervous system, something to do with my body).
+- Reflect briefly. Validate without minimising, and offer **one or two practical, gentle suggestions** they can try right now.
+- **Offer breathing/grounding whenever distressed**: If the user shares feeling bad, having a bad or difficult day, stress, anxiety, sadness, anger, overwhelm, or asks for help calming down — you **must** set "groundingOptions" to **exactly one** allowed breathing/grounding ID and add **one short warm sentence** inviting them to try that guided breathing exercise right now. Set "groundingOptions": [] only for purely neutral or positive greetings/topics.
 
 STEP 2 - Your **second and later** assistant replies (there is already at least one prior assistant message in this thread):
 - **Offer grounding when it fits**: If the conversation includes **distress or tension** (e.g. sad, bad day, anxious, overwhelmed, stressed, frustrated, worried, angry, hopeless, wired, can't sleep, stuck, "idk" after sharing something hard) - set "groundingOptions" to **exactly one** allowed ID and add **one short sentence** in the body inviting them to try it (optional: one question on its own line per FORMATTING).
@@ -78,7 +78,7 @@ SUGGESTION_JSON: {"emotions":["sad"],"lifeContexts":["Work / School"],"grounding
 JSON rules:
 - "emotions": 0–3 short lowercase words; **[]** when not clearly emotional (see above).
 - "lifeContexts": 0–3 from list only; [] if unclear.
-- "groundingOptions": **at most one** allowed ID, or []. First assistant message: non-empty only if the user explicitly asked for a calming tool (STEP 1). Later messages: non-empty when distress/tension warrants it or they asked (STEP 2); [] on upbeat-only threads unless they asked.
+- "groundingOptions": **at most one** allowed ID, or []. Include a fitting breathing/grounding ID on **any** message (including the first reply) when the user shares feeling bad, a difficult day, stress, anxiety, sadness, anger, or overwhelm; [] only on neutral or upbeat-only threads unless they asked.
 - "learningPathway": null unless genuinely relevant.
 - "suggestSaveAsReflection": true for meaningful personal sharing worth capturing.
 - "reframe": string (one concrete sentence) or null - see COGNITIVE REFRAME above; null beats generic repetition.`;
@@ -203,11 +203,28 @@ function resolveInnerAllyGroundingId(raw: string): string | null {
   return null;
 }
 
+const DISTRESS_PATTERN =
+  /\b(bad day|hard day|difficult day|tough day|rough day|awful day|terrible day|feeling bad|feel bad|feeling down|stressed|stressful|anxious|anxiety|overwhelmed|panic|panicking|sad|upset|worried|worry|frustrated|frustrating|angry|mad|furious|exhausted|burnout|burned out|hopeless|low|lonely|hurt|crying|can'?t sleep|nervous|calm down)\b/i;
+
+function pickDistressGroundingId(userText: string): string {
+  const t = userText.toLowerCase();
+  if (/(angry|frustrat|furious|mad|irritat)/.test(t)) return 'breath_extended_exhale';
+  if (/(meeting|focus|present|scatter|nervous)/.test(t)) return 'breath_coherent';
+  if (/(panic|rush|wired|calm down|overwhelm)/.test(t)) return 'physiological_sigh';
+  if (/(conflict|argument|fight|hurt)/.test(t)) return 'release';
+  return 'breath_regulation_flow';
+}
+
+function stripReasoningArtifacts(raw: string): string {
+  return raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
 function normalizeInnerAllyPayload(
-  suggestion: Record<string, unknown> | null
+  suggestion: Record<string, unknown> | null,
+  lastUserText: string
 ): Record<string, unknown> {
-  if (!suggestion || typeof suggestion !== 'object') return {};
-  const out: Record<string, unknown> = { ...suggestion };
+  const out: Record<string, unknown> =
+    suggestion && typeof suggestion === 'object' ? { ...suggestion } : {};
 
   const rawGo = out.groundingOptions;
   const groundingOptions: string[] = [];
@@ -220,6 +237,9 @@ function normalizeInnerAllyPayload(
         break;
       }
     }
+  }
+  if (groundingOptions.length === 0 && DISTRESS_PATTERN.test(lastUserText)) {
+    groundingOptions.push(pickDistressGroundingId(lastUserText));
   }
   out.groundingOptions = groundingOptions;
 
@@ -342,26 +362,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
   }
 
+  const lastUserMessage =
+    [...userMessages].reverse().find((m) => m.role === 'user')?.content ?? '';
+  const isReasoningModel = /gpt-oss|qwen|deepseek-r1/i.test(model);
+
   const chatMessages = [
     { role: 'system' as const, content: systemPrompt },
     ...userMessages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
-  try {
+  const callGroq = async (targetModel: string, withLowReasoning: boolean): Promise<{ ok: boolean; content: string; errorMessage?: string }> => {
+    const reqBody: Record<string, unknown> = {
+      model: targetModel,
+      messages: chatMessages,
+      max_tokens: mode === 'inner_ally' ? 1800 : 2400,
+      temperature: mode === 'inner_ally' ? 0.55 : 0.62,
+    };
+    if (withLowReasoning && /gpt-oss/i.test(targetModel)) {
+      reqBody.reasoning_effort = 'low';
+    }
     const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages: chatMessages,
-        max_tokens: mode === 'inner_ally' ? 560 : 920,
-        temperature: mode === 'inner_ally' ? 0.55 : 0.62,
-      }),
+      body: JSON.stringify(reqBody),
     });
-
     if (!response.ok) {
       const errText = await response.text();
       console.error('[chat] Groq error:', errText);
@@ -372,22 +399,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       } catch {
         if (errText.length > 0 && errText.length < 400) message = errText;
       }
-      res.status(502).json({ error: message });
+      return { ok: false, content: '', errorMessage: message };
+    }
+    const data = (await response.json()) as {
+      choices?: { message?: { content?: string | null } }[];
+    };
+    return {
+      ok: true,
+      content: stripReasoningArtifacts(data.choices?.[0]?.message?.content ?? ''),
+    };
+  };
+
+  try {
+    let result = await callGroq(model, isReasoningModel);
+    let parsed = extractSuggestion(result.content);
+
+    // Retry once without reasoning budget if content returned blank
+    if (!result.ok || !parsed.cleanContent) {
+      const fallbackModel = process.env.GROQ_FALLBACK_MODEL?.trim() || 'llama-3.1-8b-instant';
+      if (fallbackModel !== model) {
+        const retry = await callGroq(fallbackModel, false);
+        if (retry.ok) {
+          const retryParsed = extractSuggestion(retry.content);
+          if (retryParsed.cleanContent) {
+            result = retry;
+            parsed = retryParsed;
+          }
+        }
+      }
+    }
+
+    if (!result.ok && !parsed.cleanContent) {
+      res.status(502).json({ error: result.errorMessage ?? 'AI request failed.' });
       return;
     }
 
-    const data = (await response.json()) as {
-      choices: { message: { content: string } }[];
-    };
-
-    const rawContent = data.choices?.[0]?.message?.content ?? '';
-    const { cleanContent, suggestion } = extractSuggestion(rawContent);
+    let finalReply = parsed.cleanContent;
+    if (!finalReply) {
+      finalReply =
+        mode === 'inner_ally'
+          ? DISTRESS_PATTERN.test(lastUserMessage)
+            ? "I hear how heavy today feels, and it makes complete sense to need a moment to reset. Try stepping away from what is draining you for two minutes, drop your shoulders, and take a few slow breaths below.\n\nWould you like to share what weighed on you most today?"
+            : "I'm here with you. Take a brief pause whenever you need it.\n\nWhat's been on your mind today?"
+          : "Let's look at one practical step you can take right now to move forward clearly. Pick the single part within your control and focus on a 5-minute action today.\n\nWhat part of this feels most urgent to untangle?";
+    }
 
     const payload =
-      mode === 'inner_ally' ? normalizeInnerAllyPayload(suggestion) : normalizeCoachPayload(suggestion);
+      mode === 'inner_ally'
+        ? normalizeInnerAllyPayload(parsed.suggestion, lastUserMessage)
+        : normalizeCoachPayload(parsed.suggestion);
+
+    if (
+      mode === 'inner_ally' &&
+      Array.isArray(payload.groundingOptions) &&
+      payload.groundingOptions.length > 0 &&
+      !/breath|grounding|sigh|pause/i.test(finalReply)
+    ) {
+      finalReply = `${finalReply}\n\nIf it helps, try a short guided breathing reset using the card below.`;
+    }
 
     res.status(200).json({
-      reply: cleanContent,
+      reply: finalReply,
       mode,
       ...payload,
     });

@@ -30,7 +30,7 @@ export function GlassCard({
   children,
   style,
   onPress,
-  borderRadius = Radius.lg,
+  borderRadius = Radius.xl,
   noPadding,
   backgroundColor,
   borderColor,
@@ -100,7 +100,7 @@ export function GlassCard({
 const styles = StyleSheet.create({
   inner: {
     flex: 1,
-    padding: 16,
+    padding: 20,
     position: 'relative',
   },
   noPadding: {

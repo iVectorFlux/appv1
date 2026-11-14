@@ -270,7 +270,6 @@ function GroundingCard({
 }) {
   return (
     <View style={sgStyles.groundingWrap}>
-      <Text style={[sgStyles.groundingLabel, { color: colors.textMuted }]}>Try a grounding technique</Text>
       <View style={sgStyles.actionsWrap}>
         {options.map((opt) => {
           const cfg = GROUNDING_LABELS[opt] ?? { label: opt, icon: 'leaf-outline' as keyof typeof Ionicons.glyphMap };
@@ -281,20 +280,23 @@ function GroundingCard({
                 sgStyles.actionChip,
                 {
                   backgroundColor: colors.glassTint === 'dark'
-                    ? 'rgba(255,255,255,0.10)'
-                    : 'rgba(255,255,255,0.65)',
-                  borderColor: colors.glassTint === 'dark'
-                    ? 'rgba(255,255,255,0.16)'
-                    : 'rgba(0,0,0,0.08)',
+                    ? 'rgba(59,130,246,0.14)'
+                    : 'rgba(37,99,235,0.08)',
+                  borderColor: colors.primary + '38',
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
                 },
               ]}
               onPress={() => onPress(opt, sourceEmotions)}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
-              <View style={[sgStyles.chipIcon, { backgroundColor: colors.primary + '18' }]}>
-                <Ionicons name={cfg.icon} size={13} color={colors.primary} />
+              <View style={[sgStyles.chipIcon, { backgroundColor: colors.primary + '22' }]}>
+                <Ionicons name={cfg.icon} size={14} color={colors.primary} />
               </View>
-              <Text style={[sgStyles.actionChipText, { color: colors.textPrimary }]}>{cfg.label}</Text>
+              <Text style={[sgStyles.actionChipText, { color: colors.primary }]}>
+                Try breathing · {cfg.label}
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.primary} />
             </TouchableOpacity>
           );
         })}
@@ -569,8 +571,8 @@ export default function ChatScreen({
     }
   };
 
-  const handleSend = async () => {
-    const text = inputText.trim();
+  const sendText = async (rawText: string) => {
+    const text = rawText.trim();
     if (!text || isLoading) return;
 
     Animated.sequence([
@@ -697,8 +699,12 @@ export default function ChatScreen({
   const topInset = Platform.OS === 'ios' ? insets.top : Spacing.md;
   const st = createChatStyles(colors);
 
+  const handleSend = () => {
+    void sendText(inputText);
+  };
+
   const handleSuggestionPress = (text: string) => {
-    setInputText(text);
+    void sendText(text);
   };
 
   return (
