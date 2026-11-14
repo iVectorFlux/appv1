@@ -6,7 +6,7 @@
  * zero awkward half-line wrapping, and vibrant multi-tone gradients.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
@@ -26,16 +26,8 @@ import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/shadcn-primitives';
 import { AddToHomeScreenBanner } from '@/components/web/add-to-home-screen-banner';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
-import { useLearningCatalog } from '@/hooks/useLearningCatalog';
-import { getEQScores } from '@/services/eq-storage';
-import {
-  fetchUserLearningContentProgress,
-  type LearningContentProgressRow,
-} from '@/services/learning-content-progress';
-import {
-  buildSequencedCatalog,
-  GOOD_EQ_SCORE_THRESHOLD,
-} from '@/services/learning-sequence';
+import { useEqTestAvailability } from '@/hooks/useEqTestAvailability';
+import { GOOD_EQ_SCORE_THRESHOLD } from '@/services/learning-sequence';
 import { buildHomeRecommendations } from '@/services/learning-recommendations';
 import { formatCatalogLabel } from '@/data/eq-curriculum';
 
@@ -98,37 +90,12 @@ export default function HomeScreen() {
   const isDark = colors.glassTint === 'dark';
   const isDesktop = useWebLaptopLayout();
 
-  const { episodes } = useLearningCatalog('B2B');
-  const [latestEqScore, setLatestEqScore] = useState<number | null>(null);
-  const [latestDimensionScores, setLatestDimensionScores] = useState<Record<string, number> | null>(null);
-  const [progressByKey, setProgressByKey] = useState<Record<string, LearningContentProgressRow>>({});
-
-  const loadSnapshot = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const [scores, progress] = await Promise.all([
-        getEQScores(user.id),
-        fetchUserLearningContentProgress(user.id),
-      ]);
-      const latest = scores.length > 0 ? scores[0]! : null;
-      setLatestEqScore(latest ? Math.round(latest.overallScore) : null);
-      setLatestDimensionScores(latest?.dimensionScores ?? null);
-      setProgressByKey(progress);
-    } catch {
-      // Non-fatal fallback keeps UI interactive
-    }
-  }, [user?.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadSnapshot();
-    }, [loadSnapshot])
-  );
-
-  const sequenced = useMemo(
-    () => buildSequencedCatalog(episodes, progressByKey, latestEqScore),
-    [episodes, progressByKey, latestEqScore]
-  );
+  const {
+    availability: eqAvailability,
+    sequenced,
+    latestEqScore,
+    latestDimensionScores,
+  } = useEqTestAvailability();
 
   const homeFeed = useMemo(
     () => buildHomeRecommendations(sequenced, latestDimensionScores),
@@ -194,18 +161,27 @@ export default function HomeScreen() {
         borderDark: 'rgba(16, 185, 129, 0.28)',
         route: '/grounding',
       },
-      {
-        key: 'full-eq',
-        title: latestEqScore !== null ? 'EQ Assessment' : 'Baseline EQ Test',
-        hint: latestEqScore !== null ? `Latest EQ score ${latestEqScore}/100` : '20 min personalized check-in',
-        icon: 'analytics',
-        gradient: ['#0284C7', '#2563EB'],
-        cardWashLight: ['#F0F9FF', '#FFFFFF'],
-        cardWashDark: ['#0C4A6E', '#18181B'],
-        borderLight: 'rgba(2, 132, 199, 0.16)',
-        borderDark: 'rgba(14, 165, 233, 0.28)',
-        route: '/full-eq-test',
-      },
+      ...(eqAvailability.isAvailable
+        ? [
+            {
+              key: 'full-eq',
+              title: eqAvailability.title,
+              hint:
+                eqAvailability.kind === 'resume'
+                  ? `Question ${eqAvailability.draftCurrentQuestion} of ${eqAvailability.draftTotalQuestions} · Resume`
+                  : eqAvailability.kind === 'mid_learning'
+                    ? 'Check your EQ growth'
+                    : '20 min EQ assessment',
+              icon: 'analytics' as const,
+              gradient: ['#0284C7', '#2563EB'] as GradientPair,
+              cardWashLight: ['#F0F9FF', '#FFFFFF'] as GradientPair,
+              cardWashDark: ['#0C4A6E', '#18181B'] as GradientPair,
+              borderLight: 'rgba(2, 132, 199, 0.16)',
+              borderDark: 'rgba(14, 165, 233, 0.28)',
+              route: eqAvailability.route,
+            },
+          ]
+        : []),
       {
         key: 'big5',
         title: 'Personality',
@@ -246,7 +222,7 @@ export default function HomeScreen() {
       });
     }
     return tiles;
-  }, [latestEqScore, sequenced.completedCount, sequenced.totalCount, user?.role]);
+  }, [eqAvailability, sequenced.completedCount, sequenced.totalCount, user?.role]);
 
   const st = createStyles(colors, isDesktop);
 
@@ -337,11 +313,15 @@ export default function HomeScreen() {
                 style={st.statusDot}
               />
               <Text style={st.statusChipText}>
-                {latestEqScore === null
-                  ? 'Step 1 · Baseline'
-                  : sequenced.accessMode === 'free_browse'
-                    ? 'Free Browse Unlocked'
-                    : 'Guided Pathway'}
+                {eqAvailability.kind === 'resume'
+                  ? 'EQ Test In Progress'
+                  : eqAvailability.kind === 'initial'
+                    ? 'Step 1 · EQ Test'
+                    : eqAvailability.kind === 'final'
+                      ? 'Curriculum Complete'
+                      : sequenced.accessMode === 'free_browse'
+                        ? 'Free Browse Unlocked'
+                        : 'Guided Pathway'}
               </Text>
             </View>
 
@@ -364,19 +344,27 @@ export default function HomeScreen() {
 
           <View style={st.heroTextGroup}>
             <Text style={[st.heroTitle, isDesktop && st.heroTitleDesktop]}>
-              {latestEqScore === null
-                ? 'Take Baseline EQ Test'
-                : nextLesson
-                  ? formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title
-                  : 'Your EQ Path'}
+              {eqAvailability.kind === 'resume'
+                ? 'Complete EQ Test'
+                : eqAvailability.kind === 'initial'
+                  ? 'Take EQ Test'
+                  : eqAvailability.kind === 'final'
+                    ? 'Take Final EQ Test'
+                    : nextLesson
+                      ? formatCatalogLabel(nextLesson.episode.competency) || nextLesson.episode.title
+                      : 'Your EQ Path'}
             </Text>
 
             <Text style={[st.heroDesc, isDesktop && st.heroDescDesktop]}>
-              {latestEqScore === null
-                ? 'Measure your baseline to unlock a personalized path.'
-                : latestEqScore >= GOOD_EQ_SCORE_THRESHOLD
-                  ? 'Explore all competencies freely or continue in sequence.'
-                  : 'Complete each competency step by step.'}
+              {eqAvailability.kind === 'resume'
+                ? eqAvailability.subtitle
+                : eqAvailability.kind === 'initial'
+                  ? eqAvailability.subtitle
+                  : eqAvailability.kind === 'final'
+                    ? eqAvailability.subtitle
+                    : latestEqScore !== null && latestEqScore >= GOOD_EQ_SCORE_THRESHOLD
+                      ? 'Explore all competencies freely or continue in sequence.'
+                      : 'Complete each competency step by step.'}
             </Text>
           </View>
 
@@ -393,13 +381,15 @@ export default function HomeScreen() {
           </View>
 
           <View style={st.heroActions}>
-            {latestEqScore === null ? (
+            {eqAvailability.kind === 'resume' ||
+            eqAvailability.kind === 'initial' ||
+            eqAvailability.kind === 'final' ? (
               <>
                 <Button
-                  title="Start EQ Test"
+                  title={eqAvailability.ctaLabel}
                   size={isDesktop ? 'md' : 'sm'}
                   icon="arrow-forward"
-                  onPress={() => router.push('/full-eq-test')}
+                  onPress={() => router.push(eqAvailability.route as never)}
                 />
                 <Button
                   title="Explore"

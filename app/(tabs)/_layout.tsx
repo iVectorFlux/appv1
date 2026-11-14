@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { useColors } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
+import { useEqTestAvailability } from '@/hooks/useEqTestAvailability';
 import { DesktopSidebar } from '@/components/layout/desktop-sidebar';
 
 interface TabButtonProps {
@@ -65,10 +66,12 @@ function TabButton({ icon, label, focused, colors, onPress, onLongPress }: TabBu
 }
 
 export default function TabsLayout() {
+  const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isDesktop = useWebLaptopLayout();
   const { isAuthenticated, isLoading, needsEmailConfirmation, hasCompletedOnboarding } = useAuthStore();
+  const { availability } = useEqTestAvailability();
 
   const tabBarPaddingBottom = Math.max(insets.bottom, 10);
 
@@ -100,14 +103,18 @@ export default function TabsLayout() {
     shadowOpacity: 0,
   };
 
-  const tabButton = (icon: keyof typeof Ionicons.glyphMap, label: string) => {
+  const tabButton = (icon: keyof typeof Ionicons.glyphMap, label: string, overrideRoute?: string) => {
     const TabBarButton = (props: Record<string, unknown>) => (
       <TabButton
         icon={icon}
         label={label}
         focused={!!(props.accessibilityState as { selected?: boolean } | undefined)?.selected}
         colors={colors}
-        onPress={props.onPress as () => void}
+        onPress={
+          overrideRoute
+            ? () => router.push(overrideRoute as never)
+            : (props.onPress as () => void)
+        }
         onLongPress={props.onLongPress as () => void}
       />
     );
@@ -129,6 +136,17 @@ export default function TabsLayout() {
       <Tabs.Screen name="home" options={{ tabBarButton: tabButton('grid-outline', 'Home') }} />
       <Tabs.Screen name="learn" options={{ tabBarButton: tabButton('book-outline', 'Learn EQ') }} />
       <Tabs.Screen
+        name="eq"
+        options={
+          availability.isAvailable
+            ? {
+                tabBarButton: tabButton('analytics-outline', availability.tabLabel, availability.route),
+                tabBarStyle: isDesktop ? tabBarStyleHidden : tabBarStyleHidden,
+              }
+            : { href: null, tabBarStyle: tabBarStyleHidden }
+        }
+      />
+      <Tabs.Screen
         name="companion"
         options={{
           tabBarButton: tabButton('chatbubble-ellipses-outline', 'Companion'),
@@ -136,7 +154,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="profile" options={{ tabBarButton: tabButton('person-outline', 'Profile') }} />
-      <Tabs.Screen name="eq" options={{ href: null, tabBarStyle: tabBarStyleHidden }} />
       <Tabs.Screen name="recover" options={{ href: null, tabBarStyle: tabBarStyleHidden }} />
       <Tabs.Screen name="progress" options={{ href: null, tabBarStyle: tabBarStyleHidden }} />
     </Tabs>

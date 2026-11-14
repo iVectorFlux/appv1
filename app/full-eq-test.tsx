@@ -24,7 +24,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/button';
 import { useColors, Spacing, Typography, Radius } from '@/constants/design-tokens';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +38,16 @@ import {
   completeEQAssessmentSession,
   saveEQAssessmentResult,
 } from '@/services/eq-storage';
+import {
+  clearEqTestDraft,
+  loadEqTestDraft,
+  markEqTestStageCompleted,
+  saveEqTestDraft,
+  type EqTestDraft,
+} from '@/services/eq-test-state';
+import { getSyncCachedEpisodes } from '@/services/learning-content-catalog';
+import { fetchUserLearningContentProgress } from '@/services/learning-content-progress';
+import { buildSequencedCatalog } from '@/services/learning-sequence';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { removeCacheSegment, cacheSegments } from '@/lib/async-data-cache';
 import {
@@ -78,12 +88,15 @@ type ScreenState = 'intro' | 'test' | 'results';
 
 export default function FullEQTestScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ resume?: string }>();
+  const shouldAutoResume = params.resume === '1';
   const colors = useColors();
   const { user, isAuthenticated, isLoading } = useAuthStore();
 
   const [screenState, setScreenState] = useState<ScreenState>('intro');
   const [questions, setQuestions] = useState<EQQuestion[]>([]);
   const [questionsLoading, setQuestionsLoading] = useState(true);
+  const [resumableDraft, setResumableDraft] = useState<EqTestDraft | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<EQResponse[]>([]);
@@ -123,6 +136,22 @@ export default function FullEQTestScreen() {
     );
     (async () => {
       try {
+        const draft = user?.id ? await loadEqTestDraft(user.id) : null;
+        if (!cancelled && draft) {
+          setResumableDraft(draft);
+          setQuestions(draft.questions);
+          setResponses(draft.responses);
+          setCurrentIndex(draft.currentIndex);
+          setSessionStartTime(draft.sessionStartTime);
+          sessionIdRef.current = draft.sessionId;
+          setSessionId(draft.sessionId);
+          setQuestionsLoading(false);
+          if (shouldAutoResume) {
+            setScreenState('test');
+          }
+          return;
+        }
+
         const fromDb = await Promise.race([loadPromise, timeoutPromise]);
         if (cancelled) return;
         const useDb = fromDb && fromDb.length > 0;
@@ -136,7 +165,7 @@ export default function FullEQTestScreen() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [user?.id, shouldAutoResume]);
   
   // Animate progress bar
   useEffect(() => {
@@ -253,20 +282,52 @@ export default function FullEQTestScreen() {
     resetQuestionState();
   };
 
+  const persistDraftState = useCallback(
+    (nextIndex: number, nextResponses: EQResponse[], nextSessionId?: string | null) => {
+      if (!user?.id || questions.length === 0) return;
+      const draft: EqTestDraft = {
+        userId: user.id,
+        sessionId: nextSessionId !== undefined ? nextSessionId : (sessionIdRef.current ?? sessionId),
+        sessionStartTime,
+        questions,
+        currentIndex: nextIndex,
+        responses: nextResponses,
+        updatedAt: Date.now(),
+      };
+      setResumableDraft(draft);
+      void saveEqTestDraft(draft);
+    },
+    [user?.id, questions, sessionId, sessionStartTime]
+  );
+
   const handleBack = () => {
     if (currentIndex <= 0 || responses.length === 0) return;
     const prevIndex = currentIndex - 1;
     const prevQuestion = questions[prevIndex];
     const prevResponse = responses[responses.length - 1];
-    setResponses(responses.slice(0, -1));
+    const nextResponses = responses.slice(0, -1);
+    setResponses(nextResponses);
     setCurrentIndex(prevIndex);
     restoreStateFromResponse(prevQuestion, prevResponse);
+    persistDraftState(prevIndex, nextResponses);
   };
 
   const persistAssessmentResult = useCallback(
     async (assessmentResult: EQAssessmentResult, startTimeMs: number) => {
       const uid = user?.id;
-      if (!uid || !isSupabaseConfigured()) {
+      if (!uid) return;
+      void clearEqTestDraft(uid);
+      setResumableDraft(null);
+      try {
+        const episodes = getSyncCachedEpisodes('en') ?? [];
+        const progress = await fetchUserLearningContentProgress(uid).catch(() => ({}));
+        const seq = buildSequencedCatalog(episodes, progress, assessmentResult.overallScore);
+        await markEqTestStageCompleted(uid, seq);
+      } catch {
+        // Non-fatal local milestone tracking
+      }
+
+      if (!isSupabaseConfigured()) {
         setSavedToCloud(false);
         return;
       }
@@ -321,8 +382,10 @@ export default function FullEQTestScreen() {
     }
 
     if (currentIndex < questions.length - 1) {
+      const nextIndex = currentIndex + 1;
+      persistDraftState(nextIndex, newResponses);
       animateTransition(() => {
-        setCurrentIndex(currentIndex + 1);
+        setCurrentIndex(nextIndex);
         resetQuestionState();
       });
     } else {
@@ -340,8 +403,10 @@ export default function FullEQTestScreen() {
 
   const handleSkip = () => {
     if (currentIndex < questions.length - 1) {
+      const nextIndex = currentIndex + 1;
+      persistDraftState(nextIndex, responses);
       animateTransition(() => {
-        setCurrentIndex(currentIndex + 1);
+        setCurrentIndex(nextIndex);
         resetQuestionState();
       });
     } else {
@@ -366,33 +431,34 @@ export default function FullEQTestScreen() {
   };
 
   const handleExit = () => {
-    const doExit = safeBack;
-
     const hasProgress = responses.length > 0 || currentIndex > 0;
+    if (hasProgress) {
+      persistDraftState(currentIndex, responses);
+    }
 
     if (Platform.OS === 'web') {
       if (
         !hasProgress ||
         window.confirm(
-          'Exit assessment?\n\nYour answers and progress on this attempt will be removed. This cannot be undone.'
+          'Pause EQ Test?\n\nYour progress is saved. You can complete the test anytime from where you left off.'
         )
       ) {
-        doExit();
+        safeBack();
       }
       return;
     }
 
     if (!hasProgress) {
-      doExit();
+      safeBack();
       return;
     }
 
     Alert.alert(
-      'Exit assessment?',
-      'Your answers and progress on this attempt will be removed. This cannot be undone.',
+      'Pause EQ Test?',
+      'Your progress is saved. You can complete the test anytime from where you left off.',
       [
         { text: 'Stay', style: 'cancel' },
-        { text: 'Exit', style: 'destructive', onPress: doExit },
+        { text: 'Save & Exit', onPress: safeBack },
       ]
     );
   };
@@ -443,7 +509,7 @@ export default function FullEQTestScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.headerProgressOverlay} pointerEvents="none">
-            <Text style={styles.testHeaderText}>EQ Assessment</Text>
+            <Text style={styles.testHeaderText}>EQ Test</Text>
           </View>
           <View style={styles.headerSideRight} />
         </View>
@@ -457,9 +523,13 @@ export default function FullEQTestScreen() {
             <Ionicons name="analytics" size={44} color={colors.primary} />
           </View>
           
-          <Text style={styles.introTitle}>Full EQ Assessment</Text>
+          <Text style={styles.introTitle}>
+            {resumableDraft ? 'Complete Your EQ Test' : 'EQ Test'}
+          </Text>
           <Text style={styles.introDescription}>
-            Measure your emotional intelligence across core competencies to personalize your learning sequence.
+            {resumableDraft
+              ? `You are on question ${resumableDraft.currentIndex + 1} of ${resumableDraft.questions.length}. Pick up right where you left off.`
+              : 'Measure your emotional intelligence across core competencies to personalize your learning sequence.'}
           </Text>
           
           <View style={styles.infoCards}>
@@ -490,10 +560,21 @@ export default function FullEQTestScreen() {
           </View>
           
           <Button
-            title={questionsLoading ? 'Loading questions…' : 'Begin Assessment'}
+            title={
+              questionsLoading
+                ? 'Loading questions…'
+                : resumableDraft
+                  ? `Complete EQ Test (Q${resumableDraft.currentIndex + 1}/${resumableDraft.questions.length})`
+                  : 'Begin EQ Test'
+            }
             disabled={questionsLoading || questions.length === 0}
             onPress={() => {
               if (!user?.id || questions.length === 0) return;
+              if (resumableDraft) {
+                setQuestionStartTime(Date.now());
+                setScreenState('test');
+                return;
+              }
               const startTime = Date.now();
               setSessionStartTime(startTime);
               setQuestionStartTime(startTime);
@@ -521,6 +602,24 @@ export default function FullEQTestScreen() {
             size="lg"
             fullWidth
           />
+          {resumableDraft ? (
+            <Button
+              title="Start Fresh"
+              variant="ghost"
+              size="sm"
+              style={{ marginTop: Spacing.sm }}
+              onPress={async () => {
+                if (!user?.id) return;
+                await clearEqTestDraft(user.id);
+                setResumableDraft(null);
+                setResponses([]);
+                setCurrentIndex(0);
+                resetQuestionState();
+                const fresh = await loadFullTestQuestions().catch(() => null);
+                setQuestions(fresh && fresh.length > 0 ? fresh : selectFullTestQuestions());
+              }}
+            />
+          ) : null}
           
           <TouchableOpacity
             style={styles.backLink}

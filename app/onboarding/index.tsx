@@ -160,7 +160,7 @@ export default function OnboardingScreen() {
                 Welcome to Lumi6 EQ
               </Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Measure your baseline Emotional Intelligence and unlock a structured learning path across all 12 workplace EQ competencies.
+                Measure your Emotional Intelligence and unlock a structured learning path across all 12 workplace EQ competencies.
               </Text>
 
               <View style={styles.section}>
@@ -233,7 +233,7 @@ export default function OnboardingScreen() {
 
               <View style={styles.actions}>
                 <Button
-                  title="Take Baseline EQ Assessment"
+                  title="Take EQ Test"
                   icon="analytics-outline"
                   onPress={() => void completeOnboarding('/full-eq-test', eqFocus)}
                   loading={loading}

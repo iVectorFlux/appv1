@@ -13,6 +13,7 @@ import { usePathname, useRouter, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, Spacing, Radius, Typography } from '@/constants/design-tokens';
 import { useWebLaptopLayout } from '@/hooks/useWebLaptopLayout';
+import { useEqTestAvailability } from '@/hooks/useEqTestAvailability';
 import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 
@@ -82,6 +83,7 @@ export function DesktopSidebar() {
   const pathname = usePathname();
   const { user } = useAuthStore();
   const { colorMode, toggleColorMode } = useThemeStore();
+  const { availability } = useEqTestAvailability();
 
   const isAdmin = user?.role === 'admin';
   const displayName = user?.displayName?.trim() || user?.username || 'Member';
@@ -131,14 +133,23 @@ export function DesktopSidebar() {
   ];
 
   const assessmentNav: NavItem[] = [
-    {
-      key: 'eq-test',
-      label: 'Full EQ Test',
-      icon: 'analytics-outline',
-      activeIcon: 'analytics',
-      href: '/full-eq-test',
-      match: (p) => p.includes('/full-eq-test'),
-    },
+    ...(availability.isAvailable
+      ? [
+          {
+            key: 'eq-test',
+            label:
+              availability.kind === 'resume'
+                ? 'Complete EQ Test'
+                : availability.kind === 'mid_learning'
+                  ? 'Mid-Learning Test'
+                  : 'EQ Test',
+            icon: 'analytics-outline' as const,
+            activeIcon: 'analytics' as const,
+            href: availability.route as Href,
+            match: (p: string) => p.includes('/full-eq-test'),
+          },
+        ]
+      : []),
     {
       key: 'big5',
       label: 'Big Five Test',
